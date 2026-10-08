@@ -4,7 +4,7 @@ const $ = (id) => document.getElementById(id);
 const state = { all: [], q: '', category: '', tier: 0, evalsOnly: false, resultsOnly: false };
 
 // Source links point at the GitHub repo the site is built from.
-const REPO_BLOB = 'https://github.com/ivanboring/agent-module-documentation/blob/main/modules';
+const REPO_BLOB = 'https://github.com/Drupal-AI/agent-module-documentation/blob/main/modules';
 
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => (
   { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
