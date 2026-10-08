@@ -60,16 +60,15 @@ for (const dataPath of findDataFiles(MODULES)) {
     active_installs: d.active_installs ?? null,
     part_of: d.part_of ?? null,
     categories: d.categories ?? [],
-    subcategories: d.subcategories ?? [],
     keywords: d.keywords ?? [],
-    project_url: d.project_url ?? null,
+    // Only what the catalog cards show: flags and the plugin-type count.
     provides: {
       permissions: !!d.provides_permissions,
       drush_commands: !!d.provides_drush_commands,
       config_schema: !!d.provides_config_schema,
-      plugin_types: d.provides_plugin_types ?? [],
-      config_entities: d.provides_config_entities ?? [],
-      content_entities: d.provides_content_entities ?? [],
+      plugin_types: (d.provides_plugin_types ?? []).length,
+      config_entities: (d.provides_config_entities ?? []).length > 0,
+      content_entities: (d.provides_content_entities ?? []).length > 0,
     },
     hasEvals,
     hasResults,
@@ -87,8 +86,9 @@ mkdirSync(OUT, { recursive: true });
 const generated_at = process.env.SOURCE_DATE_EPOCH
   ? new Date(Number(process.env.SOURCE_DATE_EPOCH) * 1000).toISOString()
   : null;
+// Compact (no indentation): this file is ~11k modules and is fetched on every catalog visit.
 writeFileSync(join(OUT, 'catalog.json'),
-  JSON.stringify({ generated_at, count: catalog.length, modules: catalog }, null, 2));
+  JSON.stringify({ generated_at, count: catalog.length, modules: catalog }));
 writeFileSync(join(OUT, 'eval-results.json'),
   JSON.stringify(evalResults, null, 2));
 
