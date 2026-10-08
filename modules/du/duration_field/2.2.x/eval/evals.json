@@ -1,0 +1,80 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "duration_field",
+  "version": "2.2.x",
+  "note": "Duration Field provides a Field API field type 'duration' (default widget duration_widget, default formatter duration_human_display; also duration_string_display and duration_time_display), plus 'duration' and 'granularity' Form API elements and services duration_field.service / duration_field.granularity.service. Values are stored as an ISO 8601 duration string (column 'duration', e.g. P1Y2M / PT1H30M), a 'seconds' bigint, and a 'weeks' int. Per-field settings are 'granularity' (default y:m:d:h:i:s) and 'include_weeks'. No configure route, no permissions. Medium cases create a duration field with a known granularity / view-display formatter and read it back. Hard cases create a duration field (and, for the second, wire its Human Friendly formatter) verified against the live field config + entity_view_display; reset deletes the field so verify fails on empty state.",
+  "evals": [
+    {
+      "id": "duration_field-type-and-default-formatter",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "In Drupal's Duration Field module, what is the machine name of the field type it provides, and which field formatter is used by default to display it?",
+      "must_contain_any": ["duration_human_display", "Human Friendly", "human-friendly", "human friendly"],
+      "must_not_contain": [],
+      "expected_output": "The field type is 'duration'; its default formatter is duration_human_display ('Human Friendly'), which prints e.g. '1 year 2 months'. It also ships duration_string_display and duration_time_display, and the default widget is duration_widget."
+    },
+    {
+      "id": "duration_field-storage-format",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "How does the Duration Field module store a duration value in the database?",
+      "must_contain_any": ["ISO 8601", "ISO8601", "seconds", "P1Y", "PT1H", "P0M"],
+      "must_not_contain": [],
+      "expected_output": "Three columns: 'duration' (the ISO 8601 duration string, e.g. P1Y2M10DT2H30M; empty = P0M), 'seconds' (a bigint so durations can be compared/sorted mathematically), and 'weeks' (an int, since ISO 8601 has no week token)."
+    },
+    {
+      "id": "duration_field-granularity-setting",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "In Duration Field, which per-field setting controls which time units (years, months, days, hours, minutes, seconds) the widget collects, and what is its default value?",
+      "must_contain_any": ["granularity", "y:m:d:h:i:s"],
+      "must_not_contain": [],
+      "expected_output": "The 'granularity' field setting, a colon-separated string of unit keys y:m:d:h:i:s (years, months, days, hours, minutes, seconds). Default is 'y:m:d:h:i:s' (all units). There is also an 'include_weeks' setting."
+    },
+    {
+      "id": "duration_field-known-granularity",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "On this site the Article content type has a Duration field named field_df_known. Inspect its live configuration and tell me which time units its granularity is set to collect.",
+      "must_contain_any": ["h:i", "hours and minutes", "hours, minutes", "hour", "minute"],
+      "must_not_contain": [],
+      "setup": "agent-module-documentation/evaluation/verify/duration_field-known-granularity-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/duration_field-known-granularity-cleanup.sh",
+      "expected_output": "Granularity is 'h:i' — hours and minutes only. Read with FieldConfig::loadByName('node','article','field_df_known')->getSetting('granularity') or `drush field:info`."
+    },
+    {
+      "id": "duration_field-known-formatter",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "The Article type has a Duration field field_df_disp. Look at the live default view display and state which Duration Field formatter is configured for it.",
+      "must_contain_any": ["duration_string_display", "Duration String", "ISO 8601 string", "ISO 8601"],
+      "must_not_contain": [],
+      "setup": "agent-module-documentation/evaluation/verify/duration_field-known-formatter-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/duration_field-known-formatter-cleanup.sh",
+      "expected_output": "It uses the 'Duration String' formatter (duration_string_display), which outputs the raw ISO 8601 string. Found on core.entity_view_display.node.article.default -> content.field_df_disp.type."
+    },
+    {
+      "id": "duration_field-create-field",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, add a Duration Field to the Article content type. Create a field with machine name field_df_task (label 'Task Effort') using the module's 'duration' field type, and configure it so its widget only collects hours, minutes and seconds (granularity h:i:s). Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/duration_field-create-field-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/duration_field-create-field-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/duration_field-create-field-cleanup.sh",
+      "expected_output": "A FieldStorageConfig node.field_df_task of type 'duration' and a FieldConfig node.article.field_df_task exist, with the field setting granularity = 'h:i:s'. e.g. FieldStorageConfig::create(['field_name'=>'field_df_task','entity_type'=>'node','type'=>'duration'])->save(); FieldConfig::create(['field_name'=>'field_df_task','entity_type'=>'node','bundle'=>'article','label'=>'Task Effort','settings'=>['granularity'=>'h:i:s','include_weeks'=>FALSE]])->save();"
+    },
+    {
+      "id": "duration_field-create-display",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On the Article content type, create a Duration field field_df_period (label 'Membership Length') that collects only years and months (granularity y:m). Then configure the Article's default display so this field is shown with the 'Human Friendly' formatter in its short text length. Apply everything to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/duration_field-create-display-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/duration_field-create-display-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/duration_field-create-display-cleanup.sh",
+      "expected_output": "FieldStorageConfig node.field_df_period (type duration) + FieldConfig node.article.field_df_period with granularity 'y:m'; and core.entity_view_display.node.article.default component field_df_period has type 'duration_human_display' with settings.text_length = 'short'. Set the view display via EntityDisplayRepository::getViewDisplay('node','article')->setComponent('field_df_period',['type'=>'duration_human_display','settings'=>['text_length'=>'short','separator'=>'space']])->save()."
+    }
+  ]
+}

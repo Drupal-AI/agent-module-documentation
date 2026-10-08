@@ -1,0 +1,95 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "linkit_media_library",
+  "version": "2.0.x",
+  "note": "Linkit Media Library adds a Media Library button inside CKEditor 5's Link dialog. It has no settings form, no configure route, no permissions and no config of its own - everything is Linkit profile plus text format configuration. The CKEditor 5 plugin linkit_media_library_link is conditional on the linkit_extension plugin; LinkitMediaLibrary::getDynamicPluginConfig() bails unless the format has the linkit filter and the format's Linkit profile has an entity:media matcher, then builds a MediaLibraryState with opener id linkit_media_library.opener.editor and injects the media_library.ui URL as linkitMediaLibrary.libraryURL. LinkitMediaLibraryEditorOpener::checkAccess() requires 'use' access on the format and an enabled linkit filter; getSelectionResponse() returns an EditorDialogSave with data-entity-type=media, data-entity-bundle, data-entity-uuid, data-entity-substitution, href=/media/<id> and a hard-coded target=_blank. hook_install() adds an entity:media matcher to the 'default' Linkit profile. Medium cases read live linkit_profile / filter_format / editor config; hard cases build that real configuration on the running site (using namespaced lml_* profiles and formats so nothing shared is touched).",
+  "evals": [
+    {
+      "id": "linkit_media_library-prereqs",
+      "mode": "recipe",
+      "prompt": "I installed the Drupal linkit_media_library module but the Media Library button does not appear in CKEditor 5's link dialog. What are the prerequisites the module checks before it will offer that button?",
+      "must_contain_any": [
+        "linkit",
+        "entity:media",
+        "Linkit URL converter"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Three things must be true for the text format: (1) the CKEditor 5 Linkit extension (linkit_extension) must be enabled on it - the module's plugin declares conditions.plugins: [linkit_extension]; (2) the format's 'Linkit URL converter' filter (filter id 'linkit') must be enabled, which both getDynamicPluginConfig() and the opener's checkAccess() require; (3) the Linkit profile the format points at must contain an entity:media matcher. hook_install() adds such a matcher to the 'default' profile, but any other profile you must configure yourself. If the format limits allowed HTML, 'target' must also be permitted on <a>.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "linkit_media_library-inserted-markup",
+      "mode": "recipe",
+      "prompt": "When an editor picks a media item through Drupal's linkit_media_library dialog, what attributes end up on the inserted <a> tag, and why does the href keep working if the media item's URL changes later?",
+      "must_contain_any": [
+        "data-entity-uuid",
+        "data-entity-type",
+        "_blank"
+      ],
+      "must_not_contain": [],
+      "expected_output": "LinkitMediaLibraryEditorOpener::getSelectionResponse() sends an EditorDialogSave command with data-entity-bundle, data-entity-type=\"media\", data-entity-substitution (the matcher's substitution_type, defaulting to 'media'), data-entity-uuid, href=\"/media/<id>\" and target=\"_blank\". The href is only a placeholder: Linkit's URL converter filter rewrites it at render time from the entity type, uuid and substitution plugin, so the link survives alias and file changes.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "linkit_media_library-opener-service",
+      "mode": "recipe",
+      "prompt": "Which media library opener does Drupal's linkit_media_library module register, what is the service id, and what access does it check?",
+      "must_contain_any": [
+        "linkit_media_library.opener.editor",
+        "MediaLibraryOpenerInterface"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The service linkit_media_library.opener.editor (class Drupal\\linkit_media_library\\LinkitMediaLibraryEditorOpener), tagged media_library.opener and implementing MediaLibraryOpenerInterface. Its checkAccess() loads the filter_format named by the state's filter_format_id opener parameter, returns forbidden (with the filter_format_list cache tag) if it does not exist, and otherwise requires 'use' access on that format AND that the format's 'linkit' filter exists and is enabled.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "linkit_media_library-known-profile",
+      "mode": "introspection",
+      "prompt": "On this Drupal site there is a Linkit profile called lml_eval_profile. Inspect the live configuration and tell me whether it is usable by the linkit_media_library module, and if so which media type(s) its media matcher is restricted to.",
+      "must_contain_any": [
+        "document"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Yes - linkit.linkit_profile.lml_eval_profile contains an entity:media matcher, which is what linkit_media_library requires. Its settings.bundles is limited to the 'document' media type (settings.substitution_type is 'media'), so the media library dialog opened from the link form would only offer Document media.",
+      "setup": "agent-module-documentation/evaluation/verify/linkit_media_library-known-profile-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/linkit_media_library-known-profile-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "linkit_media_library-known-format",
+      "mode": "introspection",
+      "prompt": "This Drupal site has a text format with the machine name lml_eval_format that is wired up for linkit_media_library. Inspect the running site and tell me which Linkit profile its CKEditor 5 Linkit extension is configured to use.",
+      "must_contain_any": [
+        "lml_fmt_profile"
+      ],
+      "must_not_contain": [],
+      "expected_output": "lml_fmt_profile. editor.editor.lml_eval_format has settings.plugins.linkit_extension.linkit_profile = 'lml_fmt_profile' with linkit_enabled true, and filter.format.lml_eval_format has filters.linkit.status: true.",
+      "setup": "agent-module-documentation/evaluation/verify/linkit_media_library-known-format-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/linkit_media_library-known-format-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "linkit_media_library-media-matcher",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "This Drupal site has linkit_media_library installed. The Linkit profile lml_task_profile currently only matches nodes. Change it on the live site so that the linkit_media_library media library button can use it, restricting the media it offers to the 'document' media type only.",
+      "reset": "agent-module-documentation/evaluation/verify/linkit_media_library-media-matcher-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/linkit_media_library-media-matcher-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/linkit_media_library-media-matcher-cleanup.sh",
+      "expected_output": "linkit.linkit_profile.lml_task_profile must gain an entity:media matcher whose settings.bundles contains exactly ['document' => 'document'] (created via plugin.manager.linkit.matcher createInstance('entity:media') plus $profile->addMatcher(), or on the profile's matchers UI)."
+    },
+    {
+      "id": "linkit_media_library-enable-format",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site the text format 'LML Task Format' (machine name lml_task_format) uses CKEditor 5 but cannot yet insert links to media. The Linkit profile lml_wire_profile already has a media matcher. Configure the live site so that this text format satisfies everything linkit_media_library needs: enable the Linkit URL converter filter on it and enable the CKEditor 5 Linkit extension pointing at lml_wire_profile.",
+      "reset": "agent-module-documentation/evaluation/verify/linkit_media_library-enable-format-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/linkit_media_library-enable-format-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/linkit_media_library-enable-format-cleanup.sh",
+      "expected_output": "filter.format.lml_task_format must have filters.linkit.status: true, and editor.editor.lml_task_format must have settings.plugins.linkit_extension.linkit_enabled truthy with settings.plugins.linkit_extension.linkit_profile = 'lml_wire_profile'."
+    }
+  ]
+}

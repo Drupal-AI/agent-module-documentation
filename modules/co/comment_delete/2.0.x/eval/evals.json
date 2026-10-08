@@ -1,0 +1,80 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "comment_delete",
+  "version": "2.0.x",
+  "note": "Comment Delete has no settings page (configure=null). All configuration is third-party settings stored on the comment field config entity (field.field.<entity>.<bundle>.<field>, key comment_delete: operation/visibility/label/message/mode/anonymize/default/time_limit/timer). Delete access is overridden via hook_comment_access using static + dynamically generated per-field permissions; deletion runs through the comment_delete.manager service with operations hard, hard_partial, soft. This site has comment fields node.comment_forum (bundle forum) and node.field_blog_comments (bundle blog_post); medium/hard cases are grounded in real third-party settings on those fields. Cleanup/reset unset the comment_delete third-party settings to restore the baseline (no comment_delete config on the field).",
+  "evals": [
+    {
+      "id": "comment_delete-operations",
+      "mode": "recipe",
+      "prompt": "The Drupal contrib module comment_delete lets you choose what happens to a comment's threaded replies when the comment is deleted. What are the delete operations it offers, and what does each do to the replies?",
+      "must_contain_any": ["hard_partial", "soft"],
+      "must_not_contain": [],
+      "expected_output": "Three operations: hard (delete the comment and all its replies), hard_partial (delete the comment and move its replies up one thread level), and soft (delete the comment but keep its replies, by unsetting its field values or setting it unpublished).",
+      "difficulty": "easy"
+    },
+    {
+      "id": "comment_delete-where-configured",
+      "mode": "recipe",
+      "prompt": "I installed comment_delete on Drupal 11 but there is no admin settings page for it. Where do I configure its behavior (allowed operations, soft-delete mode, time limit) and where are those settings stored?",
+      "must_contain_any": ["third_party", "comment field", "field.field", "field's edit"],
+      "must_not_contain": [],
+      "expected_output": "There is no configure route. You configure it in the 'Comment Delete' section on each comment field's edit form; the values are stored as third-party settings on that comment field config entity (field.field.<entity>.<bundle>.<field> -> third_party_settings.comment_delete).",
+      "difficulty": "easy"
+    },
+    {
+      "id": "comment_delete-anytime",
+      "mode": "recipe",
+      "prompt": "In comment_delete, what is the difference between the 'delete own comment' and 'delete own comment anytime' permissions, and which field setting makes that distinction matter?",
+      "must_contain_any": ["time limit", "time_limit", "anytime", "timer"],
+      "must_not_contain": [],
+      "expected_output": "The 'anytime' variants ignore the field's delete time limit, while the non-anytime variants only allow deletion within the window. This matters when the comment field has time_limit enabled with a timer (seconds after creation).",
+      "difficulty": "easy"
+    },
+    {
+      "id": "comment_delete-default-op",
+      "mode": "introspection",
+      "prompt": "On this site the forum comment field (node.comment_forum) has been configured with comment_delete. Inspect the live field configuration and report which delete operation is set as the default selected operation.",
+      "must_contain_any": ["hard_partial"],
+      "must_not_contain": [],
+      "expected_output": "The default operation is hard_partial: field.field.node.forum.comment_forum has third_party_settings.comment_delete.default = 'hard_partial'.",
+      "setup": "agent-module-documentation/evaluation/verify/comment_delete-default-op-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/comment_delete-default-op-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "comment_delete-time-limit-read",
+      "mode": "introspection",
+      "prompt": "On this site the blog comment field (node.field_blog_comments) has been configured with a comment_delete delete time limit. Inspect the live field configuration and report whether a time limit is enforced and how many seconds it is.",
+      "must_contain_any": ["3600"],
+      "must_not_contain": [],
+      "expected_output": "Yes, a time limit is enforced: third_party_settings.comment_delete.time_limit = true and timer = 3600 (seconds) on field.field.node.blog_post.field_blog_comments.",
+      "setup": "agent-module-documentation/evaluation/verify/comment_delete-time-limit-read-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/comment_delete-time-limit-read-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "comment_delete-enable-soft",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, use comment_delete to enable the 'soft' delete operation (delete comment, keep replies) on the forum comment field, node.comment_forum. Apply the change to the live field configuration.",
+      "reset": "agent-module-documentation/evaluation/verify/comment_delete-enable-soft-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/comment_delete-enable-soft-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/comment_delete-enable-soft-cleanup.sh",
+      "expected_output": "field.field.node.forum.comment_forum carries third_party_settings.comment_delete.operation with the 'soft' key selected (e.g. via FieldConfig::setThirdPartySetting('comment_delete','operation',['soft'=>'soft']) or the 'Comment Delete' section of the field edit form)."
+    },
+    {
+      "id": "comment_delete-set-time-limit",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, use comment_delete to configure the blog comment field (node.field_blog_comments) so comments can only be deleted within 600 seconds of creation. Apply the change to the live field configuration.",
+      "reset": "agent-module-documentation/evaluation/verify/comment_delete-set-time-limit-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/comment_delete-set-time-limit-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/comment_delete-set-time-limit-cleanup.sh",
+      "expected_output": "field.field.node.blog_post.field_blog_comments carries third_party_settings.comment_delete.time_limit = true and timer = 600."
+    }
+  ]
+}

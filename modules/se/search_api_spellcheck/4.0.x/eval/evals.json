@@ -1,0 +1,99 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "search_api_spellcheck",
+  "version": "4.0.x",
+  "note": "Search API Spellcheck ships no configure route, service, permission, or Drush command. It provides two Views AREA handlers (core views_area plugin type, not a new plugin type): search_api_spellcheck_did_you_mean (class DidYouMeanSpellCheck) and search_api_spellcheck_suggestions (class SuggestionsSpellCheck, subclass). They are placed in a Search API view's display_options.header or .footer, with options search_api_spellcheck_count (int), search_api_spellcheck_hide_on_result (bool), search_api_spellcheck_collate (bool). At runtime they only do anything when the query is a SearchApiQuery whose server supportsFeature('search_api_spellcheck') (Solr) and read $result->getExtraData('search_api_spellcheck'). This site has no Solr-backed index that returns spellcheck data, so medium/hard cases are grounded in the module's only persistent state: the area handler stored in views.view.<id> config. Introspection reads back which handler/options/section are configured on a namespaced view; execution adds a handler to a namespaced view's header/footer and verify checks the view config (config wiring, NOT a live Solr query result).",
+  "evals": [
+    {
+      "id": "sais-did-you-mean-plugins",
+      "mode": "recipe",
+      "prompt": "In the Drupal Search API Spellcheck module, what are the two Views handlers it provides for showing spellcheck suggestions on a search results view, and where on the view (which section) do you place them?",
+      "must_contain_any": [
+        "search_api_spellcheck_did_you_mean",
+        "Did You Mean",
+        "search_api_spellcheck_suggestions",
+        "Suggestions"
+      ],
+      "must_not_contain": [],
+      "expected_output": "It provides two Views AREA handlers: 'search_api_spellcheck_did_you_mean' (a single Google-style 'Did you mean: <link>?') and 'search_api_spellcheck_suggestions' (a bulleted list of keyword-variation links). You add them to the Header and/or Footer of a Search API search view.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "sais-backend-requirement",
+      "mode": "recipe",
+      "prompt": "I added the Search API Spellcheck 'Did you mean' area to my Search API view but it never shows anything. What backend requirement does this module have for the spellcheck data to appear, and which backend supports it?",
+      "must_contain_any": [
+        "supportsFeature",
+        "search_api_spellcheck",
+        "Solr",
+        "solr"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The handler only acts when the query is a SearchApiQuery whose server supportsFeature('search_api_spellcheck'). Solr (search_api_solr) advertises this feature; the core Database backend does not, so on a DB-backed index the handlers render nothing. You need a Solr server (or another backend supporting search_api_spellcheck) with spellcheck configured.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "sais-options",
+      "mode": "recipe",
+      "prompt": "Which options can I set on the Search API Spellcheck views area handlers, and what does the option that limits it to empty result sets do? Give the option machine names.",
+      "must_contain_any": [
+        "search_api_spellcheck_hide_on_result",
+        "hide_on_result",
+        "search_api_spellcheck_count",
+        "search_api_spellcheck_collate"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The options are search_api_spellcheck_count (max suggestions per term), search_api_spellcheck_hide_on_result (when TRUE the area renders only if the view has NO results), and search_api_spellcheck_collate (ask the Solr backend to build one corrected phrase). hide_on_result gates rendering to the empty-result case.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "sais-known-handler",
+      "mode": "introspection",
+      "prompt": "On this Drupal site there is a view with machine name 'sais_known' that uses a Search API Spellcheck area handler. Inspect the live view configuration and tell me which spellcheck handler (plugin id) is placed on it and what its configured maximum suggestion count is.",
+      "must_contain_any": [
+        "search_api_spellcheck_did_you_mean"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The sais_known view has search_api_spellcheck_did_you_mean in its default display header, with search_api_spellcheck_count: 7 (and search_api_spellcheck_hide_on_result: false, search_api_spellcheck_collate: true). Found in views.view.sais_known display.default.display_options.header.",
+      "setup": "agent-module-documentation/evaluation/verify/search_api_spellcheck-known-handler-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/search_api_spellcheck-known-handler-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "sais-footer-suggestions",
+      "mode": "introspection",
+      "prompt": "The view 'sais_footer' on this site places a Search API Spellcheck handler somewhere. Inspect the live view config and tell me which spellcheck handler it uses and in which display section (header or footer) it sits.",
+      "must_contain_any": [
+        "footer"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The sais_footer view places search_api_spellcheck_suggestions in the FOOTER of its default display (display.default.display_options.footer), with search_api_spellcheck_count: 5.",
+      "setup": "agent-module-documentation/evaluation/verify/search_api_spellcheck-footer-suggestions-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/search_api_spellcheck-footer-suggestions-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "sais-add-did-you-mean",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site there is a view with machine name 'sais_dym' whose default display has an empty header. Using the Search API Spellcheck module, add the 'Did You Mean' spellcheck area handler (plugin id search_api_spellcheck_did_you_mean) to the header of that view's default display, and save the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/search_api_spellcheck-add-did-you-mean-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/search_api_spellcheck-add-did-you-mean-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/search_api_spellcheck-add-did-you-mean-cleanup.sh",
+      "expected_output": "views.view.sais_dym display.default.display_options.header now contains an area handler whose plugin_id (and id) is search_api_spellcheck_did_you_mean (table: views, field: search_api_spellcheck_did_you_mean). Set it on the view display and save (e.g. via the Views UI Header > Add, or by editing the view config in drush php:eval)."
+    },
+    {
+      "id": "sais-add-suggestions",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site there is a view with machine name 'sais_sug' whose default display has an empty footer. Using the Search API Spellcheck module, add the 'Suggestions' spellcheck area handler (plugin id search_api_spellcheck_suggestions) to the footer of that view's default display, and save the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/search_api_spellcheck-add-suggestions-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/search_api_spellcheck-add-suggestions-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/search_api_spellcheck-add-suggestions-cleanup.sh",
+      "expected_output": "views.view.sais_sug display.default.display_options.footer now contains an area handler whose plugin_id (and id) is search_api_spellcheck_suggestions (table: views, field: search_api_spellcheck_suggestions). Set it on the view display and save."
+    }
+  ]
+}

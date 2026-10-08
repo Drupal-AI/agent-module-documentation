@@ -1,0 +1,101 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "html_title",
+  "version": "1.6.x",
+  "note": "HTML Title renders a limited, admin-controlled allowlist of inline HTML tags inside node titles (and via an html_title field formatter / node_html_title Views handler). Its only settings config is html_title.settings:allow_html_tags (space-separated tag string, shipped default '<br> <sub> <sup>'), edited at /admin/config/user-interface/html_title (permission 'administer html title settings'). The filtering is done by the html_title.filter service (Drupal\\html_title\\HtmlTitleFilter::decodeToText/decodeToMarkup), which decodes entities then Xss::filter()s against that allowlist. Medium cases read back live config (a known allowlist value; a field whose view display uses the html_title formatter); hard cases mutate live config (add the <em> tag to the allowlist; switch a field's view-display formatter to html_title).",
+  "evals": [
+    {
+      "id": "html_title-config-key",
+      "mode": "recipe",
+      "prompt": "On a Drupal 11 site I enabled the html_title module. Which configuration object and key store the list of HTML tags allowed in node titles, what is the shipped default value, and at what admin path do I edit it?",
+      "must_contain_any": [
+        "allow_html_tags",
+        "html_title.settings",
+        "/admin/config/user-interface/html_title"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The config is html_title.settings, key allow_html_tags, a space-separated tag string whose shipped default is '<br> <sub> <sup>'. Edit it at /admin/config/user-interface/html_title (route html_title.settings, permission 'administer html title settings').",
+      "difficulty": "easy"
+    },
+    {
+      "id": "html_title-service-xss",
+      "mode": "recipe",
+      "prompt": "How does the html_title module render markup inside a node title safely, and which service would I call to filter a title string myself? Name the service id and a method.",
+      "must_contain_any": [
+        "html_title.filter",
+        "decodeToMarkup",
+        "decodeToText",
+        "Xss::filter"
+      ],
+      "must_not_contain": [],
+      "expected_output": "It decodes the stored title (Html::decodeEntities) then runs Xss::filter() limited to the configured allowlist, stripping everything else. Call the html_title.filter service (Drupal\\html_title\\HtmlTitleFilter): decodeToText() for a filtered string or decodeToMarkup() for safe Markup.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "html_title-formatter-and-views",
+      "mode": "recipe",
+      "prompt": "Besides node titles, how can html_title render a plain-text (string) field's value as HTML in a view display, and how does it affect the node Title column in a Views listing?",
+      "must_contain_any": [
+        "html_title",
+        "HTML-title text",
+        "node_html_title"
+      ],
+      "must_not_contain": [],
+      "expected_output": "It ships an 'html_title' field formatter (label 'HTML-title text') for string fields — select it on the field's Manage display. It also swaps the Views node-title field handler to node_html_title via hook_views_data_alter, so any view showing the node Title field renders the decoded markup automatically.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "html_title-known-allowlist",
+      "mode": "introspection",
+      "prompt": "On this Drupal site, which HTML tags are currently allowed inside node titles by the html_title module? Inspect the live configuration and list them.",
+      "must_contain_any": [
+        "<em> <strong> <cite>",
+        "em",
+        "strong",
+        "cite"
+      ],
+      "must_not_contain": [],
+      "expected_output": "html_title.settings:allow_html_tags is '<em> <strong> <cite>', so em, strong and cite are the currently-allowed tags.",
+      "setup": "agent-module-documentation/evaluation/verify/html_title-known-allowlist-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/html_title-known-allowlist-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "html_title-known-formatter",
+      "mode": "introspection",
+      "prompt": "The Article content type on this site has a plain string field field_hty_known. Inspect the live default view display for Article and state which field formatter renders that field.",
+      "must_contain_any": [
+        "html_title",
+        "HTML-title text"
+      ],
+      "must_not_contain": [],
+      "expected_output": "In core.entity_view_display.node.article.default the field_hty_known component uses the html_title formatter ('HTML-title text').",
+      "setup": "agent-module-documentation/evaluation/verify/html_title-known-formatter-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/html_title-known-formatter-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "html_title-allow-em",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, editors need to italicise words inside node titles using <em>, but the html_title allowlist currently does not permit it. Update the html_title configuration so that the <em> tag is allowed in node titles, and apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/html_title-allow-em-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/html_title-allow-em-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/html_title-allow-em-cleanup.sh",
+      "expected_output": "Add <em> to html_title.settings:allow_html_tags (e.g. set it to '<br> <em>' via the settings form or `drush config:set html_title.settings allow_html_tags '<em> <sub> <sup>'`). The verify checks the live allowlist now contains <em>."
+    },
+    {
+      "id": "html_title-set-formatter",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site the Article content type has a plain string field field_hty_task that currently renders as plain text. Using the html_title module, configure the Article default view display so this field's value is rendered as HTML markup, and apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/html_title-set-formatter-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/html_title-set-formatter-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/html_title-set-formatter-cleanup.sh",
+      "expected_output": "In core.entity_view_display.node.article.default set the field_hty_task component's formatter type to html_title (the 'HTML-title text' formatter) and save. The verify checks the component type is html_title."
+    }
+  ]
+}

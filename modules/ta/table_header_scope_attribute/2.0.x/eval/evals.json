@@ -1,0 +1,80 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "table_header_scope_attribute",
+  "version": "2.0.x",
+  "note": "Provides two core filter plugins enabled per text format (no config entity/route/permissions of its own). id table_header_scope_attribute ('Set scope attribute for table headers') sets scope=col on th in header-only rows, scope=row on th in rows containing td, and colgroup/rowgroup when colspan/rowspan>1; only acts on tables containing a td; skips th that already have scope or are empty. id table_header_scope_attribute_empty_th_to_td ('Transform empty table header to table data') replaces empty th with td (copying attrs except scope). A shared service table_header_scope_attribute.html_element_validator defines emptiness (Unicode whitespace/comments empty; void elements not). A form-alter validation on filter_format add/edit requires the scope filter to run BEFORE the empty-to-td filter (empty weight > scope weight). Config lives at filter.format.<id> filters.<filter_id>.status/.weight. Medium cases read that config; hard cases enable the filters and are verified against config and against live check_markup rendering.",
+  "evals": [
+    {
+      "id": "table_header_scope_attribute-what-filters",
+      "mode": "recipe",
+      "prompt": "What does the table_header_scope_attribute Drupal module add, and what are the ids of the filter plugins it provides?",
+      "must_contain_any": ["table_header_scope_attribute", "scope", "table_header_scope_attribute_empty_th_to_td"],
+      "must_not_contain": [],
+      "expected_output": "It adds two text-format filter plugins: 'table_header_scope_attribute' (Set scope attribute for table headers) which puts scope=col/row/colgroup/rowgroup on <th>, and 'table_header_scope_attribute_empty_th_to_td' (Transform empty table header to table data) which converts empty <th> to <td>.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "table_header_scope_attribute-order",
+      "mode": "recipe",
+      "prompt": "When enabling both filters from the table_header_scope_attribute module on a text format, which one must run first and why? What happens if you get the order wrong?",
+      "must_contain_any": ["before", "scope attribute", "first", "weight"],
+      "must_not_contain": [],
+      "expected_output": "The 'Set scope attribute for table headers' filter must run BEFORE the 'Transform empty table header to table data' filter (its weight must be lower / it must be ordered above). The text-format form validation enforces this; otherwise empty <th> get turned into <td> before scoping, so remaining headers are scoped incorrectly.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "table_header_scope_attribute-scope-values",
+      "mode": "recipe",
+      "prompt": "How does the table_header_scope_attribute scope filter decide what value to put in the scope attribute of a <th>? What values can it set?",
+      "must_contain_any": ["col", "row", "colgroup", "rowgroup"],
+      "must_not_contain": [],
+      "expected_output": "For a table containing at least one <td>: a <th> in a header-only row (no <td> in that row) gets scope=col; a <th> in a row that also has <td> gets scope=row. If the header spans multiple columns/rows (colspan/rowspan > 1) it uses colgroup/rowgroup. It skips <th> that already have a scope or are empty.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "table_header_scope_attribute-live-scope",
+      "mode": "introspection",
+      "prompt": "On this site there is a text format 'thsa_med_scope'. Inspect its configuration and tell me which filter from the table_header_scope_attribute module is enabled on it.",
+      "must_contain_any": ["scope attribute", "table_header_scope_attribute"],
+      "must_not_contain": [],
+      "expected_output": "The 'Set scope attribute for table headers' filter (id table_header_scope_attribute) is enabled on filter.format.thsa_med_scope; the empty-to-td filter is not. Check via drush cget filter.format.thsa_med_scope.",
+      "setup": "agent-module-documentation/evaluation/verify/table_header_scope_attribute-scope-enabled-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/table_header_scope_attribute-scope-enabled-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "table_header_scope_attribute-live-empty",
+      "mode": "introspection",
+      "prompt": "On this site there is a text format 'thsa_med_empty'. Inspect its configuration and tell me which table_header_scope_attribute filter is enabled on it and what that filter does.",
+      "must_contain_any": ["empty", "Transform empty", "table_header_scope_attribute_empty_th_to_td", "td"],
+      "must_not_contain": [],
+      "expected_output": "The 'Transform empty table header to table data' filter (id table_header_scope_attribute_empty_th_to_td) is enabled on filter.format.thsa_med_empty; it converts empty <th> cells into <td>. Check via drush cget filter.format.thsa_med_empty.",
+      "setup": "agent-module-documentation/evaluation/verify/table_header_scope_attribute-empty-enabled-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/table_header_scope_attribute-empty-enabled-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "table_header_scope_attribute-enable-scope",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this site there is a text format with machine name 'thsa_exec'. Using the table_header_scope_attribute module, enable the filter that sets the scope attribute on table headers for that format. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/table_header_scope_attribute-enable-scope-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/table_header_scope_attribute-enable-scope-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/table_header_scope_attribute-enable-scope-cleanup.sh",
+      "expected_output": "Enable filter id table_header_scope_attribute (status true) on filter.format.thsa_exec, e.g. $format->setFilterConfig('table_header_scope_attribute', ['status'=>TRUE,'weight'=>10])->save(), or tick it on the text-format edit form."
+    },
+    {
+      "id": "table_header_scope_attribute-render",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this site there is a text format 'thsa_render'. Configure it with the table_header_scope_attribute module so that content rendered through it gets accessible table markup: column and row headers must receive the correct scope attribute AND empty header cells must become data cells. Make sure the two filters run in the required order. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/table_header_scope_attribute-render-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/table_header_scope_attribute-render-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/table_header_scope_attribute-render-cleanup.sh",
+      "expected_output": "Enable both filters on filter.format.thsa_render with the scope filter (table_header_scope_attribute) at a lower weight than the empty-to-td filter (table_header_scope_attribute_empty_th_to_td). Then check_markup of a table yields th scope=col / scope=row and empty <th> replaced by <td>."
+    }
+  ]
+}

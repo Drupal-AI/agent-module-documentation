@@ -1,0 +1,58 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "condition_field",
+  "version": "2.1.x",
+  "note": "Condition Field defines a field type 'condition_field' (default widget condition_field_default, formatter condition_field_string) that stores core Condition plugin configurations as a serialized 'conditions' blob. Which condition plugins are offered per field is the field setting enabled_plugins (schema field.field_settings.condition_field). The module does not evaluate conditions; ConditionAccessResolver::checkAccess($conditions,'and'|'or') is the helper. No configure route, permissions, or Drush. Medium reads back the enabled_plugins of a known field; hard adds a condition_field to Article with request_path + user_role enabled, verified against the live field config. Fixture fields are namespaced field_cf_*.",
+  "evals": [
+    {
+      "id": "condition_field-field-type",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "What does the Drupal condition_field module provide, and what is the machine name of its field type? Does it evaluate the conditions itself?",
+      "must_contain_any": ["condition_field"],
+      "must_not_contain": [],
+      "expected_output": "It provides a field type with machine name condition_field that stores core Condition plugin configurations on an entity (default widget condition_field_default, formatter condition_field_string). It does NOT evaluate them itself — you read the field and resolve the conditions in your own code."
+    },
+    {
+      "id": "condition_field-enabled-plugins",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "When adding a condition_field field to a content type, how do I control which condition plugins editors can configure on it, and what is that field setting called?",
+      "must_contain_any": ["enabled_plugins"],
+      "must_not_contain": [],
+      "expected_output": "The field settings form has 'Enabled plugins' checkboxes; the setting is enabled_plugins (schema field.field_settings.condition_field), a map of condition-plugin id => enabled. Some plugins are always skipped (SKIP_CONDITION_IDS: node_type, current_theme, webform, entity_bundle:webform_submission, and language on monolingual sites)."
+    },
+    {
+      "id": "condition_field-evaluate",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "I have data stored in a condition_field field. How do I actually evaluate those stored conditions in code (e.g. to hide an entity), using the helper the module ships?",
+      "must_contain_any": ["ConditionAccessResolver", "checkAccess", "plugin.manager.condition"],
+      "must_not_contain": [],
+      "expected_output": "Read $entity->get('field')->getValue()[0]['conditions'], instantiate each via plugin.manager.condition ($manager->createInstance($id, $values)), then call ConditionAccessResolver::checkAccess($conditions, 'and'|'or') (returns bool). Do it in e.g. hook_entity_view to blank out $build when it returns FALSE."
+    },
+    {
+      "id": "condition_field-known-field",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "On this Drupal site, the Article content type has a condition_field field. Inspect the live field configuration and give the field's machine name and which condition plugins are enabled on it (enabled_plugins).",
+      "must_contain_any": ["field_cf_known"],
+      "must_not_contain": [],
+      "expected_output": "The field is field_cf_known (type condition_field on node.article); its enabled_plugins setting enables request_path and user_role (drush cget field.field.node.article.field_cf_known settings.enabled_plugins).",
+      "setup": "agent-module-documentation/evaluation/verify/condition_field-known-field-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/condition_field-known-field-cleanup.sh"
+    },
+    {
+      "id": "condition_field-add-field",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, add a Condition Field (condition_field) named field_cf_task to the Article content type, with the Request Path (request_path) and Role (user_role) condition plugins enabled on it. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/condition_field-add-field-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/condition_field-add-field-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/condition_field-add-field-cleanup.sh",
+      "expected_output": "A field storage (node, field_cf_task, type condition_field) and a field config on node.article exist, with settings.enabled_plugins enabling request_path and user_role (FieldStorageConfig + FieldConfig create, or Field UI)."
+    }
+  ]
+}

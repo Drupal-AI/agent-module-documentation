@@ -1,0 +1,99 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "we_megamenu",
+  "version": "1.x",
+  "note": "We Mega Menu layers a mega-menu builder on top of core menus. It is NOT a config entity and ships NO config schema, NO Drush, and NO plugin types. Per-menu layout is stored as a JSON string in a custom DB table `we_megamenu` keyed by (menu_name, theme) in the data_config column; the static helper class \\Drupal\\we_megamenu\\WeMegaMenuBuilder (loadConfig/saveConfig/initMegamenu) is the programmatic entry point. The JSON has menu_config (per-item rows/columns/embedded blocks/icons) and block_config (render behavior: style, animation, delay, duration, action = hover|clicked, auto-mobile-collapse). The front end renders via a derivative Block plugin we_megamenu_block:<menu> placed in a region, through a stack of theme hooks (we_megamenu_frontend -> ul/li/submenu/row/col/subul/block) with Twig in templates/. One permission: administer we_megamenu (restrict access), gating the builder at /admin/structure/we-mega-menu. One invited hook: hook_megamenu_manipulators_alter(). Medium/hard cases are grounded against a namespaced menu (we_mm_*) and its real we_megamenu table row / placed block.",
+  "evals": [
+    {
+      "id": "we_megamenu-where-stored",
+      "mode": "recipe",
+      "prompt": "In the Drupal contrib module We Mega Menu (we_megamenu), where and how is a menu's mega-menu layout stored? It is not a config entity - name the storage and what it is keyed by.",
+      "must_contain_any": [
+        "we_megamenu",
+        "data_config",
+        "database table",
+        "menu_name",
+        "(menu_name, theme)"
+      ],
+      "must_not_contain": [],
+      "expected_output": "It is stored in a custom database table named `we_megamenu` (defined in we_megamenu.install), keyed by the composite primary key (menu_name, theme). The layout + behavior is a JSON string in the `data_config` column. It is NOT a config entity and is not exported with drush cex; WeMegaMenuBuilder::loadConfig()/saveConfig() read and write it.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "we_megamenu-render-block",
+      "mode": "recipe",
+      "prompt": "I enabled We Mega Menu on Drupal 11 and configured a menu in its builder, but nothing shows on the site. What do I need to place to actually render the mega menu on the front end, and what is that block's plugin id for the Main navigation menu?",
+      "must_contain_any": [
+        "we_megamenu_block",
+        "we_megamenu_block:main",
+        "Place block",
+        "Mega Menu"
+      ],
+      "must_not_contain": [],
+      "expected_output": "You must place the derived 'Mega Menu' block in a region (Block layout > Place block, category 'Drupal 8 Mega Menu'). The plugin is a derivative block with one variant per menu: we_megamenu_block:<menu_name>, so for the Main navigation it is we_megamenu_block:main.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "we_megamenu-permission-path",
+      "mode": "recipe",
+      "prompt": "Which permission controls access to the We Mega Menu builder, and at what admin path is the builder/listing found?",
+      "must_contain_any": [
+        "administer we_megamenu",
+        "/admin/structure/we-mega-menu"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The single permission 'administer we_megamenu' (defined in we_megamenu.permissions.yml, restrict access: TRUE) gates every builder route. The listing is at /admin/structure/we-mega-menu (route we_megamenu.admin) and per-menu config at /admin/structure/we-mega-menu/{menu_name}/config.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "we_megamenu-open-mode",
+      "mode": "introspection",
+      "prompt": "On this Drupal site, the menu with machine name we_mm_menu has a We Mega Menu layout stored. Inspect the live site and tell me whether its dropdowns are set to open on hover or on click.",
+      "must_contain_any": [
+        "click",
+        "clicked"
+      ],
+      "must_not_contain": [],
+      "expected_output": "It opens on click: the stored layout's block_config.action is 'clicked'. Read it via drush php:eval calling \\Drupal\\we_megamenu\\WeMegaMenuBuilder::loadConfig('we_mm_menu', <default theme>) and inspecting ->block_config->action, or query the we_megamenu table's data_config JSON.",
+      "setup": "agent-module-documentation/evaluation/verify/we_megamenu-open-mode-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/we_megamenu-open-mode-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "we_megamenu-which-configured",
+      "mode": "introspection",
+      "prompt": "This site has two menus, we_mm_a and we_mm_b. Exactly one of them has a We Mega Menu layout stored. Inspect the live site and state which menu has a mega-menu configured.",
+      "must_contain_any": [
+        "we_mm_a"
+      ],
+      "must_not_contain": [],
+      "expected_output": "we_mm_a has a mega-menu layout; we_mm_b does not. Discoverable by querying the we_megamenu table (SELECT menu_name FROM we_megamenu) or by calling WeMegaMenuBuilder::loadConfig() for each menu under the default theme - only we_mm_a returns a stored object.",
+      "setup": "agent-module-documentation/evaluation/verify/we_megamenu-which-configured-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/we_megamenu-which-configured-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "we_megamenu-build-click",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site there is a menu with machine name we_mm_menu but no We Mega Menu layout stored for it yet. Using We Mega Menu, create a mega-menu layout for we_mm_menu under the site's default theme and configure it so its dropdowns open on click (not hover). Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/we_megamenu-build-click-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/we_megamenu-build-click-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/we_megamenu-build-click-cleanup.sh",
+      "expected_output": "Seed the layout then set click behavior: $theme = \\Drupal::config('system.theme')->get('default'); \\Drupal\\we_megamenu\\WeMegaMenuBuilder::initMegamenu('we_mm_menu', $theme); $cfg = WeMegaMenuBuilder::loadConfig('we_mm_menu', $theme); $cfg->block_config->action = 'clicked'; WeMegaMenuBuilder::saveConfig('we_mm_menu', $theme, json_encode($cfg)); Result: a row exists in the we_megamenu table for (we_mm_menu, default theme) whose data_config JSON has block_config.action === 'clicked'."
+    },
+    {
+      "id": "we_megamenu-place-block",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site there is a menu with machine name we_mm_menu2. Make its We Mega Menu render on the front end by placing the corresponding Mega Menu block in a region of the default theme. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/we_megamenu-place-block-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/we_megamenu-place-block-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/we_megamenu-place-block-cleanup.sh",
+      "expected_output": "Place the derivative block we_megamenu_block:we_mm_menu2 in a region (e.g. header) of the default theme and enable it - via Block layout > Place block (category 'Drupal 8 Mega Menu') or in code: \\Drupal\\block\\Entity\\Block::create(['id' => 'we_mm_menu2_block', 'theme' => <default theme>, 'region' => 'header', 'plugin' => 'we_megamenu_block:we_mm_menu2', 'settings' => ['id' => 'we_megamenu_block:we_mm_menu2', 'label' => 'WE MM Menu 2', 'label_display' => FALSE]])->save(); Verify passes when an enabled block with plugin we_megamenu_block:we_mm_menu2 exists."
+    }
+  ]
+}

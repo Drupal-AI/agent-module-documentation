@@ -1,0 +1,97 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "protected_forms",
+  "version": "2.0.x",
+  "note": "Protected Forms is a spam filter with no plugins/Drush. Config object protected_forms.settings has everything under a nested 'protected_forms' mapping: allowed_scripts (seq), check_quantity (int), reject_message (text), reject_patterns (comma/newline list), log_rejected (bool), allowed_patterns (string), excluded_forms (seq). Admin route protected_forms.admin at /admin/config/content/protected_forms; permissions 'administer protected forms' and 'bypass protected forms validation'. It adds _protected_forms_validate via hook_form_alter to non-admin, non-delete forms whose id contains user_/node_/comment_/contact_message_/webform_ or equals private_message_add_form. Rejected count is State protected_forms.rejected; rejections log to the 'protected forms' dblog channel. Medium/hard are grounded in the real config object (check_quantity, allowed_scripts, excluded_forms); cleanups restore the shipped config/install defaults explicitly.",
+  "evals": [
+    {
+      "id": "protected_forms-config-object",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "For the Drupal protected_forms module, which config object stores its settings, and which setting holds the list of spam words/patterns that cause a submission to be rejected?",
+      "must_contain_any": [
+        "protected_forms.settings",
+        "reject_patterns"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Settings live in protected_forms.settings (nested under a 'protected_forms' mapping). The spam list is reject_patterns, a comma/newline-separated list of words and URL schemes; a submission is rejected if any pattern matches."
+    },
+    {
+      "id": "protected_forms-which-forms",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "Which forms does protected_forms validate by default, and how can a trusted role skip the spam checks?",
+      "must_contain_any": [
+        "bypass protected forms validation",
+        "comment",
+        "webform",
+        "contact",
+        "node_"
+      ],
+      "must_not_contain": [],
+      "expected_output": "It validates non-admin, non-delete forms whose id contains user_, node_, comment_, contact_message_, or webform_ (and private_message_add_form). A role with the 'bypass protected forms validation' permission skips all checks; forms listed in excluded_forms are also skipped."
+    },
+    {
+      "id": "protected_forms-scripts",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "Besides matching bad words, how does protected_forms block foreign-language spam, and which setting controls that? What setting limits how much of the text it samples?",
+      "must_contain_any": [
+        "allowed_scripts",
+        "check_quantity",
+        "script"
+      ],
+      "must_not_contain": [],
+      "expected_output": "It samples up to check_quantity random characters and rejects the submission if any character belongs to a Unicode script not listed in allowed_scripts (e.g. Latin-only sites block Cyrillic/CJK). allowed_scripts is the allowlist; check_quantity is the sample size."
+    },
+    {
+      "id": "protected_forms-known-quantity",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "On this Drupal site, protected_forms is configured. Inspect the live configuration and state how many characters it samples for the language-script check (the check_quantity value).",
+      "must_contain_any": [
+        "42"
+      ],
+      "must_not_contain": [],
+      "expected_output": "check_quantity is 42: protected_forms.settings -> protected_forms.check_quantity = 42. Read it with drush cget protected_forms.settings protected_forms.check_quantity.",
+      "setup": "agent-module-documentation/evaluation/verify/protected_forms-known-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/protected_forms-known-cleanup.sh"
+    },
+    {
+      "id": "protected_forms-known-scripts",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "Inspect the live protected_forms configuration on this site and list the Unicode language scripts it currently allows in form submissions.",
+      "must_contain_any": [
+        "Cyrillic"
+      ],
+      "must_not_contain": [],
+      "expected_output": "allowed_scripts is [Currency Symbols, Latin, Miscellaneous Symbols, Cyrillic] — notably Cyrillic has been added beyond the shipped defaults. Found at protected_forms.settings -> protected_forms.allowed_scripts.",
+      "setup": "agent-module-documentation/evaluation/verify/protected_forms-known-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/protected_forms-known-cleanup.sh"
+    },
+    {
+      "id": "protected_forms-exclude",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, configure protected_forms so that the form with id 'pf_custom_form' is exempt from its spam validation (i.e. add it to the module's excluded forms). Apply the change to the live configuration.",
+      "reset": "agent-module-documentation/evaluation/verify/protected_forms-exclude-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/protected_forms-exclude-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/protected_forms-exclude-cleanup.sh",
+      "expected_output": "protected_forms.settings -> protected_forms.excluded_forms now contains 'pf_custom_form' (in addition to whatever was there). E.g. load the config, push 'pf_custom_form' onto the excluded_forms array, and save."
+    },
+    {
+      "id": "protected_forms-exclude-layman",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "site-owner",
+      "prompt": "The spam filter on my site is blocking one of my own forms (its id is 'pf_custom_form'). Please tell the Protected Forms spam checker to leave that particular form alone, and save it on the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/protected_forms-exclude-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/protected_forms-exclude-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/protected_forms-exclude-cleanup.sh",
+      "expected_output": "Add 'pf_custom_form' to protected_forms.settings -> protected_forms.excluded_forms and save so that form skips validation."
+    }
+  ]
+}

@@ -1,0 +1,105 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "entity_reference_override",
+  "version": "2.0.x",
+  "note": "entity_reference_override adds the field type entity_reference_override ('Entity reference w/custom text'), a subclass of core EntityReferenceItem with extra storage columns override (varchar 4094) + override_format, field settings override_label + override_format, widgets entity_reference_override_autocomplete (default) + entity_reference_override_select, and formatters entity_reference_override_label (default, with override_action in {title,title-append,suffix,class,hide}) + entity_reference_override_entity. It has NO admin UI (configure=null), no permissions, no Drush, no plugin TYPES. Medium cases introspect the LIVE plugin definitions (field-type class + provided formatters), read cheaply via plugin.manager.field.field_type / plugin.manager.field.formatter. Hard cases have the agent write the field-creation / formatter-config CODE into deletable scratch files under web/sites/default/ (entity_reference_override_field.eval.php, entity_reference_override_formatter.eval.php) which verify greps and reset deletes. NOTE: hard cases use scratch-file authoring rather than live field creation on purpose -- on THIS shared site 'canvas' is enabled and reacts to field/display definition changes, so attaching a FieldConfig or saving a view display for this field type is extremely slow / hangs, and a full 'drush cr' fatals in an unrelated canvas/ui_patterns component-manager collision; the scratch-file approach still verifies real filesystem state the agent produced. All facts grounded in src/Plugin/Field/**, entity_reference_override.module and config/schema.",
+  "evals": [
+    {
+      "id": "entity_reference_override-field-type",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "I want an entity reference field where I can also type a custom per-reference title. Which Drupal field type does entity_reference_override add, and what does it store beyond a normal reference?",
+      "must_contain_any": [
+        "entity_reference_override",
+        "Entity reference w/custom text",
+        "override",
+        "custom text"
+      ],
+      "must_not_contain": [],
+      "expected_output": "It adds the field type entity_reference_override ('Entity reference w/custom text'), a subclass of core's entity reference that stores an extra 'override' text value (and override_format) per reference, used to override the referenced entity's title (or class/note/field)."
+    },
+    {
+      "id": "entity_reference_override-override-action",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "With the entity_reference_override Label formatter, what are the ways the custom text can be applied to the referenced entity's title? Name the options.",
+      "must_contain_any": [
+        "override_action",
+        "title",
+        "title-append",
+        "suffix",
+        "class",
+        "hide"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The entity_reference_override_label formatter has an override_action setting: title (replace the title), title-append (append to the title), suffix (add a note after the link), class (add a CSS class to the link), or hide."
+    },
+    {
+      "id": "entity_reference_override-widgets-formatters",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "Which widgets and formatters does the entity_reference_override module provide for its field type?",
+      "must_contain_any": [
+        "entity_reference_override_autocomplete",
+        "entity_reference_override_select",
+        "entity_reference_override_label",
+        "entity_reference_override_entity"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Widgets: entity_reference_override_autocomplete (default) and entity_reference_override_select. Formatters: entity_reference_override_label (default; Label with override) and entity_reference_override_entity (Rendered entity with override)."
+    },
+    {
+      "id": "entity_reference_override-fieldtype-class",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "On this running Drupal site, inspect the field-type plugin definitions and tell me the PHP class that implements the entity_reference_override field type, plus its default widget and default formatter.",
+      "must_contain_any": [
+        "Drupal\\entity_reference_override\\Plugin\\Field\\FieldType\\EntityReferenceOverride",
+        "EntityReferenceOverride",
+        "entity_reference_override_autocomplete",
+        "entity_reference_override_label"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Class Drupal\\entity_reference_override\\Plugin\\Field\\FieldType\\EntityReferenceOverride; default_widget entity_reference_override_autocomplete; default_formatter entity_reference_override_label. Discoverable with: drush php:eval \"var_export(\\Drupal::service('plugin.manager.field.field_type')->getDefinition('entity_reference_override'));\".",
+      "setup": "agent-module-documentation/evaluation/verify/entity_reference_override-fieldtype-def-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/entity_reference_override-fieldtype-def-cleanup.sh"
+    },
+    {
+      "id": "entity_reference_override-formatters-registered",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "On this live site, inspect the field-formatter plugin definitions and list the formatters that entity_reference_override provides for its field type.",
+      "must_contain_any": [
+        "entity_reference_override_label",
+        "entity_reference_override_entity"
+      ],
+      "must_not_contain": [],
+      "expected_output": "entity_reference_override_label (Label with override) and entity_reference_override_entity (Rendered entity with override). Discoverable with: drush php:eval \"\\$m=\\Drupal::service('plugin.manager.field.formatter'); var_export([(bool)\\$m->getDefinition('entity_reference_override_label'),(bool)\\$m->getDefinition('entity_reference_override_entity')]);\".",
+      "setup": "agent-module-documentation/evaluation/verify/entity_reference_override-formatter-def-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/entity_reference_override-formatter-def-cleanup.sh"
+    },
+    {
+      "id": "entity_reference_override-write-field-code",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "Write the PHP that defines an entity_reference_override field on the node 'article' bundle: a FieldStorageConfig plus a FieldConfig of type entity_reference_override, with an override_label field setting. To avoid mutating this shared site's field definitions, write the code into the scratch file web/sites/default/entity_reference_override_field.eval.php (create it).",
+      "reset": "agent-module-documentation/evaluation/verify/entity_reference_override-field-snippet-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/entity_reference_override-field-snippet-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/entity_reference_override-field-snippet-cleanup.sh",
+      "expected_output": "PHP creating FieldStorageConfig::create([... 'type' => 'entity_reference_override' ...])->save() and FieldConfig::create([... with settings including override_label ...])->save()."
+    },
+    {
+      "id": "entity_reference_override-write-formatter-code",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "Write PHP that configures the entity_reference_override_label formatter on the node 'article' view display for the field field_my_ref, choosing an override_action (e.g. 'suffix'). To avoid mutating this shared site's display config, write the code into the scratch file web/sites/default/entity_reference_override_formatter.eval.php (create it). It must load the view display and setComponent() with the entity_reference_override_label formatter and an override_action setting.",
+      "reset": "agent-module-documentation/evaluation/verify/entity_reference_override-formatter-snippet-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/entity_reference_override-formatter-snippet-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/entity_reference_override-formatter-snippet-cleanup.sh",
+      "expected_output": "PHP that gets the node/article view display and calls setComponent('field_my_ref', ['type' => 'entity_reference_override_label', 'settings' => ['override_action' => 'suffix']])->save()."
+    }
+  ]
+}

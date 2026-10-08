@@ -1,0 +1,94 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "media_library_media_modify",
+  "version": "2.0.x",
+  "note": "Media Library Media Modify provides: a field type entity_reference_entity_modify ('Media with contextual modifications', default target_type media, extra overwritten_property_map JSON column); a field widget media_library_media_modify_widget ('Media library extra') extending core MediaLibraryWidget with settings form_mode/multi_edit_on_create/no_edit_on_create/check_selected/replace_checkbox_by_order_indicator; a Views field media_library_media_modify_edit_link; a Drush command media_library_media_modify:migrate <entity_type> <field>; and the service media_library_media_modify (EntityReferenceOverrideService). No configure route, no permissions. Cases are grounded in that real field type/widget config and the migrate command. Introspection reads back the configured widget type / a widget setting on a live form display; execution creates a modify field with the widget, and migrates a plain entity_reference field to the modify type.",
+  "evals": [
+    {
+      "id": "media_library_media_modify-how-to-override",
+      "mode": "recipe",
+      "prompt": "On a Drupal 11 site with media_library_media_modify, I want editors to give a referenced media item different field values (e.g. a different caption) on each piece of content, without changing the media entity itself. Which field type and which field widget do I use?",
+      "must_contain_any": [
+        "entity_reference_entity_modify",
+        "Media with contextual modifications",
+        "media_library_media_modify_widget",
+        "Media library extra"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Add a field of type entity_reference_entity_modify ('Media with contextual modifications') and choose the media_library_media_modify_widget ('Media library extra') form widget. Overrides are stored per-instance as a JSON overwritten_property_map and applied to a clone at render time; the source media is never modified.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "media_library_media_modify-migrate-command",
+      "mode": "recipe",
+      "prompt": "I already have a plain entity_reference media field and want it to support media_library_media_modify's contextual overrides. Is there a Drush command to convert it, and what arguments does it take?",
+      "must_contain_any": [
+        "media_library_media_modify:migrate"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Yes: `drush media_library_media_modify:migrate <entity_type_id> <field_name>` (e.g. `drush media_library_media_modify:migrate node field_media`). It changes the entity_reference field storage/config to entity_reference_entity_modify, adds the overwritten_property_map column, and switches form-display components to the modify widget.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "media_library_media_modify-edit-link-field",
+      "mode": "recipe",
+      "prompt": "How do I let editors edit media items inline from within the media library modal using media_library_media_modify? Which Views field do I add and to which view/display?",
+      "must_contain_any": [
+        "media_library_media_modify_edit_link",
+        "Edit link for the Media Library"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Add the Views field 'Edit link for the Media Library' (media_library_media_modify_edit_link) to the media library view's widget display. It renders an AJAX Edit button that opens the media edit form in the library modal; which fields appear is controlled by the media type's media_library form display.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "media_library_media_modify-widget-type",
+      "mode": "introspection",
+      "prompt": "The Article content type on this site has a field named field_mlmm_probe for context-aware media. Inspect the live default form display and state the machine name of the field-widget type configured for it.",
+      "must_contain_any": [
+        "media_library_media_modify_widget"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The widget is media_library_media_modify_widget ('Media library extra'), read from core.entity_form_display.node.article.default -> content.field_mlmm_probe.type.",
+      "setup": "agent-module-documentation/evaluation/verify/media_library_media_modify-widget-type-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/media_library_media_modify-widget-type-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "media_library_media_modify-setting",
+      "mode": "introspection",
+      "prompt": "On this site, the Article field field_mlmm_setting uses the media_library_media_modify 'Media library extra' widget. Inspect its live widget settings and state which on-create behaviour setting is enabled (true).",
+      "must_contain_any": [
+        "multi_edit_on_create"
+      ],
+      "must_not_contain": [],
+      "expected_output": "multi_edit_on_create is true (no_edit_on_create is false). Read it from core.entity_form_display.node.article.default -> content.field_mlmm_setting.settings.multi_edit_on_create.",
+      "setup": "agent-module-documentation/evaluation/verify/media_library_media_modify-setting-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/media_library_media_modify-setting-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "media_library_media_modify-create-field",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, add a field named field_mlmm_task to the Article content type that supports media_library_media_modify contextual overrides (field type entity_reference_entity_modify, targeting media), and configure its default form display to use the module's 'Media library extra' widget. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/media_library_media_modify-create-field-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/media_library_media_modify-create-field-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/media_library_media_modify-create-field-cleanup.sh",
+      "expected_output": "Create FieldStorageConfig node.field_mlmm_task type entity_reference_entity_modify (target_type media) + FieldConfig on article, and set the node.article.default form-display component for field_mlmm_task to widget media_library_media_modify_widget."
+    },
+    {
+      "id": "media_library_media_modify-migrate",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "This site's Article type has a plain entity_reference media field field_mlmm_mig. Using media_library_media_modify, convert it in place so it supports contextual overrides (its storage type becomes entity_reference_entity_modify). Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/media_library_media_modify-migrate-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/media_library_media_modify-migrate-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/media_library_media_modify-migrate-cleanup.sh",
+      "expected_output": "Run `drush media_library_media_modify:migrate node field_mlmm_mig`. Afterwards field.storage.node.field_mlmm_mig has type entity_reference_entity_modify."
+    }
+  ]
+}

@@ -1,0 +1,97 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "pantheon_secrets",
+  "version": "1.1.x",
+  "note": "Pantheon Secrets has no settings form (configure: null) and no plugin types. Its whole surface is: one Key-module KeyProvider plugin with id 'pantheon' whose config lives inside a Key config entity (key.key.<id> -> key_provider: pantheon, key_provider_settings.secret_name), one service (pantheon_secrets.secrets_syncer), one Drush command (pantheon-secrets:sync), one route (/admin/config/system/keys/pantheon) and one permission (sync pantheon_secrets keys). All medium/hard cases are grounded in that real state: introspection reads back a Key entity's secret_name and a role's sync permission; execution builds a pantheon-backed Key entity and a role that may run the sync page. Cases deliberately avoid asserting on real Pantheon secret values, which only exist on Pantheon infrastructure.",
+  "evals": [
+    {
+      "id": "pantheon_secrets-drush-sync",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "On a Drupal 11 site using the pantheon_secrets contrib module, which Drush command imports all of the site's Pantheon secrets into Key entities, and what does it do when there is nothing new to import?",
+      "must_contain_any": [
+        "pantheon-secrets:sync",
+        "pantheon_secrets:sync"
+      ],
+      "must_not_contain": [],
+      "expected_output": "`drush pantheon-secrets:sync` (on Pantheon: `terminus drush <site>.<env> -- pantheon-secrets:sync`). It calls pantheon_secrets.secrets_syncer::sync(); when every secret already has a key it logs 'No new secrets to sync.' and still exits 0. It is idempotent and only ever adds keys."
+    },
+    {
+      "id": "pantheon_secrets-provider-config",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "The pantheon_secrets module for Drupal integrates with the Key module. What is the machine id of the key provider plugin it adds, and where exactly is the reference to the Pantheon secret stored?",
+      "must_contain_any": [
+        "secret_name",
+        "key_provider_settings",
+        "\"pantheon\"",
+        "'pantheon'",
+        "key_provider: pantheon"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The KeyProvider plugin id is `pantheon`. There is no module settings object; the reference lives in the Key config entity: key.key.<id> -> key_provider: pantheon and key_provider_settings.secret_name: <name of the Pantheon secret> (plus an optional base64_encoded flag). Config schema key: key.provider.pantheon."
+    },
+    {
+      "id": "pantheon_secrets-sync-page",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "Where in the Drupal admin UI does the pantheon_secrets module let you bulk-import Pantheon secrets into Key entities, and which permission does a user need to reach that page?",
+      "must_contain_any": [
+        "sync pantheon_secrets keys",
+        "/admin/config/system/keys/pantheon",
+        "admin/config/system/keys/pantheon"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The Sync form is at /admin/config/system/keys/pantheon (route pantheon_secrets.sync, shown as a 'Sync Pantheon Secrets' tab next to the Keys collection). It requires the permission `sync pantheon_secrets keys`."
+    },
+    {
+      "id": "pantheon_secrets-known-key",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "This Drupal site has a Key entity with the machine name ps_known_key that uses the Pantheon Secrets key provider. Inspect the live configuration and tell me the name of the Pantheon secret that key reads from.",
+      "must_contain_any": [
+        "ps_known_secret"
+      ],
+      "must_not_contain": [],
+      "expected_output": "ps_known_secret - `drush cget key.key.ps_known_key key_provider_settings` shows key_provider: pantheon and key_provider_settings.secret_name: ps_known_secret.",
+      "setup": "agent-module-documentation/evaluation/verify/pantheon_secrets-known-key-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/pantheon_secrets-known-key-cleanup.sh"
+    },
+    {
+      "id": "pantheon_secrets-sync-role",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "On this Drupal site exactly one user role has been granted the permission that pantheon_secrets uses to guard its 'Sync Pantheon Secrets' page. Inspect the live site and give the machine name of that role.",
+      "must_contain_any": [
+        "ps_known_role"
+      ],
+      "must_not_contain": [],
+      "expected_output": "ps_known_role - it holds `sync pantheon_secrets keys`, the permission required by route pantheon_secrets.sync (/admin/config/system/keys/pantheon).",
+      "setup": "agent-module-documentation/evaluation/verify/pantheon_secrets-sync-role-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/pantheon_secrets-sync-role-cleanup.sh"
+    },
+    {
+      "id": "pantheon_secrets-create-key",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, use the pantheon_secrets module to create a Key entity with the machine name ps_task_key, labelled 'PS task key', of key type 'authentication', that reads its value from the Pantheon secret named ps_task_secret. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/pantheon_secrets-create-key-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/pantheon_secrets-create-key-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/pantheon_secrets-create-key-cleanup.sh",
+      "expected_output": "key.key.ps_task_key exists with key_provider: pantheon and key_provider_settings.secret_name: ps_task_secret (created via the Key UI, `drush key:save ... --key-provider=pantheon --key-provider-settings='{\"secret_name\":\"ps_task_secret\"}'`, or the key storage API)."
+    },
+    {
+      "id": "pantheon_secrets-sync-access",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "site-owner",
+      "prompt": "I need a new user role on this Drupal site called 'PS secrets manager' with the machine name ps_secrets_manager. People in that role should be allowed to use the Pantheon Secrets page that pulls all of our Pantheon secrets in as Drupal keys. Please set that up on the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/pantheon_secrets-sync-access-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/pantheon_secrets-sync-access-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/pantheon_secrets-sync-access-cleanup.sh",
+      "expected_output": "Role ps_secrets_manager exists and holds the permission `sync pantheon_secrets keys`, which is what guards /admin/config/system/keys/pantheon (route pantheon_secrets.sync)."
+    }
+  ]
+}

@@ -1,0 +1,87 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "decoupled_router",
+  "version": "2.0.x",
+  "note": "Decoupled Router exposes one JSON endpoint, GET /router/translate-path?path=<path>, that resolves a front-end path/alias to the Drupal entity behind it (type, bundle, id, uuid, label), its resolved/canonical URLs, redirects, and (with JSON:API on) the JSON:API individual URL. Easy cases are response-graded (no site changes). Medium cases stage a known state on the live site (a resolvable node+alias; a non-default config value) and ask the agent to introspect it. Hard cases have the agent build live state (a node+alias that resolves; a config change to relative URLs) verified by invoking the module's real PathTranslatorEvent resolver against the site (exit 0 = pass). The verify scripts drive the resolver via drush event dispatch rather than curl because the resolver's output is the module's own service behavior.",
+  "evals": [
+    {
+      "id": "decoupled_router-endpoint-route",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "On a Drupal 11 site with Decoupled Router installed, which HTTP endpoint does a headless front end call to turn a front-end path or alias into the Drupal entity behind it? Give the path, the HTTP method, and the route name.",
+      "must_contain_any": ["/router/translate-path", "decoupled_router.path_translation"],
+      "must_not_contain": [],
+      "expected_output": "GET /router/translate-path?path=<path> (route decoupled_router.path_translation), requires _format=json and the 'access content' permission."
+    },
+    {
+      "id": "decoupled_router-response-shape",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "When Decoupled Router successfully resolves a path to a content entity, what does the JSON response contain, and specifically which nested block gives a JSON:API consumer the URL to fetch that entity's data? Name the key fields.",
+      "must_contain_any": ["jsonapi", "individual", "uuid"],
+      "must_not_contain": [],
+      "expected_output": "A 200 JSON body with resolved, isExternal, isHomePath, an entity object (canonical, type, bundle, id, uuid) and label; when JSON:API is enabled a jsonapi block with individual (the resource URL), resourceName, basePath and entryPoint."
+    },
+    {
+      "id": "decoupled_router-access-and-404",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "Using Decoupled Router's /router/translate-path endpoint, which core permission must the caller have, and what HTTP status does the endpoint return for a path that matches no content versus a path whose entity the user may not view?",
+      "must_contain_any": ["access content"],
+      "must_not_contain": [],
+      "expected_output": "Requires the core 'access content' permission; returns 404 for an unresolvable/unknown path (message + details body) and 403 when the entity exists but the user lacks view access."
+    },
+    {
+      "id": "decoupled_router-config-key",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "Decoupled Router has no admin form but ships one configurable setting. What is the config object and key that control whether the resolved URLs in the response come back absolute or relative, and what is its default?",
+      "must_contain_any": ["absolute_resolved_urls"],
+      "must_not_contain": [],
+      "expected_output": "decoupled_router.settings:absolute_resolved_urls, a boolean defaulting to true (absolute URLs); set it false for site-relative resolved URLs."
+    },
+    {
+      "id": "decoupled_router-resolve-landing",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "This Drupal 11 site has a page reachable at the URL alias /dr-eval-landing. Using Decoupled Router's path-resolution (the /router/translate-path endpoint / its resolver), what entity does that path resolve to? Report the entity type, the bundle, and the entity UUID.",
+      "setup": "agent-module-documentation/evaluation/verify/decoupled_router-resolve-landing-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/decoupled_router-resolve-landing-cleanup.sh",
+      "must_contain_any": ["aaaaaaaa-1111-4222-8333-444444444444"],
+      "must_not_contain": [],
+      "expected_output": "It resolves to a node entity, bundle article, uuid aaaaaaaa-1111-4222-8333-444444444444 (title 'Decoupled Router Eval Landing')."
+    },
+    {
+      "id": "decoupled_router-relative-setting",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "On this live Drupal 11 site, is Decoupled Router currently configured to return absolute or relative 'resolved' URLs in its /router/translate-path responses? State the config key and its current value.",
+      "setup": "agent-module-documentation/evaluation/verify/decoupled_router-relative-setting-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/decoupled_router-relative-setting-cleanup.sh",
+      "must_contain_any": ["absolute_resolved_urls"],
+      "must_not_contain": [],
+      "expected_output": "It is configured for relative URLs: decoupled_router.settings:absolute_resolved_urls is currently false (the install default is true)."
+    },
+    {
+      "id": "decoupled_router-build-alias",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal 11 site, create an Article node and give it the URL alias /dr-resolved-page so that Decoupled Router's /router/translate-path endpoint resolves that path to the node. The end state I need: requesting path /dr-resolved-page returns a 200 that resolves to a viewable node whose resolved URL is /dr-resolved-page.",
+      "reset": "agent-module-documentation/evaluation/verify/decoupled_router-build-alias-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/decoupled_router-build-alias-verify.sh",
+      "expected_output": "An Article node exists with the path alias /dr-resolved-page; the decoupled_router resolver returns status 200, entity.type node, isExternal false, and a resolved URL ending in /dr-resolved-page."
+    },
+    {
+      "id": "decoupled_router-relative-urls",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "Reconfigure Decoupled Router on this site so that the 'resolved' URLs it returns from /router/translate-path are site-relative (e.g. /about-us) instead of absolute (https://host/about-us). Do not touch anything else.",
+      "reset": "agent-module-documentation/evaluation/verify/decoupled_router-relative-urls-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/decoupled_router-relative-urls-verify.sh",
+      "expected_output": "decoupled_router.settings:absolute_resolved_urls is set to false, and the resolver returns a site-relative resolved URL (starting with '/') for a resolvable path."
+    }
+  ]
+}

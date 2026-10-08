@@ -1,0 +1,96 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "extra_field_example",
+  "version": "3.0.x",
+  "note": "Extra Field Example is the demo submodule of extra_field. It ships only plugin classes: ExtraFieldDisplay ids all_nodes (node.*, weight -30, visible), article_only (node.article - declared twice, by ExampleArticle and ExampleWithDependencyInjection), formatted_field (ExtraFieldDisplayFormattedBase, label 'Three items'), multilingual_field ('Concatenated tags', reads field_tags); ExtraFieldForm ids example_markup (node.*, visible), example_custom_submit (node.*, weight 100, visible) and example_custom_input (user.user, visible, needs a non-core 'voucher' entity type). It has no config, no services and no routes, so every medium/hard case turns on whether the submodule is installed and which extra_field_<id> components sit on the live entity displays. Setup/reset scripts also hide extra_field_example_custom_input on user.user.default because its validator would fail on a site without a voucher entity type.",
+  "evals": [
+    {
+      "id": "extra_field_example-plugin-list",
+      "mode": "recipe",
+      "prompt": "Which Extra Field plugins does the extra_field_example submodule of the Drupal extra_field project ship? Give the plugin ids and say which entity types/bundles each is offered on.",
+      "must_contain_any": [
+        "all_nodes",
+        "formatted_field",
+        "multilingual_field",
+        "example_custom_submit"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Display plugins: all_nodes (node.*, weight -30, visible), article_only (node.article - ExampleArticle and ExampleWithDependencyInjection both use this id), formatted_field (node.article, ExtraFieldDisplayFormattedBase) and multilingual_field (node.article, concatenates field_tags labels). Form plugins: example_markup (node.*, visible), example_custom_submit (node.*, weight 100, visible) and example_custom_input (user.user, visible).",
+      "difficulty": "easy"
+    },
+    {
+      "id": "extra_field_example-duplicate-id",
+      "mode": "recipe",
+      "prompt": "In Drupal's extra_field_example module, the classes ExampleArticle and ExampleWithDependencyInjection are both ExtraFieldDisplay plugins. What plugin id do they declare, and what happens because of that?",
+      "must_contain_any": [
+        "article_only"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Both declare id = \"article_only\". Plugin discovery keys definitions by id, so only one of the two classes survives - the other is silently dropped and its behaviour (the injected request_stack example printing 'Request scheme: ...') may never run. Never copy both classes into the same module without renaming one.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "extra_field_example-user-form-plugin",
+      "mode": "recipe",
+      "prompt": "The extra_field_example module adds an extra field to the Drupal user form. Which plugin is that, what element does it add, and why is it unsafe to leave enabled on a real site?",
+      "must_contain_any": [
+        "example_custom_input",
+        "voucher"
+      ],
+      "must_not_contain": [],
+      "expected_output": "ExampleCustomInput, plugin id example_custom_input, bundles user.user, visible = true. It adds a required 'Voucher code' textfield with an element #validate callback that loads a `voucher` entity via the entity type manager and writes field_voucher into form state. Drupal core has no `voucher` entity type, so submitting the user form raises a PluginNotFoundException - remove the extra_field_example_custom_input component from core.entity_form_display.user.user.default or uninstall the submodule.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "extra_field_example-page-display",
+      "mode": "introspection",
+      "prompt": "This Drupal site has the extra_field_example module enabled. One of its display pseudo-fields is placed on the Basic page content type's default view display. Inspect the live site and give its exact machine name and weight.",
+      "must_contain_any": [
+        "extra_field_all_nodes"
+      ],
+      "must_not_contain": [],
+      "expected_output": "extra_field_all_nodes at weight 7 in core.entity_view_display.node.page.default (the 'For all nodes' ExtraFieldDisplay plugin id all_nodes). It has been removed from the Article default view display.",
+      "setup": "agent-module-documentation/evaluation/verify/extra_field_example-page-display-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/extra_field_example-page-display-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "extra_field_example-plugin-ids",
+      "mode": "introspection",
+      "prompt": "Inspect this running Drupal site and list the ExtraFieldForm plugin ids that are currently registered with the extra_field form plugin manager, and say which pseudo-field machine name each one produces.",
+      "must_contain_any": [
+        "example_custom_submit",
+        "example_markup",
+        "example_custom_input"
+      ],
+      "must_not_contain": [],
+      "expected_output": "plugin.manager.extra_field_form reports example_markup, example_custom_submit and example_custom_input (all from extra_field_example). Their pseudo-field names are extra_field_example_markup, extra_field_example_custom_submit and extra_field_example_custom_input - plugin id prefixed with 'extra_field_'.",
+      "setup": "agent-module-documentation/evaluation/verify/extra_field_example-plugin-ids-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/extra_field_example-plugin-ids-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "extra_field_example-enable-tags",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, enable the extra_field_example submodule and put its 'Concatenated tags' extra field - the ExtraFieldDisplay plugin that builds a comma separated list from the Article's field_tags - into the content region of the Article content type's default view display. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/extra_field_example-enable-tags-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/extra_field_example-enable-tags-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/extra_field_example-enable-tags-cleanup.sh",
+      "expected_output": "extra_field_example is installed and core.entity_view_display.node.article.default has content.extra_field_multilingual_field (from the multilingual_field plugin, ExampleMultilingualField)."
+    },
+    {
+      "id": "extra_field_example-form-markup",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "site-owner-layman",
+      "prompt": "On this Drupal site the extra_field_example module is already switched on, but its 'Example markup' block of text no longer shows up on the Article edit form. Put it back on the Article edit form and set its position to weight 25 so it sits where I want it. Save the change on the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/extra_field_example-form-markup-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/extra_field_example-form-markup-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/extra_field_example-form-markup-cleanup.sh",
+      "expected_output": "core.entity_form_display.node.article.default has content.extra_field_example_markup with weight 25 (and it is no longer listed under hidden)."
+    }
+  ]
+}

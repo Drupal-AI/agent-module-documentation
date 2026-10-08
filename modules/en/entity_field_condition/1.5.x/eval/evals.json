@@ -1,0 +1,80 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "entity_field_condition",
+  "version": "1.5.x",
+  "note": "Entity Field Condition provides ONE Condition plugin, node_field, that checks whether a node in context has a chosen field whose value is NULL / equals (specified, ===) / contains (regex preg_match) a configured value. It requires a node context and is most commonly used for block visibility, where its settings are stored under a placed block's config at block.block.<id> -> visibility.node_field (keys: id, entity_type_id=node, entity_bundle, field, value_source, value, negate, context_mapping). Config schema id condition.plugin.node_field. No settings form (configure=null), no permissions, no Drush, no plugin types. medium/hard cases are grounded in that real block visibility config: introspection reads back the field/value or value_source from a placed block; execution adds a node_field condition to a placed block and is verified against the live block config.",
+  "evals": [
+    {
+      "id": "efc-plugin-id-and-sources",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "In the Drupal contrib module entity_field_condition, what is the machine name (plugin id) of the Condition plugin it provides, and what are the three 'Value Source' comparison options it offers for checking a node field's value?",
+      "must_contain_any": ["node_field"],
+      "must_not_contain": [],
+      "expected_output": "The plugin id is node_field. Its value_source options are: null ('Is NULL'), specified (exact === match), and contains (regex preg_match against the field value)."
+    },
+    {
+      "id": "efc-where-stored",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "I want a block to appear only when the current node's field has a certain value, using entity_field_condition. Which condition do I use, and where does that configuration get stored for a placed block?",
+      "must_contain_any": ["node_field", "visibility", "block.block", "condition.plugin.node_field"],
+      "must_not_contain": [],
+      "expected_output": "Use the node_field condition in the block's Visibility settings. For a placed block it is stored in the block config entity block.block.<id> under visibility.node_field (with keys entity_bundle, field, value_source, value, negate, context_mapping). Config schema id: condition.plugin.node_field."
+    },
+    {
+      "id": "efc-any-bundle-and-context",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "Does the entity_field_condition node_field condition require selecting a specific content type, and what entity context does it need to evaluate?",
+      "must_contain_any": ["Any bundle", "context", "node", "entity_bundle"],
+      "must_not_contain": [],
+      "expected_output": "No specific type is required: entity_bundle can be left empty to mean 'Any bundle'. The condition requires a node context (@ContextDefinition entity:node); in block visibility the mapping is @node.node_route_context:node. It evaluates against the field of the node in context."
+    },
+    {
+      "id": "efc-known-block-value",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "On this site a block with machine id 'efc_known_block' has an entity_field_condition 'Node Field' visibility condition. Inspect the live block configuration and state the exact value the condition compares the node field against.",
+      "must_contain_any": ["EFC Target Value"],
+      "must_not_contain": [],
+      "setup": "agent-module-documentation/evaluation/verify/efc-known-block-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/efc-known-block-cleanup.sh",
+      "expected_output": "The condition compares the Article node's 'title' field to the value 'EFC Target Value' (value_source specified). Found in block.block.efc_known_block -> visibility.node_field.value."
+    },
+    {
+      "id": "efc-source-block-mode",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "The placed block 'efc_source_block' on this site uses the entity_field_condition node_field visibility condition. Inspect the live configuration and state which Value Source (comparison mode) it is configured to use.",
+      "must_contain_any": ["contains"],
+      "must_not_contain": [],
+      "setup": "agent-module-documentation/evaluation/verify/efc-source-block-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/efc-source-block-cleanup.sh",
+      "expected_output": "It uses value_source 'contains' (regex preg_match), configured on the node 'title' field with value 'news'. Found in block.block.efc_source_block -> visibility.node_field.value_source."
+    },
+    {
+      "id": "efc-add-condition",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "A block with machine id 'efc_task_block' is already placed on this site with no visibility conditions. Using the entity_field_condition module's node_field condition, configure that block so it only displays when an Article node's title field is exactly equal to 'Task Passed'. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/efc-add-condition-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/efc-add-condition-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/efc-add-condition-cleanup.sh",
+      "expected_output": "block.block.efc_task_block gains visibility.node_field with id=node_field, entity_type_id=node, entity_bundle=article, field=title, value_source=specified, value='Task Passed', context_mapping node => @node.node_route_context:node."
+    },
+    {
+      "id": "efc-add-condition-null",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "site-builder",
+      "prompt": "The block 'efc_task_block' on this site should only show up on Article pages whose title has not yet been filled in (an empty/NULL title). Use the entity_field_condition Node Field visibility condition to set that up on the live site. (Set the exact-match value to 'Task Passed' is NOT wanted here — use the appropriate 'is NULL' comparison.)",
+      "reset": "agent-module-documentation/evaluation/verify/efc-add-condition-null-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/efc-add-condition-null-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/efc-add-condition-null-cleanup.sh",
+      "expected_output": "block.block.efc_task_block gains visibility.node_field with field=title and value_source=null (Is NULL), entity_bundle=article, id=node_field. The block then only evaluates TRUE when the title field is NULL."
+    }
+  ]
+}

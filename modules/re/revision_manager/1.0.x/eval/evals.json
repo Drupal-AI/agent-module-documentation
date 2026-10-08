@@ -1,0 +1,80 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "revision_manager",
+  "version": "1.0.x",
+  "note": "Revision Manager prunes old revisions of any revisionable content entity type via RevisionManager plugins: 'amount' (settings.amount = keep newest N) and 'age' (settings.age = delete older than N months). Global config lives in revision_manager.settings: enabled_entities (map entity_type=>bool), defaults (entity_type=>plugin_id=>{id,status,settings}), disable_automatic_queueing, verbose_log. Bundle overrides are third-party settings on the bundle config entity, e.g. node.type.article -> third_party_settings.revision_manager.amount = {id,status,settings:{amount:N}}. Both plugins enabled => conservative (delete only if all agree); current + forward revisions always kept. Cleanup is queue-based (remove_revisions queue); Drush 'rm:queue' enqueues all enabled entities. Permission administer revision_manager; settings route revision_manager.settings at /admin/config/content/revision-manager. Shipped install defaults: enabled_entities {}, defaults {}, disable_automatic_queueing false, verbose_log false. medium cases read back configured Amount count / enabled entity types; hard cases write a global Amount default and a per-bundle override, verified against live config.",
+  "evals": [
+    {
+      "id": "revision_manager-plugins",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "What two revision-retention strategies (plugins) does the Drupal revision_manager module ship, and what does each one do?",
+      "must_contain_any": ["amount", "age"],
+      "must_not_contain": [],
+      "expected_output": "It ships the 'amount' plugin (keep a minimum number of the newest revisions, settings.amount) and the 'age' plugin (delete revisions older than a chosen number of months, settings.age). Both always preserve the current and forward revisions."
+    },
+    {
+      "id": "revision_manager-drush",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "Which Drush command does revision_manager provide to schedule revision cleanup, and what does it actually do?",
+      "must_contain_any": ["rm:queue"],
+      "must_not_contain": [],
+      "expected_output": "drush rm:queue batch-enqueues all enabled entities (respecting each type/bundle's enabled plugins) into the remove_revisions queue; the actual deletions happen when that queue is processed (e.g. by cron)."
+    },
+    {
+      "id": "revision_manager-combining",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "If I enable BOTH the Amount and Age criteria in revision_manager for a content type, how does it decide which revisions get deleted?",
+      "must_contain_any": ["conservative", "both", "only if", "all"],
+      "must_not_contain": [],
+      "expected_output": "Deletion becomes conservative: a revision is deleted only if EVERY enabled plugin independently flags it (the intersection of Amount's and Age's decisions). The more criteria you enable, the fewer revisions are removed; current and forward revisions are never deleted."
+    },
+    {
+      "id": "revision_manager-amount-count",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "On this site, revision management is enabled for nodes with the Amount plugin. Inspect the live revision_manager configuration and state the minimum number of revisions it is set to keep for nodes.",
+      "must_contain_any": ["7"],
+      "must_not_contain": [],
+      "setup": "agent-module-documentation/evaluation/verify/revision_manager-amount-default-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/revision_manager-amount-default-cleanup.sh",
+      "expected_output": "It keeps 7 revisions: revision_manager.settings -> defaults.node.amount.settings.amount = 7 (with amount.status true and enabled_entities.node true)."
+    },
+    {
+      "id": "revision_manager-enabled-types",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "Inspect the live revision_manager configuration on this site and list which entity types currently have revision management enabled.",
+      "must_contain_any": ["taxonomy_term", "taxonomy"],
+      "must_not_contain": [],
+      "setup": "agent-module-documentation/evaluation/verify/revision_manager-enabled-types-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/revision_manager-enabled-types-cleanup.sh",
+      "expected_output": "Node and taxonomy_term are enabled: revision_manager.settings -> enabled_entities has node: true and taxonomy_term: true."
+    },
+    {
+      "id": "revision_manager-enable-node",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "Using the revision_manager module, enable revision management for the node entity type and set its default Amount policy to keep a minimum of 3 revisions. Apply the change to the live configuration.",
+      "reset": "agent-module-documentation/evaluation/verify/revision_manager-enable-node-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/revision_manager-enable-node-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/revision_manager-enable-node-cleanup.sh",
+      "expected_output": "revision_manager.settings has enabled_entities.node = true and defaults.node.amount = {id: amount, status: true, settings: {amount: 3}}."
+    },
+    {
+      "id": "revision_manager-bundle-override",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "Revision management is enabled for nodes on this site. Override the policy for the Article content type specifically so that Articles keep a minimum of 10 revisions (Amount plugin), stored as a bundle-level override. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/revision_manager-bundle-override-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/revision_manager-bundle-override-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/revision_manager-bundle-override-cleanup.sh",
+      "expected_output": "The node.type.article config entity gains a third-party setting revision_manager.amount with settings.amount = 10 (status true), overriding the entity-type default for Articles."
+    }
+  ]
+}

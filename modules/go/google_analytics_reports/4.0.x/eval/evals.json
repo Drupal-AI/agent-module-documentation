@@ -1,0 +1,103 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "google_analytics_reports",
+  "version": "4.0.x",
+  "note": "Displays Google Analytics 4 data in Drupal via Views. Depends on file + its submodule google_analytics_reports_api (which holds GA credentials and does the API calls). configure route = google_analytics_reports_api.settings (this module overrides that form to add Import fields). The actual GA data requires an external Google service, so evals are grounded in LOCAL state only: the module's own config google_analytics_reports.settings:metadata_last_time (unix ts of last field import; '' = never) and the google_analytics_reports_fields DB table (imported GA dimensions/metrics). NOTE: this shared site currently has a concurrent-agent 'dashboard' module glitch that makes user Role entity saves throw getEntityTypeFromClass; fixtures therefore avoid Role saves and use config-value sets (cset/cget) and direct DB rows, which work fine.",
+  "evals": [
+    {
+      "id": "google_analytics_reports-configure",
+      "mode": "recipe",
+      "prompt": "I enabled google_analytics_reports on Drupal 11. Where do I configure it, and what two things must I provide before it can pull Google Analytics 4 data?",
+      "must_contain_any": [
+        "google-analytics-reports-api",
+        "google_analytics_reports_api.settings",
+        "Property ID",
+        "property",
+        "credential",
+        "service account",
+        "JSON"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Configure at /admin/config/services/google-analytics-reports-api (route google_analytics_reports_api.settings, provided by the API submodule and extended by this module). You supply the GA4 Property ID and a service-account credential JSON key file; you then use 'Import fields' to load the GA dimensions/metrics. Query results are cached for cache_length seconds (default 259200 = 3 days).",
+      "difficulty": "easy"
+    },
+    {
+      "id": "google_analytics_reports-views",
+      "mode": "recipe",
+      "prompt": "How does the google_analytics_reports module make Google Analytics metrics and dimensions usable inside Drupal, and where does it store the list of available GA fields?",
+      "must_contain_any": [
+        "Views",
+        "query plugin",
+        "google_analytics_reports_fields",
+        "Import fields",
+        "importFields"
+      ],
+      "must_not_contain": [],
+      "expected_output": "It registers a Views query backend (GoogleAnalyticsQuery) plus GA field/filter/argument Views handlers, so a View can pull rows from the Google Analytics Data API. The available GA dimensions/metrics are imported (via Import fields / GoogleAnalyticsReports::importFields()) into the google_analytics_reports_fields database table and become Views fields/filters/arguments.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "google_analytics_reports-access",
+      "mode": "recipe",
+      "prompt": "Which permission gates the Google Analytics report pages provided by google_analytics_reports, and where is the summary report shown?",
+      "must_contain_any": [
+        "access google analytics reports",
+        "admin/reports/google-analytics-reports",
+        "summary"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The permission 'access google analytics reports' gates the report pages; the summary report is at admin/reports/google-analytics-reports/summary, and the module also provides Summary and Page blocks.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "google_analytics_reports-last-import",
+      "mode": "introspection",
+      "prompt": "On this Drupal site, google_analytics_reports records when its Google Analytics fields were last imported. Inspect the live configuration and give that recorded timestamp value.",
+      "must_contain_any": [
+        "1700000000"
+      ],
+      "must_not_contain": [],
+      "expected_output": "google_analytics_reports.settings:metadata_last_time is 1700000000 (a unix timestamp).",
+      "setup": "agent-module-documentation/evaluation/verify/google_analytics_reports-last-import-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/google_analytics_reports-last-import-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "google_analytics_reports-known-field",
+      "mode": "introspection",
+      "prompt": "On this Drupal site, google_analytics_reports has imported at least one Google Analytics field into its field catalogue. Inspect the module's imported-fields storage and give the GA field id (gaid) and its human-readable UI name of the field belonging to the 'GAR Test' column group.",
+      "must_contain_any": [
+        "gar_known_sessions",
+        "GAR Known Sessions"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The google_analytics_reports_fields table has a row gaid=gar_known_sessions, ui_name 'GAR Known Sessions', type METRIC, column_group 'GAR Test'.",
+      "setup": "agent-module-documentation/evaluation/verify/google_analytics_reports-known-field-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/google_analytics_reports-known-field-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "google_analytics_reports-set-last-import",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, set the google_analytics_reports module's recorded 'last GA fields import' timestamp (in its own settings config) to the unix timestamp 1699999999, and apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/google_analytics_reports-set-last-import-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/google_analytics_reports-set-last-import-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/google_analytics_reports-set-last-import-cleanup.sh",
+      "expected_output": "Set google_analytics_reports.settings:metadata_last_time to 1699999999, e.g. `drush cset google_analytics_reports.settings metadata_last_time 1699999999 -y`."
+    },
+    {
+      "id": "google_analytics_reports-clear-last-import",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site the google_analytics_reports module has a stale recorded 'last GA fields import' timestamp. Clear it (set the timestamp back to empty) in the module's settings config so the site treats the fields as never imported, and apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/google_analytics_reports-clear-last-import-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/google_analytics_reports-clear-last-import-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/google_analytics_reports-clear-last-import-cleanup.sh",
+      "expected_output": "Set google_analytics_reports.settings:metadata_last_time to an empty string, e.g. `drush cset google_analytics_reports.settings metadata_last_time '' -y`."
+    }
+  ]
+}

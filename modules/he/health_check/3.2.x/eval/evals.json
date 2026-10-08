@@ -1,0 +1,65 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "health_check",
+  "version": "3.2.x",
+  "note": "Health Check exposes a single fixed route with no config, no plugins, and no permissions. Cases are `recipe` (response-graded) since they probe documented facts an agent would otherwise read source to answer; no site mutation.",
+  "evals": [
+    {
+      "id": "health-check-endpoint-path",
+      "mode": "recipe",
+      "prompt": "On a Drupal site with the health_check module enabled, what URL path do I give a load balancer to check the instance's health, and what is the route name?",
+      "must_contain_any": ["/health", "health_check.content"],
+      "must_not_contain": [],
+      "expected_output": "The path is /health (route name health_check.content). The path is fixed and not configurable."
+    },
+    {
+      "id": "health-check-200-response",
+      "mode": "recipe",
+      "prompt": "What HTTP status code and response body does the health_check module's endpoint return so a load balancer or uptime monitor can tell the instance is healthy?",
+      "must_contain_any": ["200", "timestamp"],
+      "must_not_contain": [],
+      "expected_output": "It returns HTTP 200 with a UNIX timestamp (time()) as a text/plain body; a non-200 means the instance is unhealthy."
+    },
+    {
+      "id": "health-check-controller",
+      "mode": "recipe",
+      "prompt": "Which controller and method handle the health_check endpoint, and what does the method return?",
+      "must_contain_any": ["HealthController", "content"],
+      "must_not_contain": [],
+      "expected_output": "HealthController::content() returns a plain Symfony Response with body time(), status 200, and Content-Type text/plain."
+    },
+    {
+      "id": "health-check-no-cache",
+      "mode": "recipe",
+      "prompt": "Why does polling the health_check /health endpoint always hit the live instance instead of returning a cached copy? Which route option controls this?",
+      "must_contain_any": ["no_cache", "never cached", "not cached"],
+      "must_not_contain": [],
+      "expected_output": "The route sets no_cache: TRUE, so the response is never cached and every request re-hits the live instance; the returned timestamp changes each time."
+    },
+    {
+      "id": "health-check-maintenance-mode",
+      "mode": "recipe",
+      "prompt": "Does the health_check /health endpoint still respond while the Drupal site is in maintenance mode, and which route option makes that possible?",
+      "must_contain_any": ["_maintenance_access", "maintenance mode"],
+      "must_not_contain": [],
+      "expected_output": "Yes; the route sets _maintenance_access: TRUE, so /health answers 200 even in maintenance mode."
+    },
+    {
+      "id": "health-check-configurable",
+      "mode": "recipe",
+      "prompt": "Can I change the /health path or add custom pluggable subsystem checks using the health_check module's own configuration?",
+      "must_contain_any": ["no configuration", "not configurable", "no settings", "fixed"],
+      "must_not_contain": [],
+      "expected_output": "No. The module has no settings form, no config, and no pluggable checks; the /health path is fixed and only returns the timestamp."
+    },
+    {
+      "id": "health-check-lightweight-bootstrap",
+      "mode": "recipe",
+      "prompt": "What does a 200 from the health_check /health endpoint actually confirm about the Drupal instance, and what happens if the instance can't bootstrap?",
+      "must_contain_any": ["200", "bootstrap", "5xx"],
+      "must_not_contain": [],
+      "expected_output": "A 200 with a fresh timestamp confirms PHP and Drupal request handling are alive without rendering a full page; if the instance cannot bootstrap it returns a 5xx (or fails) and the load balancer can drop it."
+    }
+  ]
+}

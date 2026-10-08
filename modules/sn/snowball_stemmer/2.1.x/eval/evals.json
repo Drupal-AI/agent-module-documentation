@@ -1,0 +1,80 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "snowball_stemmer",
+  "version": "2.1.x",
+  "note": "Snowball stemmer provides a multilingual stemming service (snowball_stemmer.stemmer, wamania/php-stemmer) plus a Search API processor (plugin id snowball_stemmer, extends Search API's Stemmer) and core-search integration via hook_search_preprocess(). No admin settings page/configure route. The processor's only config is 'exceptions' (word => fixed stem), stored on the index config entity at processor_settings.snowball_stemmer.exceptions. Language codes are normalized via SetLanguageEvent (snowball_stemmer.set_language_code); shipped subscribers map pt-br=>pt and nb/nn=>no. Medium/hard cases are grounded in real Search API db-backed indexes (ss_* ) with the processor enabled; verify reads the live search_api.index.* processor_settings config.",
+  "evals": [
+    {
+      "id": "ss-enable-on-index",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "I have a Search API index on my Drupal 11 site and I want search to match different word forms (e.g. running/runs/ran). The snowball_stemmer module is installed. How do I turn on stemming for that index, and what is the processor called?",
+      "must_contain_any": ["snowball_stemmer", "Snowball stemmer", "processor", "re-index", "reindex"],
+      "must_not_contain": [],
+      "expected_output": "On the index's Processors tab enable the 'Snowball stemmer' processor (plugin id snowball_stemmer); for best results place it after the Tokenizer, save, and re-index existing content. It stems field values at index time and query terms at search time, per language."
+    },
+    {
+      "id": "ss-service-api",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "How do I stem a word from custom PHP on a Drupal site using the snowball_stemmer module's service? Name the service and the calls.",
+      "must_contain_any": ["snowball_stemmer.stemmer", "setLanguage", "stem("],
+      "must_not_contain": [],
+      "expected_output": "Get the snowball_stemmer.stemmer service, call setLanguage($langcode) (returns FALSE if unsupported) then stem($word). E.g. $s = \\Drupal::service('snowball_stemmer.stemmer'); if ($s->setLanguage('en')) { $s->stem('running'); } // 'run'. Calling stem() before setLanguage() throws LanguageNotSetException."
+    },
+    {
+      "id": "ss-language-event",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "Drupal language codes do not always match the snowball stemmer's language names. How does the snowball_stemmer module let you remap a language code, and what remapping does it ship out of the box?",
+      "must_contain_any": ["SetLanguageEvent", "set_language_code", "pt-br", "nb", "no", "event"],
+      "must_not_contain": [],
+      "expected_output": "It dispatches a SetLanguageEvent (event name snowball_stemmer.set_language_code) before choosing a stemmer; a subscriber can call setLanguageCode() to change it. Shipped subscribers strip region/locale suffixes (pt-br -> pt) and map Norwegian nb/nn -> no."
+    },
+    {
+      "id": "ss-known-processor",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "This Drupal site has a Search API index named ss_known that provides word stemming. Inspect the live index configuration and name the processor plugin that performs the stemming.",
+      "must_contain_any": ["snowball_stemmer"],
+      "must_not_contain": [],
+      "expected_output": "The snowball_stemmer processor is enabled on index ss_known (search_api.index.ss_known -> processor_settings.snowball_stemmer).",
+      "setup": "agent-module-documentation/evaluation/verify/snowball_stemmer-index-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/snowball_stemmer-index-cleanup.sh"
+    },
+    {
+      "id": "ss-known-exception",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "On this site, the snowball_stemmer processor on the Search API index ss_known has a stemming exception configured. Inspect the live index configuration and report the exception word (the key that is force-mapped to a fixed stem).",
+      "must_contain_any": ["drupaling"],
+      "must_not_contain": [],
+      "expected_output": "The exceptions map on index ss_known's snowball_stemmer processor contains drupaling => drupal (processor_settings.snowball_stemmer.exceptions).",
+      "setup": "agent-module-documentation/evaluation/verify/snowball_stemmer-index-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/snowball_stemmer-index-cleanup.sh"
+    },
+    {
+      "id": "ss-add-processor",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site there is a Search API index named ss_task that does not yet stem search terms. Enable the snowball_stemmer module's Snowball stemmer processor on the ss_task index and apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/snowball_stemmer-add-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/snowball_stemmer-add-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/snowball_stemmer-add-cleanup.sh",
+      "expected_output": "Enable the snowball_stemmer processor on index ss_task (Processors tab, or $index->addProcessor(processorManager->createInstance('snowball_stemmer', ['exceptions' => []])); $index->save();). Verify checks search_api.index.ss_task processor_settings contains snowball_stemmer."
+    },
+    {
+      "id": "ss-add-exception",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site the Search API index ss_exc already has the snowball_stemmer processor enabled. Configure a stemming exception so the word \"acme\" is never stemmed (it must map to \"acme\"), and apply the change to the live index.",
+      "reset": "agent-module-documentation/evaluation/verify/snowball_stemmer-exception-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/snowball_stemmer-exception-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/snowball_stemmer-exception-cleanup.sh",
+      "expected_output": "Add exceptions: {acme: acme} to the snowball_stemmer processor config on index ss_exc (processor_settings.snowball_stemmer.exceptions). Verify checks that exceptions['acme'] === 'acme'."
+    }
+  ]
+}

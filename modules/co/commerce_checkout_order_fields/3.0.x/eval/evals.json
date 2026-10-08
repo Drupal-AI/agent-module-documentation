@@ -1,0 +1,80 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "commerce_checkout_order_fields",
+  "version": "3.0.x",
+  "note": "Commerce checkout order fields collects extra data on the order entity during checkout by exposing an order form-display mode as a checkout pane. It ships the 'Checkout' order form mode (core.entity_form_mode.commerce_order.checkout) and a derived checkout pane order_fields:<form_mode> (usable id order_fields:checkout). This site has one commerce order type 'default' and one checkout flow 'default'; the order_fields pane is NOT placed by default. Medium cases place the pane with known step/label into the flow config (commerce_checkout.commerce_checkout_flow.default -> configuration.panes) and read it back; hard cases reset to a known baseline (verify FAILS) then require the agent to (a) place the pane on a step, or (b) add a namespaced field field_ccof_note to the order type and enable it on the Checkout form display. cleanup restores baseline.",
+  "evals": [
+    {
+      "id": "commerce_checkout_order_fields-what-and-pane",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "What does the commerce_checkout_order_fields module do, and what is the id of the checkout pane it provides for collecting order fields during checkout?",
+      "must_contain_any": ["order_fields", "checkout pane", "order form", "form display", "form mode"],
+      "must_not_contain": [],
+      "expected_output": "It exposes an order form-display mode as a checkout pane so you can collect extra data on the order during checkout. The pane plugin is 'order_fields', derived per non-default order form mode, so the usable pane is order_fields:checkout ('Order fields: Checkout')."
+    },
+    {
+      "id": "commerce_checkout_order_fields-setup-steps",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "Using commerce_checkout_order_fields, what are the high-level steps to collect a custom 'order comments' field during Commerce checkout? It has no settings form of its own.",
+      "must_contain_any": ["Manage fields", "Manage form display", "Checkout", "checkout flow", "form display"],
+      "must_not_contain": [],
+      "expected_output": "1) Add the field to the order type under Manage fields. 2) Enable the custom 'Checkout' form display under Manage form display and put your field on it. 3) On the checkout flow, drag the 'Order fields: Checkout' pane into a step (e.g. Review). No dedicated settings form exists."
+    },
+    {
+      "id": "commerce_checkout_order_fields-pane-config",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "The order_fields checkout pane from commerce_checkout_order_fields has its own configuration. What two options does it expose and what do they do?",
+      "must_contain_any": ["wrapper_element", "display_label", "fieldset", "container"],
+      "must_not_contain": [],
+      "expected_output": "wrapper_element (container or fieldset) chooses how the fields are wrapped in the checkout form; display_label is the legend text used only when wrapper_element is 'fieldset'. Defaults: wrapper_element=container, display_label=the pane label."
+    },
+    {
+      "id": "commerce_checkout_order_fields-known-step",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "On this Commerce site, the Order fields pane has been added to the default checkout flow. Inspect the live checkout flow configuration and tell me which checkout step the order_fields pane sits on.",
+      "must_contain_any": ["review"],
+      "must_not_contain": [],
+      "expected_output": "The order_fields:checkout pane is placed on the 'review' step (commerce_checkout.commerce_checkout_flow.default -> configuration.panes.order_fields:checkout.step = review).",
+      "setup": "agent-module-documentation/evaluation/verify/commerce_checkout_order_fields-pane-step-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/commerce_checkout_order_fields-pane-step-cleanup.sh"
+    },
+    {
+      "id": "commerce_checkout_order_fields-known-label",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "On this site the Order fields checkout pane is configured with a fieldset wrapper and a custom label. Inspect the live checkout flow configuration and tell me the display label configured on the order_fields pane.",
+      "must_contain_any": ["Order comments"],
+      "must_not_contain": [],
+      "expected_output": "The pane's display_label is 'Order comments' with wrapper_element 'fieldset' (configuration.panes.order_fields:checkout.display_label = 'Order comments').",
+      "setup": "agent-module-documentation/evaluation/verify/commerce_checkout_order_fields-pane-label-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/commerce_checkout_order_fields-pane-label-cleanup.sh"
+    },
+    {
+      "id": "commerce_checkout_order_fields-place-pane",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Commerce site, use commerce_checkout_order_fields to add the 'Order fields: Checkout' pane (order_fields:checkout) to the default checkout flow so order fields can be collected during checkout. Place it on a real step and apply the change.",
+      "reset": "agent-module-documentation/evaluation/verify/commerce_checkout_order_fields-place-pane-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/commerce_checkout_order_fields-place-pane-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/commerce_checkout_order_fields-place-pane-cleanup.sh",
+      "expected_output": "In commerce_checkout.commerce_checkout_flow.default add configuration.panes.order_fields:checkout with a non-disabled step (e.g. step: review) — via the checkout flow UI drag it out of Disabled, or via config."
+    },
+    {
+      "id": "commerce_checkout_order_fields-field-on-checkout",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "site-owner",
+      "prompt": "I want to collect a short 'note' from customers on the order during checkout. On this site's default order type, add a plain text field named field_ccof_note to the order and make it appear on the Checkout form display (the one commerce_checkout_order_fields uses). Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/commerce_checkout_order_fields-field-checkout-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/commerce_checkout_order_fields-field-checkout-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/commerce_checkout_order_fields-field-checkout-cleanup.sh",
+      "expected_output": "Create field_ccof_note (type string) on commerce_order bundle 'default' and add it as an enabled component on the Checkout form display core.entity_form_display.commerce_order.default.checkout."
+    }
+  ]
+}

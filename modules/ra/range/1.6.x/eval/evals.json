@@ -1,0 +1,109 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "range",
+  "version": "1.6.x",
+  "note": "Numeric Range defines three field types (range_integer, range_decimal, range_float) that each store two columns, 'from' and 'to', in a single field item; mainPropertyName() is NULL so there is no ->value property. It ships one widget ('range'), five formatters (range_integer, range_decimal, range_integer_sprintf, range_decimal_sprintf, range_unformatted), two always-on validation constraints (RangeBothValuesRequired, RangeFromGreaterTo) and Views filter/argument handlers with id 'range'. There is no settings form and no configure route (configure=null), no permissions, no services and no Drush commands, so ALL persistent state lives in ordinary field config: field.storage.* (precision/scale for range_decimal), field.field.* (min, max and the field/from/to/combined prefix-suffix pairs), core.entity_form_display.* (the range widget's label.from/label.to and placeholder settings) and core.entity_view_display.* (range_separator, range_combine and the four *_prefix_suffix booleans plus per-formatter extras such as format_string, thousand_separator, decimal_separator, scale). Every medium and hard case below is grounded in those real config keys and plugin ids.",
+  "evals": [
+    {
+      "id": "range-field-types",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "I installed the Drupal contrib module 'range' (Numeric Range) on Drupal 11. Which field type plugin ids does it add, and how does a single range field item store its two numbers in the database?",
+      "must_contain_any": [
+        "range_integer",
+        "range_decimal",
+        "range_float"
+      ],
+      "must_not_contain": [],
+      "expected_output": "It adds three field types: range_integer (Range (integer)), range_decimal (Range (decimal), with precision/scale storage settings) and range_float (Range (float)). Each field item stores two columns, 'from' and 'to' (int, numeric(precision,scale) and float respectively). Because RangeItemBase::mainPropertyName() returns NULL there is no ->value property - you read and write $entity->field_x->from and $entity->field_x->to."
+    },
+    {
+      "id": "range-combine-setting",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "On a Drupal 11 site using the 'range' contrib module, a Range field that stores 50 to 50 currently renders as '50-50'. Which formatter setting makes it render as a single '50' instead, and what is that setting's machine name in the entity_view_display config?",
+      "must_contain_any": [
+        "range_combine",
+        "Combine equivalent values"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The 'Combine equivalent values' checkbox, stored as the boolean setting range_combine on the field's component in core.entity_view_display.<entity>.<bundle>.<mode>. It defaults to TRUE in RangeFormatterBase::defaultSettings() and is shared by all five range formatters. When it fires, the combined template is used and the COMBINED prefix/suffix pair applies if combined_prefix_suffix is also TRUE."
+    },
+    {
+      "id": "range-constraints",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "Using the Drupal 'range' module, what stops an editor from saving a range whose FROM value is bigger than its TO value, or from filling in only one of the two numbers? Name the validation constraint plugin ids involved.",
+      "must_contain_any": [
+        "RangeFromGreaterTo",
+        "RangeBothValuesRequired",
+        "The FROM value is higher than the TO value",
+        "Both range values (FROM and TO) are required"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Two @Constraint plugins are declared on every range field type annotation and are always on: RangeBothValuesRequired ('Both range values (FROM and TO) are required.') and RangeFromGreaterTo ('The FROM value is higher than the TO value.'). RangeFromGreaterToConstraintValidator simply compares $range['from'] > $range['to']. They are not configurable - the min/max field settings only bound the widget's #min/#max."
+    },
+    {
+      "id": "range-known-field-settings",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "This Drupal site has a Range field called field_range_price on the Article content type. Inspect the live site configuration and tell me the maximum value an editor is allowed to enter in it.",
+      "must_contain_any": [
+        "5000"
+      ],
+      "must_not_contain": [],
+      "expected_output": "5000. The range field instance settings live in field.field.node.article.field_range_price: settings.max is 5000 (and settings.min is 10). The same settings block also carries the four prefix/suffix pairs - from.prefix and to.prefix are '$', field.suffix is ' per night' and combined.prefix is 'flat $'.",
+      "setup": "agent-module-documentation/evaluation/verify/range-known-field-settings-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/range-known-field-settings-cleanup.sh"
+    },
+    {
+      "id": "range-formatter-settings",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "On this Drupal site the Article content type has a Range field field_range_ages. Look at how it is configured to be displayed in the default view mode and tell me which range formatter plugin it uses and what its format string is set to.",
+      "must_contain_any": [
+        "range_integer_sprintf",
+        "%03d"
+      ],
+      "must_not_contain": [],
+      "expected_output": "It uses the range_integer_sprintf formatter ('Formatted string') with format_string '%03d' and range_separator ' up to '. This is readable from core.entity_view_display.node.article.default, component content.field_range_ages: type: range_integer_sprintf, settings.format_string: '%03d'.",
+      "setup": "agent-module-documentation/evaluation/verify/range-formatter-settings-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/range-formatter-settings-cleanup.sh"
+    },
+    {
+      "id": "range-widget-labels",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "The Article content type on this Drupal site has a Range field field_range_span whose edit widget has had its two input labels customised. Inspect the running site and tell me the label configured for the FROM input of that widget.",
+      "must_contain_any": [
+        "Shortest"
+      ],
+      "must_not_contain": [],
+      "expected_output": "'Shortest'. In core.entity_form_display.node.article.default the field_range_span component uses the 'range' widget with settings.label.from: Shortest and settings.label.to: Longest (placeholders '0.5' and '42.0'). The widget defaults would otherwise be 'From' and 'to'.",
+      "setup": "agent-module-documentation/evaluation/verify/range-widget-labels-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/range-widget-labels-cleanup.sh"
+    },
+    {
+      "id": "range-create-field",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, add a Range (integer) field to the Article content type using the 'range' contrib module. The field machine name must be field_range_task, it must only accept values between 1 and 100, and it must use the module's own 'Text fields' range widget on the default form display. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/range-create-field-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/range-create-field-verify.sh",
+      "expected_output": "A FieldStorageConfig node.field_range_task of type range_integer, a FieldConfig on node.article with settings.min = 1 and settings.max = 100, and a component in core.entity_form_display.node.article.default with type: range."
+    },
+    {
+      "id": "range-combine-formatter-layman",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "site-owner",
+      "prompt": "My Drupal site's Articles show a consulting fee range (the field is field_range_fee) as something like '45.00-90.00'. I want it to read '45.00 to 90.00' instead, using plain numbers with no decimal reformatting. And when the two amounts happen to be identical it should show just the one amount, wrapped in the wording I already set up for that case ('EUR 45.00 flat'). Please change the default display on the live site so it works that way.",
+      "reset": "agent-module-documentation/evaluation/verify/range-combine-formatter-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/range-combine-formatter-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/range-combine-formatter-cleanup.sh",
+      "expected_output": "In core.entity_view_display.node.article.default the field_range_fee component must use the range_unformatted formatter ('Unformatted', raw numbers) with settings.range_separator ' to ', settings.range_combine TRUE and settings.combined_prefix_suffix TRUE - the last one being what pulls in the COMBINED prefix 'EUR ' and suffix ' flat' already stored in the field instance settings."
+    }
+  ]
+}

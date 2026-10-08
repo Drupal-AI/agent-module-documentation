@@ -1,0 +1,80 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "field_encrypt",
+  "version": "4.1.x",
+  "note": "Field Encrypt encrypts selected field PROPERTIES at rest. Encryption is a third-party setting on the field STORAGE config: field.storage.<entity>.<field>.third_party.field_encrypt with encrypt(bool) + properties(list). A global field_encrypt.settings:encryption_profile must be selected (an encrypt-module profile) before the 'Encrypt field' checkbox appears / before real ciphering happens; on this shared site it is intentionally left '' (empty), so eval cases are grounded purely in the config (they never save an encrypted entity, so no working profile is required). Turning encryption on/off for a populated field queues re-encryption (field_encrypt_update_entity_encryption, /admin/config/system/field-encrypt/process-queues). One restricted permission: 'administer field encryption'. All medium/hard cases use namespaced node fields field_fe_* on the Article bundle and verify against the real field.storage third-party settings; empty fields are used so no other field is touched.",
+  "evals": [
+    {
+      "id": "field_encrypt-where-stored",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "In Drupal's Field Encrypt module, when I mark a field as encrypted, where exactly is that 'this field is encrypted' setting stored? Name the config object and the setting path.",
+      "must_contain_any": ["third_party", "field.storage", "third-party"],
+      "must_not_contain": [],
+      "expected_output": "It is a third-party setting on the field STORAGE config entity: field.storage.<entity_type>.<field_name> -> third_party_settings.field_encrypt with 'encrypt: true' and a 'properties' list. It is not on the field instance and not in a central settings form."
+    },
+    {
+      "id": "field_encrypt-prereq-profile",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "I installed Field Encrypt but the 'Encrypt field' checkbox never shows up on my field's settings, and nothing gets encrypted. What global configuration must I set first for encryption to work?",
+      "must_contain_any": ["encryption_profile", "encryption profile", "field_encrypt.settings"],
+      "must_not_contain": [],
+      "expected_output": "You must select a global encryption profile at /admin/config/system/field-encrypt, stored as field_encrypt.settings:encryption_profile (a machine name of an encrypt-module encryption_profile entity, typically Key-backed). Until it is non-empty the encrypt checkbox is not added and no encryption happens."
+    },
+    {
+      "id": "field_encrypt-existing-data",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "In Drupal Field Encrypt, what happens if I turn encryption on for a field that already contains data, and how do I make the change take effect on the existing rows?",
+      "must_contain_any": ["batch", "queue", "re-encrypt", "process-queues", "field_encrypt_update_entity_encryption"],
+      "must_not_contain": [],
+      "expected_output": "Existing entities are queued for re-encryption in the field_encrypt_update_entity_encryption queue (a warning is shown). Run them immediately at /admin/config/system/field-encrypt/process-queues (route field_encrypt.process_queue) or wait for cron. batch_size in field_encrypt.settings controls throughput."
+    },
+    {
+      "id": "field_encrypt-known-field",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "On this Drupal site, the Article content type has a field that Field Encrypt is configured to encrypt. Inspect the live field-storage configuration and give the machine name of that encrypted field.",
+      "must_contain_any": ["field_fe_known"],
+      "must_not_contain": [],
+      "expected_output": "field_fe_known: field.storage.node.field_fe_known carries third_party_settings.field_encrypt.encrypt = true with properties [value] (drush cget field.storage.node.field_fe_known third_party_settings.field_encrypt).",
+      "setup": "agent-module-documentation/evaluation/verify/field_encrypt-known-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/field_encrypt-known-cleanup.sh"
+    },
+    {
+      "id": "field_encrypt-on-vs-off",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "The Article content type on this site has two fields, field_fe_on and field_fe_off. Exactly one is configured to be encrypted by Field Encrypt. Inspect the live field-storage configuration and state which field is encrypted.",
+      "must_contain_any": ["field_fe_on"],
+      "must_not_contain": [],
+      "expected_output": "field_fe_on is encrypted (field.storage.node.field_fe_on third_party_settings.field_encrypt.encrypt = true), while field_fe_off has no field_encrypt third-party setting.",
+      "setup": "agent-module-documentation/evaluation/verify/field_encrypt-onoff-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/field_encrypt-onoff-cleanup.sh"
+    },
+    {
+      "id": "field_encrypt-encrypt-task",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, the Article content type has a string field field_fe_task that is currently not encrypted. Using Field Encrypt, configure that field's storage so its value is encrypted at rest, and apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/field_encrypt-encrypt-task-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/field_encrypt-encrypt-task-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/field_encrypt-encrypt-task-cleanup.sh",
+      "expected_output": "field.storage.node.field_fe_task gets third_party_settings.field_encrypt.encrypt = true (with properties including 'value'), e.g. via FieldStorageConfig::loadByName('node','field_fe_task')->setThirdPartySetting('field_encrypt','encrypt',TRUE)->setThirdPartySetting('field_encrypt','properties',['value'])->save(), or by ticking 'Encrypt field' on the field storage form."
+    },
+    {
+      "id": "field_encrypt-link-uri-only",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, the Article content type has a link field field_fe_link (a Link field has 'uri' and 'title' properties). Using Field Encrypt, encrypt ONLY the uri property of this field's storage, leaving the title unencrypted. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/field_encrypt-link-uri-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/field_encrypt-link-uri-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/field_encrypt-link-uri-cleanup.sh",
+      "expected_output": "field.storage.node.field_fe_link gets third_party_settings.field_encrypt.encrypt = true and properties = ['uri'] only (NOT 'title'). E.g. setThirdPartySetting('field_encrypt','encrypt',TRUE) and setThirdPartySetting('field_encrypt','properties',['uri']) then save()."
+    }
+  ]
+}

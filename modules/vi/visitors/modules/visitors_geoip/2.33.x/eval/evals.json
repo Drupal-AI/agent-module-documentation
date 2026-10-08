@@ -1,0 +1,103 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "visitors_geoip",
+  "version": "2.33.x",
+  "note": "Submodule of visitors. Adds geolocation (country/region/city) to the analytics by resolving logged IPs against a MaxMind GeoLite2 City database (geoip2/geoip2 library). Config object visitors_geoip.settings has geoip_path (path to the .mmdb) and license (MaxMind license key). Settings form route visitors_geoip.settings at /admin/config/system/visitors/geoip; rebuild form at /admin/config/system/visitors/rebuild-location. Service visitors_geoip.lookup (GeoIpService: city($ip), metadata(), hasLibrary(), hasExtension()). Report routes /visitors/location/region/{country}/{region} and /visitors/location/city/{country}/{region}/{city} (perm access visitors, from parent). Drush: visitors:download:city (download DB) and visitors:rebuild:location (recompute geo). No permissions of its own. Medium/hard cases are grounded in the local visitors_geoip.settings config and the live geoip2 library availability; no MaxMind download or external call is needed.",
+  "evals": [
+    {
+      "id": "visitors_geoip-what-config",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "What does the visitors_geoip submodule add, where is it configured, and what two settings does its config object hold?",
+      "must_contain_any": [
+        "/admin/config/system/visitors/geoip",
+        "visitors_geoip.settings",
+        "geoip_path",
+        "MaxMind",
+        "license"
+      ],
+      "must_not_contain": [],
+      "expected_output": "It adds country/region/city geolocation reports to Visitors using a MaxMind GeoLite2 database. It is configured at /admin/config/system/visitors/geoip (route visitors_geoip.settings), and its config object visitors_geoip.settings holds geoip_path (the .mmdb database location) and license (MaxMind license key)."
+    },
+    {
+      "id": "visitors_geoip-drush",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "Which Drush commands does visitors_geoip provide to download the MaxMind database and to populate location data for already-logged visits?",
+      "must_contain_any": [
+        "visitors:download:city",
+        "visitors:rebuild:location"
+      ],
+      "must_not_contain": [],
+      "expected_output": "visitors:download:city (alias visitors-download-city) downloads/updates the GeoLite2 City database using the configured license key; visitors:rebuild:location (alias visitors-rebuild-location) recomputes country/region/city from the IP addresses already in the visitors log."
+    },
+    {
+      "id": "visitors_geoip-reports",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "What new report URLs does visitors_geoip add to the Visitors analytics, and what permission controls access to them?",
+      "must_contain_any": [
+        "/visitors/location",
+        "region",
+        "city",
+        "access visitors"
+      ],
+      "must_not_contain": [],
+      "expected_output": "It adds /visitors/location/region/{country}/{region} and /visitors/location/city/{country}/{region}/{city} report routes (ReportController), gated by the parent module's 'access visitors' permission."
+    },
+    {
+      "id": "visitors_geoip-path-introspect",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "On this site, visitors_geoip has been told where its MaxMind database lives. Inspect the live configuration and tell me the geoip database path it is configured with.",
+      "must_contain_any": [
+        "/vgeoip/db/GeoLite2-City.mmdb",
+        "/vgeoip/db"
+      ],
+      "must_not_contain": [],
+      "expected_output": "geoip_path is /vgeoip/db/GeoLite2-City.mmdb (visitors_geoip.settings:geoip_path).",
+      "setup": "agent-module-documentation/evaluation/verify/visitors_geoip-path-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/visitors_geoip-path-cleanup.sh"
+    },
+    {
+      "id": "visitors_geoip-library-introspect",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "Does this site have the MaxMind geoip2 PHP library that visitors_geoip needs to resolve IPs to locations? Inspect the running site (the visitors_geoip lookup service) and report whether the library is available.",
+      "must_contain_any": [
+        "true",
+        "available",
+        "yes",
+        "present",
+        "GeoIp2"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Yes: the geoip2 library is available. The visitors_geoip.lookup service (GeoIpService) hasLibrary() returns TRUE (the GeoIp2\\Database\\Reader class is present, pulled in by geoip2/geoip2).",
+      "setup": "agent-module-documentation/evaluation/verify/visitors_geoip-lib-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/visitors_geoip-lib-cleanup.sh"
+    },
+    {
+      "id": "visitors_geoip-set-path",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "Configure visitors_geoip so it looks for its MaxMind GeoIP database in the directory /var/lib/vgeoip/. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/visitors_geoip-path-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/visitors_geoip-path-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/visitors_geoip-path-hard-cleanup.sh",
+      "expected_output": "visitors_geoip.settings:geoip_path == '/var/lib/vgeoip/' (set on the GeoIP settings form at /admin/config/system/visitors/geoip, or `drush config:set visitors_geoip.settings geoip_path '/var/lib/vgeoip/'`)."
+    },
+    {
+      "id": "visitors_geoip-set-license",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "Set the MaxMind license key for visitors_geoip to the value 'VGEOIP_TEST_KEY' so it can download the GeoLite2 database. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/visitors_geoip-license-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/visitors_geoip-license-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/visitors_geoip-license-cleanup.sh",
+      "expected_output": "visitors_geoip.settings:license == 'VGEOIP_TEST_KEY' (set on the GeoIP settings form, or `drush config:set visitors_geoip.settings license 'VGEOIP_TEST_KEY'`)."
+    }
+  ]
+}

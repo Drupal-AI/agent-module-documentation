@@ -1,0 +1,100 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "comment_notify",
+  "version": "1.5.x",
+  "note": "Comment Notify's global behaviour is entirely in the config object comment_notify.settings (bundle_types = array of entity--bundle--field ids that have the subscribe checkbox; available_alerts = {1: all comments, 2: replies to mine}; enable_default.watcher / enable_default.entity_author; mail_templates.watcher|entity_author.<entity_type>.subject|body). Settings UI at /admin/config/people/comment_notify (route comment_notify.settings, permission 'administer comment notify'). Per-comment subscriptions live in the comment_notify DB table; per-user defaults in user.data via the comment_notify.user_settings service. Medium/hard cases are grounded in the real comment_notify.settings config object. Baseline (shipped defaults): bundle_types = ['node--article--comment'], enable_default = {watcher: 'none', entity_author: false}, available_alerts = {1: true, 2: true}.",
+  "evals": [
+    {
+      "id": "comment-notify-where-configured",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "On a Drupal site with comment_notify enabled, where do I configure it, and how do I turn comment notifications on for a particular comment field/content type?",
+      "must_contain_any": [
+        "comment_notify.settings",
+        "bundle_types",
+        "/admin/config/people/comment_notify"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Configure it at /admin/config/people/comment_notify (route comment_notify.settings). A comment field is enabled by adding its entity--bundle--field identifier (e.g. node--article--comment) to comment_notify.settings:bundle_types; the subscribe checkbox only appears on comment forms for bundles listed there."
+    },
+    {
+      "id": "comment-notify-subscription-modes",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "What subscription options can comment_notify offer a commenter, and which config key controls which of them are available?",
+      "must_contain_any": [
+        "available_alerts",
+        "All comments",
+        "Replies to my comment",
+        "COMMENT_NOTIFY_ENTITY",
+        "COMMENT_NOTIFY_COMMENT"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Two modes: 'All comments' (COMMENT_NOTIFY_ENTITY = 1) and 'Replies to my comment' (COMMENT_NOTIFY_COMMENT = 2). Which are offered is controlled by comment_notify.settings:available_alerts, a map {1: bool, 2: bool}; at least one must stay enabled."
+    },
+    {
+      "id": "comment-notify-storage",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "Where does comment_notify store (a) an individual commenter's subscription to a thread and (b) a user's default notification preference? Is there an unsubscribe mechanism?",
+      "must_contain_any": [
+        "comment_notify",
+        "user.data",
+        "table",
+        "hash",
+        "unsubscribe"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Per-comment subscriptions are stored in the dedicated comment_notify database table (with an unsubscribe hash and sent flag); per-user default preferences are stored in user.data under the comment_notify module key (via the comment_notify.user_settings service). Each notification email includes an unsubscribe/disable link (routes comment_notify.disable/{hash} and comment_notify.unsubscribe)."
+    },
+    {
+      "id": "comment-notify-default-author-subscribe",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "On this Drupal site, does comment_notify subscribe content authors to follow-up notifications on their own content by default? Inspect the live configuration and answer, naming the config key.",
+      "must_contain_any": [
+        "entity_author"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Yes. comment_notify.settings:enable_default.entity_author is TRUE on this site, so authors are subscribed to comments on their own content by default.",
+      "setup": "agent-module-documentation/evaluation/verify/comment_notify-default-author-subscribe-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/comment_notify-default-author-subscribe-cleanup.sh"
+    },
+    {
+      "id": "comment-notify-enabled-bundles",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "Which comment fields / content-type comment fields currently have comment_notify enabled on this site? Inspect the live configuration and list them.",
+      "must_contain_any": [
+        "node--page--comment"
+      ],
+      "must_not_contain": [],
+      "expected_output": "comment_notify.settings:bundle_types currently contains node--article--comment and node--page--comment, so notifications are enabled for the Article and Page comment fields.",
+      "setup": "agent-module-documentation/evaluation/verify/comment_notify-enabled-bundles-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/comment_notify-enabled-bundles-cleanup.sh"
+    },
+    {
+      "id": "comment-notify-enable-page-bundle",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "Using comment_notify, enable comment notifications for the Page content type's comment field (identifier node--page--comment) on this site, in addition to whatever is already enabled. Apply the change to the live configuration.",
+      "reset": "agent-module-documentation/evaluation/verify/comment_notify-enable-page-bundle-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/comment_notify-enable-page-bundle-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/comment_notify-enable-page-bundle-reset.sh",
+      "expected_output": "Add 'node--page--comment' to comment_notify.settings:bundle_types (e.g. drush cget the array, append, drush cset; or edit at /admin/config/people/comment_notify). Afterwards bundle_types contains node--page--comment."
+    },
+    {
+      "id": "comment-notify-author-default-on",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "site-owner",
+      "prompt": "I want authors on my site to automatically get an email when someone comments on something they wrote, without each author having to opt in. Configure comment_notify so that this is the default, and apply it to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/comment_notify-author-default-on-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/comment_notify-author-default-on-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/comment_notify-author-default-on-reset.sh",
+      "expected_output": "Set comment_notify.settings:enable_default.entity_author to TRUE (drush cset comment_notify.settings enable_default.entity_author 1, or tick 'Subscribe users to their entity follow-up notification emails by default' on the settings form). Then entity authors are subscribed by default."
+    }
+  ]
+}

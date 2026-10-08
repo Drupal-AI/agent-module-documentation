@@ -1,0 +1,80 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "at_tool",
+  "version": "3.1.x",
+  "note": "AT Tool is the module-side helper for the Adaptivetheme theme system. It has NO config/entities/permissions/routes/Drush of its own; its behavior is driven by the ACTIVE theme's settings config (<active_theme>.settings -> settings array), reading keys enable_devel, enable_live_reload, live_reload_port (default 35729) and layouts_enable in at_tool_library_info_alter(), plus at_tool_preprocess_system_themes_page(). It registers service at_tool.lazy_builders (Drupal\\at_tool\\AtToolLazyBuilders, TrustedCallbackInterface) whose breadcrumbTitle() returns a page_title__breadcrumb render array. The project also ships starterkit THEMES (AT SKIN/STARTERKIT/AT Theme Generator) which are themes, not modules. On this site the active/default theme is olivero (not an Adaptivetheme), so these settings keys are absent by default. Medium/hard cases write/read those exact at_tool-consumed keys on the active theme's settings config (a nested 'settings' key that is added and then fully removed via clear(), restoring the theme config's original state), and introspect the at_tool.lazy_builders service.",
+  "evals": [
+    {
+      "id": "at_tool-what-it-is",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "What is the Drupal at_tool module for, and are the AT SKIN / STARTERKIT / AT Theme Generator it ships modules you enable?",
+      "must_contain_any": ["Adaptivetheme", "adaptivetheme", "starterkit", "theme"],
+      "must_not_contain": [],
+      "expected_output": "at_tool is the module-side support layer for the Adaptivetheme (AT) theme system on Drupal 10/11 (livereload, layout-settings CSS, appearance-page styling, a breadcrumb-title lazy builder). The AT SKIN/STARTERKIT/AT Theme Generator are starterkit THEMES, not modules — you do not enable them as modules."
+    },
+    {
+      "id": "at_tool-breadcrumb-service",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "Which service does at_tool register for rendering the current page title inside a breadcrumb, and what render-array theme hook does it return?",
+      "must_contain_any": ["at_tool.lazy_builders", "breadcrumbTitle", "page_title__breadcrumb"],
+      "must_not_contain": [],
+      "expected_output": "The at_tool.lazy_builders service (AtToolLazyBuilders, a TrustedCallbackInterface) exposes breadcrumbTitle(), which returns a render array with #theme => page_title__breadcrumb and the resolved current-page title."
+    },
+    {
+      "id": "at_tool-livereload-settings",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "at_tool can inject a LiveReload script during theme development. Which active-theme settings does it read to decide this, and what is the default LiveReload port?",
+      "must_contain_any": ["live_reload_port", "enable_live_reload", "35729", "enable_devel"],
+      "must_not_contain": [],
+      "expected_output": "at_tool_library_info_alter() reads the active theme's settings (enable_devel and enable_live_reload) and, when both are on, points the livereload script at //localhost:<live_reload_port>/livereload.js (live_reload_port defaults to 35729). It also reads layouts_enable for the layout-settings CSS on admin routes."
+    },
+    {
+      "id": "at_tool-known-port",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "at_tool decides the LiveReload URL from the active theme's settings. On this site the active theme has been put into development mode. Inspect the active theme's live configuration and report the LiveReload port at_tool will use.",
+      "must_contain_any": ["12345"],
+      "must_not_contain": [],
+      "expected_output": "The active (default) theme's settings config (<theme>.settings:settings) has live_reload_port = 12345 (with enable_devel and enable_live_reload on). Find the default theme via system.theme:default, then read <theme>.settings settings.",
+      "setup": "agent-module-documentation/evaluation/verify/at_tool-known-port-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/at_tool-known-port-cleanup.sh"
+    },
+    {
+      "id": "at_tool-service-class",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "at_tool provides a lazy-builder service used by Adaptivetheme themes for breadcrumb titles. Inspect the live service container on this site and report the PHP class behind the at_tool.lazy_builders service.",
+      "must_contain_any": ["AtToolLazyBuilders", "Drupal\\at_tool\\AtToolLazyBuilders"],
+      "must_not_contain": [],
+      "expected_output": "at_tool.lazy_builders is Drupal\\at_tool\\AtToolLazyBuilders (e.g. `drush php:eval 'echo get_class(\\Drupal::service(\"at_tool.lazy_builders\"));'`).",
+      "setup": "agent-module-documentation/evaluation/verify/at_tool-service-class-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/at_tool-service-class-cleanup.sh"
+    },
+    {
+      "id": "at_tool-enable-livereload",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, configure the active theme so at_tool would inject the LiveReload script: turn on developer mode and live reload, and set the LiveReload port to 9000 (in the active theme's settings that at_tool reads). Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/at_tool-enable-livereload-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/at_tool-enable-livereload-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/at_tool-enable-livereload-cleanup.sh",
+      "expected_output": "The active/default theme's settings config (<theme>.settings) has a settings array with enable_devel=1, enable_live_reload=1, and live_reload_port='9000'. Determine the default theme via system.theme:default and save that theme's .settings config."
+    },
+    {
+      "id": "at_tool-enable-layouts",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, turn on the layout-settings feature that at_tool keys off for the active theme: set the active theme's layouts_enable setting to 1 (in the theme settings config at_tool reads). Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/at_tool-enable-layouts-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/at_tool-enable-layouts-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/at_tool-enable-layouts-cleanup.sh",
+      "expected_output": "The active/default theme's settings config (<theme>.settings) has settings.layouts_enable = 1."
+    }
+  ]
+}

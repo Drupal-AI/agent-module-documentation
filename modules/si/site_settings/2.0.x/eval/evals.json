@@ -1,0 +1,96 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "site_settings",
+  "version": "2.0.x",
+  "note": "Site Settings and Labels defines the content entity site_setting_entity whose bundles are the config entity site_setting_entity_type (keys id, label, group, multiple), plus the config entity site_setting_group_entity_type for grouping. Module config is site_settings.config (template_key, loader_plugin, disable_auto_loading, hide_description, hide_advanced, hide_group, simple_summary, show_groups_in_menu, edit_form_on_canonical_route); note site_settings_install() overrides the shipped defaults with loader_plugin=full and disable_auto_loading=TRUE. It defines one plugin type, site_settings_loader (manager plugin.manager.site_settings_loader), shipping 'full' and the legacy 'flattened' loader. Six Twig functions (site_setting, site_settings_by_name, site_settings_by_group, all_site_settings, site_setting_field, site_setting_entity_by_name), two blocks, two token types and ten permissions. No Drush commands. All site artefacts created by these cases are namespaced ss_* / field_ss_* so they cannot collide with other modules.",
+  "evals": [
+    {
+      "id": "site_settings-entity-model",
+      "mode": "recipe",
+      "prompt": "Explain how Drupal's site_settings (Site Settings and Labels) module stores a setting: which entity type holds the value, which one defines its fields, and why that split matters for configuration export?",
+      "must_contain_any": [
+        "site_setting_entity",
+        "site_setting_entity_type"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The value lives in site_setting_entity, a fieldable, revisionable, translatable CONTENT entity. Its bundle is site_setting_entity_type, a CONFIG entity (config_export: id, label, group, multiple) that carries the fields, form display and view display. A third config entity, site_setting_group_entity_type, groups settings. So the structure of each setting is version-controlled config that you can export and deploy, while the values clients type stay as content and are not part of a config export.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "site_settings-twig-functions",
+      "mode": "recipe",
+      "prompt": "Which Twig functions does the Drupal site_settings module provide for rendering settings in a theme template, and which one would I use to print a single field of a setting identified by its machine name?",
+      "must_contain_any": [
+        "site_setting_field",
+        "site_settings_by_name",
+        "site_setting("
+      ],
+      "must_not_contain": [],
+      "expected_output": "Six functions from Drupal\\site_settings\\Twig\\TwigExtension: site_setting(id_or_uuid, view_mode), site_settings_by_name(type, view_mode), site_settings_by_group(group, view_mode), all_site_settings(view_mode), site_setting_field(name, field_name, view_mode) and site_setting_entity_by_name(type) which returns the entity object. For a single field of a setting identified by its machine name use {{ site_setting_field('my_setting', 'field_x') }}.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "site_settings-loader-plugin",
+      "mode": "recipe",
+      "prompt": "The Drupal site_settings module defines a plugin type for loading settings. What is the plugin type, which plugins ship with it, which is recommended, and which config key selects the active one?",
+      "must_contain_any": [
+        "site_settings_loader",
+        "loader_plugin",
+        "flattened"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The plugin type is site_settings_loader (manager service plugin.manager.site_settings_loader, annotation @SiteSettingsLoader, discovered in src/Plugin/SiteSettingsLoader, interface SiteSettingsLoaderInterface, base class SiteSettingsLoaderBase). Two ship: 'full' (returns real SiteSettingEntity objects, recommended, allowAutoload() FALSE) and 'flattened' (legacy nested arrays, allowAutoload() TRUE, cached in the site_settings bin). The active plugin is site_settings.config:loader_plugin, also settable with SiteSettingsLoaderPluginManager::setActiveLoaderPlugin().",
+      "difficulty": "easy"
+    },
+    {
+      "id": "site_settings-known-setting",
+      "mode": "introspection",
+      "prompt": "This Drupal site has a site setting (site_settings module) of the type ss_eval_phone. Inspect the running site and tell me the value currently stored in its field_ss_eval_number field and which settings group the type belongs to.",
+      "must_contain_any": [
+        "+44 20 7946 0999",
+        "7946 0999"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The stored value is '+44 20 7946 0999'. The site_setting_entity of bundle ss_eval_phone holds it in field_ss_eval_number, and site_settings.site_setting_entity_type.ss_eval_phone has group: ss_eval_group (the SS Eval Group site settings group), with multiple: false.",
+      "setup": "agent-module-documentation/evaluation/verify/site_settings-known-setting-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/site_settings-known-setting-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "site_settings-loader-config",
+      "mode": "introspection",
+      "prompt": "Inspect the live site_settings module configuration on this Drupal site and tell me which site settings loader plugin is currently active, whether settings are auto-loaded into templates, and the template variable name they would appear under.",
+      "must_contain_any": [
+        "ss_eval_key"
+      ],
+      "must_not_contain": [],
+      "expected_output": "site_settings.config currently has loader_plugin: flattened, disable_auto_loading: false (so hook_preprocess() does auto-load, because the flattened loader's allowAutoload() is TRUE) and template_key: ss_eval_key - so settings appear in every template as {{ ss_eval_key }}.",
+      "setup": "agent-module-documentation/evaluation/verify/site_settings-loader-config-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/site_settings-loader-config-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "site_settings-create-type",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site with the site_settings module installed, create a site settings group with the machine name ss_task_group (label 'SS Task Group') and a site settings type with the machine name ss_task_strapline (label 'SS Task Strapline') that belongs to that group and does NOT allow multiple entries. Give the type a plain text field named field_ss_task_text, then create the single published site setting of that type with the value 'We build better websites'. Apply everything to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/site_settings-create-type-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/site_settings-create-type-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/site_settings-create-type-cleanup.sh",
+      "expected_output": "site_settings.site_setting_group_entity_type.ss_task_group must exist; site_settings.site_setting_entity_type.ss_task_strapline must exist with group: ss_task_group and multiple: false; a FieldConfig site_setting_entity.ss_task_strapline.field_ss_task_text must exist; and one site_setting_entity of bundle ss_task_strapline must store 'We build better websites' in that field."
+    },
+    {
+      "id": "site_settings-twig-render",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "This Drupal site has a site_settings setting of type ss_render_label whose field_ss_render_text holds a label. Write a Twig template to web/sites/default/files/site_settings_eval/label.html.twig that uses one of the site_settings module's Twig functions to output that setting's text. The file must contain only Twig markup - it will be rendered with an inline_template render element and no extra context variables.",
+      "reset": "agent-module-documentation/evaluation/verify/site_settings-twig-render-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/site_settings-twig-render-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/site_settings-twig-render-cleanup.sh",
+      "expected_output": "A Twig template calling one of the module's Twig functions - e.g. {{ site_setting_field('ss_render_label', 'field_ss_render_text') }} or {{ site_settings_by_name('ss_render_label') }} - whose rendered output contains the stored value 'Book your visit'."
+    }
+  ]
+}

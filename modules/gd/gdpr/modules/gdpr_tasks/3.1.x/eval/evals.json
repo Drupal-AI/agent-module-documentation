@@ -1,0 +1,58 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "gdpr_tasks",
+  "version": "3.1.x",
+  "note": "GDPR submodule for Subject Access Request (SAR) and Right-to-be-Forgotten task workflow. Content entity gdpr_task with config bundle entity gdpr_task_type (config_prefix gdpr_task_type; default types gdpr_sar 'SARs Request' and gdpr_remove 'Removal request'). Routes: create /user/{user}/gdpr-request/{gdpr_task_type} (gdpr_tasks.request), list /admin/config/gdpr/tasks, summary /admin/config/gdpr/summary, removal settings /admin/config/gdpr/remove-settings. Services gdpr_tasks.manager, gdpr_tasks.anonymizer, rta/rtf traversal factories; queue worker gdpr_tasks_process_gdpr_sar; field type gdpr_task_item; Rules events gdpr_tasks.rules_rta_complete / _rtf_complete. Permissions create/view gdpr tasks, add/administer/delete/edit/view task entities, view gdpr data summary. Requires gdpr, anonymizer, gdpr_fields, entity, file, views, options. Medium/hard are grounded in the RemovalSettingsForm config gdpr_tasks.settings (key export_directory) - a SIMPLE config object that does NOT trigger a route rebuild (creating/deleting a gdpr_task_type bundle would, and this shared site has a pre-existing workbench_moderation route-rebuild fatal at terminate). NOTE: this campaign completed the submodule's entity-schema install that was skipped during the site's enable window.",
+  "evals": [
+    {
+      "id": "gdpr_tasks-entity-and-types",
+      "mode": "recipe",
+      "prompt": "What does the Drupal gdpr_tasks module manage, what content entity and bundle does it use, and what are its two default task types?",
+      "must_contain_any": ["gdpr_task", "gdpr_task_type", "gdpr_sar", "gdpr_remove", "SAR"],
+      "must_not_contain": [],
+      "expected_output": "It manages GDPR data requests via the gdpr_task content entity with the gdpr_task_type config bundle. Two default types ship: gdpr_sar (SARs Request - Subject Access Request/export) and gdpr_remove (Removal request - Right to be Forgotten).",
+      "difficulty": "easy"
+    },
+    {
+      "id": "gdpr_tasks-routes",
+      "mode": "recipe",
+      "prompt": "In gdpr_tasks, what is the route/path to create a GDPR data request for a user, and where is the Right-to-be-Forgotten export directory configured?",
+      "must_contain_any": ["/user/", "gdpr-request", "gdpr_tasks.request", "/admin/config/gdpr/remove-settings"],
+      "must_not_contain": [],
+      "expected_output": "Create a request at /user/{user}/gdpr-request/{gdpr_task_type} (route gdpr_tasks.request, permission 'create gdpr tasks'). The removal export directory is set on the Right to be Forgotten settings form at /admin/config/gdpr/remove-settings (stored in config gdpr_tasks.settings, key export_directory).",
+      "difficulty": "easy"
+    },
+    {
+      "id": "gdpr_tasks-processing",
+      "mode": "recipe",
+      "prompt": "How does gdpr_tasks build a subject's data for a SAR export or removal, and which service/queue worker is involved?",
+      "must_contain_any": ["traversal", "gdpr_tasks.rta_traversal", "gdpr_tasks.rtf_traversal", "gdpr_tasks_process_gdpr_sar", "gdpr_tasks.anonymizer", "gdpr_fields"],
+      "must_not_contain": [],
+      "expected_output": "It uses GDPR Fields' metadata and entity-traversal services (gdpr_tasks.rta_traversal / gdpr_tasks.rtf_traversal, built via EntityTraversalFactory) to walk the subject's data graph following configured relationships. A SAR export is assembled by the queue worker gdpr_tasks_process_gdpr_sar (zip), and removal anonymizes fields via gdpr_tasks.anonymizer using each field's RTF setting.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "gdpr_tasks-known-setting",
+      "mode": "introspection",
+      "prompt": "On this Drupal site, gdpr_tasks has its Right-to-be-Forgotten export directory configured. Inspect the live configuration and state the export directory path.",
+      "must_contain_any": ["private://gdpr-eval-export", "gdpr-eval-export"],
+      "must_not_contain": [],
+      "expected_output": "In config gdpr_tasks.settings, export_directory = 'private://gdpr-eval-export' (the directory where processed removal tasks are exported).",
+      "setup": "agent-module-documentation/evaluation/verify/gdpr_tasks-known-setting-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/gdpr_tasks-known-setting-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "gdpr_tasks-set-export-dir",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, configure gdpr_tasks so that processed Right-to-be-Forgotten (removal) tasks are exported to the directory 'private://gdpr-export'. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/gdpr_tasks-set-export-dir-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/gdpr_tasks-set-export-dir-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/gdpr_tasks-set-export-dir-cleanup.sh",
+      "expected_output": "Config gdpr_tasks.settings has a non-empty export_directory (e.g. 'private://gdpr-export'). Set it via the Right to be Forgotten settings form (/admin/config/gdpr/remove-settings) or by saving the gdpr_tasks.settings config's export_directory key."
+    }
+  ]
+}

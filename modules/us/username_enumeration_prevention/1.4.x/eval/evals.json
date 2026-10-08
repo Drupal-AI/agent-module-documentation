@@ -1,0 +1,65 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "username_enumeration_prevention",
+  "version": "1.4.x",
+  "note": "Username Enumeration Prevention has no config UI, no permissions of its own, and no plugins — it closes two enumeration vectors automatically. Cases are `recipe` (response-graded): they probe documented facts an agent would otherwise read source to answer; no site mutation.",
+  "evals": [
+    {
+      "id": "uep-vectors-closed",
+      "mode": "recipe",
+      "prompt": "On a Drupal 11 site, which two username-enumeration vectors does the Username Enumeration Prevention module close?",
+      "must_contain_any": ["password", "forgot", "reset"],
+      "must_not_contain": [],
+      "expected_output": "It gives the forgot-password form (/user/password) a generic response for unknown accounts, and it turns 403 Access denied on user routes (e.g. /user/123) into 404 Not found."
+    },
+    {
+      "id": "uep-user-route-404",
+      "mode": "recipe",
+      "prompt": "With Username Enumeration Prevention enabled, what HTTP status does an anonymous visitor get for a restricted but existing user page like /user/123, and how is that achieved?",
+      "must_contain_any": ["404", "NotFoundHttpException", "not found"],
+      "must_not_contain": [],
+      "expected_output": "A 404 Not found. UserRouteEventSubscriber listens on KernelEvents::EXCEPTION and replaces an AccessDeniedHttpException (403) on user routes with a NotFoundHttpException (404), so existing and non-existent accounts look identical."
+    },
+    {
+      "id": "uep-generic-reset-message",
+      "mode": "recipe",
+      "prompt": "How does Username Enumeration Prevention stop the Drupal forgot-password form from revealing whether a username or email exists?",
+      "must_contain_any": ["user_pass", "username_enumeration_prevention_pass_validate", "clearErrors", "clears"],
+      "must_not_contain": [],
+      "expected_output": "hook_form_user_pass_alter() adds the validate handler username_enumeration_prevention_pass_validate(), which clears the sensitive error on the name field so valid and invalid identifiers yield the same neutral response."
+    },
+    {
+      "id": "uep-no-configuration",
+      "mode": "recipe",
+      "prompt": "What configuration or settings form do I need to set up after enabling the Username Enumeration Prevention module on Drupal?",
+      "must_contain_any": ["no configuration", "no settings", "enable", "nothing"],
+      "must_not_contain": [],
+      "expected_output": "None — the module has no admin UI, no settings, and no config. You enable it (drush en username_enumeration_prevention -y) and both protections work automatically."
+    },
+    {
+      "id": "uep-permission-that-defeats",
+      "mode": "recipe",
+      "prompt": "Which core Drupal permission, if granted to anonymous users, defeats Username Enumeration Prevention by re-exposing usernames, and how does the module warn about it?",
+      "must_contain_any": ["access user profiles"],
+      "must_not_contain": [],
+      "expected_output": "The core 'access user profiles' permission. If anonymous (or untrusted) roles have it, user pages are viewable directly. The module's hook_requirements() adds a status-report warning when anonymous users hold that permission."
+    },
+    {
+      "id": "uep-dependencies",
+      "mode": "recipe",
+      "prompt": "What Drupal modules does Username Enumeration Prevention depend on, and does it define any permissions, routes, or config schema?",
+      "must_contain_any": ["user"],
+      "must_not_contain": [],
+      "expected_output": "It depends only on core user. It defines no permissions, no routes, no config, and no config schema of its own."
+    },
+    {
+      "id": "uep-route-discovery",
+      "mode": "recipe",
+      "prompt": "How does Username Enumeration Prevention decide which routes count as user routes for its 403-to-404 conversion?",
+      "must_contain_any": ["link template", "getLinkTemplates", "entity:user", "{user}"],
+      "must_not_contain": [],
+      "expected_output": "UserRouteEventSubscriber::getUserRoutes() derives them from the user entity's link templates (routes whose parameter is entity:user or whose path contains {user}), plus user.cancel_confirm and shortcut.set_switch, and caches the ids under username_enumeration_prevention_user_route_ids."
+    }
+  ]
+}

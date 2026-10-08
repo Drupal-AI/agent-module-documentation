@@ -1,0 +1,80 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "social_media",
+  "version": "2.0.x",
+  "note": "Social media share renders configurable share/follow links for the current page as a block (social_sharing_block) or a field. All behavior lives in one config object, social_media.settings, under a top-level 'social_media' mapping keyed by network (facebook_share, facebook_msg, linkedin, twitter, pinterest, whatsapp, email, print); each network is an 'item' with enable/text/api_url/api_event/weight/default_img/attributes. Token replacement fills [current-page:url]/[current-page:title]. The module has NO permissions, NO plugin manager/types, and NO drush commands of its own; it extends via three Symfony events (add_more_social_media, pre_execute, pre_render). Tiers are therefore config-centric. Easy = recipe (answer from docs/source). Medium = introspection (read a known value planted in live social_media.settings). Hard = execution (write social_media.settings, verified live). Script paths are relative to /var/www/html.",
+  "evals": [
+    {
+      "id": "social_media-config-object",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "In the Drupal 'Social media share' (social_media) module, what is the name of the single config object that stores all the share-link settings, and under which top-level key are the individual networks nested inside it?",
+      "must_contain_any": ["social_media.settings"],
+      "must_not_contain": [],
+      "expected_output": "The config object is social_media.settings; the per-network items are nested under its top-level 'social_media' mapping (e.g. social_media.settings:social_media.twitter)."
+    },
+    {
+      "id": "social_media-token-placeholder",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "In the social_media module, each network's api_url is run through Token replacement so the link shares whatever page it renders on. Which token placeholder gives the URL of the current page? The module depends on which module to provide it?",
+      "must_contain_any": ["[current-page:url]", "current-page:url"],
+      "must_not_contain": [],
+      "expected_output": "[current-page:url] resolves to the current page URL (and [current-page:title] to its title). Provided by the Token module, which social_media depends on."
+    },
+    {
+      "id": "social_media-add-network-event",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "The social_media module is extended with Symfony events rather than alter hooks. Which event name do I subscribe to in order to register a brand-new social network so it shows up in the settings, and what event class is dispatched?",
+      "must_contain_any": ["social_media.add_more_social_media"],
+      "must_not_contain": [],
+      "expected_output": "Subscribe to the 'social_media.add_more_social_media' event; the dispatched object is Drupal\\social_media\\Event\\SocialMediaEvent (use getElement()/setElement() to add a key => Label)."
+    },
+    {
+      "id": "social_media-whatsapp-known-introspect",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "persona": "drupal-expert",
+      "prompt": "This Drupal site has the social_media (Social media share) module with one extra share network turned on beyond the defaults, and it was given a custom link label. Inspect the running site (drush available) and tell me which network is enabled and the exact label text it will display.",
+      "setup": "agent-module-documentation/evaluation/verify/social_media-whatsapp-known-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/social_media-whatsapp-known-cleanup.sh",
+      "must_contain_any": ["Share on WhatsApp"],
+      "must_not_contain": [],
+      "expected_output": "The WhatsApp network is enabled in social_media.settings with text = 'Share on WhatsApp' (read from live config)."
+    },
+    {
+      "id": "social_media-email-forward-introspect",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site the social_media module's Email share item has been switched into its 'forward this page' mode. Inspect the running site (drush available) and tell me the two integer setting keys on the email item that are turned on to enable the in-site forward form and to open it in an AJAX modal dialog.",
+      "setup": "agent-module-documentation/evaluation/verify/social_media-email-forward-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/social_media-email-forward-cleanup.sh",
+      "must_contain_any": ["enable_forward"],
+      "must_not_contain": [],
+      "expected_output": "On social_media.settings:social_media.email both enable_forward=1 (use the in-site /social-media-forward form) and show_forward=1 (open it in an AJAX modal) are set."
+    },
+    {
+      "id": "social_media-enable-whatsapp",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site (DDEV, drush available), configure the social_media (Social media share) module so the WhatsApp share network is enabled and its share link points at the WhatsApp share endpoint carrying the current page URL (use the wa.me sharer with the [current-page:url] token). Apply the change to the live site via drush/config -- do not just describe it. Give a one-line summary of what you changed.",
+      "reset": "agent-module-documentation/evaluation/verify/social_media-enable-whatsapp-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/social_media-enable-whatsapp-verify.sh",
+      "expected_output": "social_media.settings social_media.whatsapp has enable=1 and api_url containing wa.me and [current-page:url]. Verified against live config."
+    },
+    {
+      "id": "social_media-print-button",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site (drush available), configure the social_media module's Print network so visitors get a working 'Print this page' button: it must be enabled, trigger the browser print dialog via window.print(), and be wired as a JavaScript action (api_event = onclick) rather than a normal link. Apply it to the running site via drush/config. State in one line what you changed.",
+      "reset": "agent-module-documentation/evaluation/verify/social_media-print-button-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/social_media-print-button-verify.sh",
+      "expected_output": "social_media.settings social_media.print has enable=1, api_url=window.print(), api_event=onclick. Verified against live config."
+    }
+  ]
+}

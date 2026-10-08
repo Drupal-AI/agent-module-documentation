@@ -1,0 +1,58 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "acquia_perz_push",
+  "version": "4.1.x",
+  "note": "acquia_perz_push is the export engine submodule of acquia_perz. It adds Drush commands (QueueCommands: acquia:perz-enqueue-content, acquia:perz-process-queue, acquia:perz-queue-items, acquia:perz-purge-queue, acquia:perz-purge-current, acquia:perz-purge-all), two admin forms gated by 'administer acquia perz push', two queue workers, a tracking table acquia_perz_push_export_tracking, and config object acquia_perz_push.settings with cis.queue_bulk_max_size (default 20) and cis.endpoint_timeout (default 2). Medium reads back a known cis.queue_bulk_max_size; hard sets cis.endpoint_timeout to a target value and verifies against live config.",
+  "evals": [
+    {
+      "id": "acquia_perz_push-drush-export",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "Using the acquia_perz_push module, which Drush commands do I run to (a) scan and enqueue all personalization-eligible content, and (b) push the queued content to Acquia Personalization?",
+      "must_contain_any": ["acquia:perz-enqueue-content", "acquia:perz-process-queue", "ap-ec"],
+      "must_not_contain": [],
+      "expected_output": "Run 'drush acquia:perz-enqueue-content' (alias ap-ec) to rescan and enqueue content, then 'drush acquia:perz-process-queue' to export the queued items to CIS. Use 'drush acquia:perz-queue-items' to see the queue count."
+    },
+    {
+      "id": "acquia_perz_push-config-keys",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "Which configuration object and keys control the bulk export chunk size and the CIS request timeout in acquia_perz_push, and what are the default values?",
+      "must_contain_any": ["acquia_perz_push.settings", "queue_bulk_max_size", "endpoint_timeout"],
+      "must_not_contain": [],
+      "expected_output": "Config object acquia_perz_push.settings holds cis.queue_bulk_max_size (default 20) and cis.endpoint_timeout (default 2 seconds). There is no settings form; set them with drush cset."
+    },
+    {
+      "id": "acquia_perz_push-tracking-table",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "How does acquia_perz_push know which entities have already been exported to Acquia Personalization? Name the database table and the service that manages it.",
+      "must_contain_any": ["acquia_perz_push_export_tracking", "ExportTracker"],
+      "must_not_contain": [],
+      "expected_output": "It records every export in the acquia_perz_push_export_tracking table (created in hook_schema), managed by the ExportTracker service (acquia_perz_push.tracker) with statuses exported/export_timeout/deleted/delete_timeout/failed."
+    },
+    {
+      "id": "acquia_perz_push-known-bulk-size",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "This site has acquia_perz_push installed and its bulk export chunk size has been customized. Inspect the live configuration and tell me the current bulk queue max size.",
+      "must_contain_any": ["37"],
+      "must_not_contain": [],
+      "expected_output": "The bulk queue max size is 37, at acquia_perz_push.settings -> cis.queue_bulk_max_size (drush cget acquia_perz_push.settings cis.queue_bulk_max_size).",
+      "setup": "agent-module-documentation/evaluation/verify/acquia_perz_push-known-bulk-size-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/acquia_perz_push-known-bulk-size-cleanup.sh"
+    },
+    {
+      "id": "acquia_perz_push-set-timeout",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this site the Acquia Personalization exports are timing out on a slow network. Using acquia_perz_push, raise the CIS endpoint timeout to 10 seconds in the live configuration.",
+      "reset": "agent-module-documentation/evaluation/verify/acquia_perz_push-set-timeout-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/acquia_perz_push-set-timeout-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/acquia_perz_push-set-timeout-reset.sh",
+      "expected_output": "acquia_perz_push.settings -> cis.endpoint_timeout is set to 10 (drush cset acquia_perz_push.settings cis.endpoint_timeout 10 -y)."
+    }
+  ]
+}

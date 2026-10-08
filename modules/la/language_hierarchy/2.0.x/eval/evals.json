@@ -1,0 +1,80 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "language_hierarchy",
+  "version": "2.0.x",
+  "note": "Language Hierarchy configures parent/child fallback between languages. A language's parent is stored as a third-party setting on its configurable_language config entity: third_party_settings.language_hierarchy.fallback_langcode. hook_language_fallback_candidates_alter walks that chain to build fallback candidates (check via \\Drupal::languageManager()->getFallbackCandidates(['langcode'=>...])); the module also maintains a language_hierarchy_priority DB table rebuilt on any language insert/update/delete and config import, and applies fallback to config translation (config factory override), interface strings (locale.storage decorator), and path aliases. No settings form, no permission of its own; configured through the core language forms. Provides a Views sort (language_hierarchy_sort) and filter (language_hierarchy_content_language_fallback_limited). Eval cases use custom langcodes lhp/lhm/lhc (namespaced with 'lh') created and deleted by the scripts; medium reads a real configured fallback back, hard sets a fallback and builds a multi-level chain verified through the live language manager.",
+  "evals": [
+    {
+      "id": "language_hierarchy-where-stored",
+      "mode": "recipe",
+      "prompt": "Using the language_hierarchy module, how do I make one language fall back to another (its parent), and where is that relationship stored?",
+      "must_contain_any": ["fallback_langcode", "third_party_settings", "third party setting", "configurable_language", "Translation fallback language"],
+      "must_not_contain": [],
+      "expected_output": "Set the child language's parent via the 'Translation fallback language' select on the language edit form (or the parent/child tree on the languages overview). It is stored as a third-party setting on the configurable_language entity: third_party_settings.language_hierarchy.fallback_langcode.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "language_hierarchy-check-chain",
+      "mode": "recipe",
+      "prompt": "With language_hierarchy configured, how does Drupal decide the fallback order for a language, and how can I inspect the resolved fallback chain for a given langcode?",
+      "must_contain_any": ["getFallbackCandidates", "hook_language_fallback_candidates_alter", "language_fallback_candidates", "candidates"],
+      "must_not_contain": [],
+      "expected_output": "The module implements hook_language_fallback_candidates_alter() to walk the fallback_langcode chain; you can inspect the result with \\Drupal::languageManager()->getFallbackCandidates(['langcode' => '<lc>']), which returns the ordered candidate list (e.g. de-at, de, en, und).",
+      "difficulty": "easy"
+    },
+    {
+      "id": "language_hierarchy-surfaces",
+      "mode": "recipe",
+      "prompt": "Besides content translation, what else does the language_hierarchy fallback apply to, and what internal table does it maintain to order fallbacks?",
+      "must_contain_any": ["language_hierarchy_priority", "locale", "config", "path alias", "path_alias", "priority"],
+      "must_not_contain": [],
+      "expected_output": "Fallback applies to configuration translation (config factory override), interface/locale string translation (locale.storage decorator, when locale is on) and path aliases. It maintains the language_hierarchy_priority table (langcode -> priority), rebuilt on any language change or config import.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "language_hierarchy-known-fallback",
+      "mode": "introspection",
+      "prompt": "This site has a language with langcode 'lhc' whose fallback is configured via language_hierarchy. Inspect the live configuration and state which language 'lhc' falls back to.",
+      "must_contain_any": ["lhp"],
+      "must_not_contain": [],
+      "expected_output": "lhc falls back to lhp: configurable_language.lhc has third_party_settings.language_hierarchy.fallback_langcode = 'lhp'.",
+      "setup": "agent-module-documentation/evaluation/verify/language_hierarchy-known-fallback-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/language_hierarchy-langs-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "language_hierarchy-known-chain",
+      "mode": "introspection",
+      "prompt": "On this site a multi-level language fallback chain is configured with language_hierarchy starting from langcode 'lhc'. Inspect the running site and list the languages 'lhc' will fall back through, in order.",
+      "must_contain_any": ["lhp"],
+      "must_not_contain": [],
+      "expected_output": "lhc falls back through lhm then lhp: the resolved fallback candidates for lhc are lhc, lhm, lhp (then und). Discoverable via \\Drupal::languageManager()->getFallbackCandidates(['langcode' => 'lhc']).",
+      "setup": "agent-module-documentation/evaluation/verify/language_hierarchy-known-chain-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/language_hierarchy-langs-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "language_hierarchy-set-fallback",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "This site has two languages, langcodes 'lhp' and 'lhc'. Using the language_hierarchy module, configure 'lhc' so that it falls back to 'lhp' when a translation is missing. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/language_hierarchy-set-fallback-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/language_hierarchy-set-fallback-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/language_hierarchy-langs-cleanup.sh",
+      "expected_output": "configurable_language.lhc has third_party_settings.language_hierarchy.fallback_langcode set to 'lhp'."
+    },
+    {
+      "id": "language_hierarchy-build-chain",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-layman",
+      "prompt": "My site has three languages with codes lhp, lhm and lhc. I want it so that if something isn't translated into lhc it tries lhm next, and if lhm doesn't have it either it uses lhp. Set that up.",
+      "reset": "agent-module-documentation/evaluation/verify/language_hierarchy-build-chain-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/language_hierarchy-build-chain-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/language_hierarchy-langs-cleanup.sh",
+      "expected_output": "lhc's fallback is lhm and lhm's fallback is lhp, so \\Drupal::languageManager()->getFallbackCandidates(['langcode' => 'lhc']) yields lhc, lhm, lhp (then und)."
+    }
+  ]
+}

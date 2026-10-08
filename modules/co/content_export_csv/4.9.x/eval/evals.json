@@ -1,0 +1,80 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "content_export_csv",
+  "version": "4.9.x",
+  "note": "Content Export CSV is a single admin form (route content_export_csv.export at /admin/content/content-export, permission 'access content export') plus one service (content_export_csv.export -> Drupal\\content_export_csv\\ContentExport). It has no config entity, no schema, no plugins, no Drush. The service exposes getContentTypes/getValidFieldList/getNodeIds/getNodeData/getNodeDataList/getNodeCsvData; getValidFieldList strips a fixed blocklist (uuid, vid, revision_*, sticky, promote, comment, content_translation_*). Note info.yml's configure key points at a non-existent route content_export_csv.data-export; the real route is content_export_csv.export. Medium reads back which role holds the export permission; hard1 generates a real CSV via the service to public://cecsv_export.csv (verified by file content); hard2 grants the export permission to a role (verified against the live role).",
+  "evals": [
+    {
+      "id": "content_export_csv-where",
+      "mode": "recipe",
+      "prompt": "On a Drupal site with the Content Export CSV module enabled, where do I go to export nodes of a content type to CSV, and which permission controls access to that page?",
+      "must_contain_any": ["/admin/content/content-export", "content_export_csv.export", "access content export", "Export Content"],
+      "must_not_contain": [],
+      "expected_output": "Use the form at /admin/content/content-export (route content_export_csv.export, also the 'Export Content' action link on /admin/content). The 'access content export' permission gates it.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "content_export_csv-service",
+      "mode": "recipe",
+      "prompt": "I want to generate a CSV of published nodes of a content type programmatically with the Content Export CSV module, not through the form. Which service do I call and what is the main method?",
+      "must_contain_any": ["content_export_csv.export", "getNodeCsvData", "ContentExport"],
+      "must_not_contain": [],
+      "expected_output": "Call the content_export_csv.export service (Drupal\\content_export_csv\\ContentExport). Its main method is getNodeCsvData($type, $status, $fields, $includeUrls, $stripTags), returning an array of CSV lines; getValidFieldList($type) gives the exportable field names.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "content_export_csv-options",
+      "mode": "recipe",
+      "prompt": "What export options does the Content Export CSV form offer besides choosing the content type and fields?",
+      "must_contain_any": ["status", "published", "unpublished", "strip", "url", "node url"],
+      "must_not_contain": [],
+      "expected_output": "It offers: content status (published vs unpublished), 'Include Node Urls at the end of the exported CSV row', and 'Strip HTML tags for fields' (on by default), plus per-field checkboxes revealed after choosing the content type.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "content_export_csv-who-can-export",
+      "mode": "introspection",
+      "prompt": "On this Drupal site, a custom role has been granted access to the Content Export CSV export form. Inspect the site's roles/permissions and give the machine name of the role that holds the export permission.",
+      "must_contain_any": ["cecsv_exporter"],
+      "must_not_contain": [],
+      "expected_output": "The cecsv_exporter role holds the 'access content export' permission (the permission that gates route content_export_csv.export).",
+      "setup": "agent-module-documentation/evaluation/verify/content_export_csv-export-role-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/content_export_csv-export-role-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "content_export_csv-exportable-type",
+      "mode": "introspection",
+      "prompt": "On this Drupal site, a content type was recently added and can be exported with the Content Export CSV form. Inspect the site's content types (the ones the export form would list) and give the machine name of the content type named 'CECSV Survey'.",
+      "must_contain_any": ["cecsv_survey"],
+      "must_not_contain": [],
+      "expected_output": "cecsv_survey — Content Export CSV's getContentTypes() lists all node types, including the CECSV Survey (cecsv_survey) content type.",
+      "setup": "agent-module-documentation/evaluation/verify/content_export_csv-content-type-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/content_export_csv-content-type-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "content_export_csv-generate",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site there is a content type 'cecsv_doc' with at least one published node. Using the Content Export CSV module's export service, generate a CSV of the published cecsv_doc nodes and save it to the public files directory as cecsv_export.csv (public://cecsv_export.csv). Apply it on the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/content_export_csv-generate-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/content_export_csv-generate-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/content_export_csv-generate-cleanup.sh",
+      "expected_output": "Call \\Drupal::service('content_export_csv.export')->getNodeCsvData('cecsv_doc', 1, [], 0, 1), join with a header row, and write to public://cecsv_export.csv. Verify passes when that file exists and contains the node title 'Cecsv Hard Node'."
+    },
+    {
+      "id": "content_export_csv-grant-access",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site there is a role 'cecsv_team' that cannot currently use the Content Export CSV export form. Grant that role the permission it needs to access the content export page, and apply it to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/content_export_csv-grant-access-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/content_export_csv-grant-access-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/content_export_csv-grant-access-cleanup.sh",
+      "expected_output": "Grant the 'access content export' permission to the cecsv_team role (e.g. drush role:perm:add cecsv_team 'access content export', or via the role entity). Verify passes when cecsv_team holds that permission."
+    }
+  ]
+}

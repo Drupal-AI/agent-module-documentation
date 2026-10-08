@@ -1,0 +1,101 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "entity_export_csv",
+  "version": "2.1.x",
+  "note": "Entity Export CSV exports content entities to CSV. Real, grounded facts: configure route entity_export_csv.settings (config object entity_export_csv.settings) whitelists exportable entity types/bundles; export form at /admin/content/entity-export-csv; permissions 'administer entity export csv' and 'use entity export csv'; a field_type_export plugin type (manager plugin.manager.field_type_export, annotation @FieldTypeExport, base FieldTypeExportBase, override massageExportPropertyValue()); built-in exporters include default_export (weight 100 fallback), link_export, address_export, datetime_export, etc.; reusable exports are entity_export_csv config entities (config prefix entity_export_csv.entity_export_csv.*) with keys entity_type_id, bundle, delimiter, fields[<field>]{enable,order,exporter,form.options}. Medium introspection reads back a saved config entity's delimiter/exporter and a settings value; hard execution creates a saved export config entity verified against live config.",
+  "evals": [
+    {
+      "id": "eec-plugin-extension",
+      "mode": "recipe",
+      "prompt": "In the Drupal entity_export_csv module, how do I add support for exporting a custom or contrib field type to CSV? Name the plugin type / annotation and the main method to override.",
+      "must_contain_any": [
+        "field_type_export",
+        "@FieldTypeExport",
+        "FieldTypeExportBase",
+        "massageExportPropertyValue"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Add a field_type_export plugin: a class in Plugin/FieldTypeExport/ annotated @FieldTypeExport (declaring field_type), extending FieldTypeExportBase, overriding massageExportPropertyValue() (and optionally buildConfigurationForm/getColumns). It is discovered by plugin.manager.field_type_export.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "eec-where-configured",
+      "mode": "recipe",
+      "prompt": "After enabling entity_export_csv, where do I choose which entity types can be exported, where do users actually run an export, and which permissions control access?",
+      "must_contain_any": [
+        "entity_export_csv.settings",
+        "/admin/config/content/entity-export-csv",
+        "/admin/content/entity-export-csv",
+        "administer entity export csv",
+        "use entity export csv"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Whitelist entity types/bundles at the settings form /admin/config/content/entity-export-csv/settings (config object entity_export_csv.settings, permission 'administer entity export csv'). Users export at /admin/content/entity-export-csv (permission 'use entity export csv').",
+      "difficulty": "easy"
+    },
+    {
+      "id": "eec-saved-config-shape",
+      "mode": "recipe",
+      "prompt": "entity_export_csv lets you save reusable export definitions. What kind of object stores them and which keys control the CSV delimiter and how each field is rendered?",
+      "must_contain_any": [
+        "config entity",
+        "entity_export_csv",
+        "delimiter",
+        "exporter",
+        "fields"
+      ],
+      "must_not_contain": [],
+      "expected_output": "They are entity_export_csv config entities (prefix entity_export_csv.entity_export_csv.*) holding entity_type_id, bundle, delimiter, and a fields map keyed by field machine name; each field entry has enable, order, exporter (the field_type_export plugin id) and form.options.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "eec-known-config",
+      "mode": "introspection",
+      "prompt": "This Drupal site has a saved Entity Export CSV configuration with id eec_known. Inspect the live configuration and report its CSV delimiter character and which field_type_export exporter plugin is used to export the title field.",
+      "must_contain_any": [
+        "default_export"
+      ],
+      "must_not_contain": [],
+      "expected_output": "eec_known targets node/article with delimiter '|' and exports the title field with the default_export exporter (config entity_export_csv.entity_export_csv.eec_known).",
+      "setup": "agent-module-documentation/evaluation/verify/entity_export_csv-known-config-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/entity_export_csv-known-config-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "eec-settings-enabled",
+      "mode": "introspection",
+      "prompt": "On this site, which content entity type has been enabled for export in the entity_export_csv settings (its entity_types.<id>.enable is set to true)? Inspect the live entity_export_csv.settings configuration to answer.",
+      "must_contain_any": [
+        "user"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The user entity type is enabled: entity_export_csv.settings entity_types.user.enable is true.",
+      "setup": "agent-module-documentation/evaluation/verify/entity_export_csv-settings-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/entity_export_csv-settings-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "eec-create-config",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "Using entity_export_csv on this Drupal site, create a saved export configuration (an entity_export_csv config entity) with id eec_task that exports Article nodes: target entity type node, bundle article, CSV delimiter ',', and the title field enabled using the default_export exporter. Save it to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/entity_export_csv-create-config-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/entity_export_csv-create-config-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/entity_export_csv-create-config-cleanup.sh",
+      "expected_output": "A config entity entity_export_csv.entity_export_csv.eec_task exists with entity_type_id=node, bundle=article, delimiter=',', and fields.title.enable=true with fields.title.exporter=default_export."
+    },
+    {
+      "id": "eec-create-user-config",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "site-builder",
+      "prompt": "Using entity_export_csv, create a saved export configuration (entity_export_csv config entity) with id eec_user_task that exports User accounts: target entity type user, bundle user, CSV delimiter ';', with the account name field (machine name 'name') enabled using the default_export exporter. Save it to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/entity_export_csv-create-user-config-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/entity_export_csv-create-user-config-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/entity_export_csv-create-user-config-cleanup.sh",
+      "expected_output": "A config entity entity_export_csv.entity_export_csv.eec_user_task exists with entity_type_id=user, bundle=user, delimiter=';', and fields.name.enable=true with fields.name.exporter=default_export."
+    }
+  ]
+}

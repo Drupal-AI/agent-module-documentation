@@ -1,0 +1,84 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "legal",
+  "version": "3.0.x",
+  "note": "Legal shows Terms & Conditions on registration and requires acceptance. T&C TEXT is content, stored in the legal_conditions entity/table (versioned per language) and entered at /admin/config/people/legal; acceptances are in legal_accepted. Behaviour is config legal.settings (registration_terms_style 0=Scroll box/1=Scroll CSS/2=HTML/3=Page link, accept_every_login, except_roles, user_profile_display, ...). Baseline site has 0 conditions and shipped legal.settings defaults. Medium cases read back accept_every_login and registration_terms_style. Hard cases: create an English T&C version (verified via legal_conditions), and configure legal.settings to require acceptance every login + exempt the administrator role. Programmatic T&C creation uses Conditions::create() with version from legal_version().",
+  "evals": [
+    {
+      "id": "legal-where-enter-terms",
+      "mode": "recipe",
+      "prompt": "On a Drupal site with the Legal module enabled, where does an administrator enter the Terms & Conditions text that new users must accept, and what happens to existing users when the text changes?",
+      "must_contain_any": ["/admin/config/people/legal", "config/people/legal", "legal.config_legal"],
+      "must_not_contain": [],
+      "expected_output": "Enter the terms at Configuration > People > Legal (/admin/config/people/legal, route legal.config_legal). Each save stores a new version in legal_conditions, and publishing a new version forces existing users to re-accept on their next login.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "legal-add-terms-code",
+      "mode": "recipe",
+      "prompt": "How can I add a Terms & Conditions version programmatically (e.g. in an update hook) with the Legal module, and where is that text stored?",
+      "must_contain_any": ["Conditions::create", "legal_conditions", "legal_version"],
+      "must_not_contain": [],
+      "expected_output": "T&C text is a content entity, not config. Use Drupal\\legal\\Entity\\Conditions::create([...])->save() with version/revision from legal_version('version', $lang), plus language, conditions (text), format, date, extras (serialized), changes. It is stored in the legal_conditions table.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "legal-display-styles",
+      "mode": "recipe",
+      "prompt": "What display-style options does the Legal module offer for showing the Terms & Conditions on the registration form, and which config setting selects it?",
+      "must_contain_any": ["registration_terms_style", "Scroll box", "HTML", "Page link"],
+      "must_not_contain": [],
+      "expected_output": "The config legal.settings.registration_terms_style selects it: 0 = Scroll box (plain text), 1 = Scroll box (CSS), 2 = HTML text, 3 = Page link (accept label links to the terms, optionally in a modal). A matching login_terms_style controls the login/profile display.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "legal-accept-every-login",
+      "mode": "introspection",
+      "prompt": "On this site, is the Legal module configured to make users accept the Terms & Conditions on every login, or only when the terms change? Inspect the live configuration and answer.",
+      "must_contain_any": ["every login", "every", "true", "accept_every_login"],
+      "must_not_contain": [],
+      "expected_output": "Users must accept on every login — legal.settings.accept_every_login is TRUE.",
+      "setup": "agent-module-documentation/evaluation/verify/legal-accept-login-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/legal-accept-login-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "legal-reg-style-configured",
+      "mode": "introspection",
+      "prompt": "Inspect the Legal module configuration on this site and tell me which display style is set for the Terms & Conditions on the registration form (name the style, not just a number).",
+      "must_contain_any": ["HTML", "2"],
+      "must_not_contain": [],
+      "expected_output": "It is set to HTML text — legal.settings.registration_terms_style is 2, which renders the terms as inline HTML.",
+      "setup": "agent-module-documentation/evaluation/verify/legal-reg-style-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/legal-reg-style-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "legal-create-terms",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "Using the Legal module, create an English Terms & Conditions version containing some terms text (HTML is fine) and apply it to the live site so it would appear on the registration form.",
+      "reset": "agent-module-documentation/evaluation/verify/legal-terms-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/legal-terms-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/legal-terms-reset.sh",
+      "expected_output": "Create a legal_conditions record for language 'en' with non-empty conditions text — either save the terms at /admin/config/people/legal, or Conditions::create(['version'=>..,'revision'=>..,'language'=>'en','conditions'=>'<p>..</p>','format'=>'basic_html','date'=>time(),'extras'=>serialize([]),'changes'=>''])->save() using version/revision from legal_version('version','en').",
+      "must_contain_any": [],
+      "must_not_contain": []
+    },
+    {
+      "id": "legal-require-every-login-exempt-admin",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-layman",
+      "prompt": "With the Legal module, I want everyone to have to re-agree to the Terms & Conditions each time they log in, except administrators who should never be bothered by it. Configure that and apply it to the site.",
+      "reset": "agent-module-documentation/evaluation/verify/legal-settings-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/legal-settings-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/legal-settings-reset.sh",
+      "expected_output": "In legal.settings set accept_every_login to TRUE and add 'administrator' to except_roles (the list of role IDs exempt from the T&C requirement).",
+      "must_contain_any": [],
+      "must_not_contain": []
+    }
+  ]
+}

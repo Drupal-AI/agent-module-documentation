@@ -1,0 +1,103 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "elasticsearch_connector",
+  "version": "9.0.x",
+  "note": "Elasticsearch Connector supplies a Search API backend plugin ('elasticsearch') plus its own 'elasticsearch_connector' connector plugin type (standard, basicauth, elastic_cloud_id, elastic_cloud_endpoint) that builds the actual Elastic PHP client, and two search_api processor plugins (elasticsearch_type_boost, elasticsearch_highlight). It has no configure route, no permissions, no Drush commands - all persistent state lives in Search API's own config entities (search_api.server.*, search_api.index.*). Crucially, there is NO running Elasticsearch server in the eval environment, so every medium/hard case is grounded entirely in the search_api.server config entity shape (backend, backend_config.connector, backend_config.connector_config, backend_config.advanced), which is fully valid, writable, and readable via Drupal config without ever contacting a live cluster. Setup/reset scripts write config directly via \\Drupal::configFactory()->getEditable(...)->setData(...)->save() (never Server::create()->save() or any backend/connector method) and verify scripts read back via \\Drupal::config()/drush config:get only - none of them index, query, or otherwise touch Elasticsearch. All fixture server ids are namespaced ec_*.",
+  "evals": [
+    {
+      "id": "elasticsearch_connector-backend-basics",
+      "mode": "recipe",
+      "prompt": "The Drupal contrib module elasticsearch_connector adds a Search API backend for Elasticsearch. What is the backend plugin's id, which Drupal module must it depend on, and what does it require outside of Drupal (both a running service and specific Composer libraries) before it can actually index or query anything?",
+      "must_contain_any": [
+        "id = \"elasticsearch\"",
+        "\"elasticsearch\"",
+        "backend: elasticsearch",
+        "elasticsearch/elasticsearch"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The Search API backend plugin id is 'elasticsearch' (@SearchApiBackend). It depends on the search_api module. It requires a reachable, running Elasticsearch 8/9 cluster, plus the Composer libraries elasticsearch/elasticsearch:^9.0.0 and makinacorpus/php-lucene:^1.1 (declared in the module's own composer.json) - there is no bundled search engine.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "elasticsearch_connector-connector-types",
+      "mode": "recipe",
+      "prompt": "elasticsearch_connector defines its own 'connector' plugin type used by the elasticsearch Search API backend to build the Elasticsearch PHP client. Name all of the connector plugin ids the module ships, and for each one name its most important config field(s) (e.g. what you'd fill in to point it at a cluster or authenticate).",
+      "must_contain_any": [
+        "standard",
+        "basicauth",
+        "elastic_cloud_id",
+        "elastic_cloud_endpoint"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Four shipped connectors: standard (url, enable_debug_logging); basicauth (extends standard, adds username/password for HTTP Basic Auth); elastic_cloud_id (elastic_cloud_id + api_key_id, for Elastic Cloud); elastic_cloud_endpoint (url + api_key_id, for an Elastic Cloud deployment addressed by endpoint URL). All four also support enable_debug_logging.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "elasticsearch_connector-advanced-settings",
+      "mode": "recipe",
+      "prompt": "Besides picking a connector, what 'advanced' settings does the elasticsearch Search API backend itself expose on a server, and what two Search API processor plugins does elasticsearch_connector ship for use on an index?",
+      "must_contain_any": [
+        "fuzziness",
+        "prefix",
+        "suffix",
+        "synonyms",
+        "elasticsearch_type_boost",
+        "elasticsearch_highlight"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The backend's advanced settings are fuzziness (auto, disabled, or 1-5), an index name prefix, an index name suffix, and a Solr-format synonyms list. The two shipped Search API processor plugins are elasticsearch_type_boost (query-time boost by datasource/bundle) and elasticsearch_highlight (excerpts via Elasticsearch's native highlighter).",
+      "difficulty": "easy"
+    },
+    {
+      "id": "elasticsearch_connector-known-server",
+      "mode": "introspection",
+      "prompt": "On this Drupal site there is a search_api.server config entity called ec_known that uses the elasticsearch_connector module's backend. Inspect its live configuration and tell me which connector plugin it uses and the URL configured for that connector.",
+      "must_contain_any": [
+        "9243",
+        "localhost:9243"
+      ],
+      "must_not_contain": [],
+      "expected_output": "ec_known uses backend=elasticsearch with connector=standard, and backend_config.connector_config.url is http://localhost:9243.",
+      "setup": "agent-module-documentation/evaluation/verify/elasticsearch_connector-known-server-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/elasticsearch_connector-known-server-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "elasticsearch_connector-cloud-server",
+      "mode": "introspection",
+      "prompt": "On this Drupal site there is a search_api.server config entity called ec_hosted that uses the elasticsearch_connector module's backend. Inspect its live configuration and tell me which connector plugin it uses and its configured Elastic Cloud ID.",
+      "must_contain_any": [
+        "ec-eval-deployment",
+        "elastic_cloud_id"
+      ],
+      "must_not_contain": [],
+      "expected_output": "ec_hosted uses backend=elasticsearch with connector=elastic_cloud_id, and backend_config.connector_config.elastic_cloud_id is 'ec-eval-deployment:ZXhhbXBsZWNsb3VkaWQ='.",
+      "setup": "agent-module-documentation/evaluation/verify/elasticsearch_connector-cloud-server-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/elasticsearch_connector-cloud-server-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "elasticsearch_connector-build-task-server",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, create a Search API server config entity with machine name ec_task that uses the elasticsearch_connector module's 'elasticsearch' backend with the 'standard' connector. There is no live Elasticsearch cluster in this environment, so build the search_api.server config entity itself (e.g. via Drupal config) rather than trying to connect to a real cluster.",
+      "reset": "agent-module-documentation/evaluation/verify/elasticsearch_connector-task-server-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/elasticsearch_connector-task-server-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/elasticsearch_connector-task-server-cleanup.sh",
+      "expected_output": "search_api.server.ec_task exists with backend: elasticsearch and backend_config.connector: standard (e.g. written via \\Drupal::configFactory()->getEditable('search_api.server.ec_task')->setData([...])->save(), or the Search API add-server admin form)."
+    },
+    {
+      "id": "elasticsearch_connector-build-cloud-auth-server",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, create a Search API server config entity with machine name ec_cloud that uses the elasticsearch_connector module's 'elasticsearch' backend, configured with an authenticated connector: either the 'basicauth' connector with a username set, or the 'elastic_cloud_id' connector with an Elastic Cloud ID set. There is no live Elasticsearch cluster in this environment, so build the search_api.server config entity itself rather than trying to connect to a real cluster.",
+      "reset": "agent-module-documentation/evaluation/verify/elasticsearch_connector-cloud-auth-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/elasticsearch_connector-cloud-auth-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/elasticsearch_connector-cloud-auth-cleanup.sh",
+      "expected_output": "search_api.server.ec_cloud exists with backend: elasticsearch and either backend_config.connector: basicauth with a non-empty connector_config.username, or backend_config.connector: elastic_cloud_id with a non-empty connector_config.elastic_cloud_id."
+    }
+  ]
+}

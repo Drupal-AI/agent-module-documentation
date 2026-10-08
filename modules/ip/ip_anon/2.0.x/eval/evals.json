@@ -1,0 +1,80 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "ip_anon",
+  "version": "2.0.x",
+  "note": "IP Anonymize stores its retention policy in config object ip_anon.settings: policy (0 preserve / 1 anonymize) and period_<table> integers in seconds (-1 = forever/never scrub). On hook_cron (and drush ip_anon:scrub) the IpAnonymize service overwrites the hostname column with '0' for rows older than requestTime - period. sessions is always covered; other tables come from hook_ip_anon_alter (dblog->watchdog, comment->comment_field_data, etc). Config route ip_anon.settings at /admin/config/people/ip_anon (perm administer site configuration). Drush: ip_anon:scrub, ip_anon:policy. Medium/hard cases read/write ip_anon.settings via drush and restore shipped defaults (policy 0, all period_* -1) on cleanup/reset.",
+  "evals": [
+    {
+      "id": "ip-anon-enable",
+      "mode": "recipe",
+      "prompt": "I installed the IP Anonymize (ip_anon) Drupal module but old IP addresses are not being removed. What is the main setting I must change to actually start anonymizing IPs, and at what admin path is it configured?",
+      "must_contain_any": ["policy", "Anonymize", "admin/config/people/ip_anon"],
+      "must_not_contain": [],
+      "expected_output": "Set the Retention policy to Anonymize (ip_anon.settings policy = 1); by default policy is 0 (preserve), so nothing is scrubbed. Configure it at /admin/config/people/ip_anon (route ip_anon.settings, permission 'administer site configuration'). Scrubbing then runs on cron.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "ip-anon-period-meaning",
+      "mode": "recipe",
+      "prompt": "In IP Anonymize, each table has a period_<table> retention value (e.g. period_sessions, period_watchdog). What units is it in, and what does a value of -1 mean?",
+      "must_contain_any": ["second", "-1", "forever", "never"],
+      "must_not_contain": [],
+      "expected_output": "The period is in seconds: IPs older than requestTime minus that many seconds are scrubbed on cron. A value of -1 (or any negative/non-numeric value) means keep forever / never scrub that table.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "ip-anon-drush",
+      "mode": "recipe",
+      "prompt": "Which Drush commands does the IP Anonymize module provide, and what does each do?",
+      "must_contain_any": ["ip_anon:scrub", "ip_anon:policy"],
+      "must_not_contain": [],
+      "expected_output": "ip_anon:scrub scrubs IPs now according to the configured per-table retention (only when policy is enabled); ip_anon:policy prints the current retention policy as a table of each table's retention period (or 'Forever').",
+      "difficulty": "easy"
+    },
+    {
+      "id": "ip-anon-known-watchdog",
+      "mode": "introspection",
+      "prompt": "On this site IP Anonymize is switched on. Inspect the live ip_anon configuration and state the retention period (in seconds) configured for the watchdog (dblog) table.",
+      "must_contain_any": ["3600"],
+      "must_not_contain": [],
+      "expected_output": "period_watchdog is 3600 seconds (1 hour), and policy is 1 (anonymize). Read from ip_anon.settings.",
+      "setup": "agent-module-documentation/evaluation/verify/ip_anon-known-watchdog-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/ip_anon-known-watchdog-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "ip-anon-known-sessions",
+      "mode": "introspection",
+      "prompt": "IP Anonymize is configured on this site. From the live configuration, how long (in seconds) are IP addresses retained in the sessions table before being anonymized?",
+      "must_contain_any": ["86400"],
+      "must_not_contain": [],
+      "expected_output": "period_sessions is 86400 seconds (1 day). Read from ip_anon.settings; policy is 1.",
+      "setup": "agent-module-documentation/evaluation/verify/ip_anon-known-sessions-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/ip_anon-known-sessions-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "ip-anon-set-sessions",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, using the IP Anonymize module, enable IP anonymization and configure the sessions table so client IP addresses are retained for at most 1 hour (3600 seconds) before being scrubbed. Apply the change to the live configuration.",
+      "reset": "agent-module-documentation/evaluation/verify/ip_anon-set-sessions-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/ip_anon-set-sessions-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/ip_anon-set-sessions-reset.sh",
+      "expected_output": "ip_anon.settings has policy: 1 and period_sessions: 3600."
+    },
+    {
+      "id": "ip-anon-set-watchdog",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "site-builder",
+      "prompt": "Configure IP Anonymize on this site so that IP anonymization is turned on and log (watchdog / dblog) IP addresses are kept for 7 days (604800 seconds) before being anonymized. Save it to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/ip_anon-set-watchdog-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/ip_anon-set-watchdog-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/ip_anon-set-watchdog-reset.sh",
+      "expected_output": "ip_anon.settings has policy: 1 and period_watchdog: 604800."
+    }
+  ]
+}

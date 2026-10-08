@@ -1,0 +1,79 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "views_dependent_filter",
+  "version": "1.4.x",
+  "note": "Deprecated, hidden legacy-rename shim for the parent views_dependent_filters. Ships a Broken filter (views_dependent_filter_obselete) and update hook views_dependent_filter_update_8001 which uninstalls this module, installs views_dependent_filters, and re-saves affected views. Correct end state is that this module is uninstalled. Baseline on this site: disabled. Medium enables it and the agent detects it via drush pm:list; hard enables it (verify FAILS) and the agent must uninstall it (drush pmu) so verify PASSES (moduleExists false).",
+  "evals": [
+    {
+      "id": "views_dependent_filter-deprecated",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "A Drupal site has a hidden module called 'views_dependent_filter' (singular) marked '(Deprecated)'. What is it, and what should be done about it?",
+      "must_contain_any": [
+        "deprecated",
+        "uninstall",
+        "views_dependent_filters",
+        "database update",
+        "rename"
+      ],
+      "must_not_contain": [],
+      "expected_output": "It is a deprecated shim from the project's original (incorrect) D8 machine name. The correctly named module is views_dependent_filters (plural). It should be removed by running database updates (drush updatedb) or uninstalling it; new sites should never enable it."
+    },
+    {
+      "id": "views_dependent_filter-update-hook",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "What does the update hook in the deprecated views_dependent_filter module (views_dependent_filter_update_8001) do when database updates are run?",
+      "must_contain_any": [
+        "uninstall",
+        "install",
+        "views_dependent_filters",
+        "re-save",
+        "dependencies"
+      ],
+      "must_not_contain": [],
+      "expected_output": "It collects every view that depends on the old views_dependent_filter module, uninstalls views_dependent_filter, installs views_dependent_filters, flushes caches, then re-saves those views so their dependencies recalculate to the new module name."
+    },
+    {
+      "id": "views_dependent_filter-broken-plugin",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "Does the deprecated views_dependent_filter module provide any working Views filter? What Views plugin does it register?",
+      "must_contain_any": [
+        "Broken",
+        "views_dependent_filter_obselete",
+        "no working",
+        "placeholder"
+      ],
+      "must_not_contain": [],
+      "expected_output": "No working filter. It registers only a Broken filter handler with id views_dependent_filter_obselete (class ViewsDependentFilter extends Broken), a safe placeholder so stale configs from the old module do not fatal before migration."
+    },
+    {
+      "id": "views_dependent_filter-is-installed",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "Is the deprecated 'views_dependent_filter' (singular) module currently installed/enabled on this Drupal site? Inspect the live module list to answer.",
+      "must_contain_any": [
+        "enabled",
+        "installed",
+        "yes"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Yes — views_dependent_filter (the hidden, deprecated singular module) is currently enabled; drush pm:list shows it as Enabled. It should be uninstalled in favour of views_dependent_filters.",
+      "setup": "agent-module-documentation/evaluation/verify/views_dependent_filter-installed-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/views_dependent_filter-installed-cleanup.sh"
+    },
+    {
+      "id": "views_dependent_filter-uninstall",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "The deprecated 'views_dependent_filter' (singular) module is currently enabled on this site. It should not be. Uninstall it so only the correctly named views_dependent_filters remains, and apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/views_dependent_filter-uninstall-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/views_dependent_filter-uninstall-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/views_dependent_filter-uninstall-cleanup.sh",
+      "expected_output": "Uninstall the module (e.g. drush pmu views_dependent_filter -y, or run drush updatedb which its update_8001 hook uses). Afterwards \\Drupal::moduleHandler()->moduleExists('views_dependent_filter') is FALSE."
+    }
+  ]
+}

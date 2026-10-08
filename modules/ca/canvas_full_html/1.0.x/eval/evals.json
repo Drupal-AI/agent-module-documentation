@@ -1,0 +1,106 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "canvas_full_html",
+  "version": "1.0.x",
+  "note": "canvas_full_html swaps Drupal Canvas's restricted rich-text formats (canvas_html_block, canvas_html_inline) for a dedicated canvas_full_html text format inside Canvas WYSIWYG props. Its only stored config is the boolean canvas_full_html.settings:enabled (default true); the admin form is route canvas_full_html.settings at /admin/config/content/canvas-full-html (permission administer site configuration). On install it ships filter.format.canvas_full_html, editor.editor.canvas_full_html (a CKEditor5 config) and canvas_full_html.settings. All logic is in the autowired hook service Drupal\\canvas_full_html\\Hook\\CanvasFullHtmlHooks (hook_canvas_storable_prop_shape_alter swaps the format for text/html props; hook_library_info_alter attaches canvas_full_html/ckeditor-fixes to canvas/canvas-ui). Medium/hard cases only read/write config (drush cget/cset and config-factory saves) and never trigger a full cache rebuild, because on THIS shared site canvas core and ui_patterns both register a component plugin manager and 'drush cr' fatals in canvas's component rebuild hook (a pre-existing collision, unrelated to this module). All facts grounded in src/, config/install and config/schema.",
+  "evals": [
+    {
+      "id": "canvas_full_html-config-key",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "I installed the Drupal contrib module canvas_full_html. How do I turn its Full HTML replacement off without uninstalling? Which config object and key controls it, and is there an admin page?",
+      "must_contain_any": [
+        "canvas_full_html.settings",
+        "enabled",
+        "/admin/config/content/canvas-full-html",
+        "canvas-full-html"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Set canvas_full_html.settings:enabled to false (drush cset canvas_full_html.settings enabled 0). There is an admin form at /admin/config/content/canvas-full-html (route canvas_full_html.settings, permission 'administer site configuration') with an 'Enable Full HTML format in Canvas' checkbox. Default is true."
+    },
+    {
+      "id": "canvas_full_html-what-it-swaps",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "What does the Drupal canvas_full_html module actually change in Canvas, and which text formats are involved? Which hook does it use?",
+      "must_contain_any": [
+        "canvas_full_html",
+        "canvas_html_block",
+        "canvas_html_inline",
+        "canvas_storable_prop_shape_alter",
+        "text/html"
+      ],
+      "must_not_contain": [],
+      "expected_output": "When enabled it replaces Canvas's restricted text formats (canvas_html_block, canvas_html_inline) with the dedicated canvas_full_html format for component props whose schema is contentMediaType: text/html. It does this in hook_canvas_storable_prop_shape_alter() (Drupal\\canvas_full_html\\Hook\\CanvasFullHtmlHooks)."
+    },
+    {
+      "id": "canvas_full_html-edit-toolbar",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "Using the Drupal canvas_full_html module, how do I customise which CKEditor 5 buttons appear in the Canvas editor, and will that affect my site's other text formats?",
+      "must_contain_any": [
+        "/admin/config/content/formats/manage/canvas_full_html",
+        "canvas_full_html",
+        "text format",
+        "CKEditor"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Edit the dedicated canvas_full_html text format at /admin/config/content/formats/manage/canvas_full_html (editor.editor.canvas_full_html). It is a normal CKEditor 5 config; changes affect only Canvas editors, not full_html or any other format. Both core and contrib CKEditor 5 plugins are supported."
+    },
+    {
+      "id": "canvas_full_html-current-enabled",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "On this running Drupal site, is the canvas_full_html Full HTML replacement currently switched on or off? Inspect the live configuration and report the exact config object, key and its current value.",
+      "must_contain_any": [
+        "canvas_full_html.settings",
+        "enabled",
+        "false",
+        "off",
+        "disabled"
+      ],
+      "must_not_contain": [],
+      "expected_output": "It is currently OFF: canvas_full_html.settings:enabled = false. Discoverable with: drush cget canvas_full_html.settings enabled (or drush php:eval to read \\Drupal::config('canvas_full_html.settings')->get('enabled')).",
+      "setup": "agent-module-documentation/evaluation/verify/canvas_full_html-enabled-flag-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/canvas_full_html-enabled-flag-cleanup.sh"
+    },
+    {
+      "id": "canvas_full_html-toolbar-items",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "The canvas_full_html module ships its own CKEditor 5 editor for the canvas_full_html text format. On this live site, inspect that editor's configuration and tell me whether the toolbar includes a 'Source editing' (sourceEditing) button.",
+      "must_contain_any": [
+        "sourceEditing",
+        "source editing",
+        "yes"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Yes. editor.editor.canvas_full_html's toolbar items include sourceEditing (alongside heading, bold, italic, underline, link, lists, blockQuote, horizontalLine, etc.). Discoverable with: drush php:eval \"print_r(\\Drupal::config('editor.editor.canvas_full_html')->get('settings.toolbar.items'));\".",
+      "setup": "agent-module-documentation/evaluation/verify/canvas_full_html-editor-toolbar-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/canvas_full_html-editor-toolbar-cleanup.sh"
+    },
+    {
+      "id": "canvas_full_html-disable-integration",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, disable the canvas_full_html Full HTML replacement so Canvas falls back to its own restricted formats, WITHOUT uninstalling the module. Make the change to the module's configuration.",
+      "reset": "agent-module-documentation/evaluation/verify/canvas_full_html-disable-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/canvas_full_html-disable-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/canvas_full_html-disable-cleanup.sh",
+      "expected_output": "canvas_full_html.settings:enabled is set to false, e.g. drush cset canvas_full_html.settings enabled 0 -y."
+    },
+    {
+      "id": "canvas_full_html-add-code-button",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "Add the inline 'code' button (CKEditor 5 toolbar item 'code') to the canvas_full_html text format's editor toolbar on this site, so Canvas editors can mark inline code. Modify the editor.editor.canvas_full_html configuration.",
+      "reset": "agent-module-documentation/evaluation/verify/canvas_full_html-toolbar-code-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/canvas_full_html-toolbar-code-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/canvas_full_html-toolbar-code-cleanup.sh",
+      "expected_output": "editor.editor.canvas_full_html settings.toolbar.items now contains 'code' (appended to the existing items)."
+    }
+  ]
+}

@@ -1,0 +1,67 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "ckeditor_link_styles",
+  "version": "1.1.x",
+  "note": "CKEditor 5 Link Styles ships one CKEditor 5 plugin, `ckeditor_link_styles_linkStyles` (PHP class Drupal\\ckeditor_link_styles\\Plugin\\CKEditor5Plugin\\LinkStyles). It defines NO toolbar button and NO JS plugin (ckeditor5.plugins: []); instead it reconfigures core's Link plugin by generating Link *manual decorators* in getDynamicPluginConfig(), so each named style is a checkbox in the Link balloon rather than a Styles-dropdown entry. It is configured per text format (configure is null; no global page, no permissions, no Drush). In the UI editors type one style per line as `a.classA.classB|Label` (e.g. `a.btn|Button`) in a Link styles tab that only appears when the core Link button (condition plugins: [ckeditor5_link]) is on the toolbar. Stored on editor.editor.<format> at settings.plugins.ckeditor_link_styles_linkStyles.styles as a sequence of {label, element} where element is a CKEditor 5 element string like `<a class=\"btn\">`. The plugin declares `<a class>` in getElementsSubset(), so the format's allowed HTML is auto-updated. Easy `recipe` cases probe the plugin id/decorator mechanism, the per-format line syntax, and the stored config path (response-graded). The medium `introspection` case configures a known 'Button' (a.btn) style on full_html (setup) and asks which format has a link style + its label (cleanup restores). The hard `execution` case has the agent configure a link style on basic_html, graded reset->build->verify against editor.editor.basic_html.",
+  "evals": [
+    {
+      "id": "ckls-plugin-id",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "On a Drupal 11 site with the ckeditor_link_styles module, what CKEditor 5 plugin id does it register, and how does it make link classes available to editors - does it add a new toolbar button or reuse the Link feature?",
+      "must_contain_any": ["ckeditor_link_styles_linkStyles"],
+      "must_not_contain": [],
+      "expected_output": "The Drupal CKEditor 5 plugin id is `ckeditor_link_styles_linkStyles` (defined in ckeditor_link_styles.ckeditor5.yml, PHP class Drupal\\ckeditor_link_styles\\Plugin\\CKEditor5Plugin\\LinkStyles). It adds NO new toolbar button and no JS plugin: it reconfigures core's Link plugin by generating Link manual decorators (getDynamicPluginConfig), so each configured style shows as a checkbox inside the Add/Edit-link balloon. It only activates when the core Link button (condition ckeditor5_link) is on the format's toolbar."
+    },
+    {
+      "id": "ckls-line-syntax",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "Using the ckeditor_link_styles module, how do I define link styles for a CKEditor 5 text format, and what line format do I type? Is there a global settings page?",
+      "must_contain_any": ["a.btn|Button", "a.classA.classB|Label", "per text format", "text format", "Link styles"],
+      "must_not_contain": [],
+      "expected_output": "There is no global settings page (configure is null). Link styles are set per text format at /admin/config/content/formats: edit a CKEditor 5 format that has the Link button, open the 'Link styles' tab, and enter one style per line as `a.classA.classB|Label` — e.g. `a.btn|Button` or `a.btn.large-button|Large Button`. Only anchor selectors with one or more classes are valid."
+    },
+    {
+      "id": "ckls-config-path",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "Where does ckeditor_link_styles store a format's link styles in config, and what is the shape of each entry? On CKEditor 5 do I also need to hand-edit the allowed HTML tags to permit the classed <a>?",
+      "must_contain_any": ["settings.plugins.ckeditor_link_styles_linkStyles.styles", "ckeditor_link_styles_linkStyles"],
+      "must_not_contain": [],
+      "expected_output": "Stored on the editor.editor.<format> config entity at settings.plugins.ckeditor_link_styles_linkStyles.styles — a sequence of {label, element} mappings where element is a CKEditor 5 element string like `<a class=\"btn\">` (the `a.btn|Button` line is normalized to that). You do NOT hand-edit allowed HTML: the plugin declares `<a class>` via getElementsSubset(), so filter_html is updated automatically. Read it with `drush config:get editor.editor.full_html settings.plugins.ckeditor_link_styles_linkStyles`."
+    },
+    {
+      "id": "ckls-known-style",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "This Drupal site has ckeditor_link_styles enabled. Exactly one CKEditor 5 text format has a link style configured in its saved editor settings. Inspect the live editor configuration and tell me which text format it is and the label of the configured link style, and how you can tell.",
+      "must_contain_any": ["full_html", "Full HTML"],
+      "must_not_contain": [],
+      "setup": "agent-module-documentation/evaluation/verify/ckeditor_link_styles-known-style-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/ckeditor_link_styles-known-style-cleanup.sh",
+      "expected_output": "The `full_html` format, with a link style labelled 'Button'. Inspecting editor.editor.full_html (e.g. `drush config:get editor.editor.full_html settings.plugins.ckeditor_link_styles_linkStyles`) shows styles: [{label: Button, element: '<a class=\"btn\">'}]. The other CKEditor 5 formats (basic_html, webform_default) have no ckeditor_link_styles_linkStyles key."
+    },
+    {
+      "id": "ckls-add-style",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site (ckeditor_link_styles is enabled), configure a CKEditor 5 Link Style on the `basic_html` text format: add a style labelled 'Button' that applies the CSS class `btn` to links (selector a.btn), and apply it to the live site so editors get it as a checkbox in the Link dialog.",
+      "reset": "agent-module-documentation/evaluation/verify/ckeditor_link_styles-add-style-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/ckeditor_link_styles-add-style-verify.sh",
+      "expected_output": "Edit editor.editor.basic_html and set settings.plugins.ckeditor_link_styles_linkStyles.styles to [{label: 'Button', element: '<a class=\"btn\">'}] (the stored form of the `a.btn|Button` line), then clear caches. The Link button is already on basic_html's toolbar (the plugin's condition). Verify checks basic_html is a ckeditor5 editor and has >=1 link style whose element is an <a with a class attribute."
+    },
+    {
+      "id": "ckls-add-style-layman",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "site-owner",
+      "prompt": "On my Drupal site I edit pages with the 'Basic HTML' text style. When I add a link, I want a checkbox called 'Button' that makes the link look like a button (it should give the link the CSS class btn my theme styles). Please set that up for the Basic HTML editor and save it.",
+      "reset": "agent-module-documentation/evaluation/verify/ckeditor_link_styles-add-style-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/ckeditor_link_styles-add-style-verify.sh",
+      "expected_output": "The 'Basic HTML' format is editor.editor.basic_html. Configure a ckeditor_link_styles link style labelled 'Button' with class btn: set settings.plugins.ckeditor_link_styles_linkStyles.styles to [{label: 'Button', element: '<a class=\"btn\">'}] and save, then clear caches. Verify checks basic_html is a ckeditor5 editor with >=1 link style whose element is an <a carrying a class."
+    }
+  ]
+}

@@ -1,0 +1,109 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "formdazzle",
+  "version": "4.0.x",
+  "note": "Formdazzle! adds fine-grained Twig theme suggestions to forms, form elements and labels, each suffixed with the form-id and element name (e.g. input--textfield--webform-contact--first-name). It has NO persistent per-site configuration of its own; its only stateful knobs are (a) whether the module is enabled and (b) its module weight in core.extension (formdazzle_install sets it to 10 so it runs after other hook_form_alter implementations). The medium/hard cases are therefore grounded in those two real live-state levers: module weight (read/verified from core.extension) and the actual rendered theme suggestion on a live core form (the user login form's username element gains the suffix __user_login_form__name only when formdazzle is enabled). Verify scripts render the login form via the form builder and inspect #theme, or read the module weight. The enable/disable hard case restores baseline (enabled at weight 10) in its cleanup.",
+  "evals": [
+    {
+      "id": "formdazzle-suggestion-pattern",
+      "mode": "recipe",
+      "prompt": "What extra Twig template suggestions does the Drupal Formdazzle! (formdazzle) module add for form elements, compared to core? Give an example for a textfield.",
+      "must_contain_any": [
+        "form-id",
+        "form id",
+        "element name",
+        "input--textfield--",
+        "--first-name",
+        "form_id"
+      ],
+      "must_not_contain": [],
+      "expected_output": "It adds suggestions that include the form ID and the element name, e.g. input--textfield--webform-contact.html.twig and input--textfield--webform-contact--first-name.html.twig, where core only offered input.html.twig and input--textfield.html.twig. Labels get matching suggestions too.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "formdazzle-how-it-works",
+      "mode": "recipe",
+      "prompt": "How does the formdazzle module add its form template suggestions, and why does it set its module weight so high on install?",
+      "must_contain_any": [
+        "pre_render",
+        "#pre_render",
+        "preRenderForm",
+        "hook_form_alter",
+        "after",
+        "weight",
+        "run last",
+        "module_implements_alter"
+      ],
+      "must_not_contain": [],
+      "expected_output": "On hook_form_alter it stores the form id and appends a #pre_render callback (Dazzler::preRenderForm) that traverses the render array at pre-render time (after all other alters) and appends the suggestions. It sets its module weight to 10 (and uses hook_module_implements_alter) so its form_alter runs after other modules'.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "formdazzle-twig-debug",
+      "mode": "recipe",
+      "prompt": "With formdazzle enabled and Twig debugging on, how can I see the template suggestions for a form, including the top-level form template that Drupal normally hides?",
+      "must_contain_any": [
+        "twig",
+        "debug",
+        "FILE NAME SUGGESTIONS",
+        "comment",
+        "#markup",
+        "page source",
+        "view source"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Enable Twig debug; formdazzle injects an HTML '<!-- FILE NAME SUGGESTIONS: ... -->' comment (via #markup) for the top-level form element, which core normally omits, and the per-element suggestions appear as usual in the page source Twig debug comments.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "formdazzle-module-weight",
+      "mode": "introspection",
+      "prompt": "On this Drupal site, inspect the live configuration and report the module weight assigned to the formdazzle module in core.extension.",
+      "must_contain_any": [
+        "7"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The formdazzle module weight in core.extension is 7 (read core.extension module.formdazzle, e.g. drush cget core.extension module.formdazzle, or \\Drupal::config('core.extension')->get('module.formdazzle')).",
+      "setup": "agent-module-documentation/evaluation/verify/formdazzle-module-weight-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/formdazzle-module-weight-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "formdazzle-rendered-suggestion",
+      "mode": "introspection",
+      "prompt": "formdazzle is enabled on this site. Render the user login form on the live site and report the full formdazzle-added theme suggestion that appears on the username field element (the one ending in the element name).",
+      "must_contain_any": [
+        "user_login_form__name",
+        "user-login-form--name",
+        "__user_login_form__name"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The username element's #theme gains formdazzle's suffix, e.g. input__email__user_login_form__name (template input--email--user-login-form--name.html.twig): the form id is user_login_form and the element name is name.",
+      "setup": "agent-module-documentation/evaluation/verify/formdazzle-rendered-suggestion-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/formdazzle-rendered-suggestion-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "formdazzle-enable-suggestions",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "This Drupal site's forms are not getting Formdazzle's fine-grained per-form template suggestions. Make the site produce them again so that the rendered user login form's username element carries a form-id + element-name theme suggestion. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/formdazzle-enable-suggestions-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/formdazzle-enable-suggestions-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/formdazzle-enable-suggestions-cleanup.sh",
+      "expected_output": "Install/enable the formdazzle module (drush en formdazzle -y). Once enabled, the rendered user login form's username element #theme includes formdazzle's __user_login_form__name suggestion."
+    },
+    {
+      "id": "formdazzle-run-last",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, formdazzle's module weight has been changed so it no longer runs after other modules' form_alter hooks. Restore formdazzle to the weight its installer uses so it runs last. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/formdazzle-run-last-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/formdazzle-run-last-verify.sh",
+      "expected_output": "Set formdazzle's module weight to 10 (module_set_weight('formdazzle', 10); or reinstall the module, whose hook_install sets weight 10). core.extension module.formdazzle should then be 10."
+    }
+  ]
+}

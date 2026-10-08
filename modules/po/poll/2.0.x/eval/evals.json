@@ -1,0 +1,80 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "poll",
+  "version": "2.0.x",
+  "note": "Poll (formerly Drupal core, now contrib; documented release 2.0.0-alpha5 — ALPHA/pre-stable). Defines two content entity types, `poll` (question + per-poll voting settings) and `poll_choice` (an answer option referenced by the poll's unlimited-cardinality `choice` field); votes are rows in the `poll_vote` table (not entities), managed by the `poll_vote.storage` service. Ships one block `poll_recent_block` (\"Most recent poll\") and 9 permissions; `poll.settings` is a stub config form. Three tiers: easy/recipe (response-graded facts from 2.0.x/agent/), medium/introspection (a setup script creates a KNOWN poll entity, the agent inspects the live site via drush to report its question/choices, a cleanup script deletes it), hard/execution (a reset script clears matching polls, the agent CREATES a poll entity with a specific question + 2+ choices, active, on the live site, and a verify script checks live state — reset -> model -> verify).",
+  "evals": [
+    {
+      "id": "poll-entities",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "On a Drupal 11 site using the Poll module, which content entity types does the module define, and how are a poll's answer options stored and referenced?",
+      "must_contain_any": ["poll_choice", "choice"],
+      "must_not_contain": [],
+      "expected_output": "Poll defines two content entity types: `poll` (the question plus voting settings) and `poll_choice` (a single answer option). A poll references its options through its unlimited-cardinality `choice` entity_reference field (target_type poll_choice)."
+    },
+    {
+      "id": "poll-votes-storage",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "On a Drupal 11 Poll site, where are individual votes stored — are they entities? — and which service reads and writes them?",
+      "must_contain_any": ["poll_vote", "poll_vote.storage"],
+      "must_not_contain": [],
+      "expected_output": "Votes are NOT entities; they are rows in the `poll_vote` database table (choice id, uid/hostname, timestamp), read and written through the `poll_vote.storage` service (Drupal\\poll\\PollVoteStorage) via methods like getVotes(), getTotalVotes(), saveVote() and cancelVote()."
+    },
+    {
+      "id": "poll-block-permissions",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "On a Drupal 11 Poll site, which block does the module provide, and which permission must a user have to view a poll and cast a vote?",
+      "must_contain_any": ["poll_recent_block", "Most recent poll", "access polls"],
+      "must_not_contain": [],
+      "expected_output": "The module ships one block, `poll_recent_block` (\"Most recent poll\"), which renders the newest open poll in a theme region. Viewing polls and voting requires the `access polls` permission (\"View polls\")."
+    },
+    {
+      "id": "poll-introspect-known",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "persona": "drupal-expert",
+      "prompt": "This Drupal site already has a poll configured (drush available). Inspect the running site and tell me the poll's exact question and list every answer choice it offers.",
+      "setup": "agent-module-documentation/evaluation/verify/poll-known-poll-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/poll-known-poll-cleanup.sh",
+      "must_contain_any": ["React", "Vue", "Svelte"],
+      "must_not_contain": [],
+      "expected_output": "The poll question is \"Which JavaScript framework do you prefer? [eval-known]\" and it offers three choices: React, Vue and Svelte (read from the poll entity's `choice` field / poll_choice entities)."
+    },
+    {
+      "id": "poll-introspect-choice-count",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site there is a published, active poll about JavaScript frameworks (drush available). Inspect the running site and tell me how many answer choices it has and whether it is currently open for voting.",
+      "setup": "agent-module-documentation/evaluation/verify/poll-known-poll-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/poll-known-poll-cleanup.sh",
+      "must_contain_any": ["3", "three"],
+      "must_not_contain": [],
+      "expected_output": "The poll has 3 choices (React, Vue, Svelte) and is active/open for voting (its `active` field is 1 and `status` is published)."
+    },
+    {
+      "id": "poll-create-fourday-week",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site (drush available), use the Poll module to create a new poll that asks \"Should we adopt a four-day work week?\" with exactly two choices, \"Yes\" and \"No\". Make it published and active (open for voting). Create it as a real `poll` entity on the live site; don't just describe it. One-line summary.",
+      "reset": "agent-module-documentation/evaluation/verify/poll-fourday-week-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/poll-fourday-week-verify.sh",
+      "expected_output": "A `poll` content entity exists whose question is \"Should we adopt a four-day work week?\", is published and active, and references two poll_choice entities labelled Yes and No. Verified against live site state."
+    },
+    {
+      "id": "poll-create-favorite-language",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site (drush available), use the Poll module to create a new active, published poll asking \"What is your favorite programming language?\" with three choices: Python, Rust and Go. Save it as a real `poll` entity on the live site; don't just describe it. One-line summary.",
+      "reset": "agent-module-documentation/evaluation/verify/poll-favorite-language-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/poll-favorite-language-verify.sh",
+      "expected_output": "A `poll` content entity exists whose question is \"What is your favorite programming language?\", is published and active, and references three poll_choice entities: Python, Rust and Go. Verified against live site state."
+    }
+  ]
+}

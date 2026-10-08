@@ -1,0 +1,80 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "single_datetime_exposed",
+  "version": "2.0.x",
+  "note": "single_datetime_exposed is a submodule of single_datetime with no config, plugin, service or settings — just single_datetime_exposed_form_views_exposed_form_alter() (hook_form_BASE_FORM_ID_alter for views_exposed_form). It attaches the xdan datetimepicker (AttributeHelper::defaultWidget() + the single_datetime/datetimepicker library) to each exposed filter whose plugin_id is 'date' or 'search_api_date' AND whose value.type === 'date'; between/not between operators get the picker on both min and max (relabelled From/To). The medium/hard cases are grounded in real Views config: the exact keys the module tests (filters.<key>.exposed, .plugin_id, .value.type). IMPORTANT ENVIRONMENT NOTE: on this shared site an unrelated contrib module (search_api_taxonomy_machine_name) currently fatals Views filter-plugin discovery, so View::save() and exposed-form rendering are broken site-wide; therefore the setup/reset/verify scripts read and write the view config via the raw config factory (\\Drupal::configFactory()/\\Drupal::config()), which does not trigger handler discovery. The hard verifies assert the precise config conditions that cause the module to attach the picker; the intended agent action is to reach that config state (e.g. via drush config editing) rather than the Views UI, which is unavailable here.",
+  "evals": [
+    {
+      "id": "single_datetime_exposed-what-and-config",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "I enabled single_datetime_exposed on a Drupal site. What does it do to my Views, and what do I have to configure for it to take effect?",
+      "must_contain_any": ["automatically", "no configuration", "exposed", "views_exposed_form"],
+      "must_not_contain": [],
+      "expected_output": "It automatically attaches the xdan jQuery datetimepicker to date-type exposed filters on every View, with no per-view configuration — it is a single hook_form_alter on views_exposed_form. You just enable it; any exposed date filter then gets the picker."
+    },
+    {
+      "id": "single_datetime_exposed-target-conditions",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "Which exposed Views filters does single_datetime_exposed add the datetimepicker to? Be specific about the filter plugin ids and the value type it checks.",
+      "must_contain_any": ["date", "search_api_date", "value", "plugin_id"],
+      "must_not_contain": [],
+      "expected_output": "Only filters that are exposed AND whose plugin_id is 'date' or 'search_api_date' AND whose value.type is 'date' (absolute-date filters, not relative/offset ones). It skips Views live preview."
+    },
+    {
+      "id": "single_datetime_exposed-between-operator",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "How does single_datetime_exposed handle a Views exposed date filter that uses the 'between' (date range) operator?",
+      "must_contain_any": ["min", "max", "From", "To", "between"],
+      "must_not_contain": [],
+      "expected_output": "For between / not between it applies the picker attributes to both the min and max sub-inputs and relabels them '( From )' and '( To )'; if only min is submitted it auto-fills max with min + 1 day so the range still filters. For other operators it applies the picker to the single input. It then attaches the single_datetime/datetimepicker library."
+    },
+    {
+      "id": "single_datetime_exposed-known-filter",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "On this Drupal site there is a View with machine id sdt_exp_known. Inspect its configuration and identify the exposed filter that single_datetime_exposed will enhance with the datetimepicker: give the exposed filter's identifier and why it qualifies.",
+      "must_contain_any": ["sdt_created"],
+      "must_not_contain": [],
+      "expected_output": "The exposed 'created' filter, exposed identifier sdt_created, qualifies because it is exposed, its plugin_id is 'date' and its value.type is 'date'. Read views.view.sdt_exp_known display.default.display_options.filters.",
+      "setup": "agent-module-documentation/evaluation/verify/single_datetime_exposed-known-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/single_datetime_exposed-teardown.sh"
+    },
+    {
+      "id": "single_datetime_exposed-which-filter",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "The View sdt_exp_which on this site has two exposed filters. Inspect its configuration and state which exposed filter (by identifier) single_datetime_exposed will attach the datetimepicker to, and which it will ignore.",
+      "must_contain_any": ["sdt_when"],
+      "must_not_contain": [],
+      "expected_output": "It enhances the exposed date filter with identifier sdt_when (the 'created' filter, plugin_id 'date', value.type 'date') and ignores sdt_title (the 'title' string filter, plugin_id 'string'). Read views.view.sdt_exp_which filters.",
+      "setup": "agent-module-documentation/evaluation/verify/single_datetime_exposed-which-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/single_datetime_exposed-teardown.sh"
+    },
+    {
+      "id": "single_datetime_exposed-expose-filter",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this site the View sdt_exp_task has a date filter on the node 'created' field, but it is not exposed, so single_datetime_exposed does nothing. Make the change needed for single_datetime_exposed to attach the datetimepicker to it: expose that date filter (keep it an absolute-date filter). Apply the change to the live site. (Note: the Views UI is unavailable on this site because an unrelated module breaks Views filter discovery — edit the view configuration directly.)",
+      "reset": "agent-module-documentation/evaluation/verify/single_datetime_exposed-expose-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/single_datetime_exposed-expose-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/single_datetime_exposed-teardown.sh",
+      "expected_output": "In views.view.sdt_exp_task set display.default.display_options.filters.created.exposed to true (adding an expose section), keeping plugin_id 'date' and value.type 'date'. Do it via config (e.g. drush php:eval editing the config factory, or drush config:set), since the Views UI cannot render here."
+    },
+    {
+      "id": "single_datetime_exposed-make-absolute",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this site the View sdt_exp_abs has an EXPOSED date filter on 'created', but it uses a relative/offset value (value.type = offset), so single_datetime_exposed skips it. Change that exposed filter so single_datetime_exposed will attach the datetimepicker — it must be an absolute-date filter (value.type = date). Apply the change to the live site's view configuration.",
+      "reset": "agent-module-documentation/evaluation/verify/single_datetime_exposed-absolute-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/single_datetime_exposed-absolute-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/single_datetime_exposed-teardown.sh",
+      "expected_output": "In views.view.sdt_exp_abs set display.default.display_options.filters.created.value.type to 'date' (keeping exposed true and plugin_id 'date'). Edit the view config directly since the Views UI is unavailable on this site."
+    }
+  ]
+}

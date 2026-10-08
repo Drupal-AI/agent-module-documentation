@@ -1,0 +1,80 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "dxpr_theme_helper",
+  "version": "3.1.x",
+  "note": "DXPR Theme Helper is a companion module for DXPR Theme. Reliable, theme-independent surfaces on THIS site (where the DXPR theme is NOT installed): (1) two Block plugins - full_screen_search ('DXPR Theme Full Screen Search'; config keys search_provider [core|search_api], search_url, search_parameter; schema block.settings.full_screen_search) and dxpr_theme_helper_user_register (user registration form, anonymous-only). (2) The dxt:* Drush suite (dxt:config:get/set/list/export/import/reset, dxt:palette:get/set, dxt:page:get/set, dxt:subtheme:create, dxt:setup-ai) plus AI generators dxt:generate:palette / dxt:generate:fonts (services dxpr_theme_helper.ai_palette_generator/ai_font_generator needing optional drupal/ai). NOTE: dxt:config:* / dxt:palette:* require a DXPR theme installed to target (else 'No DXPR theme found'); dxt:config:list works from the bundled data/settings-schema.json without one. (3) Five optional node fields field_dth_* (page_layout fullwidth/boxed, main_content_width, hide_regions, body_background, page_title_backgrou) shipped as field.storage only, not attached to any bundle. Medium/hard cases place blocks (system config only; olivero theme) - deliberately NOT attaching/detaching the shipped field_dth_* storages, because removing the last instance of one deletes its shipped storage.",
+  "evals": [
+    {
+      "id": "dxpr_theme_helper-dxt-config",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "The dxpr_theme_helper module adds Drush commands for reading and writing DXPR Theme settings from the CLI. Which command changes a setting's value, and which command lists the available settings sections? Give the command names (dxt namespace).",
+      "must_contain_any": ["dxt:config:set", "dxt:config:list", "dxt-cs", "dxt-cl", "dxt:config"],
+      "must_not_contain": [],
+      "expected_output": "Use `drush dxt:config:set <key> <value>` (alias dxt-cs) to change a setting (it validates against the schema and rebuilds CSS), and `drush dxt:config:list` (alias dxt-cl) to list settings — e.g. `--sections-only` for section names or `--section=<name> --detail` to introspect valid values."
+    },
+    {
+      "id": "dxpr_theme_helper-search-block",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "dxpr_theme_helper provides a full-screen search block. What is the block plugin id, and which two search providers can it use (the search_provider setting)?",
+      "must_contain_any": ["full_screen_search", "search_provider", "search_api", "Core Search"],
+      "must_not_contain": [],
+      "expected_output": "The block plugin id is full_screen_search ('DXPR Theme Full Screen Search'). Its search_provider setting chooses between 'core' (Core Search) and 'search_api' (Search API Block, which requires the search_api_block module). It also has search_url and search_parameter settings."
+    },
+    {
+      "id": "dxpr_theme_helper-ai-palette",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "dxpr_theme_helper can generate a DXPR Theme color palette from a text prompt like 'Modern tech startup'. Which Drush command does this, and what other Drupal module must be installed and configured for it to work?",
+      "must_contain_any": ["dxt:generate:palette", "drupal/ai", "ai module", "AI module"],
+      "must_not_contain": [],
+      "expected_output": "Run `drush dxt:generate:palette \"<prompt>\"` (alias dxt-gp, optionally --apply). It uses the AiPaletteGenerator service, which calls the optional drupal/ai module's chat provider — so the AI (drupal/ai) module must be installed and configured with a chat provider/default model, otherwise it returns an error."
+    },
+    {
+      "id": "dxpr_theme_helper-fss-known",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "On this Drupal site a DXPR Theme Full Screen Search block with id 'dth_fss_known' is placed in the olivero theme. Inspect its live configuration and state the search results URL path (search_url) it is configured with.",
+      "must_contain_any": ["/dth-known-search", "dth-known-search"],
+      "must_not_contain": [],
+      "expected_output": "block.block.dth_fss_known (plugin full_screen_search) has settings.search_url = '/dth-known-search' (with search_provider search_api). Read with: drush cget block.block.dth_fss_known settings",
+      "setup": "agent-module-documentation/evaluation/verify/dxpr_theme_helper-fss-known-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/dxpr_theme_helper-fss-known-cleanup.sh"
+    },
+    {
+      "id": "dxpr_theme_helper-fss-provider",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "A DXPR full-screen search block 'dth_fss_prov' is placed on this site. Inspect its live configuration and state which search provider it uses and the query parameter name it passes.",
+      "must_contain_any": ["core", "keys"],
+      "must_not_contain": [],
+      "expected_output": "block.block.dth_fss_prov uses search_provider = 'core' (Core Search) with search_parameter = 'keys'. Read with: drush cget block.block.dth_fss_prov settings",
+      "setup": "agent-module-documentation/evaluation/verify/dxpr_theme_helper-fss-provider-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/dxpr_theme_helper-fss-provider-cleanup.sh"
+    },
+    {
+      "id": "dxpr_theme_helper-place-fss",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this site, using the dxpr_theme_helper module, place the DXPR Theme Full Screen Search block with id 'dth_fss_task' in the olivero theme's content region, configured to use the Search API provider. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/dxpr_theme_helper-place-fss-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/dxpr_theme_helper-place-fss-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/dxpr_theme_helper-place-fss-cleanup.sh",
+      "expected_output": "Create a Block entity id 'dth_fss_task', theme olivero, region content, plugin 'full_screen_search', with settings.search_provider = 'search_api', and save. verify passes when the block uses the full_screen_search plugin and search_provider is search_api."
+    },
+    {
+      "id": "dxpr_theme_helper-userreg-block",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this site, using the dxpr_theme_helper module, place its User registration form block with id 'dth_userreg_task' in the olivero theme's content region, and apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/dxpr_theme_helper-userreg-block-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/dxpr_theme_helper-userreg-block-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/dxpr_theme_helper-userreg-block-cleanup.sh",
+      "expected_output": "Create a Block entity id 'dth_userreg_task', theme olivero, region content, plugin 'dxpr_theme_helper_user_register', and save. verify passes when the block uses the dxpr_theme_helper_user_register plugin."
+    }
+  ]
+}

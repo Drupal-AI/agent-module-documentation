@@ -1,0 +1,103 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "activities",
+  "version": "1.0.x",
+  "note": "Activities logs entity create/update/delete/view operations into the user_activities entity. All config is in activities.settings (ships absent = nothing logged): per-entity-type maps like node:{create,update,delete,view,bundles}, a security section (view_throttle_window default 60, exclude_anonymous_views default true), and a purge section (purge_method never|time_based|count_based, time_value, time_unit, count_limit). Logging runs on entity hooks; purge runs on cron. Live-state cases write/read/verify activities.settings via the config API (safe; does not touch Views handler discovery). Baseline restore = delete activities.settings. Configure route activities.config_form; permissions can view users activity / administer users activity / purge activities.",
+  "evals": [
+    {
+      "id": "activities-what-logged",
+      "mode": "recipe",
+      "prompt": "On a Drupal site with the activities module, how do I control which entity types and operations (create/update/delete/view) get logged, and where is that stored?",
+      "must_contain_any": [
+        "activities.settings",
+        "/admin/config/activities",
+        "create",
+        "update",
+        "delete",
+        "view"
+      ],
+      "must_not_contain": [],
+      "expected_output": "On the Activities config form at /admin/config/activities (activities.config_form) you tick Create/Delete/Update/View (and optionally bundles) per content entity type. It is stored in the activities.settings config object under a key per entity type, e.g. node: {create: create, update: update, delete: 0, view: 0}. Nothing is logged until enabled.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "activities-purge-methods",
+      "mode": "recipe",
+      "prompt": "How does the activities module stop its activity log from growing forever, and what purge options does it offer?",
+      "must_contain_any": [
+        "purge",
+        "time_based",
+        "count_based",
+        "never",
+        "cron"
+      ],
+      "must_not_contain": [],
+      "expected_output": "It has a purge service that runs on cron (activities_cron). Configure it at /admin/config/activities/purge: purge_method can be never, time_based (delete entries older than N days/units), or count_based (keep at most count_limit entries). There is also a manual purge form.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "activities-view-permission",
+      "mode": "recipe",
+      "prompt": "In the activities module, which entity stores the logged activity, and what permission lets a user view the activity log?",
+      "must_contain_any": [
+        "user_activities",
+        "can view users activity"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Activity is stored in the user_activities content entity (base table user_activities). The 'can view users activity' permission gates viewing the log; 'administer users activity' gates the settings, and 'purge activities' the manual purge.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "activities-live-logged-ops",
+      "mode": "introspection",
+      "prompt": "On this Drupal site, the activities module is set to log some operations for node entities. Inspect the live configuration and state which node operations are currently being logged.",
+      "must_contain_any": [
+        "create",
+        "update"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Node create and update are logged (delete and view are off): activities.settings:node has create and update set to non-zero values. Check with `drush config:get activities.settings node`.",
+      "setup": "agent-module-documentation/evaluation/verify/activities-live-logged-ops-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/activities-live-logged-ops-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "activities-live-purge",
+      "mode": "introspection",
+      "prompt": "How is the activities module's automatic purge configured on this site right now? Inspect the live configuration and describe the purge policy.",
+      "must_contain_any": [
+        "time_based",
+        "30",
+        "time-based"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Automatic purge is time-based, deleting activity entries older than 30 days: activities.settings:purge has purge_method=time_based, time_value=30, time_unit=days.",
+      "setup": "agent-module-documentation/evaluation/verify/activities-live-purge-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/activities-live-purge-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "activities-log-node",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, configure the activities module so that it logs when node (content) entities are created and when they are deleted. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/activities-log-node-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/activities-log-node-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/activities-log-node-cleanup.sh",
+      "expected_output": "Enable Create and Delete for the node entity type on /admin/config/activities, i.e. set activities.settings:node so its create and delete values are non-zero (e.g. node: {create: create, update: 0, delete: delete, view: 0}). Verified when both node.create and node.delete are non-zero."
+    },
+    {
+      "id": "activities-purge-time",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, configure the activities module to automatically purge activity log entries that are older than 90 days. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/activities-purge-time-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/activities-purge-time-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/activities-purge-time-cleanup.sh",
+      "expected_output": "Set activities.settings:purge to purge_method=time_based, time_value=90, time_unit=days (via /admin/config/activities/purge or the config API). Verified when purge_method is time_based, time_value is 90, and time_unit is days."
+    }
+  ]
+}

@@ -1,0 +1,96 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "block_list_override",
+  "version": "1.0.x",
+  "note": "Block List Override filters block plugin definitions out of Drupal's block library via hook_block_alter (site-wide list) and hook_plugin_filter_block__layout_builder_alter (Layout Builder chooser). Config object block_list_override.settings holds system_match/system_prefix/system_regex (newline-separated strings) and system_negate (0=Remove matched, 1=Allow only matched), plus layout_* keys (layout_match/prefix/regex are saved by the form but NOT used by the alter hooks in 1.0.x; only layout_negate is distinct). Matching (BlockListOverride::blockIsAllowed): exact match, colon-prefix (id starts '<prefix>:'), or regex preg_match; blocks already placed in Layout Builder sections are never removed. Settings at /admin/config/block_list_override/settings (permission 'access block list override'). Medium cases read back a known system_match and system_prefix value; hard cases actually remove the core system_powered_by_block block (verified by it disappearing from the live block plugin definitions) via exact match and via regex.",
+  "evals": [
+    {
+      "id": "block_list_override-config-keys",
+      "mode": "recipe",
+      "prompt": "On a Drupal site with block_list_override enabled, which configuration object and keys control which blocks are removed from the block list, and at what admin path do I configure it?",
+      "must_contain_any": [
+        "block_list_override.settings",
+        "system_match",
+        "/admin/config/block_list_override/settings"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Config object block_list_override.settings with keys system_match, system_prefix, system_regex and system_negate (plus layout_* variants). Configure at /admin/config/block_list_override/settings (permission 'access block list override').",
+      "difficulty": "easy"
+    },
+    {
+      "id": "block_list_override-matching-methods",
+      "mode": "recipe",
+      "prompt": "Block List Override lets me target blocks three different ways. What are the three matching methods, and how does the prefix method decide a block matches?",
+      "must_contain_any": [
+        "prefix",
+        "regex",
+        "match"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Match (exact plugin id), Prefix (the plugin id starts with '<prefix>:', e.g. field_block:user matches field_block:user:user:uid), and Regex (preg_match against the plugin id, e.g. /field_block:node:(.*):nid/). Each list is one entry per line.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "block_list_override-allow-only",
+      "mode": "recipe",
+      "prompt": "Instead of removing a few blocks, I want Block List Override to keep ONLY a chosen set of blocks and drop everything else. Which setting controls that, and are blocks already placed in Layout Builder still protected?",
+      "must_contain_any": [
+        "negate",
+        "Allow only",
+        "system_negate"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Set the Action to 'Allow only' (system_negate = 1); then only listed blocks are kept and everything else is removed (negate = 0 is the default 'Remove' behaviour). Blocks already used in a Layout Builder section are always kept regardless, to avoid breaking existing layouts.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "block_list_override-known-match",
+      "mode": "introspection",
+      "prompt": "On this Drupal site, Block List Override is configured to remove a specific block by exact match. Inspect the live configuration and give the block plugin id that is being removed.",
+      "must_contain_any": [
+        "system_powered_by_block"
+      ],
+      "must_not_contain": [],
+      "expected_output": "block_list_override.settings:system_match is 'system_powered_by_block' with system_negate = 0 (Remove), so the Powered by Drupal block is removed.",
+      "setup": "agent-module-documentation/evaluation/verify/block_list_override-known-match-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/block_list_override-known-match-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "block_list_override-known-prefix",
+      "mode": "introspection",
+      "prompt": "On this Drupal site, Block List Override is configured to remove a whole family of blocks by prefix. Inspect the live configuration and state which prefix is configured.",
+      "must_contain_any": [
+        "views_block"
+      ],
+      "must_not_contain": [],
+      "expected_output": "block_list_override.settings:system_prefix is 'views_block' with system_negate = 0, so all blocks whose id starts with 'views_block:' are removed.",
+      "setup": "agent-module-documentation/evaluation/verify/block_list_override-known-prefix-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/block_list_override-known-prefix-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "block_list_override-remove-match",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, remove the core 'Powered by Drupal' block (plugin id system_powered_by_block) from the block list using the block_list_override module (exact match), and apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/block_list_override-remove-match-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/block_list_override-remove-match-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/block_list_override-remove-match-cleanup.sh",
+      "expected_output": "Set block_list_override.settings:system_match to 'system_powered_by_block' with system_negate = 0 (Remove) and rebuild caches. The verify checks that system_powered_by_block is no longer in the block plugin definitions and that it is listed in system_match."
+    },
+    {
+      "id": "block_list_override-remove-regex",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, use the block_list_override module's regex option to remove the 'Powered by Drupal' block (plugin id system_powered_by_block) from the block list, and apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/block_list_override-remove-regex-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/block_list_override-remove-regex-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/block_list_override-remove-regex-cleanup.sh",
+      "expected_output": "Set block_list_override.settings:system_regex to a pattern matching the id (e.g. /^system_powered_by_block$/ or /powered_by/) with system_negate = 0, and rebuild caches. The verify checks system_powered_by_block is gone from the block plugin definitions and that a non-empty system_regex is configured."
+    }
+  ]
+}

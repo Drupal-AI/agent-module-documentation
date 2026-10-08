@@ -1,0 +1,88 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "webform_rest",
+  "version": "4.2.x",
+  "note": "Webform REST exposes Webform over Drupal core REST via five @RestResource plugins (webform_rest_elements, webform_rest_fields, webform_rest_submit, webform_rest_submission, webform_rest_complete_submission). None are active on install: each is turned on by creating a rest_resource_config entity (rest.resource.<id>) declaring methods + formats + authentication. Easy cases are response-graded (no site changes). Medium cases stage a known rest_resource_config on the live site and ask the agent to read its methods/formats/auth back (cleanup deletes it). Hard cases have the agent actually enable a resource (create the rest_resource_config with the right methods + a format + an auth provider) verified against live config (exit 0 = pass). Auth uses 'cookie' because basic_auth is not enabled in this environment; verify accepts any single format/auth so long as the required HTTP method(s) are present.",
+  "evals": [
+    {
+      "id": "webform_rest-plugin-ids",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "On a Drupal 11 site with the Webform REST (webform_rest) module, what REST resource plugins does it provide and what endpoint / HTTP method does each expose?",
+      "must_contain_any": ["webform_rest_submit", "webform_rest_elements", "/webform_rest/submit"],
+      "must_not_contain": [],
+      "expected_output": "Five @RestResource plugins: webform_rest_elements (GET /webform_rest/{webform_id}/elements), webform_rest_fields (GET /webform_rest/{webform_id}/fields), webform_rest_submit (POST /webform_rest/submit), webform_rest_submission (GET+PATCH /webform_rest/{webform_id}/submission/{uuid}), and webform_rest_complete_submission (GET /webform_rest/{webform_id}/complete_submission/{uuid})."
+    },
+    {
+      "id": "webform_rest-how-to-enable",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "The Webform REST module is installed but its endpoints return 404. Webform REST provides no UI of its own to turn resources on. How do you enable one of its REST resources (e.g. webform_rest_submit)?",
+      "must_contain_any": ["rest_resource_config", "rest.resource", "restui", "REST UI"],
+      "must_not_contain": [],
+      "expected_output": "Like any core REST resource, enable it by creating a rest_resource_config config entity (rest.resource.webform_rest_submit) that declares methods, formats, and authentication — via the REST UI (restui) module at /admin/config/services/rest, by importing config YAML, or programmatically with RestResourceConfig::create([...])->save(). Run drush cr afterwards so the routes rebuild."
+    },
+    {
+      "id": "webform_rest-submit-payload",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "Using Webform REST, how do you submit a webform over the API — which endpoint and method, what must the JSON body contain, and what comes back on success?",
+      "must_contain_any": ["POST", "webform_id", "/webform_rest/submit"],
+      "must_not_contain": [],
+      "expected_output": "POST /webform_rest/submit with a JSON body containing the required webform_id plus the field values (arrays for multi-value fields). It runs the same validation/handlers as a UI submission and returns { \"sid\": \"<submission-uuid>\" } on success (400 with an error object on validation failure or a missing/invalid webform_id)."
+    },
+    {
+      "id": "webform_rest-inspect-elements",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "This Drupal 11 site has the webform_rest_elements REST resource enabled. Inspect the live REST configuration and report exactly which HTTP methods, serialization formats, and authentication providers it is configured with.",
+      "setup": "agent-module-documentation/evaluation/verify/webform_rest-inspect-elements-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/webform_rest-inspect-elements-cleanup.sh",
+      "must_contain_any": ["GET"],
+      "must_not_contain": [],
+      "expected_output": "The rest.resource.webform_rest_elements config entity is enabled with methods: GET; formats: json and xml; authentication: cookie."
+    },
+    {
+      "id": "webform_rest-inspect-submit",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "On this live Drupal 11 site the Webform REST submit resource is enabled. Which endpoint/HTTP method does it expose, and which formats and authentication providers is its rest_resource_config configured with?",
+      "setup": "agent-module-documentation/evaluation/verify/webform_rest-inspect-submit-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/webform_rest-inspect-submit-cleanup.sh",
+      "must_contain_any": ["POST"],
+      "must_not_contain": [],
+      "expected_output": "rest.resource.webform_rest_submit is enabled: plugin webform_rest_submit → POST /webform_rest/submit; formats: json; authentication: cookie."
+    },
+    {
+      "id": "webform_rest-enable-elements",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal 11 site, enable the Webform REST 'elements' resource so a decoupled front end can GET a webform's elements. Create the rest_resource_config for plugin webform_rest_elements with the GET method, the json format, and cookie authentication. Rebuild caches when done.",
+      "reset": "agent-module-documentation/evaluation/verify/webform_rest-enable-elements-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/webform_rest-enable-elements-verify.sh",
+      "expected_output": "A rest.resource.webform_rest_elements config entity exists, enabled, plugin_id webform_rest_elements, methods include GET, with at least one format and one authentication provider (e.g. json + cookie)."
+    },
+    {
+      "id": "webform_rest-enable-submit",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "Turn on the Webform REST submit endpoint on this site so an external app can POST submissions to /webform_rest/submit. Create the rest_resource_config for the webform_rest_submit plugin with the POST method, a JSON format, and an authentication provider (cookie is fine). Clear caches so the route registers.",
+      "reset": "agent-module-documentation/evaluation/verify/webform_rest-enable-submit-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/webform_rest-enable-submit-verify.sh",
+      "expected_output": "A rest.resource.webform_rest_submit config entity exists, enabled, plugin_id webform_rest_submit, methods include POST, with at least one format and one authentication provider (e.g. json + cookie)."
+    },
+    {
+      "id": "webform_rest-enable-submission",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "Enable the Webform REST 'submission' resource on this site so an integration can both read (GET) and update (PATCH) an existing webform submission by UUID. Create the rest_resource_config for the webform_rest_submission plugin with both GET and PATCH methods, a json format, and cookie authentication, then rebuild caches.",
+      "reset": "agent-module-documentation/evaluation/verify/webform_rest-enable-submission-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/webform_rest-enable-submission-verify.sh",
+      "expected_output": "A rest.resource.webform_rest_submission config entity exists, enabled, plugin_id webform_rest_submission, methods include both GET and PATCH, with at least one format and one authentication provider (e.g. json + cookie)."
+    }
+  ]
+}

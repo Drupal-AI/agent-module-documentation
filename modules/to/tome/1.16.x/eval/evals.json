@@ -1,0 +1,80 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "tome",
+  "version": "1.16.x",
+  "note": "Tome is an umbrella static-site-generator module: it depends on tome_sync (content/config/files <-> JSON on disk) and tome_static (site -> static HTML), both on tome_base. It has NO config object and NO configure route of its own; output locations are settings.php keys (tome_content_directory=../content, tome_files_directory=../files, tome_static_directory=../html, tome_sync_encoder). The real interface is Drush: tome:export/tome:import (all content+config+files), tome:export-content <type:id> (single entities, writes content/<type>.<uuid>.json), tome:static --uri=... (render every path to static HTML), tome:preview, tome:clean-files. tome_static records state keys tome_static.url (last build URL) and tome_static.building. Medium cases read live state (tome_static.url) and enabled sub-modules. Hard cases are grounded in tome:export-content, which serialises a single existing entity to JSON without rendering a page (full HTML rendering is intentionally avoided; on this shared host page rendering is broken by an unrelated contrib module). Existing entities node:1 (uuid 5528817f-2211-4569-91a2-af6f5da9da25) and user:1 (uuid ae7c2aca-557b-4d70-9483-3bb19e74bb92) are used so no fixture content is created.",
+  "evals": [
+    {
+      "id": "tome-export-command",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "On a Drupal site using the Tome module, which single Drush command performs the initial export of ALL config, content, and files to disk so they can be committed to Git?",
+      "must_contain_any": ["tome:export"],
+      "must_not_contain": [],
+      "expected_output": "drush tome:export exports all config, content, and files (provided by the tome_sync sub-module). After the initial export, ongoing content edits are exported automatically."
+    },
+    {
+      "id": "tome-static-command",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "Using Tome, how do you generate the static HTML copy of a Drupal site for production, and why should you pass the --uri option?",
+      "must_contain_any": ["tome:static"],
+      "must_not_contain": [],
+      "expected_output": "Run drush tome:static (from tome_static). Pass --uri=https://your-site.com so absolute URLs in the generated HTML are correct; without it Tome warns that URLs may be invalid. Output goes to the tome_static_directory (default ../html)."
+    },
+    {
+      "id": "tome-settings-directories",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "Tome has no admin settings page for choosing where it writes content, files, and static HTML. Where are those output directories configured, and name the setting keys.",
+      "must_contain_any": ["settings.php", "tome_content_directory", "tome_static_directory", "tome_files_directory"],
+      "must_not_contain": [],
+      "expected_output": "They are $settings in settings.php read via Settings::get(): tome_content_directory (default ../content), tome_files_directory (../files), tome_static_directory (../html), plus tome_book_outline_directory and tome_sync_encoder. There is no tome.settings config object."
+    },
+    {
+      "id": "tome-enabled-submodules",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "Inspect this running Drupal site. Besides the main 'tome' module, which Tome sub-module provides the shared services and traits that Tome Sync and Tome Static both build on? Confirm it is enabled.",
+      "must_contain_any": ["tome_base"],
+      "must_not_contain": [],
+      "setup": "agent-module-documentation/evaluation/verify/tome-submodules-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/tome-submodules-cleanup.sh",
+      "expected_output": "tome_base (Tome Base) is enabled; it contains the shared CommandBase, ProcessTrait, PathTrait, etc. used by both tome_sync and tome_static. Verifiable with 'drush pm:list --status=enabled'."
+    },
+    {
+      "id": "tome-last-build-url",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "This site has run a Tome static build before. Inspect the live site state and report the base URL that was used for the most recent static build.",
+      "must_contain_any": ["tome-build.example.net"],
+      "must_not_contain": [],
+      "setup": "agent-module-documentation/evaluation/verify/tome-build-url-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/tome-build-url-cleanup.sh",
+      "expected_output": "https://tome-build.example.net — Tome Static stores the last build URL in the 'tome_static.url' state key (read with 'drush sget tome_static.url')."
+    },
+    {
+      "id": "tome-export-node",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site with Tome installed, export the content entity 'node 1' to Tome's on-disk JSON content store using the appropriate Drush command. Apply it to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/tome-export-node-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/tome-export-node-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/tome-export-node-cleanup.sh",
+      "expected_output": "Run 'drush tome:export-content node:1'. Tome Sync writes content/node.<uuid>.json (uuid 5528817f-2211-4569-91a2-af6f5da9da25) in the tome_content_directory as valid JSON."
+    },
+    {
+      "id": "tome-export-user",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "Using Tome on this site, export user account 1 to Tome's on-disk JSON content store with the correct Drush command, and apply it to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/tome-export-user-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/tome-export-user-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/tome-export-user-cleanup.sh",
+      "expected_output": "Run 'drush tome:export-content user:1'. Tome Sync writes content/user.<uuid>.json (uuid ae7c2aca-557b-4d70-9483-3bb19e74bb92) as valid JSON; the tome:export-content argument is a comma-separated list of entity_type:id pairs."
+    }
+  ]
+}

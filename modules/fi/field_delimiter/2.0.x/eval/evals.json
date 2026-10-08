@@ -1,0 +1,102 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "field_delimiter",
+  "version": "2.0.x",
+  "note": "Field Delimiter adds a 'Field Delimiter' textfield to a field formatter on MULTI-VALUE fields (via hook_field_formatter_third_party_settings_form). No configure route (configure=null), no permissions, no Drush, no plugins. Its only persistent state is a third-party setting field_delimiter.delimiter stored on a formatter component in an entity_view_display config entity: core.entity_view_display.<entity>.<bundle>.<view_mode> -> content.<field>.third_party_settings.field_delimiter.delimiter (schema field.formatter.third_party.field_delimiter). hook_preprocess_field appends the XSS-filtered delimiter (allowing only br/hr/span/img/wbr) as a #suffix on each item except the last, when 2+ items. Medium cases read back which field has a delimiter and its value; hard cases set a text delimiter (' / ') and an HTML delimiter ('<br>') on a namespaced multi-value field, verified against the live entity_view_display.",
+  "evals": [
+    {
+      "id": "field_delimiter-how-set",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "I enabled field_delimiter but see no settings page. How do I actually put a comma between the values of a multi-value field on a Drupal 11 site, and where is that choice stored?",
+      "must_contain_any": [
+        "Manage display",
+        "manage-display",
+        "formatter",
+        "third_party_settings",
+        "field_delimiter",
+        "entity_view_display"
+      ],
+      "must_not_contain": [],
+      "expected_output": "There is no configure route. On the entity's Manage display, open the multi-value field's formatter cog and fill in the 'Field Delimiter' textfield, Update, Save. It is stored as a third-party setting on that field's formatter component: core.entity_view_display.<entity>.<bundle>.<view_mode> -> content.<field>.third_party_settings.field_delimiter.delimiter."
+    },
+    {
+      "id": "field_delimiter-which-fields",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "On which fields does the field_delimiter 'Field Delimiter' setting appear? Does it work on a single-value field?",
+      "must_contain_any": [
+        "multi-value",
+        "multiple",
+        "multivalue",
+        "cardinality",
+        "isMultiple"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The setting only appears for multi-value fields (fields whose storage isMultiple(), i.e. cardinality > 1 or unlimited). It has no effect on a single-value field, and hook_preprocess_field also bails when there are fewer than 2 items."
+    },
+    {
+      "id": "field_delimiter-render-mechanism",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "How does field_delimiter actually insert the delimiter between rendered field values, and what HTML is allowed in the delimiter?",
+      "must_contain_any": [
+        "preprocess_field",
+        "suffix",
+        "between",
+        "Xss::filter"
+      ],
+      "must_not_contain": [],
+      "expected_output": "hook_preprocess_field() sets $item['content']['#suffix'] to the delimiter on every rendered item except the last (when there are 2+ items). The delimiter is passed through Xss::filter allowing only the tags br, hr, span, img, wbr."
+    },
+    {
+      "id": "field_delimiter-known-value",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "On this site, the Article content type has a multi-value field whose default-view-mode formatter uses field_delimiter to separate values. Inspect the live view display and tell me the exact delimiter string configured.",
+      "must_contain_any": [
+        "~fd~"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The delimiter is ' ~fd~ ' (with surrounding spaces), stored at core.entity_view_display.node.article.default -> content.field_fdlm_tags.third_party_settings.field_delimiter.delimiter.",
+      "setup": "agent-module-documentation/evaluation/verify/field_delimiter-known-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/field_delimiter-known-cleanup.sh"
+    },
+    {
+      "id": "field_delimiter-known-field",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "The Article content type on this site has a multi-value field configured with a field_delimiter delimiter on its default view-mode formatter. Inspect the live view-display configuration and give the machine name of that field.",
+      "must_contain_any": [
+        "field_fdlm_tags"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The field is field_fdlm_tags: in core.entity_view_display.node.article.default its formatter component has third_party_settings.field_delimiter.delimiter set.",
+      "setup": "agent-module-documentation/evaluation/verify/field_delimiter-known-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/field_delimiter-known-cleanup.sh"
+    },
+    {
+      "id": "field_delimiter-set-text",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this site the Article content type has a multi-value field field_fdlm_task shown with the 'string' formatter in the default view mode. Using field_delimiter, configure that formatter so the field's values are separated by ' / ' (space slash space). Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/field_delimiter-set-text-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/field_delimiter-set-text-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/field_delimiter-set-text-cleanup.sh",
+      "expected_output": "In core.entity_view_display.node.article.default the field_fdlm_task component carries third_party_settings.field_delimiter.delimiter = ' / '. Set it on the view display component and save, or type it in the formatter's Field Delimiter box on Manage display."
+    },
+    {
+      "id": "field_delimiter-set-html",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "The Article content type on this site has a multi-value field field_fdlm_list using the 'string' formatter in the default view mode. Using field_delimiter, make each value render on its own line by setting the delimiter to a literal <br> tag. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/field_delimiter-set-html-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/field_delimiter-set-html-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/field_delimiter-set-html-cleanup.sh",
+      "expected_output": "In core.entity_view_display.node.article.default the field_fdlm_list component carries third_party_settings.field_delimiter.delimiter = '<br>' (br is one of the allowed tags, so it renders each value on a new line)."
+    }
+  ]
+}

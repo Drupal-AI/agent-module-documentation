@@ -1,0 +1,97 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "webform_migrate",
+  "version": "2.0.x",
+  "note": "Webform Migrate provides Migrate API source plugins (d6_webform, d7_webform, d6_webform_submission, d7_webform_submission; all DrupalSqlBase, source_module=webform) and matching migration definitions in migrations/. Webform migrations use destination entity:webform; submissions use entity:webform_submission and depend on the webform migration. Two alter hooks (hook_webform_migrate_d7_webform_element_ELEMENT_TYPE_alter and the d6 variant, called from buildFormElements()) customize generated Webform elements YAML. No admin UI/configure route/permissions/config schema. NOTE for graders: this site's migrate source-plugin manager and `drush migrate:status` currently fatal because an unrelated contrib module (disqus) ships a PHP-incompatible migrate source plugin; therefore medium/hard cases are grounded in migrate_plus.migration CONFIG ENTITIES that reference webform_migrate's source plugins by id (config load/save does not instantiate the source plugin, so it is unaffected). migrate_plus + migrate_tools are enabled.",
+  "evals": [
+    {
+      "id": "wm-migration-ids",
+      "mode": "recipe",
+      "prompt": "I'm upgrading a Drupal 7 site's webforms with the webform_migrate module. What are the migration/source plugin ids for the D7 webforms and their submissions, and what Migrate destination plugin does each use?",
+      "must_contain_any": [
+        "d7_webform",
+        "d7_webform_submission",
+        "entity:webform"
+      ],
+      "must_not_contain": [],
+      "expected_output": "d7_webform migrates the forms to destination entity:webform; d7_webform_submission migrates responses to destination entity:webform_submission (and depends on d7_webform). D6 equivalents are d6_webform and d6_webform_submission.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "wm-source-base",
+      "mode": "recipe",
+      "prompt": "In webform_migrate, what base class do the migrate source plugins extend, and which database do they read from when a migration runs?",
+      "must_contain_any": [
+        "DrupalSqlBase",
+        "source database",
+        "migrate",
+        "legacy"
+      ],
+      "must_not_contain": [],
+      "expected_output": "They extend Drupal\\migrate_drupal\\Plugin\\migrate\\source\\DrupalSqlBase, which reads the Migrate source database connection (the legacy D6/D7 site DB, typically the 'migrate' connection) — not the current Drupal site database.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "wm-element-hook",
+      "mode": "recipe",
+      "prompt": "A Drupal 7 webform uses a custom component type that webform_migrate doesn't map correctly. Which hook do I implement to customize the generated Webform elements YAML for that element type during migration?",
+      "must_contain_any": [
+        "hook_webform_migrate_d7_webform_element",
+        "ELEMENT_TYPE",
+        "buildFormElements"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Implement hook_webform_migrate_d7_webform_element_ELEMENT_TYPE_alter(&$markup, $indent, $element) (or the d6 variant), invoked from D7Webform::buildFormElements(); append to or rewrite $markup to set the correct '#type' / options for that element type.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "wm-known-submission-migration",
+      "mode": "introspection",
+      "prompt": "This Drupal site has a migration configuration (a migrate_plus migration config entity) with id wm_known_migration that uses one of webform_migrate's source plugins. Inspect the live configuration and report the exact source plugin id it uses.",
+      "must_contain_any": [
+        "d7_webform_submission"
+      ],
+      "must_not_contain": [],
+      "expected_output": "wm_known_migration's source.plugin is d7_webform_submission (config migrate_plus.migration.wm_known_migration), destination entity:webform_submission.",
+      "setup": "agent-module-documentation/evaluation/verify/webform_migrate-known-submission-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/webform_migrate-known-submission-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "wm-known-form-migration",
+      "mode": "introspection",
+      "prompt": "On this site there is a migrate_plus migration config entity wm_known_form that migrates D7 webforms with webform_migrate. Inspect the live config and state its source plugin id and its Migrate destination plugin.",
+      "must_contain_any": [
+        "entity:webform"
+      ],
+      "must_not_contain": [],
+      "expected_output": "wm_known_form uses source.plugin d7_webform and destination.plugin entity:webform (config migrate_plus.migration.wm_known_form).",
+      "setup": "agent-module-documentation/evaluation/verify/webform_migrate-known-form-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/webform_migrate-known-form-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "wm-create-form-migration",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "Using webform_migrate on this Drupal site, create a migration (a migrate_plus.migration config entity) with id webform_migrate_task that migrates Drupal 7 webforms: use webform_migrate's D7 webform source plugin and the Webform config-entity Migrate destination. Save it to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/webform_migrate-create-form-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/webform_migrate-create-form-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/webform_migrate-create-form-cleanup.sh",
+      "expected_output": "A migrate_plus.migration.webform_migrate_task config entity exists with source.plugin = d7_webform and destination.plugin = entity:webform."
+    },
+    {
+      "id": "wm-create-submission-migration",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "Using webform_migrate, create a migration config entity (migrate_plus.migration) with id webform_migrate_sub_task that migrates Drupal 7 webform SUBMISSIONS: use webform_migrate's D7 webform submission source plugin and the webform submission Migrate destination. Apply it to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/webform_migrate-create-submission-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/webform_migrate-create-submission-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/webform_migrate-create-submission-cleanup.sh",
+      "expected_output": "A migrate_plus.migration.webform_migrate_sub_task config entity exists with source.plugin = d7_webform_submission and destination.plugin = entity:webform_submission."
+    }
+  ]
+}

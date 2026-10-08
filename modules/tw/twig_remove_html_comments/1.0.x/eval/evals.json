@@ -1,0 +1,103 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "twig_remove_html_comments",
+  "version": "1.0.x",
+  "note": "twig_remove_html_comments is a stateless, config-free module: one Twig extension service (twig_remove_html_comments.remove_html_comments, tagged twig.extension) exposing two filters - remove_html_comments (returns render array ['#markup'=>...]) and remove_html_comments_as_string (returns string). Both apply preg_replace('/<!--(.|\\s)*?-->\\s*|\\r|\\n/','',$s), so they strip HTML comments (incl. multi-line) AND every \\r/\\n newline. Because it has no DB/config state, medium introspection is grounded in what is discoverable on the LIVE site (the registered service id + filter names) and in running the actual filter over a known sample string placed in Drupal State; hard execution has the agent run the module's filter over an input string in State and write the cleaned result to an output State key, verified live (comment removed, kept text present, newlines stripped). State keys are namespaced with the module name.",
+  "evals": [
+    {
+      "id": "twig_remove_html_comments-filter-names",
+      "mode": "recipe",
+      "prompt": "Which Twig filters does the twig_remove_html_comments module add, and how do I use one to print a node body field with its HTML comments removed?",
+      "must_contain_any": [
+        "remove_html_comments",
+        "remove_html_comments_as_string"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Two filters: remove_html_comments (returns a render array ['#markup'=>...]) and remove_html_comments_as_string (returns a string). Usage: {{ content.body|render|remove_html_comments }} — pipe through |render first so the filter receives a string.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "twig_remove_html_comments-string-vs-array",
+      "mode": "recipe",
+      "prompt": "In twig_remove_html_comments, what is the difference between the remove_html_comments and remove_html_comments_as_string filters — what does each return?",
+      "must_contain_any": [
+        "remove_html_comments_as_string",
+        "#markup",
+        "string",
+        "render array"
+      ],
+      "must_not_contain": [],
+      "expected_output": "remove_html_comments returns a render array ['#markup' => <cleaned>] (convenient to print directly); remove_html_comments_as_string returns the cleaned value as a plain PHP string (handy to reuse in another expression). NULL input yields '' (or ['#markup' => '']).",
+      "difficulty": "easy"
+    },
+    {
+      "id": "twig_remove_html_comments-side-effect",
+      "mode": "recipe",
+      "prompt": "Besides HTML comments, does the twig_remove_html_comments filter strip anything else from the string? Explain based on the regular expression it uses.",
+      "must_contain_any": [
+        "newline",
+        "new line",
+        "line break",
+        "\\r",
+        "\\n",
+        "carriage"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Yes. The filter runs preg_replace('/<!--(.|\\s)*?-->\\s*|\\r|\\n/', '', $string), which removes HTML comments (including multi-line) plus whitespace right after a comment, and ALSO removes every carriage-return (\\r) and newline (\\n) in the string, collapsing the output onto one line.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "twig_remove_html_comments-discover-service",
+      "mode": "introspection",
+      "prompt": "On this running Drupal site, inspect the service that twig_remove_html_comments registers as a Twig extension. What is its service id and which Twig filter names does it expose?",
+      "must_contain_any": [
+        "twig_remove_html_comments.remove_html_comments",
+        "remove_html_comments_as_string"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Service id twig_remove_html_comments.remove_html_comments (class RemoveHtmlComments, tagged twig.extension). Calling getFilters() on it returns the filters remove_html_comments and remove_html_comments_as_string. Discoverable via `drush php:eval` on \\Drupal::service('twig_remove_html_comments.remove_html_comments').",
+      "setup": "agent-module-documentation/evaluation/verify/twig_remove_html_comments-service-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/twig_remove_html_comments-service-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "twig_remove_html_comments-apply-to-sample",
+      "mode": "introspection",
+      "prompt": "A sample HTML string has been stored on this site in the Drupal state key 'twig_remove_html_comments_sample'. Using the twig_remove_html_comments module on the live site, what does that string look like after its HTML comments are removed?",
+      "must_contain_any": [
+        "<h2>Report</h2><p>Total sales: 42</p>",
+        "Total sales: 42"
+      ],
+      "must_not_contain": [
+        "internal: draft"
+      ],
+      "expected_output": "Load the state key and pass it through the module's filter (e.g. \\Drupal::service('twig_remove_html_comments.remove_html_comments')->removeHtmlCommentsFromString(...)). Result: '<h2>Report</h2><p>Total sales: 42</p>' — the '<!-- internal: draft -->' comment and the newline are removed.",
+      "setup": "agent-module-documentation/evaluation/verify/twig_remove_html_comments-sample-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/twig_remove_html_comments-sample-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "twig_remove_html_comments-clean-string",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this site the Drupal state key 'twig_remove_html_comments_input' contains an HTML string with an HTML comment in it. Using the twig_remove_html_comments module, produce the version of that string with its HTML comment removed and save the result into the Drupal state key 'twig_remove_html_comments_output'. Apply it to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/twig_remove_html_comments-clean-string-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/twig_remove_html_comments-clean-string-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/twig_remove_html_comments-clean-string-cleanup.sh",
+      "expected_output": "Read state twig_remove_html_comments_input, run it through the module's filter (e.g. the remove_html_comments_as_string service method, or render '{{ input|remove_html_comments_as_string }}' via the twig service), and \\Drupal::state()->set('twig_remove_html_comments_output', <cleaned>). The output must keep 'Keep this' and contain no HTML comment (no <!--/--> and not the 'SECRET' body)."
+    },
+    {
+      "id": "twig_remove_html_comments-strip-newlines",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "The Drupal state key 'twig_remove_html_comments_nl_input' holds a multi-line HTML string that contains both newlines and an HTML comment. Use the twig_remove_html_comments module to process it and store the module's output in the Drupal state key 'twig_remove_html_comments_nl_output'. Apply it to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/twig_remove_html_comments-strip-newlines-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/twig_remove_html_comments-strip-newlines-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/twig_remove_html_comments-strip-newlines-cleanup.sh",
+      "expected_output": "Run twig_remove_html_comments_nl_input through the module's filter and save to twig_remove_html_comments_nl_output. Because the filter's regex also matches \\r and \\n, the result keeps 'Line one' and 'Line two' but contains no comment markers and no newline characters at all (single line)."
+    }
+  ]
+}

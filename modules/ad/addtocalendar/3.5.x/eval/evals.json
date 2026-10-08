@@ -1,0 +1,99 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "addtocalendar",
+  "version": "3.5.x",
+  "note": "Add To Calendar has no configure route (configure=null), no permissions, no Drush, no plugin manager. It works two ways: (1) a third-party formatter setting 'addtocalendar' on core datetime/daterange formatters, stored on the entity_view_display at content.<field>.third_party_settings.addtocalendar (addtocalendar_show + addtocalendar_settings); (2) a dedicated field type add_to_calendar_field (widget add_to_calendar_widget_type, formatter add_to_calendar). The button is rendered by the external addtocalendar.com JS library (//addtocalendar.com/atc/1.5/atc.min.js) attached via the addtocalendar/base library. Medium cases read back real config on node.article; hard cases build the third-party setting on a datetime field and add a field of the module's own type, verified against live config.",
+  "evals": [
+    {
+      "id": "addtocalendar-how-to-add-button",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "On a Drupal 11 site with the addtocalendar module enabled, I already have a Date/time field on my Event content type. How do I make an 'Add to Calendar' button appear next to that date on the node display, and where is that choice stored? There is no admin settings page.",
+      "must_contain_any": [
+        "Manage display",
+        "third_party_settings",
+        "third-party",
+        "third party",
+        "addtocalendar_show",
+        "formatter"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The module adds a 'Show Add to Calendar' section to the core datetime/daterange field formatters via hook_field_formatter_third_party_settings_form(). On Manage display, open the date field's formatter cog, tick 'Show Add to Calendar', configure it and Save. It is stored on the entity view display: core.entity_view_display.<entity>.<bundle>.<mode> -> content.<field>.third_party_settings.addtocalendar.addtocalendar_show: 1."
+    },
+    {
+      "id": "addtocalendar-field-type",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "Besides adding a button to an existing date field, the addtocalendar module also provides its own field type so you can place an Add-to-Calendar button on any entity and use it in Views. What is the machine name (id) of that field type, and what widget and formatter does it use?",
+      "must_contain_any": [
+        "add_to_calendar_field",
+        "add_to_calendar_widget_type",
+        "add_to_calendar"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The field type id is add_to_calendar_field (a boolean-based field). Its default widget is add_to_calendar_widget_type (a checkbox 'Show add to calendar widget') and its default formatter is add_to_calendar. This lets you add a standalone button to entities without a date field and expose it as a Views field."
+    },
+    {
+      "id": "addtocalendar-external-service",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "How does the addtocalendar module actually turn the event data into the interactive 'Add to Calendar' button in the browser? What external service/library does it rely on, and which calendar providers can the button target?",
+      "must_contain_any": [
+        "addtocalendar.com",
+        "atc.min.js"
+      ],
+      "must_not_contain": [],
+      "expected_output": "It emits the event data as hidden <var> markup (start/end date, timezone, privacy, title, description, location, organizer) and loads the addtocalendar.com JS library (//addtocalendar.com/atc/1.5/atc.min.js, via the addtocalendar/base library) which builds the button. Supported providers: iCalendar, Google Calendar, Outlook, Outlook Online, and Yahoo Calendar."
+    },
+    {
+      "id": "addtocalendar-known-field",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "On this Drupal site, the Article content type has a Date/time field whose display has the addtocalendar 'Add to Calendar' button enabled. Inspect the live default view display for Article and give the machine name of that field.",
+      "must_contain_any": [
+        "field_atc_known"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The field is field_atc_known: in core.entity_view_display.node.article.default its component (formatter datetime_default) has third_party_settings.addtocalendar.addtocalendar_show: 1 (button text 'Save this date').",
+      "setup": "agent-module-documentation/evaluation/verify/addtocalendar-known-field-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/addtocalendar-known-field-cleanup.sh"
+    },
+    {
+      "id": "addtocalendar-fieldtype-instance",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "On this Drupal site, one field on the Article content type uses the addtocalendar module's own dedicated field type (not a core date field). Inspect the live field configuration and give the machine name of that field and the field type's machine id.",
+      "must_contain_any": [
+        "field_atc_evt",
+        "add_to_calendar_field"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The field is field_atc_evt and its field type is add_to_calendar_field (visible in field.storage.node.field_atc_evt / drush field:info).",
+      "setup": "agent-module-documentation/evaluation/verify/addtocalendar-fieldtype-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/addtocalendar-fieldtype-cleanup.sh"
+    },
+    {
+      "id": "addtocalendar-enable-button",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site the Article content type has a Date/time field field_atc_task shown with the 'Date and time' (datetime_default) formatter on the default view display. Using the addtocalendar module, configure that display so an 'Add to Calendar' button is shown next to this field. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/addtocalendar-enable-button-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/addtocalendar-enable-button-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/addtocalendar-enable-button-cleanup.sh",
+      "expected_output": "In core.entity_view_display.node.article.default the field_atc_task component carries third_party_settings.addtocalendar.addtocalendar_show set to a truthy value (1), e.g. by ticking 'Show Add to Calendar' on the field formatter in Manage display, or by setting the component's third_party_settings.addtocalendar.addtocalendar_show=1 and saving."
+    },
+    {
+      "id": "addtocalendar-add-field-type",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, add a new field named field_atc_btn to the Article content type that uses the addtocalendar module's own 'Add to calendar' field type (so editors get a standalone Add-to-Calendar button they can toggle per node). Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/addtocalendar-add-fieldtype-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/addtocalendar-add-fieldtype-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/addtocalendar-add-fieldtype-cleanup.sh",
+      "expected_output": "A field storage node.field_atc_btn of type add_to_calendar_field exists and is attached to the article bundle (FieldConfig node.article.field_atc_btn), e.g. created via the Manage fields UI ('Add to calendar' field type) or FieldStorageConfig/FieldConfig create()."
+    }
+  ]
+}

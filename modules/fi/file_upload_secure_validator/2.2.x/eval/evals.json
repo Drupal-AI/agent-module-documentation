@@ -1,0 +1,65 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "file_upload_secure_validator",
+  "version": "2.2.x",
+  "note": "File Upload Secure Validator subscribes to core's FileValidationEvent to compare a file's fileinfo-sniffed MIME type against its extension's MIME type, rejecting disguised uploads unless both types share a configured equivalence group. Cases are `recipe` (response-graded); they probe documented facts an agent would otherwise read source to answer. No site mutation.",
+  "evals": [
+    {
+      "id": "fusv-purpose",
+      "mode": "recipe",
+      "prompt": "On a Drupal 11 site, what does the file_upload_secure_validator module protect against, and what PHP feature does it use to do it?",
+      "must_contain_any": ["fileinfo", "content", "extension"],
+      "must_not_contain": ["antivirus", "ClamAV"],
+      "expected_output": "It blocks uploads whose real byte content does not match the MIME type implied by the file extension (falsified-extension / disguised-file attacks), using PHP's fileinfo extension (Symfony FileinfoMimeTypeGuesser) to sniff the actual MIME type."
+    },
+    {
+      "id": "fusv-how-hooked",
+      "mode": "recipe",
+      "prompt": "How does file_upload_secure_validator get invoked on uploads — do I have to enable it on each file field?",
+      "must_contain_any": ["FileValidationEvent", "event subscriber", "automatically"],
+      "must_not_contain": ["per-field", "per field configuration required"],
+      "expected_output": "No per-field setup. It registers an event subscriber (FileValidationSubscriber) on core's FileValidationEvent, so every file going through Drupal's file validation pipeline is checked automatically."
+    },
+    {
+      "id": "fusv-config-object",
+      "mode": "recipe",
+      "prompt": "A legitimate CSV file is being rejected by file_upload_secure_validator. Which config object and key do I edit to whitelist the MIME type combination, and where is the admin form?",
+      "must_contain_any": ["file_upload_secure_validator.settings", "mime_types_equivalence_groups", "/admin/config/media/file_upload_secure_validator"],
+      "must_not_contain": [],
+      "expected_output": "Add both detected MIME types to the same equivalence group. They are stored in the mime_types_equivalence_groups key of the file_upload_secure_validator.settings config object, edited on the settings form at /admin/config/media/file_upload_secure_validator (route file_upload_secure_validator.file-upload-secure-validator-settings)."
+    },
+    {
+      "id": "fusv-permission",
+      "mode": "recipe",
+      "prompt": "What permission is required to manage the MIME type equivalence groups in file_upload_secure_validator?",
+      "must_contain_any": ["administer file upload secure validator configuration"],
+      "must_not_contain": ["administer files"],
+      "expected_output": "The 'administer file upload secure validator configuration' permission (restrict access: TRUE) gates the settings form. Upload-time validation itself is not permission-gated."
+    },
+    {
+      "id": "fusv-fileinfo-required",
+      "mode": "recipe",
+      "prompt": "What happens with file_upload_secure_validator on a server that does not have the PHP fileinfo extension?",
+      "must_contain_any": ["fileinfo", "not registered", "service provider", "hook_requirements"],
+      "must_not_contain": [],
+      "expected_output": "The validator service is not registered (FileUploadSecureValidatorServiceProvider removes it when fileinfo is unsupported), so validation does not run, and hook_requirements reports the missing extension as an error on the Status Report."
+    },
+    {
+      "id": "fusv-service-api",
+      "mode": "recipe",
+      "prompt": "How can I run file_upload_secure_validator's content check on a File entity from custom PHP code, and what does it return?",
+      "must_contain_any": ["file_upload_secure_validator", "validate", "->validate("],
+      "must_not_contain": [],
+      "expected_output": "Call \\Drupal::service('file_upload_secure_validator')->validate($file); it returns an array of TranslatableMarkup error messages (empty array means the file passed)."
+    },
+    {
+      "id": "fusv-no-plugins",
+      "mode": "recipe",
+      "prompt": "Does file_upload_secure_validator provide any Drush commands, plugin types, or hooks for other modules to implement?",
+      "must_contain_any": ["no", "none", "does not"],
+      "must_not_contain": ["drush command provided", "plugin type provided"],
+      "expected_output": "No. It provides no Drush commands, no plugin types, and no .api.php hooks; it is a single event subscriber plus a validator service and a settings form."
+    }
+  ]
+}

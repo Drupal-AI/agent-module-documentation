@@ -1,0 +1,82 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "graphql_compose",
+  "version": "3.0.x",
+  "note": "GraphQL Compose is a no-code GraphQL schema builder. Its state is a per-server config object graphql_compose.settings.<server_id> (default graphql_compose.settings.graphql_compose_server) with keys entity_config.<type>.<bundle>.{enabled,query_load_enabled,type_sdl,description}, field_config.<type>.<bundle>.<field>.{enabled,required,name_sdl}, and global settings.* flags (exclude_unpublished, expose_entity_ids, simple_queries, simple_unions, site_*, ...). It builds the schema via three custom plugin managers (EntityType, FieldType, SchemaType). All medium/hard cases are grounded in that real config object (safe to toggle and restore; install baseline is entity_config:{} / expose_entity_ids:false). Evals avoid live GraphQL queries per campaign guidance; scripts avoid 'drush cr' because this shared site cannot rebuild the container.",
+  "evals": [
+    {
+      "id": "gc-enable-bundle-config",
+      "mode": "recipe",
+      "prompt": "In GraphQL Compose (Drupal), there is no per-module settings page. Which configuration object holds the schema settings for a server, and what config key exposes the Article node type as a GraphQL type?",
+      "must_contain_any": ["entity_config", "graphql_compose.settings"],
+      "must_not_contain": [],
+      "expected_output": "The config object is graphql_compose.settings.<server_id> (default graphql_compose.settings.graphql_compose_server). Set entity_config.node.article.enabled = true to expose the Article bundle (and query_load_enabled = true to add a load-by-UUID query).",
+      "difficulty": "easy"
+    },
+    {
+      "id": "gc-plugin-types",
+      "mode": "recipe",
+      "prompt": "How does GraphQL Compose turn Drupal's data model into a GraphQL schema? Name the three kinds of GraphQL Compose plugins it uses.",
+      "must_contain_any": ["EntityType", "FieldType", "SchemaType"],
+      "must_not_contain": [],
+      "expected_output": "Three custom plugin types: EntityType plugins (Plugin/GraphQLCompose/EntityType) map Drupal entity types to GraphQL object types; FieldType plugins (Plugin/GraphQLCompose/FieldType) map Drupal field types to GraphQL fields; SchemaType plugins (Plugin/GraphQLCompose/SchemaType) declare reusable GraphQL types. Resolution uses the base graphql module's DataProducer and SchemaExtension plugins.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "gc-global-settings",
+      "mode": "recipe",
+      "prompt": "Name some of the global schema toggles under the 'settings' key of a GraphQL Compose server config, and say what one of them does.",
+      "must_contain_any": ["exclude_unpublished", "expose_entity_ids", "simple_queries", "simple_unions"],
+      "must_not_contain": [],
+      "expected_output": "settings.* includes exclude_unpublished (hide unpublished entities), expose_entity_ids (expose internal IDs alongside UUIDs), simple_queries / simple_unions, field_required_override, and site_name/site_slogan/site_mail/site_front/site_403/site_404, plus schema_description/schema_version and inflector_* options.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "gc-known-enabled-bundle",
+      "mode": "introspection",
+      "prompt": "On this site, one node bundle has been exposed in GraphQL Compose. Inspect the graphql_compose.settings.graphql_compose_server config and state which node bundle is enabled and whether it also has a single load-by-UUID query enabled.",
+      "must_contain_any": ["article"],
+      "must_not_contain": [],
+      "expected_output": "node.article is enabled: entity_config.node.article.enabled = true and query_load_enabled = true.",
+      "setup": "agent-module-documentation/evaluation/verify/graphql_compose-enabled-bundle-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/graphql_compose-enabled-bundle-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "gc-known-setting",
+      "mode": "introspection",
+      "prompt": "Inspect the live GraphQL Compose server settings and report the current value of the 'expose_entity_ids' toggle (whether internal entity IDs are exposed in the schema).",
+      "must_contain_any": ["expose_entity_ids", "true", "enabled"],
+      "must_not_contain": [],
+      "expected_output": "settings.expose_entity_ids is true on the graphql_compose.settings.graphql_compose_server config (internal IDs are exposed).",
+      "setup": "agent-module-documentation/evaluation/verify/graphql_compose-setting-value-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/graphql_compose-setting-value-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "gc-expose-article",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, use GraphQL Compose to expose the Article (node) content type in the GraphQL schema for the default server (graphql_compose_server). Apply the change to the live configuration.",
+      "reset": "agent-module-documentation/evaluation/verify/graphql_compose-expose-article-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/graphql_compose-expose-article-verify.sh",
+      "expected_output": "graphql_compose.settings.graphql_compose_server has entity_config.node.article.enabled = true.",
+      "must_contain_any": [],
+      "must_not_contain": []
+    },
+    {
+      "id": "gc-expose-ids",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, configure the GraphQL Compose server (graphql_compose_server) so that internal entity IDs are exposed in the GraphQL schema (in addition to UUIDs). Apply the change to the live configuration.",
+      "reset": "agent-module-documentation/evaluation/verify/graphql_compose-expose-ids-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/graphql_compose-expose-ids-verify.sh",
+      "expected_output": "graphql_compose.settings.graphql_compose_server has settings.expose_entity_ids = true.",
+      "must_contain_any": [],
+      "must_not_contain": []
+    }
+  ]
+}

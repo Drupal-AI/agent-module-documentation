@@ -1,0 +1,80 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "search_api_sorts",
+  "version": "1.2.x",
+  "note": "search_api_sorts exposes clickable sort options for a Search API display. Each enabled sortable field is a search_api_sorts_field config entity (id = {escaped_display_id}_{field_identifier}; display-id colons escaped to ---) with fields display_id, field_identifier, status, default_sort, default_order (asc/desc), label, weight. A derived block (search_api_sorts_block:{display}) renders links that set ?sort=field&order=asc|desc; SearchApiSortsQueryPreExecute applies the active/default sort. configure=null; the admin form is per display at /admin/config/search/search-api/index/{index}/sorts/{display} under the core administer search_api permission. Two alter hooks (hook_search_api_sorts_active_sort_alter, hook_search_api_sorts_default_sort_alter) rewrite the chosen field/order. Introspection/execution cases are grounded in real search_api_sorts_field config entities (namespaced display ids sapisorts_display*), which persist and can be read/verified via drush without a live search display.",
+  "evals": [
+    {
+      "id": "search_api_sorts-url-params",
+      "mode": "recipe",
+      "prompt": "With the Drupal search_api_sorts module, when a visitor clicks a sort option on a search results page, how is the chosen sort communicated in the request? Name the two URL query parameters and their allowed order values.",
+      "must_contain_any": ["sort", "order"],
+      "must_not_contain": [],
+      "expected_output": "The sort links set two query params on the current URL: ?sort=<field_identifier> and ?order=<asc|desc>. getActiveSort() reads them; clicking the active sort flips its order.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "search_api_sorts-block",
+      "mode": "recipe",
+      "prompt": "How does search_api_sorts render its sort options in Drupal, what is the block plugin id, and how many block variants exist? Why does the block need BigPipe?",
+      "must_contain_any": ["search_api_sorts_block", "deriver", "display", "big_pipe", "BigPipe", "max-age"],
+      "must_not_contain": [],
+      "expected_output": "It provides the derived block search_api_sorts_block (SearchApiSortsBlockDeriver), one derivative per Search API display (search_api_sorts_block:{display}). getCacheMaxAge() returns 0 because search results can't be cached, so BigPipe is recommended to lazy-render it.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "search_api_sorts-config-entity",
+      "mode": "recipe",
+      "prompt": "In search_api_sorts, where is a display's enabled sort stored (which config entity type), and what key fields does that entity carry? Is there a global settings page?",
+      "must_contain_any": ["search_api_sorts_field", "display_id", "field_identifier", "default_sort", "default_order"],
+      "must_not_contain": [],
+      "expected_output": "There is no global settings page (configure=null). Each enabled sort is a search_api_sorts_field config entity with display_id, field_identifier, status, default_sort, default_order (asc/desc), label and weight; configured per display on the Manage sort fields form.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "search_api_sorts-default-sort",
+      "mode": "introspection",
+      "prompt": "On this Drupal site, the Search API display 'sapisorts_display' has a search_api_sorts sort configured as its default. Inspect the live search_api_sorts_field config and tell me which field is the default sort and in which order.",
+      "must_contain_any": ["price"],
+      "must_not_contain": [],
+      "expected_output": "The default sort for display sapisorts_display is the field 'price', order desc: the search_api_sorts_field.sapisorts_display_price config has field_identifier: price, default_sort: true, default_order: desc.",
+      "setup": "agent-module-documentation/evaluation/verify/search_api_sorts-default-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/search_api_sorts-default-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "search_api_sorts-configured-label",
+      "mode": "introspection",
+      "prompt": "The Search API display 'sapisorts_display2' on this site has a search_api_sorts sort enabled on the 'created' field. Inspect the live configuration and tell me the exact label configured for that sort option.",
+      "must_contain_any": ["Freshest first"],
+      "must_not_contain": [],
+      "expected_output": "The sort on field 'created' for display sapisorts_display2 has label 'Freshest first' (search_api_sorts_field.sapisorts_display2_created, label: 'Freshest first').",
+      "setup": "agent-module-documentation/evaluation/verify/search_api_sorts-label-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/search_api_sorts-label-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "search_api_sorts-enable-title",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "Using search_api_sorts, enable a sort option on the 'title' field for the Search API display whose (already escaped) display id is 'sapisorts_display'. Create the necessary search_api_sorts_field configuration on the live site so this sort is enabled.",
+      "reset": "agent-module-documentation/evaluation/verify/search_api_sorts-enable-title-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/search_api_sorts-enable-title-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/search_api_sorts-enable-title-cleanup.sh",
+      "expected_output": "Create a search_api_sorts_field config entity with id 'sapisorts_display_title', display_id 'sapisorts_display', field_identifier 'title', status TRUE (and a label/default_order). It then appears as an enabled sort for that display."
+    },
+    {
+      "id": "search_api_sorts-make-default",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this site the Search API display 'sapisorts_display3' already has an enabled search_api_sorts sort on the 'price' field, but it is not the default sort. Make that 'price' sort the default sort for the display, applied to the live configuration.",
+      "reset": "agent-module-documentation/evaluation/verify/search_api_sorts-make-default-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/search_api_sorts-make-default-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/search_api_sorts-make-default-cleanup.sh",
+      "expected_output": "Set default_sort: true on the search_api_sorts_field for display_id 'sapisorts_display3' / field_identifier 'price' (config search_api_sorts.search_api_sorts_field.sapisorts_display3_price) and save."
+    }
+  ]
+}

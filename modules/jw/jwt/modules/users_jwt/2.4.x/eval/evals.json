@@ -1,0 +1,94 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "users_jwt",
+  "version": "2.4.x",
+  "note": "Users' JWT Authentication lets each user register RSA/Ed25519 public keys and authenticate by signing a JWT with the matching private key, verified by the users_jwt_auth authentication provider (priority 150). Keys live in the core user.data store (module key 'users_jwt'), keyed by a globally-unique key ID, as UsersKey {uid, id, alg, pubkey} objects managed through the users_jwt.key_repository service. The module ships a users_jwt.config schema with a max_expiration key but no config/install, so the config object does not exist until something creates it; the actual JWT lifetime cap enforced in code is a hard-coded 24 hours, independent of that setting. All cases here are grounded in that real repository service and config object, using uid 1 (admin) and the module's own shipped test fixture PEM.",
+  "evals": [
+    {
+      "id": "users_jwt-key-lookup-mechanism",
+      "mode": "recipe",
+      "prompt": "The Drupal contrib module users_jwt authenticates requests using per-user RSA/Ed25519 public keys instead of a shared site secret. When a request arrives with a JWT, how does the authentication provider figure out which stored key to verify the signature against?",
+      "must_contain_any": [
+        "kid",
+        "key id",
+        "header"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The JWT's header carries a 'kid' (key id) claim. The users_jwt_auth authentication provider reads the raw JWT off the request, decodes the header to get 'kid', and looks that up via users_jwt.key_repository->getKey($kid) to find the matching UsersKey (and thus the owning user and public key) to verify the signature against.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "users_jwt-request-header",
+      "mode": "recipe",
+      "prompt": "For a client authenticating to Drupal via the users_jwt module, exactly what does the Authorization header look like, and is there a fallback header?",
+      "must_contain_any": [
+        "UsersJwt",
+        "JWT-Authorization"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Authorization: UsersJwt <token> (the scheme keyword is 'UsersJwt', not 'Bearer'). A fallback header JWT-Authorization: UsersJwt <token> is also accepted, intended for environments where Authorization is already used for HTTP Basic auth.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "users_jwt-key-storage",
+      "mode": "recipe",
+      "prompt": "Where does the users_jwt Drupal module persist a user's registered public keys, and what service manages that storage? Name the service and the data object it returns.",
+      "must_contain_any": [
+        "users_jwt.key_repository",
+        "user.data"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Keys are stored in the core user.data key-value store under module name 'users_jwt', keyed by a globally-unique key ID (kid). The users_jwt.key_repository service (Drupal\\users_jwt\\UsersJwtKeyRepository) manages it, returning Drupal\\users_jwt\\UsersKey objects with public properties uid, id, alg, pubkey.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "users_jwt-known-key",
+      "mode": "introspection",
+      "prompt": "On this Drupal site, user 1 has a users_jwt public key registered. Inspect the live users_jwt key repository (via user.data / users_jwt.key_repository) and report that key's ID and algorithm.",
+      "must_contain_any": [
+        "usersjwt_eval"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The key ID is 'usersjwt_eval' with algorithm RS256, owned by uid 1 - found via \\Drupal::service('users_jwt.key_repository')->getUsersKeys(1) or ->getKey('usersjwt_eval').",
+      "setup": "agent-module-documentation/evaluation/verify/users_jwt-known-key-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/users_jwt-known-key-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "users_jwt-max-expiration-value",
+      "mode": "introspection",
+      "prompt": "This Drupal site has users_jwt.config configured with a max_expiration value. Inspect the live config and report the value (in seconds).",
+      "must_contain_any": [
+        "7200"
+      ],
+      "must_not_contain": [],
+      "expected_output": "max_expiration is 7200 seconds (2 hours) - readable via `drush cget users_jwt.config max_expiration` or \\Drupal::config('users_jwt.config')->get('max_expiration').",
+      "setup": "agent-module-documentation/evaluation/verify/users_jwt-max-expiration-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/users_jwt-max-expiration-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "users_jwt-register-key",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, register a new users_jwt public key for user 1 (admin) with key ID 'usersjwt_task', algorithm RS256, using the RSA public key fixture shipped in the users_jwt module's own tests (tests/fixtures/users_jwt_rsa1-public.pem). Apply the change to the live site via the users_jwt.key_repository service.",
+      "reset": "agent-module-documentation/evaluation/verify/users_jwt-register-key-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/users_jwt-register-key-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/users_jwt-register-key-cleanup.sh",
+      "expected_output": "Call \\Drupal::service('users_jwt.key_repository')->saveKey(1, 'usersjwt_task', 'RS256', $pem) with $pem read from DRUPAL_ROOT . '/modules/contrib/jwt/modules/users_jwt/tests/fixtures/users_jwt_rsa1-public.pem'. getKey('usersjwt_task') then returns a UsersKey with uid === 1 and alg === 'RS256'."
+    },
+    {
+      "id": "users_jwt-cap-lifetime",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "Configure the users_jwt module's max_expiration setting on this Drupal site to cap the user JWT lifetime at 3600 seconds. Apply the change to the live site's users_jwt.config.",
+      "reset": "agent-module-documentation/evaluation/verify/users_jwt-cap-lifetime-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/users_jwt-cap-lifetime-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/users_jwt-cap-lifetime-cleanup.sh",
+      "expected_output": "Set users_jwt.config max_expiration to 3600, e.g. `drush cset users_jwt.config max_expiration 3600 -y` or via \\Drupal::configFactory()->getEditable('users_jwt.config')->set('max_expiration', 3600)->save(). (Note: as of this module version nothing in code reads this key yet - the actual hard-coded cap enforced by UsersJwtAuth is 24 hours - but it is the module's own declared config surface for this purpose.)"
+    }
+  ]
+}

@@ -1,0 +1,80 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "migrate_file_to_media",
+  "version": "2.0.x",
+  "note": "Migrate File To Media migrates file/image fields to core Media entities with binary-hash duplicate detection. It has no config object; you drive it with Drush commands + migrate_plus migrations. Key command: drush migrate:file-media-fields <entity_type> <bundle> <source_field_type> <target_media_bundle> (alias mf2m) creates a <field>_media entity_reference field (target media) for each matching file field, and adds it to the bundle's displays (the bundle must have default form/view displays or the command errors). drush migrate:duplicate-file-detection <migration> fills the migrate_file_to_media_mapping table with binary hashes (run before importing step 1); migrate:duplicate-media-detection fills migrate_file_to_media_mapping_media. Migrations run in two steps: step1 source media_entity_generator creates media (dedupe via check_duplicate/check_media_duplicate); step2 source content_entity:<type> + process file_id_lookup links media onto <field>_media. Generator: drush generate mf2m_media. Medium/hard cases use namespaced content types (with displays) so the scoped command is safe; hard verify checks the generated media reference field exists.",
+  "evals": [
+    {
+      "id": "migrate_file_to_media-generate-command",
+      "mode": "recipe",
+      "prompt": "Using the Migrate File To Media module, what Drush command generates the media reference fields from an entity's existing image fields, and what does it name the new fields? Give an example for the Article content type migrating to the 'image' media type.",
+      "must_contain_any": ["migrate:file-media-fields", "mf2m"],
+      "must_not_contain": [],
+      "expected_output": "drush migrate:file-media-fields node article image image (alias: drush mf2m ...). For every image field it creates a new entity-reference field named <field>_media targeting the image media type, e.g. field_image_media.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "migrate_file_to_media-duplicate-detection",
+      "mode": "recipe",
+      "prompt": "Migrate File To Media de-duplicates identical files. Which Drush command computes the binary hashes, in which database table are they stored, and when must it run relative to importing?",
+      "must_contain_any": ["migrate:duplicate-file-detection", "migrate_file_to_media_mapping"],
+      "must_not_contain": [],
+      "expected_output": "drush migrate:duplicate-file-detection <migration> computes a binary hash for each file and stores it in the migrate_file_to_media_mapping table. It must be run before importing step 1 (the media_entity_generator source).",
+      "difficulty": "easy"
+    },
+    {
+      "id": "migrate_file_to_media-two-step",
+      "mode": "recipe",
+      "prompt": "How is a Migrate File To Media migration structured - what does step 1 do versus step 2, and which source plugin does each use?",
+      "must_contain_any": ["media_entity_generator", "content_entity", "file_id_lookup"],
+      "must_not_contain": [],
+      "expected_output": "Step 1 uses the media_entity_generator source to create one media entity per referenced file (deduped). Step 2 uses the content_entity:<type> source and the file_id_lookup process plugin to populate each source entity's <field>_media reference with the media created in step 1.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "migrate_file_to_media-known-field",
+      "mode": "introspection",
+      "prompt": "On this Drupal site, the Migrate File To Media field generator has been run for a content type called mf2m_kt that has an image field field_mf2m_known. Inspect the live field configuration and give the machine name of the media reference field it generated.",
+      "must_contain_any": ["field_mf2m_known_media"],
+      "must_not_contain": [],
+      "expected_output": "The generated field is field_mf2m_known_media (an entity_reference field targeting media), created on node.mf2m_kt by migrate:file-media-fields.",
+      "setup": "agent-module-documentation/evaluation/verify/migrate_file_to_media-known-field-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/migrate_file_to_media-known-field-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "migrate_file_to_media-mapping-row",
+      "mode": "introspection",
+      "prompt": "On this Drupal site, the Migrate File To Media duplicate-detection mapping table has one recorded entry. Inspect the migrate_file_to_media_mapping table and report the migration_id recorded on that row.",
+      "must_contain_any": ["mf2m_probe_mapping"],
+      "must_not_contain": [],
+      "expected_output": "The migration_id is mf2m_probe_mapping (SELECT migration_id FROM migrate_file_to_media_mapping).",
+      "setup": "agent-module-documentation/evaluation/verify/migrate_file_to_media-mapping-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/migrate_file_to_media-mapping-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "migrate_file_to_media-generate-field",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, the content type mf2m_ht has an image field field_mf2m_task. Using the Migrate File To Media module, generate the corresponding media reference field for it (targeting the 'image' media type). Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/migrate_file_to_media-generate-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/migrate_file_to_media-generate-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/migrate_file_to_media-generate-cleanup.sh",
+      "expected_output": "Run drush migrate:file-media-fields node mf2m_ht image image (alias mf2m). This creates field_mf2m_task_media, an entity_reference field targeting the image media type, on node.mf2m_ht."
+    },
+    {
+      "id": "migrate_file_to_media-generate-multi",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, the content type mf2m_ht2 has two image fields, field_mf2m_a and field_mf2m_b. Use the Migrate File To Media module to generate media reference fields for both of them at once (targeting the 'image' media type). Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/migrate_file_to_media-generate-multi-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/migrate_file_to_media-generate-multi-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/migrate_file_to_media-generate-multi-cleanup.sh",
+      "expected_output": "Run drush migrate:file-media-fields node mf2m_ht2 image image once; it iterates all image fields on the bundle and creates field_mf2m_a_media and field_mf2m_b_media (entity_reference fields targeting the image media type)."
+    }
+  ]
+}

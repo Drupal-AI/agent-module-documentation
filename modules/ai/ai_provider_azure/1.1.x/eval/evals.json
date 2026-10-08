@@ -1,0 +1,102 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "ai_provider_azure",
+  "version": "1.1.x",
+  "note": "ai_provider_azure is an AI-module provider plugin (id 'azure', AzureProvider extends AiProviderClientBase). It needs real Azure OpenAI credentials to make live calls, which this site does not have, so every case is grounded in the provider definition and local config, NOT live API calls. Supported operation types: chat, embeddings, text_to_image, speech_to_text, text_to_speech; capability StreamChatOutput; hasPredefinedModels=FALSE. Configure route ai_provider_azure.settings_form -> /admin/config/ai/providers/azure (permission 'administer ai providers', from the ai module). The API key is a Key-module entity chosen via key_select; each model has an endpoint + connect_header (api-key/authorization/other). The module's own config is ai_provider_azure.settings; model definitions live in ai.settings.models.azure.* (owned by the ai module, so cases do NOT mutate it). Medium/hard cases ground in the module's OWN config (ai_provider_azure.settings) and in Key entities (the documented credential setup), verified against live config/entities. Fixtures use namespaced azure_api_* keys.",
+  "evals": [
+    {
+      "id": "apaz-operation-types",
+      "mode": "recipe",
+      "prompt": "The Drupal module ai_provider_azure adds Azure as a provider for the AI module. Which AI operation types does the Azure provider support?",
+      "must_contain_any": [
+        "chat",
+        "embeddings",
+        "text_to_image",
+        "speech_to_text",
+        "text_to_speech"
+      ],
+      "must_not_contain": [],
+      "expected_output": "getSupportedOperationTypes() returns chat, embeddings, text_to_image, speech_to_text and text_to_speech. Its advertised capability is streamed chat (StreamChatOutput).",
+      "difficulty": "easy"
+    },
+    {
+      "id": "apaz-setup-route-key",
+      "mode": "recipe",
+      "prompt": "How do I configure the Azure AI provider (ai_provider_azure) in Drupal? Where is its setup form, what permission is needed, and how is the Azure API key supplied?",
+      "must_contain_any": [
+        "/admin/config/ai/providers/azure",
+        "administer ai providers",
+        "Key",
+        "key_select",
+        "ai_provider_azure.settings_form"
+      ],
+      "must_not_contain": [],
+      "expected_output": "At /admin/config/ai/providers/azure (route ai_provider_azure.settings_form), which requires the 'administer ai providers' permission. The API key is supplied by selecting a Key module entity (key_select) that holds the Azure key; each model also needs an Endpoint (the Azure Target URI).",
+      "difficulty": "easy"
+    },
+    {
+      "id": "apaz-model-fields",
+      "mode": "recipe",
+      "prompt": "The Azure AI provider has no predefined models - you add each one. When adding an Azure model in ai_provider_azure, what does the 'Endpoint' field expect, and what are the options for the connection/header type?",
+      "must_contain_any": [
+        "endpoint",
+        "Target URI",
+        "api-key",
+        "authorization",
+        "connect_header"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The Endpoint is the Azure Target URI (the one ending in .../completions etc.), from which the base URI and query params are derived. The connect header type (connect_header) options are api-key (OpenAI-style header), authorization (generic Authorization header), or other (a custom header name).",
+      "difficulty": "easy"
+    },
+    {
+      "id": "apaz-known-key",
+      "mode": "introspection",
+      "prompt": "On this Drupal site, a Key (Key module) entity has been created to hold the Microsoft Azure AI provider's API key. Inspect the live Key configuration and report the machine id of that key.",
+      "must_contain_any": [
+        "azure_api_known"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The Key entity is azure_api_known (an authentication key type), the one that would be selected as the Azure provider's api_key.",
+      "setup": "agent-module-documentation/evaluation/verify/apaz-known-key-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/apaz-known-key-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "apaz-known-settings",
+      "mode": "introspection",
+      "prompt": "Inspect the ai_provider_azure module's own configuration object on this live site and report the value currently stored under its 'data' key.",
+      "must_contain_any": [
+        "AZURE_PROFILE_MARKER_42"
+      ],
+      "must_not_contain": [],
+      "expected_output": "ai_provider_azure.settings:data is 'AZURE_PROFILE_MARKER_42'.",
+      "setup": "agent-module-documentation/evaluation/verify/apaz-known-settings-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/apaz-known-settings-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "apaz-create-key",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "To set up the Microsoft Azure AI provider (ai_provider_azure), it needs its API key stored as a Key (Key module) entity. Create an authentication Key entity with machine id azure_api_task to hold the Azure API key, and save it to the live site. (Any provider/value is fine - it just needs to be an authentication key with that id.)",
+      "reset": "agent-module-documentation/evaluation/verify/apaz-create-key-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/apaz-create-key-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/apaz-create-key-cleanup.sh",
+      "expected_output": "A Key entity azure_api_task exists with key_type 'authentication' (e.g. drush key:save azure_api_task --key-type=authentication ..., or Key::create(['id'=>'azure_api_task','key_type'=>'authentication',...])->save())."
+    },
+    {
+      "id": "apaz-record-deployment",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "Record the Azure deployment identifier 'azure-eastus-gpt4o' into the ai_provider_azure module's own settings configuration object (its 'data' key). Apply the change to the live configuration.",
+      "reset": "agent-module-documentation/evaluation/verify/apaz-set-settings-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/apaz-set-settings-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/apaz-set-settings-cleanup.sh",
+      "expected_output": "ai_provider_azure.settings:data is set to 'azure-eastus-gpt4o' (e.g. drush config:set ai_provider_azure.settings data azure-eastus-gpt4o, or via the config factory)."
+    }
+  ]
+}

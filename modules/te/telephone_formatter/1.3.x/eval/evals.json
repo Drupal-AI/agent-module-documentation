@@ -1,0 +1,78 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "telephone_formatter",
+  "version": "1.3.x",
+  "note": "telephone_formatter provides ONE field formatter, `telephone_formatter` (label 'Formatted telephone'), for core `telephone` fields. It reformats the number with Google's libphonenumber into International (format=1, default) / E164 (0) / National (2) / RFC3966 (3), and (link=TRUE by default) wraps it in a tel: link whose href is the RFC3966 form; an optional default_country (ISO code) parses local numbers. Settings persist in field.formatter.settings.telephone_formatter (keys format[int], link[bool], default_country[string]); there is no admin page (configure is null) — it is set per field on Manage display. Invalid numbers fall back to the raw value. It also exposes a reusable service telephone_formatter.formatter (Drupal\\telephone_formatter\\Formatter::format($input,$format,$region)). Easy cases are response-graded documented facts. Medium cases install a KNOWN telephone_formatter display on a real Article telephone field and require live drush introspection of the entity_view_display. Hard cases (persona drupal-expert) reset the field's display to core basic_string, the agent configures telephone_formatter with specific settings, and a verify script checks the real entity_view_display component.",
+  "evals": [
+    {
+      "id": "tf-which-formatter",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "On a Drupal 11 site I have a core `telephone` field and want to display the number reformatted (International/E164/etc.) and optionally as a click-to-call tel: link. Which contrib module and which field formatter id do I use, and which field type does it apply to?",
+      "must_contain_any": ["telephone_formatter", "Formatted telephone"],
+      "must_not_contain": [],
+      "expected_output": "Use the Telephone Formatter module; its formatter id is telephone_formatter (label 'Formatted telephone') and it applies to core `telephone` field types. Select it on the entity's Manage display."
+    },
+    {
+      "id": "tf-settings-keys",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "For the telephone_formatter field formatter, list the settings keys it stores and their defaults. Which integer `format` value gives International vs E164 vs National vs RFC3966, and does it render a link by default?",
+      "must_contain_any": ["format", "link", "default_country"],
+      "must_not_contain": [],
+      "expected_output": "Keys: format (integer, default 1 = International; 0 = E164, 2 = National, 3 = RFC3966), link (boolean, default TRUE = wrap in a tel: link whose href is the RFC3966 form), default_country (string ISO code, default null). Stored under field.formatter.settings.telephone_formatter."
+    },
+    {
+      "id": "tf-where-configure",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "Where do I enable and configure the 'Formatted telephone' formatter — is there an admin settings page for the Telephone Formatter module, and what happens if a stored number is invalid?",
+      "must_contain_any": ["Manage display", "manage display"],
+      "must_not_contain": [],
+      "expected_output": "There is no standalone admin page (configure is null). Set the telephone field's Format to 'Formatted telephone' on the entity's Manage display screen and open the formatter settings. If a number can't be parsed/validated the formatter falls back to printing the raw stored value (it never fatals)."
+    },
+    {
+      "id": "tf-known-display-format",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "The Article content type on this site has a telephone field (field_eval_phone) whose default display uses the Telephone Formatter. Inspect the live entity_view_display configuration and tell me which formatter it uses and its exact settings: the numeric format value (and which libphonenumber format that is), whether it renders a link, and the default country.",
+      "setup": "agent-module-documentation/evaluation/verify/telephone_formatter-known-display-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/telephone_formatter-known-display-cleanup.sh",
+      "must_contain_any": ["telephone_formatter", "National", "US"],
+      "must_not_contain": [],
+      "expected_output": "On core.entity_view_display.node.article.default, the field_eval_phone component has type=telephone_formatter with settings format=2 (National), link=false (no tel: link), default_country=US."
+    },
+    {
+      "id": "tf-known-display-link",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "For the field_eval_phone field on the Article default display on this site, does the Telephone Formatter output a clickable tel: link, and is the number shown in International format? Read the live entity_view_display config to answer.",
+      "setup": "agent-module-documentation/evaluation/verify/telephone_formatter-known-display-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/telephone_formatter-known-display-cleanup.sh",
+      "must_contain_any": ["link", "false", "National"],
+      "must_not_contain": [],
+      "expected_output": "No — the component's settings have link=false (so no tel: link is rendered) and format=2, which is National format, not International (format=1). So the number is shown as plain National-formatted text."
+    },
+    {
+      "id": "tf-configure-display",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, configure the Article content type's default display so that its telephone field field_eval_tel is rendered by the Telephone Formatter module's formatter (id telephone_formatter) with the RFC3966 format and rendered as a tel: link. Concretely: set the field_eval_tel component on node.article.default to type telephone_formatter with settings format=3 and link=TRUE, and apply it to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/telephone_formatter-configure-display-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/telephone_formatter-configure-display-verify.sh",
+      "expected_output": "The node.article.default entity_view_display's field_eval_tel component now has type=telephone_formatter with settings format=3 (RFC3966) and link=TRUE."
+    },
+    {
+      "id": "tf-configure-display-national-nolink",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site's Article default display, the telephone field field_eval_tel currently uses the core basic_string formatter. Switch it to the Telephone Formatter (telephone_formatter) formatter. Use RFC3966 output (format=3) and make the number a clickable tel: link (link=TRUE). Save the display to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/telephone_formatter-configure-display-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/telephone_formatter-configure-display-verify.sh",
+      "expected_output": "node.article.default's field_eval_tel component is changed from basic_string to telephone_formatter with settings format=3 and link=TRUE on the live site."
+    }
+  ]
+}

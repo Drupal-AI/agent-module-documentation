@@ -1,0 +1,67 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "ckeditor_iframe",
+  "version": "3.1.x",
+  "note": "CKEditor iFrame adds an Iframe Embed button to CKEditor 5 via a single CKEditor 5 plugin id `ckeditor_iframe_embed_iframeembed` (JS plugin `iframeembed.IframeEmbed`, PHP class Drupal\\ckeditor_iframe\\Plugin\\CKEditor5Plugin\\Iframe). It provides ONE toolbar item, `iframeEmbed` (label 'Iframe Embed'). It has no global config UI (`configure` is null) — it is enabled per text format on the `editor.editor.<format>` config entity by adding `iframeEmbed` to `settings.toolbar.items`. A per-format checkbox group 'Allowed optional attributes' persists at settings.plugins.ckeditor_iframe_embed_iframeembed.enabled_optional_attributes (a sequence); `src` is always required and the enabled optional attributes drive the plugin's getElementsSubset(), which the filter_html allowed-tags filter uses automatically (no manual allowed-tags editing on CKE5). Default enabled attributes are all non-deprecated ones (height, width, name, tabindex, title, allowfullscreen); the four deprecated ones (align, frameborder, longdesc, scrolling) are off by default. Easy `recipe` cases probe the plugin id, the toolbar item, and the per-format enabling + allowed-tags/filter behaviour (response-graded). The medium `introspection` case enables the button on full_html (setup) and asks which format has it (cleanup restores). The hard `execution` case has the agent add the iframeEmbed toolbar item to basic_html, graded by reset->build->verify on editor.editor.basic_html.",
+  "evals": [
+    {
+      "id": "cif-plugin-id",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "On a Drupal 11 site with the ckeditor_iframe module, what is the CKEditor 5 plugin id it registers for embedding iframes, and which CKEditor 5 JS plugin does it turn on?",
+      "must_contain_any": ["ckeditor_iframe_embed_iframeembed"],
+      "must_not_contain": [],
+      "expected_output": "The Drupal CKEditor 5 plugin id is `ckeditor_iframe_embed_iframeembed` (defined in ckeditor_iframe.ckeditor5.yml). It enables the `iframeembed.IframeEmbed` CKEditor 5 JS plugin (PHP class Drupal\\ckeditor_iframe\\Plugin\\CKEditor5Plugin\\Iframe)."
+    },
+    {
+      "id": "cif-toolbar-item",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "Which CKEditor 5 toolbar button do I add to a text format to let editors embed iframes with the ckeditor_iframe module, and what is its label?",
+      "must_contain_any": ["iframeEmbed", "Iframe Embed"],
+      "must_not_contain": [],
+      "expected_output": "Add the `iframeEmbed` toolbar item (label 'Iframe Embed'). It is the single toolbar button the module defines in ckeditor_iframe.ckeditor5.yml (toolbar_items: iframeEmbed). Drag it into the format's CKEditor 5 toolbar to activate the plugin."
+    },
+    {
+      "id": "cif-enable-per-format",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "How is ckeditor_iframe enabled - is there a global settings page? And on a CKEditor 5 format, do I need to hand-edit the 'Limit allowed HTML tags' (filter_html) list to permit <iframe>?",
+      "must_contain_any": ["text format", "per format", "editor.editor", "/admin/config/content/formats", "getElementsSubset", "enabled_optional_attributes", "no manual"],
+      "must_not_contain": [],
+      "expected_output": "No global config page (`configure` is null). It is configured per text format at /admin/config/content/formats: add the Iframe Embed (`iframeEmbed`) button to the CKEditor 5 toolbar and tick which attributes are allowed in the 'Allowed optional attributes' vertical tab. On CKEditor 5 you do NOT hand-edit the allowed HTML tags: the plugin declares its own element subset (getElementsSubset returns `<iframe>` plus the enabled attributes, `src` always required), so filter_html is updated automatically. Settings persist at settings.plugins.ckeditor_iframe_embed_iframeembed.enabled_optional_attributes on the editor.editor.<format> config entity."
+    },
+    {
+      "id": "cif-known-format",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "This Drupal site has ckeditor_iframe enabled. Exactly one CKEditor 5 text format has the Iframe Embed button (the ckeditor_iframe_embed_iframeembed plugin) configured in its saved editor settings. Inspect the live editor configuration and tell me which text format it is, and how you can tell.",
+      "must_contain_any": ["full_html", "Full HTML"],
+      "must_not_contain": [],
+      "setup": "agent-module-documentation/evaluation/verify/ckeditor_iframe-known-format-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/ckeditor_iframe-known-format-cleanup.sh",
+      "expected_output": "The `full_html` format. Inspecting editor.editor.full_html (e.g. `drush config:get editor.editor.full_html settings`) shows the `iframeEmbed` item in settings.toolbar.items and the plugin explicitly configured at settings.plugins.ckeditor_iframe_embed_iframeembed.enabled_optional_attributes. Other CKEditor 5 formats (basic_html, webform_default) have neither the iframeEmbed toolbar item nor that plugin-settings key."
+    },
+    {
+      "id": "cif-add-toolbar",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site (ckeditor_iframe is enabled), turn on iframe embedding for the `basic_html` text format. Add the Iframe Embed toolbar item (`iframeEmbed`) to basic_html's CKEditor 5 toolbar so the ckeditor_iframe_embed_iframeembed plugin activates, and apply it to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/ckeditor_iframe-add-toolbar-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/ckeditor_iframe-add-toolbar-verify.sh",
+      "expected_output": "Edit editor.editor.basic_html: append `iframeEmbed` to settings.toolbar.items, then clear caches. Optionally set settings.plugins.ckeditor_iframe_embed_iframeembed.enabled_optional_attributes. Verify checks basic_html is a ckeditor5 editor with the `iframeEmbed` toolbar item present."
+    },
+    {
+      "id": "cif-add-toolbar-layman",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "site-owner",
+      "prompt": "On my Drupal site I edit pages with the 'Basic HTML' text style. I want a button in that editor's toolbar that lets me paste in an embed (like a map or a video) that uses an iframe. Please add that iframe-embed button to the Basic HTML editor and save it.",
+      "reset": "agent-module-documentation/evaluation/verify/ckeditor_iframe-add-toolbar-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/ckeditor_iframe-add-toolbar-verify.sh",
+      "expected_output": "The 'Basic HTML' format is editor.editor.basic_html. Add the Iframe Embed button (`iframeEmbed`) to its CKEditor 5 toolbar in settings.toolbar.items and save, then clear caches. Verify checks basic_html is a ckeditor5 editor with the `iframeEmbed` toolbar item present."
+    }
+  ]
+}

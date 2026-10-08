@@ -1,0 +1,98 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "ginvite",
+  "version": "4.0.x",
+  "note": "Group invite (ginvite) extends the Group module with a group_invitation relation plugin (GroupRelationType, entity_type user, admin_permission 'administer group invitations'). You install it on a group type, which creates a group_relationship_type config entity (config prefix group.relationship_type, id '<group_type>-group_invitation') whose plugin_config holds the invitation settings (invitation_subject/body, expiry, autoaccept_invitees, unblock_invitees, invitation_bypass_form, remove_invitation, etc.). Invitations are group_relationship entities of plugin group_invitation with locked fields invitee_mail (email) and invitation_status (int: 0 pending,1 accepted,2 rejected,3 expired). Accept/decline at /ginvite/{group_relationship}/accept|decline; bulk at /group/{group}/invite-members. Group permissions: invite users to group, bulk invite users to group, view group invitations, delete own/any invitation, administer group invitations. Medium/hard cases are grounded in the group_content config (the group.relationship_type config entity for the installed group_invitation relation).",
+  "evals": [
+    {
+      "id": "ginvite-relation-plugin",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "The ginvite module adds group invitations to Drupal's Group module. What kind of Group plugin does it provide (and its plugin id), and how is invitation state tracked on each invitation?",
+      "must_contain_any": [
+        "group_invitation",
+        "relation",
+        "invitation_status"
+      ],
+      "must_not_contain": [],
+      "expected_output": "It provides a Group relation plugin with id group_invitation (a GroupRelationType on the user entity). Each invitation is a group_relationship entity carrying invitee_mail and an invitation_status integer (0 pending, 1 accepted, 2 rejected, 3 expired)."
+    },
+    {
+      "id": "ginvite-statuses",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "In the ginvite module, what are the possible values of an invitation's status and what does each mean?",
+      "must_contain_any": [
+        "pending",
+        "accepted",
+        "rejected",
+        "expired"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The invitation_status integer is 0 = pending, 1 = accepted, 2 = rejected, 3 = expired (constants INVITATION_PENDING/ACCEPTED/REJECTED/EXPIRED on the GroupInvitation relation plugin)."
+    },
+    {
+      "id": "ginvite-permissions-routes",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "With ginvite, which group permission lets a role invite users, and at what path do invitees accept an invitation?",
+      "must_contain_any": [
+        "invite users to group",
+        "/ginvite/",
+        "accept",
+        "invite-members"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The group permission 'invite users to group' (and 'bulk invite users to group' for the bulk form at /group/{group}/invite-members). Invitees accept at /ginvite/{group_relationship}/accept (and decline at /ginvite/{group_relationship}/decline)."
+    },
+    {
+      "id": "ginvite-known-installed",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "On this Drupal site, a group type gi_known has invitations enabled. Inspect the live Group configuration and give the machine id of the group_relationship_type (group content type) config entity that installs the group_invitation relation on gi_known.",
+      "must_contain_any": [
+        "gi_known-group_invitation"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The config entity id is gi_known-group_invitation (config name group.relationship_type.gi_known-group_invitation, content_plugin group_invitation, group_type gi_known).",
+      "setup": "agent-module-documentation/evaluation/verify/ginvite-known-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/ginvite-known-cleanup.sh"
+    },
+    {
+      "id": "ginvite-known-expire",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "Inspect the group_invitation relation configuration on group type gi_known on this site. After how many days do open invitations expire (the invitation_expire plugin setting)?",
+      "must_contain_any": [
+        "14"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Invitations expire after 14 days: the group.relationship_type.gi_known-group_invitation config entity has plugin_config.invitation_expire = 14.",
+      "setup": "agent-module-documentation/evaluation/verify/ginvite-known-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/ginvite-known-cleanup.sh"
+    },
+    {
+      "id": "ginvite-install",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site there is a Group type gi_task that does not yet allow invitations. Using the ginvite module, install the Group Invitation (group_invitation) relation on the gi_task group type so its groups can have invitations. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/ginvite-install-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/ginvite-install-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/ginvite-install-cleanup.sh",
+      "expected_output": "A group_relationship_type config entity gi_task-group_invitation exists (group.relationship_type.gi_task-group_invitation, content_plugin group_invitation) — e.g. via GroupRelationshipType storage createFromPlugin(GroupType::load('gi_task'),'group_invitation')->save(), or by installing the Group Invitation relation on the gi_task group type in the UI."
+    },
+    {
+      "id": "ginvite-install-layman",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "site-owner",
+      "prompt": "I have a kind of group on my site called 'gi_task', and I'd like group managers to be able to invite people to join those groups. Right now there's no invite option. Please enable invitations for that group type on the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/ginvite-install-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/ginvite-install-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/ginvite-install-cleanup.sh",
+      "expected_output": "Install the group_invitation relation on the gi_task group type, creating group.relationship_type.gi_task-group_invitation (content_plugin group_invitation)."
+    }
+  ]
+}

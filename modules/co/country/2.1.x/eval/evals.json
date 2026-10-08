@@ -1,0 +1,99 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "country",
+  "version": "2.1.x",
+  "note": "Country adds a 'country' field type (stores a 2-letter ISO 3166 code), widgets country_default (select) / country_autocomplete, formatters country_default (name) / country_iso_code (raw code), and a per-field 'selectable_countries' setting. No external services. All medium/hard cases are grounded in live Field/entity-display config on the Article content type, verifiable with drush php:eval: introspection reads back a field's selectable_countries and its configured widget; execution creates a restricted country field and switches a field's formatter to country_iso_code.",
+  "evals": [
+    {
+      "id": "country-field-type",
+      "mode": "recipe",
+      "prompt": "What field type does the Drupal 'country' contrib module provide, and what exactly is stored in the database for it?",
+      "must_contain_any": [
+        "ISO",
+        "country code",
+        "two-letter",
+        "alpha-2",
+        "country_manager"
+      ],
+      "must_not_contain": [],
+      "expected_output": "It provides a field type with id 'country' whose stored value is a 2-character ISO 3166 alpha-2 country code (column 'value', length 2); the human-readable name is resolved from core's country_manager service.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "country-formatters",
+      "mode": "recipe",
+      "prompt": "The country module ships two field formatters. What are their machine ids and how does each display the value?",
+      "must_contain_any": [
+        "country_default",
+        "country_iso_code"
+      ],
+      "must_not_contain": [],
+      "expected_output": "country_default renders the localized country name (the default formatter); country_iso_code renders the raw ISO code (e.g. US).",
+      "difficulty": "easy"
+    },
+    {
+      "id": "country-restrict-setting",
+      "mode": "recipe",
+      "prompt": "With the country module, how do I limit a country field so editors can only pick from a specific subset of countries? Name the field setting.",
+      "must_contain_any": [
+        "selectable_countries"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Set the field's 'selectable_countries' setting (a list of ISO codes) on the storage/field settings; an empty value offers all countries. The effective list is resolved by the country.field.manager service.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "country-known-restricted",
+      "mode": "introspection",
+      "prompt": "The Article content type on this site has a country field whose choices are restricted to a subset of countries. Inspect the live field configuration and tell me the machine name of the field and which ISO country codes it allows.",
+      "must_contain_any": [
+        "field_ctry_known",
+        "US",
+        "GB",
+        "FR"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The field is field_ctry_known (type country); its selectable_countries setting is [US, GB, FR].",
+      "setup": "agent-module-documentation/evaluation/verify/country-restricted-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/country-restricted-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "country-known-widget",
+      "mode": "introspection",
+      "prompt": "One country field on the Article content type uses a type-ahead widget rather than a dropdown. Inspect the live default form display and tell me the machine name of the widget it uses and the placeholder text configured on it.",
+      "must_contain_any": [
+        "country_autocomplete",
+        "Start typing a country"
+      ],
+      "must_not_contain": [],
+      "expected_output": "field_ctry_widget uses the country_autocomplete widget with placeholder 'Start typing a country'.",
+      "setup": "agent-module-documentation/evaluation/verify/country-widget-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/country-widget-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "country-add-restricted-field",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On the Article content type, add a Country field named field_ctry_task (field type from the country module) and configure it so editors may only choose Canada (CA) and Mexico (MX). Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/country-addfield-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/country-addfield-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/country-addfield-cleanup.sh",
+      "expected_output": "Create a field storage (entity_type node, field_name field_ctry_task, type country) and a field on node.article with settings.selectable_countries = ['CA','MX'], then save. verify checks the field's type is country and its selectable_countries equals [CA, MX]."
+    },
+    {
+      "id": "country-set-iso-formatter",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "The Article content type has a country field field_ctry_fmt that currently displays the full country name. Change its default display so it shows the raw two-letter ISO country code instead, and apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/country-formatter-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/country-formatter-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/country-formatter-cleanup.sh",
+      "expected_output": "In core.entity_view_display.node.article.default set the field_ctry_fmt component formatter type to country_iso_code (instead of country_default) and save."
+    }
+  ]
+}

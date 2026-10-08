@@ -1,0 +1,106 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "text_summary_options",
+  "version": "2.1.x",
+  "note": "Text Summary Options adds three site-builder settings (show_summary bool, summary_help string, summary_placeholder string) to text_with_summary fields, stored as third-party settings on the FieldConfig entity at field.field.<entity>.<bundle>.<field>.third_party_settings.text_summary_options. No configure route, no settings form. Medium/hard cases are grounded in that real config on namespaced text_with_summary fields on the Article content type (field_tso_*): introspection reads back the configured help/placeholder; execution turns show_summary on / sets a placeholder, verified against the live FieldConfig. Fields are created idempotently; hard-case reset leaves the field present with the setting OFF (clean baseline), so verify fails on empty state and passes only after the agent configures it.",
+  "evals": [
+    {
+      "id": "text-summary-options-what-settings",
+      "mode": "recipe",
+      "prompt": "The Drupal module text_summary_options adds options to the 'Text (formatted, long, with summary)' widget. What three settings does it add, and where are they configured?",
+      "must_contain_any": [
+        "show_summary",
+        "Show summary",
+        "summary_help",
+        "summary help",
+        "summary_placeholder",
+        "placeholder"
+      ],
+      "must_not_contain": [],
+      "expected_output": "It adds Show summary, Summary help text, and Summary Placeholder. You set them on the field's edit form (Manage fields -> edit the text_with_summary field), and they are stored as third-party settings under text_summary_options on that FieldConfig.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "text-summary-options-where-stored",
+      "mode": "recipe",
+      "prompt": "On a Drupal 11 site with text_summary_options enabled, there is no admin settings page. Where exactly is the 'Show summary' choice stored in configuration for a given field, and what config key holds it?",
+      "must_contain_any": [
+        "third_party_settings",
+        "third party setting",
+        "text_summary_options",
+        "field.field",
+        "FieldConfig",
+        "getThirdPartySetting"
+      ],
+      "must_not_contain": [],
+      "expected_output": "It is a third-party setting on the FieldConfig entity: field.field.<entity>.<bundle>.<field> -> third_party_settings.text_summary_options.show_summary: true. Read it with $fieldConfig->getThirdPartySetting('text_summary_options','show_summary').",
+      "difficulty": "easy"
+    },
+    {
+      "id": "text-summary-options-field-type",
+      "mode": "recipe",
+      "prompt": "For which field type does text_summary_options show its extra options, and what does the 'Show summary' setting actually change in the edit form?",
+      "must_contain_any": [
+        "text_with_summary",
+        "Text area with a summary",
+        "with summary",
+        "attached",
+        "expanded",
+        "Edit summary"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Only for text_with_summary fields. Show summary removes the summary element's #attached (the core 'Edit summary' toggle JS) so the summary textarea is displayed expanded by default instead of hidden behind the link.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "text-summary-options-configured-field",
+      "mode": "introspection",
+      "prompt": "On this Drupal site, the Article content type has a 'Text (formatted, long, with summary)' field whose text_summary_options settings have been configured. Inspect the live field configuration and report the machine name of that field and the summary placeholder text that is set on it.",
+      "must_contain_any": [
+        "field_tso_sum",
+        "TSO placeholder marker one"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The field is field_tso_sum; its FieldConfig has third_party_settings.text_summary_options.show_summary: true and summary_placeholder: 'TSO placeholder marker one'.",
+      "setup": "agent-module-documentation/evaluation/verify/text_summary_options-configured-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/text_summary_options-configured-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "text-summary-options-help-text",
+      "mode": "introspection",
+      "prompt": "The Article content type on this site has a text-with-summary field named field_tso_help that has custom summary help text configured via text_summary_options. Inspect the live configuration and state the exact summary help text.",
+      "must_contain_any": [
+        "TSO help marker two text"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The summary_help third-party setting on field.field.node.article.field_tso_help under text_summary_options is 'TSO help marker two text'.",
+      "setup": "agent-module-documentation/evaluation/verify/text_summary_options-help-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/text_summary_options-help-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "text-summary-options-enable-show",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, the Article content type has a text-with-summary field field_tso_show. Using the text_summary_options module, configure that field so its summary is shown by default (Show summary enabled). Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/text_summary_options-enable-show-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/text_summary_options-enable-show-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/text_summary_options-enable-show-cleanup.sh",
+      "expected_output": "On field.field.node.article.field_tso_show set third_party_settings.text_summary_options.show_summary to TRUE (e.g. $fc->setThirdPartySetting('text_summary_options','show_summary',TRUE); $fc->save(); or tick 'Show summary' on the field edit form)."
+    },
+    {
+      "id": "text-summary-options-set-placeholder",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "The Article content type on this site has a text-with-summary field field_tso_ph. Use the text_summary_options module to add placeholder text to that field's summary box, and apply it to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/text_summary_options-set-placeholder-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/text_summary_options-set-placeholder-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/text_summary_options-set-placeholder-cleanup.sh",
+      "expected_output": "On field.field.node.article.field_tso_ph set a non-empty third_party_settings.text_summary_options.summary_placeholder (e.g. $fc->setThirdPartySetting('text_summary_options','summary_placeholder','Enter a short teaser'); $fc->save())."
+    }
+  ]
+}

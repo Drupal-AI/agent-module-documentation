@@ -1,0 +1,95 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "convert_bundles",
+  "version": "3.0.x",
+  "note": "Convert Bundles changes an entity's bundle and maps the source bundle's fields onto the target bundle's fields. It exposes one core action per multi-bundle entity type (config id system.action.convert_bundles_on_<entity_type>, plugin convert_bundles_action_base), a per-entity 'Convert Bundle' tab (route entity.<type>.convert_bundles at /{type}/{id}/convertbundles, permission 'convert <type> bundle'), and a whole-bundle form at /admin/config/content/convert_bundles (route convert_bundles.admin, permission 'administer convert_bundles'). No config schema, no Drush, no plugin types the module defines. Static logic lives in Drupal\\convert_bundles\\ConvertBundles (convertBaseTables/convertFieldTables/addNewFields). hook_convert_bundle_alter(old,&new) fires before each save. Medium cases read the action config entities; hard cases actually convert namespaced test nodes (convbnd_*/convbnd2_* content types, field_convbnd_* fields) and verify the live bundle/field values.",
+  "evals": [
+    {
+      "id": "convert_bundles-single-entity-entry",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "On a Drupal 11 site with the convert_bundles module enabled, how do I convert just one node from its current content type to a different one, without touching any other nodes?",
+      "must_contain_any": [
+        "Convert Bundle",
+        "convertbundles",
+        "/node/",
+        "local task"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Use the 'Convert Bundle' local task tab that convert_bundles adds to the node page at /node/{nid}/convertbundles (route entity.node.convert_bundles, gated by the 'convert node bundle' permission). It opens the conversion wizard for just that entity, where you pick the target content type and map fields."
+    },
+    {
+      "id": "convert_bundles-permission",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "The convert_bundles module defines a dynamic permission per entity type. What is the machine name of the permission that lets a role convert node bundles, and what other permission gates the whole-bundle admin form?",
+      "must_contain_any": [
+        "convert node bundle",
+        "administer convert_bundles"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The dynamic per-entity-type permission is 'convert node bundle' (pattern 'convert <entity_type> bundle', generated for every entity type with 2+ bundles). The whole-bundle admin form at /admin/config/content/convert_bundles is gated by 'administer convert_bundles'."
+    },
+    {
+      "id": "convert_bundles-alter-hook",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "With convert_bundles, which hook can I implement to programmatically change a converted entity right before it is saved (for example to set a taxonomy term's parent), and what arguments does it receive?",
+      "must_contain_any": [
+        "hook_convert_bundle_alter",
+        "convert_bundle_alter"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Implement hook_convert_bundle_alter(EntityInterface $old_entity, EntityInterface &$new_entity). It fires once per entity in ConvertBundles::addNewFields() just before $new_entity->save(); $new_entity already has the new bundle and mapped fields."
+    },
+    {
+      "id": "convert_bundles-node-action-plugin",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "This Drupal site has convert_bundles installed. Inspect the live configuration and tell me which action plugin the configured action that converts node bundles uses.",
+      "must_contain_any": [
+        "convert_bundles_action_base"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The action config entity system.action.convert_bundles_on_node uses plugin: convert_bundles_action_base (drush config:get system.action.convert_bundles_on_node plugin).",
+      "setup": "agent-module-documentation/evaluation/verify/convert_bundles-node-action-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/convert_bundles-node-action-cleanup.sh"
+    },
+    {
+      "id": "convert_bundles-taxo-action-id",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "On this site, convert_bundles auto-creates one bulk-conversion action per multi-bundle entity type. Inspect the live config and give the exact config-entity id of the action that converts taxonomy term bundles.",
+      "must_contain_any": [
+        "convert_bundles_on_taxonomy_term"
+      ],
+      "must_not_contain": [],
+      "expected_output": "system.action.convert_bundles_on_taxonomy_term (drush config:status / config:get shows it; plugin convert_bundles_action_base, type taxonomy_term).",
+      "setup": "agent-module-documentation/evaluation/verify/convert_bundles-taxo-action-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/convert_bundles-taxo-action-cleanup.sh"
+    },
+    {
+      "id": "convert_bundles-convert-one",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "This site has two content types, convbnd_from and convbnd_to, and a node titled 'CB Hard One' that is currently of type convbnd_from. Using the convert_bundles module, convert that node's bundle to convbnd_to and apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/convert_bundles-convert-one-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/convert_bundles-convert-one-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/convert_bundles-convert-one-cleanup.sh",
+      "expected_output": "After conversion the node 'CB Hard One' has bundle convbnd_to. convert_bundles rewrites the bundle/type key in the node base+data tables (and dedicated field tables for kept fields) then re-saves; run it via the Convert Bundle wizard/action or the ConvertBundles helper."
+    },
+    {
+      "id": "convert_bundles-map-field",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "This site has content types convbnd2_from (with a text field field_convbnd_src) and convbnd2_to (with a text field field_convbnd_dst). A node titled 'CB Hard Two' is of type convbnd2_from with field_convbnd_src set to 'mango'. Convert that node to convbnd2_to and map the value of field_convbnd_src onto field_convbnd_dst, so the target field carries 'mango'. Apply it to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/convert_bundles-map-field-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/convert_bundles-map-field-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/convert_bundles-map-field-cleanup.sh",
+      "expected_output": "After conversion the node 'CB Hard Two' has bundle convbnd2_to and field_convbnd_dst == 'mango'. In the convert_bundles field-mapping step you map the source field field_convbnd_src to the target field field_convbnd_dst (data types match), which copies the value across during ConvertBundles::addNewFields()."
+    }
+  ]
+}

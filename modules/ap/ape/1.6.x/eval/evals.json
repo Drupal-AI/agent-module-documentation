@@ -1,0 +1,80 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "ape",
+  "version": "1.6.x",
+  "note": "Advanced Page Expiration (APE) gives per-path and per-status-code control of the Cache-Control max-age header. Settings live in the ape.settings config object: alternatives (path list), exclusions (path list denied caching), lifetime.alternatives, lifetime.301, lifetime.302, lifetime.404 (ints); the global default is core system.performance cache.page.max_age. Admin form at /admin/config/development/performance/ape (route ape.admin, permission 'administer ape', form id ape_settings). Behaviour is applied by ApeSubscriber (KernelEvents::RESPONSE priority -1024) which writes 'public, max-age=N' on cacheable responses, with status overrides (301/302/404 use their lifetimes, 403 forced to 0), and by the ExcludePages page_cache_response_policy. Extension points: ape_cache_set() (pre-set an age, used by Rules) and hook_ape_cache_alter(&$max_age,$original). No default ape.settings ships. Medium/hard cases are grounded in real ape.settings config: introspection reads a live lifetime/exclusion; execution sets the 404 lifetime and adds an excluded path, verified against live ape.settings config.",
+  "evals": [
+    {
+      "id": "ape-where-configured",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "The Drupal ape (Advanced Page Expiration) module controls the Cache-Control max-age header. Where do you configure it (route/path), which config object stores its settings, and what permission guards the admin form?",
+      "must_contain_any": ["ape.settings", "ape.admin", "/admin/config/development/performance/ape", "administer ape"],
+      "must_not_contain": [],
+      "expected_output": "Configure it at /admin/config/development/performance/ape (route ape.admin, permission 'administer ape'). Its settings are stored in the ape.settings config object (the global default lifetime stays in system.performance cache.page.max_age)."
+    },
+    {
+      "id": "ape-status-lifetimes",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "With the ape module, how do I give 301 redirects, 302 redirects and 404 responses their own cache lifetimes, and what happens to a 403 response's cache time? Name the config keys.",
+      "must_contain_any": ["lifetime.301", "lifetime.302", "lifetime.404", "403", "max-age=0", "0"],
+      "must_not_contain": [],
+      "expected_output": "Set ape.settings lifetime.301, lifetime.302 and lifetime.404 (seconds) for those status codes; a 403 response is always forced to max-age 0 (never cached) by ApeSubscriber."
+    },
+    {
+      "id": "ape-alter-and-exclude",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "In the ape module, how can I (a) stop specific paths from being cached at all, and (b) programmatically change the computed max-age from custom code?",
+      "must_contain_any": ["exclusions", "hook_ape_cache_alter", "ape_cache_set", "ExcludePages"],
+      "must_not_contain": [],
+      "expected_output": "(a) Add the paths to ape.settings 'exclusions' (enforced by the ExcludePages page_cache_response_policy, which denies caching). (b) Implement hook_ape_cache_alter(&$max_age, $original_max_age), or pre-set a value with ape_cache_set()."
+    },
+    {
+      "id": "ape-known-404",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "On this Drupal site, ape is configured. Inspect the live ape.settings configuration and report the cache lifetime (in seconds) that ape applies to 404 Not Found responses.",
+      "must_contain_any": ["600"],
+      "must_not_contain": [],
+      "expected_output": "ape.settings lifetime.404 is 600 (seconds).",
+      "setup": "agent-module-documentation/evaluation/verify/ape-known-404-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/ape-known-404-cleanup.sh"
+    },
+    {
+      "id": "ape-known-exclusions",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "On this Drupal site, ape is configured to exclude certain paths from page caching. Inspect the live ape.settings configuration and name a path that is excluded from caching.",
+      "must_contain_any": ["/ape_exclude", "/user"],
+      "must_not_contain": [],
+      "expected_output": "ape.settings exclusions lists /ape_exclude and /user/* — those paths are excluded from page caching.",
+      "setup": "agent-module-documentation/evaluation/verify/ape-known-exclusions-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/ape-known-exclusions-cleanup.sh"
+    },
+    {
+      "id": "ape-set-404",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, use the ape module to set the cache lifetime for 404 Not Found responses to 300 seconds (5 minutes). Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/ape-set-404-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/ape-set-404-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/ape-set-404-cleanup.sh",
+      "expected_output": "ape.settings lifetime.404 is 300 (e.g. \\Drupal::configFactory()->getEditable('ape.settings')->set('lifetime.404', 300)->save(), or set it on the APE settings form)."
+    },
+    {
+      "id": "ape-exclude-path",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, use the ape module to exclude the path /ape_exclude from page caching (add it to APE's list of excluded pages). Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/ape-exclude-path-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/ape-exclude-path-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/ape-exclude-path-cleanup.sh",
+      "expected_output": "ape.settings 'exclusions' contains /ape_exclude (one path per line), so the ExcludePages policy denies caching for it."
+    }
+  ]
+}

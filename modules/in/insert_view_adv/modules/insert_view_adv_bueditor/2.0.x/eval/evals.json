@@ -1,0 +1,58 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "insert_view_adv_bueditor",
+  "version": "2.0.x",
+  "note": "Trivial glue submodule of insert_view_adv: it defines one BUEditorPlugin (id 'drupalviews', label 'Embedded Views') whose getButtons() adds a 'Views Embed' button to a BUEditor toolbar; a JS dialog (js/bueditor.drupalviews.js) inserts an insert_view_adv [view:...] token. alterEditorJS() attaches the 'insert_view_adv_bueditor/drupalviews' library (depends on bueditor/drupal.bueditor) only when the toolbar has the 'drupalviews' button. It has no config, routes, permissions, services or schema of its own. LIMITATION: this submodule declares core ^8||^9||^10 (no ^11), so it CANNOT be enabled on this Drupal 11 site. bueditor 3.0.2 was composer-required per the task (bueditor itself is D11-compatible), but it cannot be used as reliable eval setup on this shared site: every route rebuild during module install/uninstall fatals in the site's contrib 'plugin' module (PluginDefinitionConverter TypeError), and even with bueditor enabled the insert_view_adv_bueditor plugin/button never loads because the submodule is disabled. So no live 'drupalviews' BUEditor toolbar can be created here. The medium and hard tiers are therefore grounded in the submodule's REAL on-disk source (plugin id 'drupalviews', label 'Embedded Views', button 'Views Embed', library 'insert_view_adv_bueditor/drupalviews') and verified via the agent inspecting that source and recording an artifact, rather than against a running instance. All five cases were smoke-tested.",
+  "evals": [
+    {
+      "id": "insert_view_adv_bueditor-what",
+      "mode": "recipe",
+      "prompt": "What does the insert_view_adv_bueditor submodule add, and which two modules must be installed for it to work?",
+      "must_contain_any": ["bueditor", "Views Embed", "button", "insert_view_adv"],
+      "must_not_contain": [],
+      "expected_output": "It adds a 'Views Embed' (drupalviews) button to a BUEditor toolbar that inserts an Advanced Insert View [view:...] token via a dialog. It requires both insert_view_adv and the bueditor project.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "insert_view_adv_bueditor-plugin-id",
+      "mode": "recipe",
+      "prompt": "In the insert_view_adv_bueditor submodule, what is the plugin id and label of the BUEditor plugin it defines, and what button does it contribute to the toolbar?",
+      "must_contain_any": ["drupalviews", "Embedded Views", "Views Embed"],
+      "must_not_contain": [],
+      "expected_output": "The plugin is @BUEditorPlugin(id = \"drupalviews\", label = \"Embedded Views\"), class DrupalViews, and it contributes a 'drupalviews' button labelled 'Views Embed'.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "insert_view_adv_bueditor-library-wiring",
+      "mode": "recipe",
+      "prompt": "How does the insert_view_adv_bueditor plugin decide when to attach its JavaScript library, and what library does it attach?",
+      "must_contain_any": ["insert_view_adv_bueditor/drupalviews", "toolbar", "has('drupalviews')", "when the button"],
+      "must_not_contain": [],
+      "expected_output": "In alterEditorJS() it checks whether the BUEditor toolbar has the 'drupalviews' button; only then does it add the 'insert_view_adv_bueditor/drupalviews' library (which depends on bueditor/drupal.bueditor).",
+      "difficulty": "easy"
+    },
+    {
+      "id": "insert_view_adv_bueditor-source-introspect",
+      "mode": "introspection",
+      "prompt": "This Drupal 11 site ships the insert_view_adv_bueditor submodule but it is not enabled (it declares core ^8||^9||^10, so Drupal 11 refuses to install it). Inspect the module's source on the site and report the BUEditor plugin id it defines and the button it contributes to the toolbar.",
+      "must_contain_any": ["drupalviews", "Views Embed", "Embedded Views"],
+      "must_not_contain": [],
+      "expected_output": "Its plugin (web/modules/contrib/insert_view_adv/modules/bueditor/src/Plugin/BUEditorPlugin/DrupalViews.php) is @BUEditorPlugin(id = \"drupalviews\", label = \"Embedded Views\"); getButtons() contributes a 'drupalviews' button labelled 'Views Embed'. The module is present on disk but cannot be enabled on Drupal 11.",
+      "setup": "agent-module-documentation/evaluation/verify/insert_view_adv_bueditor-source-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/insert_view_adv_bueditor-source-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "insert_view_adv_bueditor-integration-execute",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "The insert_view_adv_bueditor submodule cannot be enabled on this Drupal 11 site (it declares core ^8||^9||^10), so you must work from its source instead of a running instance. Inspect the submodule and write, to the file /tmp/iva_bueditor_integration.txt on the site, the BUEditor plugin id it defines and the machine name of the Drupal library it attaches to a BUEditor toolbar.",
+      "reset": "agent-module-documentation/evaluation/verify/insert_view_adv_bueditor-integration-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/insert_view_adv_bueditor-integration-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/insert_view_adv_bueditor-integration-cleanup.sh",
+      "expected_output": "From the submodule source: plugin id 'drupalviews' (label 'Embedded Views', button 'Views Embed') and library 'insert_view_adv_bueditor/drupalviews' (declared in insert_view_adv_bueditor.libraries.yml, attached by alterEditorJS()/alterToolbarWidget()). Write both facts to /tmp/iva_bueditor_integration.txt. Verify requires the file to contain both 'drupalviews' and 'insert_view_adv_bueditor/drupalviews'."
+    }
+  ]
+}

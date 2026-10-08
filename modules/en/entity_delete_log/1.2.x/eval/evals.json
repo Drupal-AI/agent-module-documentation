@@ -1,0 +1,98 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "entity_delete_log",
+  "version": "1.2.x",
+  "note": "Entity Delete Log logs entity deletions to the base table `entity_delete_log`. Which types are logged is stored in simple config `entity_delete_log.settings` key `entity_types` (array of entity-type ids; empty/absent = nothing logged). Settings form at /admin/config/content/entity-delete-log (route entity_delete_log.settings, perm 'administer site configuration'); report at /admin/reports/entity-delete-log (Views view `entity_delete_log`, perm 'access site reports'). Two alter hooks: hook_entity_delete_log_alter (must RETURN $variables) and hook_entity_delete_log_post_process. No plugins, no Drush, no own permissions, no config schema. Medium/hard cases are grounded in the real config key and the real table columns (entity_type/entity_title/uid/deleted).",
+  "evals": [
+    {
+      "id": "entity_delete_log-config-key",
+      "mode": "recipe",
+      "prompt": "On a Drupal site using the entity_delete_log module, how do I choose which entity types get logged when deleted, and where is that choice stored (config object and key)?",
+      "must_contain_any": [
+        "entity_delete_log.settings",
+        "entity_types",
+        "/admin/config/content/entity-delete-log",
+        "entity_delete_log.settings"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Tick the entity types on /admin/config/content/entity-delete-log (route entity_delete_log.settings, permission 'administer site configuration'). The selection is stored in simple config entity_delete_log.settings under the key entity_types (an array of entity-type ids). Empty/absent means nothing is logged.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "entity_delete_log-where-stored",
+      "mode": "recipe",
+      "prompt": "Where does entity_delete_log store the deletion records, and where can an editor review them in the UI (and with what permission)?",
+      "must_contain_any": [
+        "entity_delete_log",
+        "/admin/reports/entity-delete-log",
+        "access site reports"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Records are inserted into the base database table `entity_delete_log` (columns include entity_id, entity_type, entity_bundle, entity_title, author, revisions, created, deleted, uid). Editors review them at /admin/reports/entity-delete-log, a Views view gated by the 'access site reports' permission.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "entity_delete_log-alter-hooks",
+      "mode": "recipe",
+      "prompt": "Which hooks does entity_delete_log invite a custom module to implement to change the logged data before insertion or react afterwards?",
+      "must_contain_any": [
+        "hook_entity_delete_log_alter",
+        "entity_delete_log_alter",
+        "hook_entity_delete_log_post_process",
+        "entity_delete_log_post_process"
+      ],
+      "must_not_contain": [],
+      "expected_output": "hook_entity_delete_log_alter($entity, $type, $variables) is called before insertion and must RETURN the $variables array (invokeAll replaces $variables with the return value); hook_entity_delete_log_post_process($entity, $type, $variables) runs after a successful insert (the $variables then also include entity_delete_log_id).",
+      "difficulty": "easy"
+    },
+    {
+      "id": "entity_delete_log-which-types-configured",
+      "mode": "introspection",
+      "prompt": "On this Drupal site, entity_delete_log has been configured to log deletions for a specific set of entity types. Inspect the live configuration and list which entity types are currently enabled for deletion logging.",
+      "must_contain_any": [
+        "taxonomy_term"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The config entity_delete_log.settings key entity_types is set to [taxonomy_term, user] (read via `drush cget entity_delete_log.settings entity_types`).",
+      "setup": "agent-module-documentation/evaluation/verify/entity_delete_log-configured-types-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/entity_delete_log-configured-types-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "entity_delete_log-read-logged-row",
+      "mode": "introspection",
+      "prompt": "The entity_delete_log table on this site has recorded at least one entity deletion. Inspect the live database and give the entity_title of the logged deletion.",
+      "must_contain_any": [
+        "edl_seed_title"
+      ],
+      "must_not_contain": [],
+      "expected_output": "A row exists in the `entity_delete_log` table with entity_title = 'edl_seed_title' (entity_type node). Found via e.g. `drush sqlq \"SELECT entity_type, entity_title FROM entity_delete_log\"`.",
+      "setup": "agent-module-documentation/evaluation/verify/entity_delete_log-logged-row-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/entity_delete_log-logged-row-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "entity_delete_log-log-node-deletion",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "Using the entity_delete_log module, make this Drupal site record node deletions, then prove it works: configure logging for the node entity type, create an Article node titled exactly 'edl_task_node', and delete it. After you are done there must be a deletion-log entry for that node.",
+      "reset": "agent-module-documentation/evaluation/verify/entity_delete_log-log-node-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/entity_delete_log-log-node-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/entity_delete_log-log-node-cleanup.sh",
+      "expected_output": "Set entity_delete_log.settings entity_types to include 'node', create an Article titled 'edl_task_node', then delete it. hook_entity_delete() inserts a row into the entity_delete_log table with entity_type='node' and entity_title='edl_task_node'."
+    },
+    {
+      "id": "entity_delete_log-log-term-deletion",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "site-owner",
+      "prompt": "I want a record kept whenever someone deletes a taxonomy term on this site. Turn that on using the Entity Delete Log module, then show it works by adding a term called 'edl_task_term' to the Tags vocabulary and deleting it — afterwards there should be a logged record of that term's deletion.",
+      "reset": "agent-module-documentation/evaluation/verify/entity_delete_log-log-term-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/entity_delete_log-log-term-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/entity_delete_log-log-term-cleanup.sh",
+      "expected_output": "Add 'taxonomy_term' to entity_delete_log.settings entity_types, create a term named 'edl_task_term' in the tags vocabulary, then delete it. A row is inserted into entity_delete_log with entity_type='taxonomy_term' and entity_title='edl_task_term'."
+    }
+  ]
+}

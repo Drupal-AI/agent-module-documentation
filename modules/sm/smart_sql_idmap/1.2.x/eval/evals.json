@@ -1,0 +1,84 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "smart_sql_idmap",
+  "version": "1.2.x",
+  "note": "smart_sql_idmap ships exactly one migrate id_map plugin (id 'smart_sql', class SmartSql extends core Sql), opted into per migration with idMap: {plugin: smart_sql}. It has no config object, no schema, no services, no permissions, no admin UI. This site's migration PLUGIN MANAGER discovery is broken by pathauto, so medium/hard cases are grounded in the id_map plugin definition and in migrate_plus.migration.* CONFIG ENTITIES (created/read/deleted via entity storage), NOT in live migration executions. The id_map manager (plugin.manager.migrate.id_map) does list smart_sql, and migrate_plus migration config entities carry the idMap key that the plugin id is read from.",
+  "evals": [
+    {
+      "id": "smart_sql_idmap-optin",
+      "mode": "recipe",
+      "prompt": "I have a Drupal migration whose plugin ID is very long. How do I make it use the Smart SQL ID Map module's id map instead of core's default? Show exactly what to add to the migration definition.",
+      "must_contain_any": ["smart_sql", "idMap"],
+      "must_not_contain": [],
+      "expected_output": "Add an idMap key to the migration definition: idMap:\\n  plugin: smart_sql . Works the same in a code migration YAML and in a migrate_plus.migration config entity; source/process/destination are unchanged.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "smart_sql_idmap-why",
+      "mode": "recipe",
+      "prompt": "What core Drupal migrate problem does the smart_sql_idmap module work around, and why does it matter for migrations with long plugin IDs?",
+      "must_contain_any": ["truncat", "63", "collision", "collide", "same table", "long"],
+      "must_not_contain": [],
+      "expected_output": "Core derives map/message table names and truncates them to MySQL's 63-character identifier limit, so two long-id migrations can collapse to the same table name and corrupt id lookups (issue #2845340). smart_sql computes shorter, md5-suffixed, collision-free table names; it also fixes getRowByDestination()/rollback (#3227549, #3227660).",
+      "difficulty": "easy"
+    },
+    {
+      "id": "smart_sql_idmap-plugin-type",
+      "mode": "recipe",
+      "prompt": "In the smart_sql_idmap module, what kind of migrate plugin is provided and what is its plugin ID and class?",
+      "must_contain_any": ["id_map", "smart_sql", "SmartSql"],
+      "must_not_contain": [],
+      "expected_output": "It provides a migrate id_map plugin with id 'smart_sql' (annotation @PluginID(\"smart_sql\")), class Drupal\\smart_sql_idmap\\Plugin\\migrate\\id_map\\SmartSql, which extends core's id_map\\Sql plugin.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "smart_sql_idmap-ssi-known-idmap",
+      "mode": "introspection",
+      "prompt": "This Drupal site has a migration configuration named ssi_known (a migrate_plus.migration config entity). Inspect the running site and state which migrate id map (idMap) plugin that migration is configured to use.",
+      "must_contain_any": ["smart_sql"],
+      "must_not_contain": [],
+      "expected_output": "ssi_known uses idMap.plugin: smart_sql (read via `drush config:get migrate_plus.migration.ssi_known idMap`).",
+      "setup": "agent-module-documentation/evaluation/verify/smart_sql_idmap-ssi-known-idmap-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/smart_sql_idmap-ssi-known-idmap-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "smart_sql_idmap-ssi-which-smart",
+      "mode": "introspection",
+      "prompt": "This site has two migration configurations, ssi_plain and ssi_smart. Exactly one of them is configured to use the smart_sql_idmap module's id map. Inspect the live configuration and state which migration uses the smart_sql id map plugin.",
+      "must_contain_any": ["ssi_smart"],
+      "must_not_contain": [],
+      "expected_output": "ssi_smart uses idMap.plugin: smart_sql; ssi_plain uses idMap.plugin: sql (core). Check `drush config:get migrate_plus.migration.ssi_smart idMap` and the same for ssi_plain.",
+      "setup": "agent-module-documentation/evaluation/verify/smart_sql_idmap-ssi-which-smart-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/smart_sql_idmap-ssi-which-smart-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "smart_sql_idmap-ssi-add-smart",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, create a migrate_plus migration configuration entity with the id ssi_task that uses the Smart SQL ID Map module's id map plugin. A minimal migration is fine (e.g. source plugin embedded_data with an integer id, empty process, destination plugin null) but it MUST be configured to use the smart_sql id map. Apply it to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/smart_sql_idmap-ssi-add-smart-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/smart_sql_idmap-ssi-add-smart-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/smart_sql_idmap-ssi-add-smart-cleanup.sh",
+      "expected_output": "A migration config entity migrate_plus.migration.ssi_task exists with idMap: { plugin: smart_sql }. Create it via the migration entity storage or config import.",
+      "must_contain_any": [],
+      "must_not_contain": []
+    },
+    {
+      "id": "smart_sql_idmap-ssi-switch-smart",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site there is an existing migration configuration ssi_switch that currently uses core's default sql id map. Reconfigure it so it uses the smart_sql_idmap module's id map plugin instead, and apply the change to the live site. Do not change its source, process, or destination.",
+      "reset": "agent-module-documentation/evaluation/verify/smart_sql_idmap-ssi-switch-smart-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/smart_sql_idmap-ssi-switch-smart-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/smart_sql_idmap-ssi-switch-smart-cleanup.sh",
+      "expected_output": "migrate_plus.migration.ssi_switch now has idMap.plugin: smart_sql (was sql).",
+      "must_contain_any": [],
+      "must_not_contain": []
+    }
+  ]
+}

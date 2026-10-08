@@ -1,0 +1,80 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "check_dns",
+  "version": "1.5.x",
+  "note": "Check DNS is a zero-config validation add-on: hook_form_user_register_form_alter() appends check_dns_user_register_validate to the core user_register_form #validate, which calls check_dns.service (Drupal\\check_dns\\CheckDnsService). validateEmail() runs FILTER_VALIDATE_EMAIL then validateHost(), which returns dns_check_record()/checkdnsrr() (default MX) for the domain. No settings form (configure=null), no permissions, no config, no Drush, no plugins. Medium cases interrogate the live service (real DNS works in this container: drupal.org -> TRUE, *.invalid -> FALSE). Hard cases toggle the module's enabled state and verify the registration form's validate handler is wired.",
+  "evals": [
+    {
+      "id": "check_dns-mechanism",
+      "mode": "recipe",
+      "prompt": "The Drupal contrib module check_dns blocks user registration when the email's domain looks fake. Technically, how does it decide a domain is invalid? Name the PHP function it ultimately calls and the default DNS record type checked.",
+      "must_contain_any": ["dns_check_record", "checkdnsrr", "MX", "validateHost"],
+      "must_not_contain": [],
+      "expected_output": "The check_dns.service (CheckDnsService) validateEmail() first runs FILTER_VALIDATE_EMAIL, then takes the domain after '@' and calls validateHost(), which returns dns_check_record($host) -- an alias of PHP's checkdnsrr(), whose default record type is MX. If the domain has no such DNS record the service returns FALSE.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "check_dns-wiring",
+      "mode": "recipe",
+      "prompt": "I enabled check_dns but can't find a settings page. Which form does it hook into to validate the email domain, and what service id can I call from my own code to run the same check?",
+      "must_contain_any": ["user_register_form", "check_dns.service", "#validate", "hook_form_user_register_form_alter"],
+      "must_not_contain": [],
+      "expected_output": "There is no settings page (configure=null). check_dns_form_user_register_form_alter() adds check_dns_user_register_validate to the core user registration form (user_register_form) #validate array. From code you call \\Drupal::service('check_dns.service')->validateEmail($mail) (or ->validateHost($host)).",
+      "difficulty": "easy"
+    },
+    {
+      "id": "check_dns-scope",
+      "mode": "recipe",
+      "prompt": "Does check_dns verify that a specific email mailbox exists, or only something about the domain? And what error does a user see when the check fails at registration?",
+      "must_contain_any": ["domain", "not recognised", "mailbox", "does not check the mailbox"],
+      "must_not_contain": [],
+      "expected_output": "It only checks that the email's DOMAIN has a DNS record; it does not verify the individual mailbox exists. On failure the registration form sets an error on the mail field: 'Your email domain is not recognised. Please enter a valid email id.'",
+      "difficulty": "easy"
+    },
+    {
+      "id": "check_dns-valid-domain-live",
+      "mode": "introspection",
+      "prompt": "On this Drupal site, use check_dns to determine whether the email address 'user@drupal.org' would be accepted as a valid registration email. Inspect the running site (do not guess) and state the result.",
+      "must_contain_any": ["valid", "accepted", "true", "TRUE", "passes", "recognised"],
+      "must_not_contain": [],
+      "expected_output": "Valid/accepted. Running \\Drupal::service('check_dns.service')->validateEmail('user@drupal.org') on the live site returns TRUE because drupal.org has a resolvable DNS/MX record.",
+      "setup": "agent-module-documentation/evaluation/verify/check_dns-valid-email-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/check_dns-valid-email-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "check_dns-invalid-host-live",
+      "mode": "introspection",
+      "prompt": "On this Drupal site, use check_dns's host validation to determine whether the domain 'no-such-domain-xyz123abc.invalid' has a usable DNS record. Inspect the running site and state whether it passes or fails the check.",
+      "must_contain_any": ["fail", "false", "FALSE", "invalid", "rejected", "does not", "no DNS", "not resolve"],
+      "must_not_contain": [],
+      "expected_output": "Fails. \\Drupal::service('check_dns.service')->validateHost('no-such-domain-xyz123abc.invalid') returns FALSE on the live site because the reserved .invalid domain has no DNS record.",
+      "setup": "agent-module-documentation/evaluation/verify/check_dns-invalid-host-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/check_dns-invalid-host-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "check_dns-block-registration-expert",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site the check_dns module is currently uninstalled, so nothing stops signups that use email addresses at non-existent domains. Enable check_dns so that its email-domain check is wired onto the user registration form. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/check_dns-block-registration-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/check_dns-block-registration-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/check_dns-block-registration-cleanup.sh",
+      "expected_output": "Run `drush en check_dns -y`. After this, hook_form_user_register_form_alter() attaches check_dns_user_register_validate to the user_register_form #validate, so registrations with a non-resolving email domain are rejected by check_dns.service."
+    },
+    {
+      "id": "check_dns-block-registration-layman",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "site-owner",
+      "prompt": "Lots of spam accounts are signing up on my Drupal site using fake email addresses whose domains don't even exist. There's a module already downloaded for this called 'Check DNS'. Please switch it on so the signup form refuses those bogus email domains.",
+      "reset": "agent-module-documentation/evaluation/verify/check_dns-block-registration-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/check_dns-block-registration-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/check_dns-block-registration-cleanup.sh",
+      "expected_output": "Enable the check_dns module (e.g. `drush en check_dns -y`). Once enabled it adds a validation handler to the registration form that rejects email addresses whose domain has no DNS record."
+    }
+  ]
+}

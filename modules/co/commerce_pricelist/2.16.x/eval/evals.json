@@ -1,0 +1,101 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "commerce_pricelist",
+  "version": "2.16.x",
+  "note": "Commerce Pricelist adds two content entities: commerce_pricelist (Price list; fields name, stores, customers, customer_roles, start_date, end_date, weight, status; bundled per purchasable type, default commerce_product_variation) and commerce_pricelist_item ('price'; fields price_list_id, purchasable_entity, quantity, price, list_price, status). Prices are injected via the tagged service commerce_pricelist.price_resolver (PriceListPriceResolver, commerce_price.price_resolver priority 600) using commerce_pricelist.repository. Permission administer commerce_pricelist. No configure route/Drush; managed at /admin/commerce/price-lists with CSV import/export. Lifecycle events in PriceListEvents. Medium/hard cases are grounded in real price-list / price-list-item / product-variation entities created on the live site (Commerce, commerce_store, commerce_product are installed; variation type 'default' exists). All setup/reset/verify scripts were smoke-tested.",
+  "evals": [
+    {
+      "id": "commerce_pricelist-how-resolves",
+      "mode": "recipe",
+      "prompt": "How does the Drupal commerce_pricelist module make a product variation use a price from a price list instead of its normal price? Name the mechanism it plugs into.",
+      "must_contain_any": [
+        "price_resolver",
+        "PriceListPriceResolver",
+        "price resolver",
+        "commerce_price.price_resolver",
+        "600"
+      ],
+      "must_not_contain": [],
+      "expected_output": "It registers a Commerce price resolver service, commerce_pricelist.price_resolver (PriceListPriceResolver), tagged commerce_price.price_resolver at priority 600. Because it runs at high priority ahead of the default variation-price resolver, a matching price list item's price overrides the base price; it returns NULL (falling back to the normal price) when no list matches.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "commerce_pricelist-entities",
+      "mode": "recipe",
+      "prompt": "In the Drupal commerce_pricelist module, what are the two entity types involved, what is a 'price' called internally, and where in the admin UI do you manage price lists?",
+      "must_contain_any": [
+        "commerce_pricelist",
+        "commerce_pricelist_item",
+        "/admin/commerce/price-lists"
+      ],
+      "must_not_contain": [],
+      "expected_output": "There are two content entities: commerce_pricelist (the Price list) and commerce_pricelist_item (a single 'price', called a price in the UI but named price list item internally). They are managed under Commerce > Price lists at /admin/commerce/price-lists, with each list's prices offering add / CSV import / CSV export.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "commerce_pricelist-conditions",
+      "mode": "recipe",
+      "prompt": "What conditions can a commerce_pricelist price list use to decide when its prices apply?",
+      "must_contain_any": [
+        "customer_roles",
+        "customers",
+        "stores",
+        "start_date",
+        "end_date",
+        "quantity"
+      ],
+      "must_not_contain": [],
+      "expected_output": "A price list can be limited by stores, specific customers (users), customer_roles, and a start_date/end_date window, and is ordered by weight when several match. Each price list item additionally has a quantity threshold for tiered pricing.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "commerce_pricelist-known-list",
+      "mode": "introspection",
+      "prompt": "On this Drupal Commerce site, a price list has been created with commerce_pricelist. Inspect the live price lists and give the name of that price list.",
+      "must_contain_any": [
+        "cpl_probe_list"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The price list is named cpl_probe_list (an enabled commerce_pricelist entity, weight 37). Load commerce_pricelist entities to find it.",
+      "setup": "agent-module-documentation/evaluation/verify/commerce_pricelist-known-list-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/commerce_pricelist-known-list-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "commerce_pricelist-known-role",
+      "mode": "introspection",
+      "prompt": "On this Drupal Commerce site, one commerce_pricelist price list is restricted to a single customer role. Inspect the live price list configuration and give the machine name of that role.",
+      "must_contain_any": [
+        "cpl_probe_role"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The price list cpl_role_list has customer_roles set to [cpl_probe_role], so its prices apply only to users in the cpl_probe_role role.",
+      "setup": "agent-module-documentation/evaluation/verify/commerce_pricelist-known-role-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/commerce_pricelist-known-role-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "commerce_pricelist-create-list",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal Commerce site, create an enabled price list (for product variations) named 'cpl_task_list' using the commerce_pricelist module. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/commerce_pricelist-create-list-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/commerce_pricelist-create-list-verify.sh",
+      "expected_output": "Create a commerce_pricelist entity of bundle commerce_product_variation with name 'cpl_task_list' and status 1 (PriceList::create([...])->save() or via /price-list/add).",
+      "cleanup": "agent-module-documentation/evaluation/verify/commerce_pricelist-create-list-cleanup.sh"
+    },
+    {
+      "id": "commerce_pricelist-add-price",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal Commerce site there is a price list named 'cpl_item_list' and a product variation with SKU 'CPL-TASK-VAR'. Using commerce_pricelist, add a price of 24.50 USD (quantity 1) for that variation to that price list. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/commerce_pricelist-add-price-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/commerce_pricelist-add-price-verify.sh",
+      "expected_output": "Create a commerce_pricelist_item (bundle commerce_product_variation) with price_list_id = the cpl_item_list list, purchasable_entity = the CPL-TASK-VAR variation, quantity 1, price 24.50 USD, status 1.",
+      "cleanup": "agent-module-documentation/evaluation/verify/commerce_pricelist-add-price-cleanup.sh"
+    }
+  ]
+}

@@ -1,0 +1,147 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "webform",
+  "version": "6.3.x",
+  "note": "Webform has a large surface (config entity + submissions, 5 plugin types, drush commands, submodules, permissions). Cases span three difficulty tiers: easy (recipe, response-graded, no site mutation), medium (introspection — a setup script installs a known `eval_intro` webform and the agent must inspect the live site to answer), and hard (execution — the agent must build a webform on the live site and a verify script checks it). Recipe cases probe load-bearing, webform-specific facts an agent would otherwise dig through source to answer.",
+  "evals": [
+    {
+      "id": "webform-entities",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "In Drupal Webform, what kind of entity is a form itself versus a single response/submission? Name each entity type and whether it is config or content.",
+      "must_contain_any": ["webform_submission"],
+      "must_not_contain": [],
+      "expected_output": "The form is a `webform` config entity (WebformInterface); each response is a `webform_submission` content entity (WebformSubmissionInterface)."
+    },
+    {
+      "id": "webform-handler-plugin",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "I want to write a custom handler that runs when a Webform submission is saved (to POST it to Slack). What plugin type, annotation, base class, and source directory do I use in my module?",
+      "must_contain_any": ["WebformHandler", "WebformHandlerBase"],
+      "must_not_contain": [],
+      "expected_output": "A WebformHandler plugin: `@WebformHandler` annotation, extend `Drupal\\webform\\Plugin\\WebformHandlerBase`, placed in `src/Plugin/WebformHandler/`, e.g. override postSave()."
+    },
+    {
+      "id": "webform-plugin-types",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "List the plugin types that the Webform module defines for developers to extend.",
+      "must_contain_any": ["WebformElement", "WebformExporter", "WebformVariant", "WebformSourceEntity"],
+      "must_not_contain": [],
+      "expected_output": "Five plugin types: WebformElement, WebformHandler, WebformExporter, WebformVariant, WebformSourceEntity."
+    },
+    {
+      "id": "webform-drush-export",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "Give the Drush command to export a Webform's results to a file from the command line, and the command to create test submissions for a form.",
+      "must_contain_any": ["webform:export", "webform:generate"],
+      "must_not_contain": [],
+      "expected_output": "`drush webform:export <webform_id>` to export results; `drush webform:generate <webform_id> [num]` to create test submissions."
+    },
+    {
+      "id": "webform-ui-submodule",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "On a Webform site I can only edit forms via the raw YAML source. Which submodule provides the drag-and-drop element builder UI so editors can add elements through forms instead of YAML?",
+      "must_contain_any": ["webform_ui"],
+      "must_not_contain": [],
+      "expected_output": "The `webform_ui` submodule provides the drag-and-drop element builder UI."
+    },
+    {
+      "id": "webform-source-permission",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "Which Webform permission machine name controls access to the raw YAML Source editor for editing a form's elements tree?",
+      "must_contain_any": ["edit webform source"],
+      "must_not_contain": [],
+      "expected_output": "The `edit webform source` permission gates the raw YAML Source editor."
+    },
+    {
+      "id": "webform-conditional-logic",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "In a Webform YAML element definition, how do I show a `phone` field only when a `wants_call` checkbox is checked, without writing code? Show the element property to use.",
+      "must_contain_any": ["#states", "':input"],
+      "must_not_contain": [],
+      "expected_output": "Use the `#states` property for conditional logic, e.g. `'#states': { visible: { ':input[name=\"wants_call\"]': { checked: true } } }`."
+    },
+    {
+      "id": "webform-email-handler",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "Which built-in Webform handler sends a notification/confirmation email on submission, and which one POSTs the submission data to an external URL (CRM/webhook)?",
+      "must_contain_any": ["EmailWebformHandler", "RemotePostWebformHandler", "remote_post"],
+      "must_not_contain": [],
+      "expected_output": "EmailWebformHandler (id `email`) sends notification/confirmation email; RemotePostWebformHandler (id `remote_post`) POSTs submission data to an external URL."
+    },
+    {
+      "id": "webform-build-contact",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site (drush available), build a working contact webform with machine name `eval_contact`. It must have three required elements — a full name (textfield), an email address (email element), and a message (textarea) — and it must email each submission to team@example.com via a webform email handler. Apply it to the live site so the form actually exists and works; do not just describe it. Give a one-line summary.",
+      "reset": "agent-module-documentation/evaluation/verify/webform-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/webform-contact-form.sh",
+      "expected_output": "An eval_contact webform with name/email/message required elements + an email handler exists on the live site."
+    },
+    {
+      "id": "webform-intro-confirmation",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "persona": "drupal-expert",
+      "setup": "agent-module-documentation/evaluation/verify/webform-intro-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/webform-intro-cleanup.sh",
+      "prompt": "This Drupal site already has a webform with machine name `eval_intro` configured. Inspect the live site (drush is available) and tell me: what confirmation message does it show submitters after they submit? Quote it exactly.",
+      "must_contain_any": ["Thank you — your enquiry reference is ENQ-4815.", "ENQ-4815"],
+      "must_not_contain": [],
+      "expected_output": "Its confirmation message is: \"Thank you — your enquiry reference is ENQ-4815.\""
+    },
+    {
+      "id": "webform-intro-elements",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "persona": "drupal-expert",
+      "setup": "agent-module-documentation/evaluation/verify/webform-intro-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/webform-intro-cleanup.sh",
+      "prompt": "This Drupal site already has a webform with machine name `eval_intro` configured. Inspect the live site (drush is available) and list which elements it defines and which of them are required.",
+      "must_contain_any": ["department"],
+      "must_not_contain": [],
+      "expected_output": "eval_intro defines four elements: full_name (textfield, required), email (email, required), department (select, required) and subscribe (checkbox, optional/not required)."
+    },
+    {
+      "id": "webform-intro-recipient",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "persona": "drupal-expert",
+      "setup": "agent-module-documentation/evaluation/verify/webform-intro-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/webform-intro-cleanup.sh",
+      "prompt": "This Drupal site already has a webform with machine name `eval_intro` configured. Inspect the live site (drush is available) and tell me what recipient email address its email handler sends submission notifications to.",
+      "must_contain_any": ["intake@eval.example.org"],
+      "must_not_contain": [],
+      "expected_output": "Its email handler sends notifications to intake@eval.example.org."
+    },
+    {
+      "id": "webform-build-survey",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site (drush available), build a working survey webform with machine name `eval_survey`. It must contain a required `select` element for a satisfaction rating whose options are exactly the keys `poor` (Poor), `good` (Good) and `excellent` (Excellent), plus a `checkbox` element (e.g. \"Contact me about my feedback\"). Apply it to the live site so the form actually exists and works; do not just describe it. Give a one-line summary.",
+      "reset": "agent-module-documentation/evaluation/verify/webform-survey-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/webform-survey-verify.sh",
+      "expected_output": "An eval_survey webform with a required select element (options poor/good/excellent) and a checkbox element exists on the live site."
+    },
+    {
+      "id": "webform-build-signup",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site (drush available), build a working signup webform with machine name `eval_signup` (a couple of simple elements are fine). Configure its submission confirmation so that instead of showing a message it redirects the submitter to the site front page (confirmation type = URL, confirmation URL = `<front>`), and add a webform email handler that notifies someone on each submission. Apply it to the live site so the form actually exists and works; do not just describe it. Give a one-line summary.",
+      "reset": "agent-module-documentation/evaluation/verify/webform-signup-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/webform-signup-verify.sh",
+      "expected_output": "An eval_signup webform whose confirmation redirects to <front> (confirmation_type url) and that has an email handler exists on the live site."
+    }
+  ]
+}

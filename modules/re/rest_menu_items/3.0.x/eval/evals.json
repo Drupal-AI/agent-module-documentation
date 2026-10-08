@@ -1,0 +1,80 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "rest_menu_items",
+  "version": "3.0.x",
+  "note": "REST menu items exposes a REST resource plugin rest_menu_item at /api/menu_items/{menu_name}; _format is required (json|hal_json|xml), max_depth/min_depth limit the tree, children nest under 'below'. Site config is the plain config object rest_menu_items.config (keys output_values, allowed_menus, base_url, add_fragment) edited at rest_menu_items.config_form (/admin/config/services/rest_menu_items, permission 'administer rest menu items'). allowed_menus is a checkbox map: empty = all allowed; a menu present but falsy returns 403; a menu whose value equals its machine name is exposed. base_url overrides the domain of absolute URLs for decoupled setups. Two alter hooks reshape the tree/output. Medium/hard cases are grounded in the real rest_menu_items.config keys.",
+  "evals": [
+    {
+      "id": "rest_menu_items-endpoint",
+      "mode": "recipe",
+      "prompt": "Using the rest_menu_items module, what URL do I call to get the 'main' menu as a web service, and which query parameter is required for the request to succeed?",
+      "must_contain_any": ["/api/menu_items/main", "/api/menu_items/", "_format"],
+      "must_not_contain": [],
+      "expected_output": "Call /api/menu_items/main and add the required _format parameter (json, hal_json or xml), e.g. /api/menu_items/main?_format=json. Without _format you get a 406.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "rest_menu_items-depth",
+      "mode": "recipe",
+      "prompt": "How do I limit the depth of the menu tree returned by the rest_menu_items endpoint, e.g. only the top level, and how are child items represented in the response?",
+      "must_contain_any": ["max_depth", "min_depth", "below"],
+      "must_not_contain": [],
+      "expected_output": "Add max_depth (return up to that depth, e.g. max_depth=1 for top level only) and/or min_depth (start from that depth) query parameters. Child items are nested under a 'below' key.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "rest_menu_items-config-keys",
+      "mode": "recipe",
+      "prompt": "In rest_menu_items, which configuration setting restricts which menus can be requested over REST, and which setting overrides the domain used for absolute URLs in a decoupled setup? What config object holds them?",
+      "must_contain_any": ["allowed_menus", "base_url", "rest_menu_items.config"],
+      "must_not_contain": [],
+      "expected_output": "allowed_menus restricts which menus are exposed (empty = all; an excluded menu returns 403) and base_url overrides the domain for absolute URLs. Both live in the rest_menu_items.config config object (edited at /admin/config/services/rest_menu_items).",
+      "difficulty": "easy"
+    },
+    {
+      "id": "rest_menu_items-known-baseurl",
+      "mode": "introspection",
+      "prompt": "This Drupal site has rest_menu_items configured for a decoupled front end. Inspect the live configuration and give the base URL it uses for absolute menu-item URLs.",
+      "must_contain_any": ["https://api.known.test"],
+      "must_not_contain": [],
+      "expected_output": "rest_menu_items.config base_url is https://api.known.test.",
+      "setup": "agent-module-documentation/evaluation/verify/rest_menu_items-known-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/rest_menu_items-known-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "rest_menu_items-known-allowed",
+      "mode": "introspection",
+      "prompt": "On this site, rest_menu_items has been configured to expose only one menu over REST. Inspect the configuration and state which menu is allowed.",
+      "must_contain_any": ["main"],
+      "must_not_contain": [],
+      "expected_output": "rest_menu_items.config allowed_menus enables only 'main' ({ main: main }), so only the main menu is exposed.",
+      "setup": "agent-module-documentation/evaluation/verify/rest_menu_items-known-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/rest_menu_items-known-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "rest_menu_items-set-baseurl",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, configure the rest_menu_items module so absolute URLs in its REST output use the base URL https://headless.example.test. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/rest_menu_items-baseurl-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/rest_menu_items-baseurl-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/rest_menu_items-baseurl-cleanup.sh",
+      "expected_output": "Set base_url = https://headless.example.test in the rest_menu_items.config config object (e.g. via the settings form, drush config:set, or configFactory)."
+    },
+    {
+      "id": "rest_menu_items-expose-footer",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "site-owner",
+      "prompt": "I only want my footer menu available through the rest_menu_items web service. Using the module's configuration, mark the footer menu as an allowed/exposed menu on this live site.",
+      "reset": "agent-module-documentation/evaluation/verify/rest_menu_items-allowmenu-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/rest_menu_items-allowmenu-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/rest_menu_items-allowmenu-cleanup.sh",
+      "expected_output": "In rest_menu_items.config, set allowed_menus so 'footer' is enabled (its value is 'footer'), e.g. allowed_menus = { footer: footer } via the settings form or configFactory."
+    }
+  ]
+}

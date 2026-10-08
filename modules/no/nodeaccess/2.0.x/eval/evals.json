@@ -1,0 +1,101 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "nodeaccess",
+  "version": "2.0.x",
+  "note": "Nodeaccess provides per-content-type and per-node view/edit/delete access via Drupal's node grant system (hook_node_grants + hook_node_access_records). Content-type DEFAULT grants live in the nodeaccess.settings config object at bundles_roles_grants.<bundle>.<role|author>.{grant_view,grant_update,grant_delete} (int 0/1); 'author' is a pseudo-role for the node owner. grants_tab_availability.<bundle> (bool) controls whether the per-node Grants tab (route entity.node.grants, /node/{node}/grants) is available. map_rid_gid maps role id -> numeric grant id; realms are nodeaccess_role, nodeaccess_user, nodeaccess_author. Per-node overrides are stored in the module's own 'nodeaccess' DB table and win over bundle defaults. Settings form: /admin/config/people/nodeaccess (route nodeaccess.administration, permission 'administer nodeaccess'). Permissions also include 'grant node permissions' and the dynamic per-type 'nodeaccess grant <type> permissions'. No Drush, no plugins. Medium/hard cases read/write the real nodeaccess.settings config for the existing 'article' content type; cleanup restores baseline zeros explicitly.",
+  "evals": [
+    {
+      "id": "nodeaccess-what-grants",
+      "mode": "recipe",
+      "prompt": "What access does the Drupal Nodeaccess module let you control, and at what granularity (site-wide, per content type, per node)?",
+      "must_contain_any": [
+        "per node",
+        "per-node",
+        "content type",
+        "view",
+        "edit",
+        "delete"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Nodeaccess grants view/edit/delete access to nodes, both per content type (defaults for roles and the author) and per individual node (via each node's Grants tab), assignable to roles and to specific users through Drupal's node grant system.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "nodeaccess-settings-object",
+      "mode": "recipe",
+      "prompt": "In the Drupal Nodeaccess module, where are the per-content-type default grants stored in configuration, and what is the config key structure?",
+      "must_contain_any": [
+        "nodeaccess.settings",
+        "bundles_roles_grants",
+        "grant_view",
+        "grant_update"
+      ],
+      "must_not_contain": [],
+      "expected_output": "In the nodeaccess.settings config object under bundles_roles_grants.<bundle>.<role|author>.{grant_view, grant_update, grant_delete} (integers 0/1). The settings form is at /admin/config/people/nodeaccess (route nodeaccess.administration).",
+      "difficulty": "easy"
+    },
+    {
+      "id": "nodeaccess-realms",
+      "mode": "recipe",
+      "prompt": "Which node access realms does the Drupal Nodeaccess module define in hook_node_grants, and where are per-node (Grants tab) overrides stored?",
+      "must_contain_any": [
+        "nodeaccess_role",
+        "nodeaccess_user",
+        "nodeaccess_author",
+        "nodeaccess"
+      ],
+      "must_not_contain": [],
+      "expected_output": "It defines the realms nodeaccess_role, nodeaccess_user and nodeaccess_author. Per-node grants set on a node's Grants tab are stored in the module's own 'nodeaccess' database table and override the content-type defaults for that node.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "nodeaccess-which-role-view",
+      "mode": "introspection",
+      "prompt": "On this Drupal site, exactly one role has been given a default 'view' grant on the Article content type via Nodeaccess. Inspect the live nodeaccess configuration and state which role it is.",
+      "must_contain_any": [
+        "anonymous"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The anonymous role: nodeaccess.settings -> bundles_roles_grants.article.anonymous.grant_view = 1.",
+      "setup": "agent-module-documentation/evaluation/verify/nodeaccess-anon-view-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/nodeaccess-anon-view-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "nodeaccess-which-type-grants-tab",
+      "mode": "introspection",
+      "prompt": "On this site, the per-node Nodeaccess 'Grants' tab has been enabled for exactly one content type. Inspect the live nodeaccess configuration and name that content type.",
+      "must_contain_any": [
+        "article"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The Article content type: nodeaccess.settings -> grants_tab_availability.article = true.",
+      "setup": "agent-module-documentation/evaluation/verify/nodeaccess-grants-tab-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/nodeaccess-grants-tab-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "nodeaccess-author-edit-default",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, use Nodeaccess to configure the Article content type so that, by default, the node author can edit (update) their own Article nodes. Apply the change to the live nodeaccess configuration.",
+      "reset": "agent-module-documentation/evaluation/verify/nodeaccess-author-update-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/nodeaccess-author-update-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/nodeaccess-author-update-cleanup.sh",
+      "expected_output": "Set nodeaccess.settings -> bundles_roles_grants.article.author.grant_update = 1 (the 'author' pseudo-role's Edit column), then save."
+    },
+    {
+      "id": "nodeaccess-editor-view-default",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-layman",
+      "prompt": "On my Drupal site I want people in the 'Content editor' role to be able to view all Article posts by default, using the Nodeaccess module. Set that up on the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/nodeaccess-editor-view-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/nodeaccess-editor-view-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/nodeaccess-editor-view-cleanup.sh",
+      "expected_output": "Set nodeaccess.settings -> bundles_roles_grants.article.content_editor.grant_view = 1 (the content_editor role's View column for Article), then save."
+    }
+  ]
+}

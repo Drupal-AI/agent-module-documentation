@@ -1,0 +1,96 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "cas_attributes",
+  "version": "3.0.x",
+  "note": "CAS Attributes extends drupal/cas. Everything is one config object, cas_attributes.settings, edited at /admin/config/people/cas/attributes (route cas_attributes.settings). Keys: sitewide_token_support (bool), token_allowed_attributes (lower-cased sequence), field.{sync_frequency, overwrite, mappings}, role.{sync_frequency, deny_login_no_match, deny_registration_no_match, mappings}. sync_frequency is the SyncFrequency enum: 0 Never, 1 Initial registration only, 2 Every login. Role mapping rows are {rid, attribute, value, method, negate, remove_without_match} with method in exact_single|exact_any|contains_any|regex_any. The token is [cas:attribute:<lowercase-name>] with array modifiers (:first, :last, :count, :join). All runtime behaviour lives in CasAttributesSubscriber (CasPreRegisterEvent, CasPreLoginEvent, CasPostLoginEvent). No permissions of its own, no Drush commands, no plugin types. Medium/hard cases read and write that real config object and real roles.",
+  "evals": [
+    {
+      "id": "cas_attributes-token-format",
+      "mode": "recipe",
+      "prompt": "With the Drupal cas_attributes module installed, what is the token syntax for printing a CAS attribute of the logged-in user, and how do I get just the first value of a multi-value attribute such as memberOf?",
+      "must_contain_any": [
+        "[cas:attribute:",
+        "cas:attribute"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The token is [cas:attribute:<name>] with the attribute name in lower case, e.g. [cas:attribute:mail]. CAS attributes are always arrays, so without a modifier the module appends :join; array modifiers work, so [cas:attribute:memberof:first] gives the first value (also :last, :count, :join). [cas:attribute:?] lists the available attribute names. Tokens outside the field mappings need 'Sitewide token support' enabled.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "cas_attributes-role-methods",
+      "mode": "recipe",
+      "prompt": "In the Drupal cas_attributes module's role mappings, what are the available comparison methods for matching a CAS attribute value, and what do the 'Negate' and 'Remove role from user if match fails' options do?",
+      "must_contain_any": [
+        "exact_single",
+        "exact_any",
+        "contains_any",
+        "regex_any"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The four methods are exact_single (attribute has exactly one value and it matches exactly), exact_any (any value matches exactly), contains_any (any value contains the string), and regex_any (any value matches the given PCRE pattern). 'Negate' grants the role when the comparison fails instead of when it passes. 'Remove role from user if match fails' (remove_without_match) strips the role when the mapping does not match - including when the role was assigned manually.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "cas_attributes-sync-frequency",
+      "mode": "recipe",
+      "prompt": "On a Drupal site using cas_attributes, which configuration object and keys decide whether user field values and roles are refreshed from CAS on every login, and what are the possible values?",
+      "must_contain_any": [
+        "cas_attributes.settings",
+        "sync_frequency"
+      ],
+      "must_not_contain": [],
+      "expected_output": "cas_attributes.settings, keys field.sync_frequency and role.sync_frequency. They take the SyncFrequency enum values 0 = Never, 1 = Initial registration only (requires CAS 'Auto register users'), 2 = Every login. field.overwrite decides whether an existing field value is replaced when syncing on login.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "cas_attributes-known-mapping",
+      "mode": "introspection",
+      "prompt": "This Drupal site uses CAS with the cas_attributes module and someone has already set up a role mapping. Inspect the live configuration and tell me which CAS attribute and value grant a role, and which comparison method is used.",
+      "must_contain_any": [
+        "librarian"
+      ],
+      "must_not_contain": [],
+      "expected_output": "cas_attributes.settings role.mappings has one entry: rid cas_attributes_known, attribute eduPersonAffiliation, value 'librarian', method exact_any, negate false, remove_without_match true; role.sync_frequency is 2 (every login). Read it with: drush cget cas_attributes.settings role.mappings",
+      "setup": "agent-module-documentation/evaluation/verify/cas_attributes-known-mapping-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/cas_attributes-known-mapping-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "cas_attributes-token-scope",
+      "mode": "introspection",
+      "prompt": "On this Drupal site, cas_attributes has sitewide token support switched on but only some CAS attributes are exposed as tokens. Inspect the running site and list exactly which attribute names are allowed.",
+      "must_contain_any": [
+        "employeenumber",
+        "campusbuilding"
+      ],
+      "must_not_contain": [],
+      "expected_output": "cas_attributes.settings:token_allowed_attributes is [employeenumber, campusbuilding] (stored lower-cased) with sitewide_token_support true, so only [cas:attribute:employeenumber] and [cas:attribute:campusbuilding] resolve. Read it with: drush cget cas_attributes.settings",
+      "setup": "agent-module-documentation/evaluation/verify/cas_attributes-token-scope-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/cas_attributes-token-scope-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "cas_attributes-role-mapping",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "This Drupal site uses CAS with the cas_attributes module and already has a role whose machine name is cas_attributes_task. Configure the live site so that, on every CAS login, a user is granted that role when their eduPersonAffiliation attribute contains the string 'faculty' (substring match, not exact), and loses it again when it does not. Apply the configuration to the running site.",
+      "reset": "agent-module-documentation/evaluation/verify/cas_attributes-role-mapping-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/cas_attributes-role-mapping-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/cas_attributes-role-mapping-cleanup.sh",
+      "expected_output": "Set cas_attributes.settings:role.sync_frequency to 2 and add a role mapping { rid: cas_attributes_task, attribute: eduPersonAffiliation, value: faculty, method: contains_any, negate: false, remove_without_match: true } to role.mappings - via /admin/config/people/cas/attributes or drush php:eval on cas_attributes.settings."
+    },
+    {
+      "id": "cas_attributes-field-sync",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "site-owner",
+      "prompt": "On this Drupal site people sign in through CAS. Two things need setting up with the cas_attributes module: (1) the details coming back from the login server should be usable as placeholders anywhere on the site, but only the two called mail and displayName - nothing else; (2) every time somebody signs in, their Drupal e-mail address should be refreshed from the login server's mail value, replacing whatever is there already. Apply it to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/cas_attributes-field-sync-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/cas_attributes-field-sync-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/cas_attributes-field-sync-cleanup.sh",
+      "expected_output": "In cas_attributes.settings set sitewide_token_support: true, token_allowed_attributes: [mail, displayname] (lower-cased), field.sync_frequency: 2 (Every login), field.overwrite: true, and field.mappings.mail: '[cas:attribute:mail]'."
+    }
+  ]
+}

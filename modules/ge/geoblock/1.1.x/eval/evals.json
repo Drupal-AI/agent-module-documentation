@@ -1,0 +1,80 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "geoblock",
+  "version": "1.1.x",
+  "note": "Geoblock blocks requests by client-IP origin country via a KernelEvents::REQUEST subscriber. All behaviour is driven by the geoblock.settings config object: data_source (a geoblock_data_source plugin id; NONE ships, so the module is inert until one is provided/selected), applicable_methods (default CONNECT/DELETE/PATCH/POST/PUT - GET/HEAD NOT restricted by default), restriction_type ('' | allow | block), restriction_country_codes (ISO 3166-1 alpha-2), require_domestic_use, enable_logging. Country lookup is delegated to the data source plugin type; restriction strategies are CountryCodeRestriction and DomesticRestriction. Only one permission (administer geoblock), no drush. Because no data source ships, medium/hard cases are grounded in the real, inspectable geoblock.settings config (which the module actually consumes) rather than live traffic blocking. Scripts restore shipped defaults explicitly.",
+  "evals": [
+    {
+      "id": "geoblock-how-to-block-country",
+      "mode": "recipe",
+      "prompt": "Using the Drupal geoblock module, how do I block visitors from a particular country? Name the config object / settings I set and the admin path.",
+      "must_contain_any": ["restriction_type", "restriction_country_codes", "geoblock.settings", "admin/config/geoblock", "block"],
+      "must_not_contain": [],
+      "expected_output": "At /admin/config/geoblock (config geoblock.settings) set restriction_type to 'block' and add the country's ISO 3166-1 alpha-2 code to restriction_country_codes (and select a data source). Requests from that country then get a 403.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "geoblock-inert-without-data-source",
+      "mode": "recipe",
+      "prompt": "I enabled the geoblock module and configured a country block list, but nothing is being blocked. Why might geoblock do nothing out of the box?",
+      "must_contain_any": ["data source", "data_source", "GeoblockDataSource", "geoblock_data_source", "plugin"],
+      "must_not_contain": [],
+      "expected_output": "Geoblock ships no geolocation data source of its own. Without a geoblock_data_source plugin selected in geoblock.settings (data_source), RequestHandler::isDataSourcePluginAvailable() is FALSE and the module is effectively disabled. You must provide/select a data source plugin.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "geoblock-default-methods",
+      "mode": "recipe",
+      "prompt": "By default, which HTTP request methods does geoblock apply its restrictions to? In particular, are normal GET page views blocked out of the box?",
+      "must_contain_any": ["applicable_methods", "POST", "GET"],
+      "must_not_contain": [],
+      "expected_output": "The default applicable_methods is CONNECT, DELETE, PATCH, POST, PUT. GET and HEAD are NOT included by default, so ordinary GET page views are not blocked unless you add GET to applicable_methods.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "geoblock-known-block-list",
+      "mode": "introspection",
+      "prompt": "Inspect this site's live geoblock configuration. What restriction type is currently set, and which countries does it apply to?",
+      "must_contain_any": ["RU"],
+      "must_not_contain": [],
+      "expected_output": "geoblock.settings has restriction_type = 'block' and restriction_country_codes = [RU, CN, KP], i.e. visitors from Russia, China and North Korea are blocked.",
+      "setup": "agent-module-documentation/evaluation/verify/geoblock-known-block-list-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/geoblock-known-block-list-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "geoblock-known-allow-mode",
+      "mode": "introspection",
+      "prompt": "Look at the live geoblock.settings on this site. Is the country restriction configured as an allow-list or a block-list?",
+      "must_contain_any": ["allow"],
+      "must_not_contain": [],
+      "expected_output": "restriction_type is 'allow' (an allow-list): only the listed countries (US) may access; all others are blocked.",
+      "setup": "agent-module-documentation/evaluation/verify/geoblock-known-allow-mode-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/geoblock-known-allow-mode-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "geoblock-configure-block",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "Configure the geoblock module on this site to block visitors from Russia (RU) and North Korea (KP). Apply the change to the live geoblock settings.",
+      "reset": "agent-module-documentation/evaluation/verify/geoblock-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/geoblock-configure-block-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/geoblock-reset.sh",
+      "expected_output": "geoblock.settings restriction_type = 'block' and restriction_country_codes contains both RU and KP."
+    },
+    {
+      "id": "geoblock-configure-allow",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-layman",
+      "prompt": "I only want people in the United States and Canada to be able to use my Drupal site; everyone from other countries should be turned away. Set up the geoblock module to do that.",
+      "reset": "agent-module-documentation/evaluation/verify/geoblock-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/geoblock-configure-allow-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/geoblock-reset.sh",
+      "expected_output": "geoblock.settings restriction_type = 'allow' and restriction_country_codes contains US and CA (an allow-list limiting access to those countries)."
+    }
+  ]
+}

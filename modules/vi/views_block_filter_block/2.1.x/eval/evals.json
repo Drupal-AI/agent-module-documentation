@@ -1,0 +1,95 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "views_block_filter_block",
+  "version": "2.1.x",
+  "note": "Views Block Exposed Filter Blocks has no settings form, no permissions and no config schema of its own. hook_views_plugins_display_alter() swaps the 'block' Views display plugin class for ViewsBlockFilterBlockPluginDisplayBlock (extends ctools_views' Block) whose usesExposedFormInBlock() returns TRUE. That makes Views' 'Exposed form in block' option available on block displays, stored as views.view.<id> -> display.<display>.display_options.exposed_block: true, which in turn makes core's ViewsExposedFilterBlock deriver offer the block plugin views_exposed_filter_block:<view_id>-<display_id> for placement. All medium/hard cases are grounded in that real config: introspection reads exposed_block off live views, execution requires enabling it (and, in the second case, actually placing the derived block).",
+  "evals": [
+    {
+      "id": "views_block_filter_block-how-to-enable",
+      "mode": "recipe",
+      "prompt": "I have a Drupal 11 view with a Block display and exposed filters. I want the filter form to be its own block placed in the sidebar, separate from the results block. The views_block_filter_block module is installed. What do I switch on, and what is the resulting configuration key in the view?",
+      "must_contain_any": [
+        "Exposed form in block",
+        "exposed_block",
+        "exposed form in block"
+      ],
+      "must_not_contain": [],
+      "expected_output": "In the Views UI open the Block display, go to Advanced and set 'Exposed form in block' to Yes. That stores views.view.<id> -> display.<display_id>.display_options.exposed_block: true. Core only offers that option when the display plugin's usesExposedFormInBlock() returns TRUE, which is exactly what this module makes the block display do.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "views_block_filter_block-block-plugin-id",
+      "mode": "recipe",
+      "prompt": "After turning on 'Exposed form in block' for the block_1 display of a Drupal view called my_view, which block do I place on Block layout, and what is its block plugin id?",
+      "must_contain_any": [
+        "views_exposed_filter_block",
+        "Exposed form:"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Core's ViewsExposedFilterBlock deriver creates a block with the plugin id views_exposed_filter_block:my_view-block_1, shown on Block layout as 'Exposed form: my_view-block_1'. Place it from Structure > Block layout > Place block. The view must be enabled for the derivative to exist, and a cache rebuild may be needed after changing the option.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "views_block_filter_block-mechanism",
+      "mode": "recipe",
+      "prompt": "How does the Drupal views_block_filter_block module technically make the 'Exposed form in block' option appear for Views block displays, and which other contrib project does it require?",
+      "must_contain_any": [
+        "hook_views_plugins_display_alter",
+        "usesExposedFormInBlock",
+        "ctools"
+      ],
+      "must_not_contain": [],
+      "expected_output": "It implements hook_views_plugins_display_alter() and replaces the class of the 'block' Views display plugin with Drupal\\views_block_filter_block\\Plugin\\views\\display\\ViewsBlockFilterBlockPluginDisplayBlock, which extends ctools_views' Block display plugin and overrides usesExposedFormInBlock() to return TRUE (plus usesExposed() and getLinkDisplay()). It depends on views and ctools:ctools_views.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "views_block_filter_block-known-display",
+      "mode": "introspection",
+      "prompt": "This Drupal site has a view with the machine name 'vbfb_demo'. Inspect the running site and tell me whether its block display has the 'Exposed form in block' option enabled, and give the exact block plugin id that is now available to place for that exposed filter form.",
+      "must_contain_any": [
+        "views_exposed_filter_block:vbfb_demo-block_1"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Yes - views.view.vbfb_demo display.block_1.display_options.exposed_block is true, so core's deriver offers the block plugin views_exposed_filter_block:vbfb_demo-block_1 ('Exposed form: vbfb_demo-block_1').",
+      "setup": "agent-module-documentation/evaluation/verify/views_block_filter_block-known-display-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/views_block_filter_block-known-display-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "views_block_filter_block-two-displays",
+      "mode": "introspection",
+      "prompt": "The view 'vbfb_two' on this Drupal site has two block displays. Exactly one of them is configured to render its exposed filter form as a separate block. Inspect the live configuration and tell me which display id it is.",
+      "must_contain_any": [
+        "block_2"
+      ],
+      "must_not_contain": [],
+      "expected_output": "block_2. In views.view.vbfb_two, display.block_2.display_options.exposed_block is true while display.block_1.display_options.exposed_block is false, so only views_exposed_filter_block:vbfb_two-block_2 is offered as a block.",
+      "setup": "agent-module-documentation/evaluation/verify/views_block_filter_block-two-displays-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/views_block_filter_block-two-displays-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "views_block_filter_block-enable-exposed-block",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "This Drupal site has a view 'vbfb_task' with a block display 'block_1' that has an exposed Title filter. Using the views_block_filter_block module, configure that block display so its exposed filter form is rendered as a separate block, and make sure the corresponding block plugin is actually available for placement. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/views_block_filter_block-enable-exposed-block-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/views_block_filter_block-enable-exposed-block-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/views_block_filter_block-enable-exposed-block-cleanup.sh",
+      "expected_output": "Set views.view.vbfb_task -> display.block_1.display_options.exposed_block to TRUE (Advanced > Exposed form in block > Yes) and rebuild caches so core's deriver offers the block plugin views_exposed_filter_block:vbfb_task-block_1."
+    },
+    {
+      "id": "views_block_filter_block-place-filter-block",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "site-builder-layman",
+      "prompt": "On my Drupal site there is a listing block coming from the view 'vbfb_place' (its block display is block_1), and it is already set up to show its search/filter form as its own separate block. Right now that filter form is nowhere on the page. Please put the filter form block into a region of the site's default theme so visitors can actually see and use it.",
+      "reset": "agent-module-documentation/evaluation/verify/views_block_filter_block-place-filter-block-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/views_block_filter_block-place-filter-block-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/views_block_filter_block-place-filter-block-cleanup.sh",
+      "expected_output": "Create an enabled block config entity in the default theme whose plugin is views_exposed_filter_block:vbfb_place-block_1, assigned to a real region (e.g. sidebar) - via Structure > Block layout > Place block > 'Exposed form: vbfb_place-block_1', or by creating the block entity programmatically."
+    }
+  ]
+}

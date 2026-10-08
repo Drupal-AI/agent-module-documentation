@@ -1,0 +1,106 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "domain_simple_sitemap",
+  "version": "3.0.x",
+  "note": "Domain Access Simple Sitemap bridges simple_sitemap and domain_access. Its own config object domain_simple_sitemap.settings has two booleans: domain_simple_sitemap_filter (node source vs node access filter) and domain_simple_sitemap_replace_homepage (rewrite front-page URL; needs domain_config/domain_site_settings). Settings UI /admin/config/domain/domain_simple_sitemap/config (route domain_simple_sitemap.settings, permission 'administer domains'). Per domain the DomainSitemapManager creates a simple_sitemap_type + simple_sitemap variant whose id equals the domain id, using the domain_entity url generator, with third-party setting domain_simple_sitemap.sitemap_domain = <domain id>. This site has no Domain entities, so the hard case is grounded in the module's real data model: creating the sitemap type + variant (with the sitemap_domain third-party setting) that the manager produces for a domain id, verified against live config entities. Baseline: domain_simple_sitemap_filter = 0, domain_simple_sitemap_replace_homepage = 0; no dss_* sitemap type/variant.",
+  "evals": [
+    {
+      "id": "domain-simple-sitemap-settings",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "What are the two configuration options provided by the domain_simple_sitemap module, and where do you set them?",
+      "must_contain_any": [
+        "domain_simple_sitemap_filter",
+        "domain_simple_sitemap_replace_homepage",
+        "/admin/config/domain/domain_simple_sitemap/config"
+      ],
+      "must_not_contain": [],
+      "expected_output": "domain_simple_sitemap.settings has two booleans: domain_simple_sitemap_filter (filter the domain sitemap by node source instead of node access) and domain_simple_sitemap_replace_homepage (rewrite the domain front-page link to the domain base URL; needs domain_config or domain_site_settings). Set them at /admin/config/domain/domain_simple_sitemap/config (route domain_simple_sitemap.settings, permission 'administer domains')."
+    },
+    {
+      "id": "domain-simple-sitemap-variant-model",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "How does domain_simple_sitemap represent a domain's sitemap, and when is it created automatically?",
+      "must_contain_any": [
+        "simple_sitemap_type",
+        "variant",
+        "sitemap_domain",
+        "domain_entity",
+        "hook_domain_insert",
+        "domain id"
+      ],
+      "must_not_contain": [],
+      "expected_output": "For each Domain it creates a simple_sitemap_type and a simple_sitemap variant whose id equals the domain id, using the domain_entity URL generator, and tags the type with third-party setting domain_simple_sitemap.sitemap_domain = <domain id>. It is created automatically on hook_domain_insert (and removed on hook_domain_delete) via the DomainSitemapManager service."
+    },
+    {
+      "id": "domain-simple-sitemap-existing-domains",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "I installed domain_simple_sitemap after I already had several domains. How do I create sitemap variants for those existing domains?",
+      "must_contain_any": [
+        "Generate domain's sitemap variants",
+        "generate",
+        "button",
+        "DomainSitemapManager",
+        "addSitemapVariant"
+      ],
+      "must_not_contain": [],
+      "expected_output": "On the settings form (/admin/config/domain/domain_simple_sitemap/config) click 'Generate domain's sitemap variants', which batch-runs DomainSitemapManager::addSitemapVariant() for every active domain. Programmatically you can call the domain_simple_sitemap.manager service's addSitemapVariant() per domain. Then rebuild via Simple Sitemap's 'Rebuild queue & generate'."
+    },
+    {
+      "id": "domain-simple-sitemap-filter-value",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "On this site, is domain_simple_sitemap configured to filter domain sitemaps by node source or by node access? Inspect the live configuration and give the value of the relevant setting.",
+      "must_contain_any": [
+        "source",
+        "1",
+        "true"
+      ],
+      "must_not_contain": [],
+      "expected_output": "By node source: domain_simple_sitemap.settings:domain_simple_sitemap_filter is 1 (TRUE) on this site, which means 'use node source instead of node access as filter'.",
+      "setup": "agent-module-documentation/evaluation/verify/domain_simple_sitemap-filter-value-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/domain_simple_sitemap-filter-value-cleanup.sh"
+    },
+    {
+      "id": "domain-simple-sitemap-replace-homepage-value",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "Is domain_simple_sitemap currently set to replace a domain's front-page URL with the domain base URL in generated sitemaps on this site? Inspect the live configuration and name the setting.",
+      "must_contain_any": [
+        "domain_simple_sitemap_replace_homepage",
+        "1",
+        "true",
+        "replace"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Yes: domain_simple_sitemap.settings:domain_simple_sitemap_replace_homepage is 1 (TRUE) on this site.",
+      "setup": "agent-module-documentation/evaluation/verify/domain_simple_sitemap-replace-homepage-value-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/domain_simple_sitemap-replace-homepage-value-cleanup.sh"
+    },
+    {
+      "id": "domain-simple-sitemap-create-variant",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "Create the domain sitemap that domain_simple_sitemap would produce for a domain whose id is dss_eval: a simple_sitemap_type with id dss_eval (using the domain_entity url generator and carrying the third-party setting domain_simple_sitemap.sitemap_domain = dss_eval) and a matching simple_sitemap variant with id dss_eval. Apply it to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/domain_simple_sitemap-create-variant-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/domain_simple_sitemap-create-variant-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/domain_simple_sitemap-create-variant-reset.sh",
+      "expected_output": "Mirror DomainSitemapManager::addSitemapVariant(): create a simple_sitemap_type 'dss_eval' (sitemap_generator 'default', url_generators including 'domain_entity') with setThirdPartySetting('domain_simple_sitemap','sitemap_domain','dss_eval'), then a simple_sitemap variant 'dss_eval' of that type with status TRUE. Verified by the type existing with that third-party setting and the variant existing."
+    },
+    {
+      "id": "domain-simple-sitemap-filter-by-source",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "site-owner",
+      "prompt": "On my multi-domain site I want each domain's sitemap to be decided by the content's Domain Source field rather than by domain access. Configure domain_simple_sitemap for that and apply it to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/domain_simple_sitemap-filter-by-source-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/domain_simple_sitemap-filter-by-source-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/domain_simple_sitemap-filter-by-source-reset.sh",
+      "expected_output": "Set domain_simple_sitemap.settings:domain_simple_sitemap_filter to 1 (TRUE) (drush cset domain_simple_sitemap.settings domain_simple_sitemap_filter 1, or tick 'Use node source instead of node access as filter' on the settings form)."
+    }
+  ]
+}

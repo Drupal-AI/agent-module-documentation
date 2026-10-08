@@ -1,0 +1,82 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "openapi_jsonapi",
+  "version": "3.0.x",
+  "note": "OpenAPI JSON:API supplies one openapi_generator plugin (id `jsonapi`) to the base OpenAPI framework, describing a site's JSON:API endpoints as a Swagger 2.0 spec. It defines no new plugin type, config form, permission, or Drush command. easy=recipe facts (generator id, download route, dependencies, read-only behaviour); medium=introspection of live jsonapi.settings read-only state with a setup/cleanup that toggles it; hard=execution where a drupal-expert produces the JSON:API OpenAPI spec via the jsonapi generator and writes it to a file that a verify script validates. NOTE on the hard tier: on this kitchen-sink site the FULL-site spec build throws an AssertionError (a relationship whose target resource type is unresolvable) with zend.assertions on; scoping the generator to a concrete entity type (e.g. node) is the reliable path, which the verify accepts.",
+  "evals": [
+    {
+      "id": "openapi-jsonapi-generator-id",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "On Drupal 11 I enabled the OpenAPI JSON:API module. Which openapi_generator plugin id does it register, and what is the annotation/class that defines it? Answer briefly.",
+      "must_contain_any": ["jsonapi", "JsonApiGenerator", "@OpenApiGenerator"],
+      "must_not_contain": [],
+      "expected_output": "It registers a single openapi_generator plugin with id `jsonapi`, defined by the class JsonApiGenerator (Drupal\\openapi_jsonapi\\Plugin\\openapi\\OpenApiGenerator\\JsonApiGenerator) annotated @OpenApiGenerator(id = \"jsonapi\", label = @Translation(\"JSON:API\")), extending OpenApiGeneratorBase from the openapi module."
+    },
+    {
+      "id": "openapi-jsonapi-download-endpoint",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "With OpenAPI + OpenAPI JSON:API enabled on Drupal 11, what URL serves the JSON:API OpenAPI specification as JSON, and which permission gates it?",
+      "must_contain_any": ["/openapi/jsonapi", "access openapi api docs"],
+      "must_not_contain": [],
+      "expected_output": "Download it at /openapi/jsonapi (route openapi.download, _format json), gated by the 'access openapi api docs' permission provided by the base OpenAPI module. It returns a Swagger 2.0 JSON document with base path /jsonapi and the application/vnd.api+json media type."
+    },
+    {
+      "id": "openapi-jsonapi-dependencies",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "What modules must be present for OpenAPI JSON:API to work, and where do the per-entity payload schemas in the generated spec come from?",
+      "must_contain_any": ["schemata", "openapi", "jsonapi"],
+      "must_not_contain": [],
+      "expected_output": "It depends on jsonapi, openapi, schemata and schemata_json_schema. The base OpenAPI module provides the openapi_generator framework and download routes; JSON:API provides the endpoints being described; and the entity/bundle JSON Schema payload definitions in the spec are generated from Schemata / Schemata JSON Schema (via schemata.schema_factory)."
+    },
+    {
+      "id": "openapi-jsonapi-read-only-current-on",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "setup": "agent-module-documentation/evaluation/verify/openapi_jsonapi-read-only-on-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/openapi_jsonapi-read-only-cleanup.sh",
+      "prompt": "On this live Drupal site, confirm that the `jsonapi` OpenAPI generator is registered, then inspect the current JSON:API configuration and tell me: given the site's current read-only setting, will the generated JSON:API OpenAPI spec document write operations (POST/PATCH/DELETE) or only read operations? Explain why.",
+      "must_contain_any": ["read_only", "read-only", "read only"],
+      "must_not_contain": [],
+      "expected_output": "The plugin.manager.openapi.generator manager lists a `jsonapi` generator. jsonapi.settings.read_only is currently TRUE, so JsonApiGenerator::getPaths() drops every route with a non-read method - the spec documents only read operations (GET/HEAD/OPTIONS/TRACE); POST/PATCH/DELETE endpoints are excluded."
+    },
+    {
+      "id": "openapi-jsonapi-read-only-current-off",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "setup": "agent-module-documentation/evaluation/verify/openapi_jsonapi-read-only-off-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/openapi_jsonapi-read-only-cleanup.sh",
+      "prompt": "Inspect the running site: what is the current value of the JSON:API read-only setting, and what does that mean for the endpoints documented by the `jsonapi` OpenAPI generator's specification right now? Confirm the jsonapi generator is available.",
+      "must_contain_any": ["POST", "PATCH", "write", "mutating", "create"],
+      "must_not_contain": [],
+      "expected_output": "The `jsonapi` generator is registered in plugin.manager.openapi.generator. jsonapi.settings.read_only is currently FALSE, so read-only filtering is off and the generated spec includes mutating endpoints (Create/POST, Update/PATCH, Remove/DELETE) alongside the read endpoints."
+    },
+    {
+      "id": "openapi-jsonapi-generate-spec-expert",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "reset": "agent-module-documentation/evaluation/verify/openapi_jsonapi-generate-spec-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/openapi_jsonapi-generate-spec-verify.sh",
+      "prompt": "Using the `jsonapi` OpenAPI generator on this Drupal site, generate the JSON:API OpenAPI (Swagger 2.0) specification for the `node` entity type and write the resulting spec as JSON to /tmp/openapi_jsonapi_eval_spec.json. Use the openapi generator plugin manager (plugin.manager.openapi.generator), create the `jsonapi` generator, scope it to node with setOptions(['entity_type_id' => 'node']), call getSpecification(), and json_encode the returned array to that file.",
+      "must_contain_any": [],
+      "must_not_contain": [],
+      "expected_output": "A valid Swagger 2.0 JSON document written to /tmp/openapi_jsonapi_eval_spec.json: swagger '2.0', info.title ending in 'JSON API', basePath '/jsonapi', consumes/produces application/vnd.api+json, and a non-empty paths object for the node resource endpoints. Produced via: $g = \\Drupal::service('plugin.manager.openapi.generator')->createInstance('jsonapi'); $g->setOptions(['entity_type_id' => 'node']); file_put_contents('/tmp/openapi_jsonapi_eval_spec.json', json_encode($g->getSpecification()));"
+    },
+    {
+      "id": "openapi-jsonapi-generate-spec-userscope-expert",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "reset": "agent-module-documentation/evaluation/verify/openapi_jsonapi-generate-spec-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/openapi_jsonapi-generate-spec-verify.sh",
+      "prompt": "I need a machine-readable JSON:API contract for just the user account resource on this Drupal site. Produce the JSON:API OpenAPI specification with the openapi `jsonapi` generator, scoped to the `user` entity type, and save it as JSON at /tmp/openapi_jsonapi_eval_spec.json so external tooling can consume it.",
+      "must_contain_any": [],
+      "must_not_contain": [],
+      "expected_output": "A valid Swagger 2.0 JSON:API spec saved to /tmp/openapi_jsonapi_eval_spec.json, scoped to the user resource: swagger '2.0', info.title with 'JSON API', basePath '/jsonapi', application/vnd.api+json media type, and non-empty user paths. Built via the jsonapi generator plugin with setOptions(['entity_type_id' => 'user']) then getSpecification(), json_encoded to the file."
+    }
+  ]
+}

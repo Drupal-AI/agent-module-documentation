@@ -1,0 +1,32 @@
+# Installation
+
+## Requirements
+
+- **Drupal 10 or 11** (`core_version_requirement: ^10 || ^11`).
+
+There are no additional Composer or PHP library requirements.
+
+## Install with Composer
+
+From the project root:
+
+```bash
+composer require drupal/block_ajax -W
+```
+
+The `-W` (`--with-all-dependencies`) flag lets Composer update any shared
+dependencies as needed.
+
+> **Using DDEV?** Prefix Composer and Drush with `ddev` when you run from your host
+> machine — `ddev composer require drupal/block_ajax -W`, `ddev drush …`. Inside
+> the container (`ddev ssh`) run them without the prefix.
+
+## Enable the module
+
+```bash
+drush en block_ajax -y
+```
+
+There is no configuration form to complete — the module exposes its AJAX routes as
+soon as it is enabled. Before relying on it, consider whether core's **BigPipe** or
+a **`#lazy_builder`** meets your need without a public rendering endpoint.

@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+# Execution RESET: ensure Article has NO field_dtn_task, so verify FAILS (no widget renders
+# the Now button for it) until the agent adds the Date/time field. Idempotent. Exit 0.
+set -uo pipefail
+cd /var/www/html
+drush php:eval '
+  use Drupal\field\Entity\FieldStorageConfig;
+  use Drupal\field\Entity\FieldConfig;
+  if ($fc = FieldConfig::loadByName("node", "article", "field_dtn_task")) { $fc->delete(); }
+  if ($fs = FieldStorageConfig::loadByName("node", "field_dtn_task")) { $fs->delete(); }
+' >/dev/null 2>&1
+drush cr >/dev/null 2>&1
+echo "reset: field_dtn_task absent from node.article"

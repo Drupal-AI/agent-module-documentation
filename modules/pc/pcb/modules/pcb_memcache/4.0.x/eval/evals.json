@@ -1,0 +1,93 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "pcb_memcache",
+  "version": "4.0.x",
+  "note": "pcb_memcache is a glue-shim submodule of pcb that registers ONE service, cache.backend.permanent_memcache (PermanentMemcacheBackendFactory -> PermanentMemcacheBackend). This site has no live Memcache server configured, so per the campaign brief the medium/hard cases are grounded in the local service/plugin definition and module lifecycle (server-independent): the observable live state is whether pcb_memcache is installed and its backend service is registered in the container - checkable with \\Drupal::hasService('cache.backend.permanent_memcache') and \\Drupal::moduleHandler()->moduleExists('pcb_memcache') - not on a running Memcache instance. At baseline both pcb_memcache and its dependency memcache are uninstalled; enabling pcb_memcache also enables memcache, so cleanup/reset uninstall BOTH to restore baseline.",
+  "evals": [
+    {
+      "id": "pcb-memcache-service",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "The pcb_memcache submodule of Permanent Cache Bin adds a Memcache-backed permanent cache backend. What is the machine name of the cache backend service it registers, and what does its factory extend?",
+      "must_contain_any": [
+        "cache.backend.permanent_memcache"
+      ],
+      "must_not_contain": [],
+      "expected_output": "It registers the service cache.backend.permanent_memcache, whose factory PermanentMemcacheBackendFactory extends the Memcache module's backend factory and returns a PermanentMemcacheBackend (Memcache backend + pcb's PermanentBackendTrait)."
+    },
+    {
+      "id": "pcb-memcache-point-bin",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "With pcb_memcache enabled, how do I make a cache bin named 'stock' use the Memcache permanent backend (surviving drush cr)?",
+      "must_contain_any": [
+        "cache.backend.permanent_memcache",
+        "$settings['cache']['bins']",
+        "default_backend"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Register a cache.stock service tagged { name: cache.bin, default_backend: cache.backend.permanent_memcache }, or in settings.php set $settings['cache']['bins']['stock'] = 'cache.backend.permanent_memcache'."
+    },
+    {
+      "id": "pcb-memcache-requirements",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "What does the pcb_memcache submodule depend on, and what else is needed for it to actually store cache in Memcache?",
+      "must_contain_any": [
+        "memcache",
+        "pcb"
+      ],
+      "must_not_contain": [],
+      "expected_output": "It depends on the contrib Memcache module (memcache:memcache >= 2.0) and the parent pcb module, and needs a working Memcache server wired into Drupal for the bin to actually be stored in Memcache."
+    },
+    {
+      "id": "pcb-memcache-service-live",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "On this Drupal site, inspect the live service container and tell me the exact machine name of the permanent Memcache cache backend service that is currently available.",
+      "must_contain_any": [
+        "cache.backend.permanent_memcache"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The service cache.backend.permanent_memcache is registered (pcb_memcache is installed). Check with: drush php:eval 'var_export(\\Drupal::hasService(\"cache.backend.permanent_memcache\"));'.",
+      "setup": "agent-module-documentation/evaluation/verify/pcb_memcache-service-live-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/pcb_memcache-service-live-cleanup.sh"
+    },
+    {
+      "id": "pcb-memcache-which-module",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "On this Drupal site a permanent Memcache cache backend is available. Inspect the live site and tell me which module provides it (which pcb submodule is installed).",
+      "must_contain_any": [
+        "pcb_memcache"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The pcb_memcache submodule is installed (drush pm:list shows pcb_memcache enabled); it provides the cache.backend.permanent_memcache service.",
+      "setup": "agent-module-documentation/evaluation/verify/pcb_memcache-which-module-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/pcb_memcache-which-module-cleanup.sh"
+    },
+    {
+      "id": "pcb-memcache-enable",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, make a permanent Memcache cache backend service (cache.backend.permanent_memcache) available by enabling pcb's Memcache integration submodule (and its Memcache dependency). Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/pcb_memcache-enable-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/pcb_memcache-enable-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/pcb_memcache-enable-cleanup.sh",
+      "expected_output": "Enable the pcb_memcache submodule (drush en pcb_memcache -y, which also enables memcache); afterwards \\Drupal::hasService('cache.backend.permanent_memcache') is TRUE and the module is installed."
+    },
+    {
+      "id": "pcb-memcache-uninstall",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, pcb's Memcache permanent-cache integration submodule is currently installed but the ops team wants it removed so its permanent Memcache backend service is no longer registered. Uninstall the pcb_memcache submodule. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/pcb_memcache-uninstall-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/pcb_memcache-uninstall-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/pcb_memcache-uninstall-cleanup.sh",
+      "expected_output": "Uninstall the pcb_memcache submodule (drush pmu pcb_memcache -y); afterwards \\Drupal::moduleHandler()->moduleExists('pcb_memcache') is FALSE and \\Drupal::hasService('cache.backend.permanent_memcache') is FALSE."
+    }
+  ]
+}

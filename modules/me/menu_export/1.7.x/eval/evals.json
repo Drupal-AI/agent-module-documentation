@@ -1,0 +1,80 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "menu_export",
+  "version": "1.7.x",
+  "note": "Menu Export exports/imports content menu links (menu_link_content entities) via two config objects: menu_export.settings (key 'menus' = array of selected menu machine names) and menu_export.export_data (the serialized links, keyed by link id; each field stored as its first delta, so export_data.<id>.menu_name.value / .title.value). Admin section at /admin/config/development/menu_export (Menu List / Export / Import tabs), all gated by the 'export and import menu links' permission; info.yml has no configure route. KNOWN BUG on Drupal 11: the Drush commands menu_export:export and menu_export:import throw ArgumentCountError because MenuExportDrushCommands does `new MenuExportForm(\\Drupal::configFactory())` while D11 ConfigFormBase::__construct needs 2 args; the ADMIN FORMS work (container DI). Because of that, execution cases are grounded in the agent-reachable selection config (menu_export.settings.menus); a medium reads back the export payload (menu_export.export_data) that the Export admin form produces. Setup for that medium replicates MenuExportForm::exportMenus() logic to populate export_data. No config schema shipped, no plugins.",
+  "evals": [
+    {
+      "id": "menuexport-what-it-does",
+      "mode": "recipe",
+      "prompt": "Core Configuration Management syncs my menus between sites but the actual menu links inside them don't move. How does the menu_export module solve this, and what kind of menu links does it handle?",
+      "must_contain_any": ["menu_link_content", "content menu links", "content", "configuration", "export_data"],
+      "must_not_contain": [],
+      "expected_output": "menu_export serializes the content menu links (menu_link_content entities) of selected menus into the menu_export.export_data config object, so they travel with config export/import. It handles content/custom menu links (created in the UI), not module-defined links from *.links.menu.yml.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "menuexport-drush",
+      "mode": "recipe",
+      "prompt": "Which Drush commands does the menu_export module provide to export and import menu links from the command line?",
+      "must_contain_any": ["menu_export:export", "menu_export:import", "menu-export-export", "menu-export-import"],
+      "must_not_contain": [],
+      "expected_output": "drush menu_export:export (aliases menu-export-export / menu_export-export) writes the selected menus' links to menu_export.export_data; drush menu_export:import (aliases menu-export-import / menu_export-import) recreates/updates them from that config on the target site. Note: on Drupal 11 these CLI commands currently error (ArgumentCountError); the equivalent Export/Import admin tabs work.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "menuexport-admin",
+      "mode": "recipe",
+      "prompt": "Where is the menu_export admin UI, and what permission controls access to exporting and importing menus?",
+      "must_contain_any": ["admin/config/development/menu_export", "export and import menu links", "menu_export.settings"],
+      "must_not_contain": [],
+      "expected_output": "The admin section is at /admin/config/development/menu_export (Menu List, Export, Import tabs). All are gated by the 'export and import menu links' permission. The selected menus are stored in menu_export.settings (menus).",
+      "difficulty": "easy"
+    },
+    {
+      "id": "menuexport-selected",
+      "mode": "introspection",
+      "prompt": "On this site the menu_export module has been configured to export a particular menu. Inspect the live configuration and state which menu (machine name) is currently selected for export.",
+      "must_contain_any": ["menuexp_known"],
+      "must_not_contain": [],
+      "expected_output": "The selected menu is menuexp_known (menu_export.settings menus: [menuexp_known]).",
+      "setup": "agent-module-documentation/evaluation/verify/menu_export-selected-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/menu_export-selected-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "menuexport-payload",
+      "mode": "introspection",
+      "prompt": "The menu_export module on this site has already exported a menu's links into its export data config. Inspect the live menu_export.export_data configuration and report the title of the exported menu link.",
+      "must_contain_any": ["Exported Data Link"],
+      "must_not_contain": [],
+      "expected_output": "The exported payload (menu_export.export_data) contains one link titled 'Exported Data Link' (its menu_name is menuexp_data). Each entry stores the field values, e.g. title.value = 'Exported Data Link'.",
+      "setup": "agent-module-documentation/evaluation/verify/menu_export-payload-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/menu_export-payload-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "menuexport-select-single",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "This site has a custom menu with machine name 'menuexp_task' that is not yet marked for export. Using the menu_export module, configure it so that this menu will be included when menus are exported. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/menu_export-select-single-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/menu_export-select-single-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/menu_export-select-single-cleanup.sh",
+      "expected_output": "menu_export.settings 'menus' now includes 'menuexp_task' (e.g. tick it on the Menu List form at /admin/config/development/menu_export and save, or drush config:set menu_export.settings menus.0 menuexp_task -y)."
+    },
+    {
+      "id": "menuexport-select-multi",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "This site has two custom menus, 'menuexp_a' and 'menuexp_b'. Using the menu_export module, configure it so that BOTH menus are selected for export. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/menu_export-select-multi-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/menu_export-select-multi-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/menu_export-select-multi-cleanup.sh",
+      "expected_output": "menu_export.settings 'menus' contains both 'menuexp_a' and 'menuexp_b' (tick both on the Menu List form and save, or set the menu_export.settings menus array via drush/config to include both)."
+    }
+  ]
+}

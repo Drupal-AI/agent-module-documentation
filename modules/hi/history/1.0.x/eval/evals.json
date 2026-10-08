@@ -1,0 +1,97 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "history",
+  "version": "1.0.x",
+  "note": "History (Node History) is core's old history module, now contrib for Drupal >11.3. It has NO configuration object, no permissions and no admin UI, so every medium/hard case is grounded in its only real state: the {history} database table (uid, nid, timestamp; primary key uid+nid) and its Views integration (field/filter id history_user_timestamp on the history table, field node_new_comments on node). Introspection cases seed real rows in {history} for user 1 and make the agent query the live database; execution cases require recording a read (history_write() / the /history/{node}/read route / a direct merge) and building a view that uses the history_user_timestamp filter. Timestamps used in setup (1900000000+) sit far above HISTORY_READ_LIMIT so a cron run cannot delete them mid-eval.",
+  "evals": [
+    {
+      "id": "history-table-shape",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "The Drupal contrib module 'history' (Node History) tracks which content a user has read. Where does it store that, what columns does the storage have, and how does it stop growing forever?",
+      "must_contain_any": [
+        "history",
+        "uid",
+        "nid",
+        "timestamp"
+      ],
+      "must_not_contain": [],
+      "expected_output": "A single database table {history} with columns uid, nid and timestamp, primary key (uid, nid) and an index on nid. hook_cron() deletes every row older than HISTORY_READ_LIMIT (request time minus 30 days), so content older than a month is always treated as read."
+    },
+    {
+      "id": "history-views-handlers",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "I want a Drupal view listing only content that is new or updated for the current user, using the history contrib module. Which Views field and filter does the module provide, and how is the history table joined?",
+      "must_contain_any": [
+        "history_user_timestamp",
+        "Has new content",
+        "node_new_comments"
+      ],
+      "must_not_contain": [],
+      "expected_output": "hook_views_data() exposes history.timestamp as the field 'Has new content' and the filter 'Show only content that is new or updated', both with id history_user_timestamp; hook_views_data_alter() adds the node field node_new_comments ('New comments'). The history table joins node_field_data on nid with an implicit extra condition uid = ***CURRENT_USER***, so the handlers are always scoped to the current user."
+    },
+    {
+      "id": "history-api-functions",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "Using the Drupal history contrib module, which function do I call to record that the current user has just read a node, and which one reads that timestamp back? Is there also a service for counting new comments?",
+      "must_contain_any": [
+        "history_write",
+        "history_read",
+        "HistoryManager"
+      ],
+      "must_not_contain": [],
+      "expected_output": "history_write($nid, $account = NULL) records the read (a MERGE into {history} with the request time; it is a no-op for anonymous users), history_read($nid) / history_read_multiple($nids) read the timestamps back. For comments, the service Drupal\\history\\HistoryManager (service id is the class name, autowired) provides getCountNewComments($entity, $field_name = NULL, $timestamp = 0)."
+    },
+    {
+      "id": "history-known-read",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "On this Drupal site the history module has recorded that user 1 read the page titled 'History Known Node'. Inspect the live site and tell me the exact Unix timestamp stored for that read.",
+      "must_contain_any": [
+        "1900000000"
+      ],
+      "must_not_contain": [],
+      "expected_output": "1900000000 - `drush sql:query \"SELECT h.timestamp FROM history h JOIN node_field_data n ON n.nid = h.nid WHERE h.uid = 1 AND n.title = 'History Known Node'\"` (or history_read($nid) as user 1) returns 1900000000.",
+      "setup": "agent-module-documentation/evaluation/verify/history-known-read-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/history-known-read-cleanup.sh"
+    },
+    {
+      "id": "history-read-nodes",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "This Drupal site has two basic pages, 'History Seen Node' and 'History Unseen Node'. According to the history module's read tracking, exactly one of them has been read by user 1. Inspect the live site and tell me which one.",
+      "must_contain_any": [
+        "History Seen Node"
+      ],
+      "must_not_contain": [],
+      "expected_output": "'History Seen Node' - it is the only one of the two with a row in the {history} table for uid 1 (timestamp 1900000001). 'History Unseen Node' has no row, so history_read() would return 0 for it.",
+      "setup": "agent-module-documentation/evaluation/verify/history-read-nodes-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/history-read-nodes-cleanup.sh"
+    },
+    {
+      "id": "history-mark-read",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site there is a basic page titled 'History Task Node'. Using the history module, record in the live site that user 1 (the admin account) has read that node, so that its read timestamp is no longer zero. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/history-mark-read-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/history-mark-read-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/history-mark-read-cleanup.sh",
+      "expected_output": "A row exists in {history} with uid = 1, nid = the 'History Task Node' node id and a non-zero timestamp - e.g. `drush php:eval 'history_write($nid, \\Drupal\\user\\Entity\\User::load(1));'`, a merge into {history}, or a request to /history/{node}/read as user 1."
+    },
+    {
+      "id": "history-unread-view",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "site-owner",
+      "prompt": "On this Drupal site I want a view, machine name history_unread and label 'History unread content', that lists Content and shows only items that are new or updated for the person looking at it. Use the filter the history module provides for that. Save the view to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/history-unread-view-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/history-unread-view-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/history-unread-view-cleanup.sh",
+      "expected_output": "views.view.history_unread exists with base_table node_field_data and a filter whose plugin_id/id is history_user_timestamp on table history ('Has new content' / 'Show only content that is new or updated'), which joins {history} to node_field_data with uid = ***CURRENT_USER***."
+    }
+  ]
+}

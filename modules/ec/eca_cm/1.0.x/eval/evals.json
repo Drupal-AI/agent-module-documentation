@@ -1,0 +1,80 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "eca_cm",
+  "version": "1.0.x",
+  "note": "ECA Classic Modeler (eca_cm) is a core-only authoring UI for ECA. It implements ECA's EcaModeller plugin type with one modeller: @EcaModeller(id = core), class Drupal\\eca_cm\\Plugin\\ECA\\Modeller\\Core. It defines no config, no permissions (reuses ECA's 'administer eca'), no config schema, no Drush. Models are ECA config entities eca.eca.<id>; create route /admin/config/workflow/eca/add/core. IMPORTANT for grading: in ECA 3.x the eca.eca config_export is only [id, uuid, status, weight, template, events, conditions, gateways, actions] — 'modeller' and 'label' are NOT persisted in that config (modeller is tracked at runtime via modeler_api). So execution/introspection cases are grounded on the eca.eca config entity's machine id and status, not on a modeller marker. Medium: enumerate model ids / read a model's status. Hard: create an eca.eca model entity (eca_cm_task) and enable a disabled one (eca_cm_toggle).",
+  "evals": [
+    {
+      "id": "eca_cm-create-route",
+      "mode": "recipe",
+      "prompt": "I have ECA installed on a core-only Drupal site and want to build an ECA model without any external/BPMN modeler, using the eca_cm (ECA Classic Modeler) module. What path do I go to to create a new model, and what permission do I need?",
+      "must_contain_any": ["/admin/config/workflow/eca/add/core", "add/core", "administer eca"],
+      "must_not_contain": [],
+      "expected_output": "Go to /admin/config/workflow/eca/add/core (the 'Add new Classic model' action on /admin/config/workflow/eca). It requires the 'administer eca' permission (provided by ECA).",
+      "difficulty": "easy"
+    },
+    {
+      "id": "eca_cm-modeller-plugin",
+      "mode": "recipe",
+      "prompt": "What kind of plugin does the eca_cm module contribute to ECA, and what is its plugin id?",
+      "must_contain_any": ["EcaModeller", "modeller", "modeler", "core"],
+      "must_not_contain": [],
+      "expected_output": "It implements ECA's EcaModeller plugin type with a single modeller plugin, id 'core' (label 'ECA Classic Modeler', class Drupal\\eca_cm\\Plugin\\ECA\\Modeller\\Core) — a modeler built purely on the Drupal Form API.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "eca_cm-build-workflow",
+      "mode": "recipe",
+      "prompt": "Using the ECA Classic Modeler, after creating a model, what are the steps to make an action run when an event fires? What is the key concept that links components?",
+      "must_contain_any": ["successor", "event", "action"],
+      "must_not_contain": [],
+      "expected_output": "Add an event, then add an action (and optionally a condition), then connect the action/condition as a 'successor' of the event (at the bottom of the event form). Successor wiring defines the execution chain. Save to persist.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "eca_cm-list-models",
+      "mode": "introspection",
+      "prompt": "This site has an ECA model configured. Inspect the live ECA configuration and give the machine name (id) of the ECA model that exists.",
+      "must_contain_any": ["eca_cm_known"],
+      "must_not_contain": [],
+      "expected_output": "An ECA model config entity eca.eca.eca_cm_known exists (id eca_cm_known).",
+      "setup": "agent-module-documentation/evaluation/verify/eca_cm-model-known-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/eca_cm-model-known-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "eca_cm-model-status",
+      "mode": "introspection",
+      "prompt": "There is an ECA model with machine id 'eca_cm_mod' on this site. Inspect the live configuration and state whether it is currently enabled or disabled.",
+      "must_contain_any": ["disabled", "not enabled", "false", "off"],
+      "must_not_contain": [],
+      "expected_output": "eca_cm_mod is disabled (status: false in eca.eca.eca_cm_mod).",
+      "setup": "agent-module-documentation/evaluation/verify/eca_cm-model-disabled-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/eca_cm-model-disabled-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "eca_cm-create-model",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "Using the ECA Classic Modeler (eca_cm) on this site, create a new ECA model with the machine id 'eca_cm_task'. Apply the change to the live site so the model exists.",
+      "reset": "agent-module-documentation/evaluation/verify/eca_cm-create-model-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/eca_cm-create-model-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/eca_cm-create-model-cleanup.sh",
+      "expected_output": "An ECA model config entity eca.eca.eca_cm_task exists (e.g. created via /admin/config/workflow/eca/add/core, or by creating the eca config entity with id eca_cm_task and modeller 'core')."
+    },
+    {
+      "id": "eca_cm-enable-model",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "The ECA model 'eca_cm_toggle' on this site is currently disabled. Enable it so ECA will run it, and apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/eca_cm-enable-model-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/eca_cm-enable-model-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/eca_cm-enable-model-cleanup.sh",
+      "expected_output": "eca.eca.eca_cm_toggle status is TRUE (enable from the ECA model list, or set status true on the eca config entity)."
+    }
+  ]
+}

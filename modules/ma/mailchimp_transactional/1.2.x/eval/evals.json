@@ -1,0 +1,100 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "mailchimp_transactional",
+  "version": "1.2.x",
+  "note": "Mailchimp Transactional sends Drupal mail through the Mailchimp Transactional API via two @Mail plugins (mailchimp_transactional_mail real, mailchimp_transactional_test_mail test) that you assign in Mail System. All settings live in the config object mailchimp_transactional.settings (api_key, from_email/from_name, subaccount, track_opens/clicks, url_strip_qs, analytics_*, process_async, queue_worker_timeout, mail_key_denylist, api_timeout, api_classname, filter_format). Admin route mailchimp_transactional.admin at admin/config/services/mailchimp_transactional; permission 'administer mailchimp transactional'. Async sending queues into QueueWorker id mailchimp_transactional_queue (sent on cron). The live Mailchimp API is external, so all medium/hard cases are grounded ONLY in the local mailchimp_transactional.settings config object (never a real send): setup/reset write known settings, verify/introspection read them back. Scripts restore shipped defaults (subaccount '' , api_key '' , process_async false, queue_worker_timeout 15).",
+  "evals": [
+    {
+      "id": "mailchimp_transactional-how-to-route",
+      "mode": "recipe",
+      "prompt": "I installed the mailchimp_transactional module on Drupal 11 and set an API key, but my site's email still goes out via PHP mail. How do I actually make Drupal send through Mailchimp Transactional, and what mail plugin does the module provide?",
+      "must_contain_any": [
+        "Mail System",
+        "mailsystem",
+        "mailchimp_transactional_mail",
+        "sender"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The module registers Mail plugins (mailchimp_transactional_mail, and mailchimp_transactional_test_mail for testing) but you must select one as the sender in the Mail System module (admin/config/system/mailsystem or mailsystem.settings defaults.sender = mailchimp_transactional_mail), site-wide or per module/key. Only then does Drupal route mail through Mailchimp Transactional.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "mailchimp_transactional-settings-object",
+      "mode": "recipe",
+      "prompt": "For the mailchimp_transactional module, what config object holds its settings and which single setting is required for real sends (and for the admin test-email page to be reachable)?",
+      "must_contain_any": [
+        "mailchimp_transactional.settings",
+        "api_key"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Settings live in the config object mailchimp_transactional.settings (api_key, from_email, from_name, subaccount, track_opens/clicks, process_async, etc.). The api_key is required: without it real sends fail and the ConfigurationAccessCheck blocks the 'Send Test Email' route.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "mailchimp_transactional-async-queue",
+      "mode": "recipe",
+      "prompt": "In the mailchimp_transactional module, what does the 'process_async' setting do, and what queue is used?",
+      "must_contain_any": [
+        "process_async",
+        "mailchimp_transactional_queue",
+        "cron",
+        "queue"
+      ],
+      "must_not_contain": [],
+      "expected_output": "When process_async is true, TransactionMail::mail() queues each message into the mailchimp_transactional_queue QueueWorker instead of sending immediately; the queue is processed on cron (its time budget comes from queue_worker_timeout). When false, mail is sent synchronously during the request.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "mailchimp_transactional-inspect-subaccount",
+      "mode": "introspection",
+      "prompt": "On this Drupal site the Mailchimp Transactional module is configured to send through a specific subaccount. Inspect the live configuration and tell me the subaccount id that is set.",
+      "must_contain_any": [
+        "mtx_news"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The configured subaccount is 'mtx_news': mailchimp_transactional.settings:subaccount = mtx_news.",
+      "setup": "agent-module-documentation/evaluation/verify/mailchimp_transactional-subaccount-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/mailchimp_transactional-subaccount-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "mailchimp_transactional-inspect-async",
+      "mode": "introspection",
+      "prompt": "Inspect this site's live Mailchimp Transactional configuration: is outgoing mail sent immediately or queued for cron, and what is the queue worker timeout?",
+      "must_contain_any": [
+        "30",
+        "async",
+        "queued",
+        "process_async"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Mail is queued (asynchronous): mailchimp_transactional.settings:process_async is true, so messages go to the mailchimp_transactional_queue and are sent on cron, with queue_worker_timeout = 30 seconds.",
+      "setup": "agent-module-documentation/evaluation/verify/mailchimp_transactional-async-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/mailchimp_transactional-async-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "mailchimp_transactional-set-apikey-subaccount",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "Configure the Mailchimp Transactional module on this site: set its API key to 'mtx-test-key' and make it send through the subaccount 'mtx_sub'. Apply the change to the live configuration. (This is a local config-only task; no real email is sent.)",
+      "reset": "agent-module-documentation/evaluation/verify/mailchimp_transactional-apikey-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/mailchimp_transactional-apikey-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/mailchimp_transactional-apikey-cleanup.sh",
+      "expected_output": "mailchimp_transactional.settings has api_key = 'mtx-test-key' and subaccount = 'mtx_sub' (e.g. drush config:set mailchimp_transactional.settings api_key mtx-test-key; and subaccount mtx_sub)."
+    },
+    {
+      "id": "mailchimp_transactional-enable-async",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "site-owner",
+      "prompt": "Sending email during page saves is making my Mailchimp Transactional site slow. Change its configuration so emails are queued and sent in the background on cron instead of immediately, and set the background send time budget to 25 seconds. Apply it to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/mailchimp_transactional-enable-async-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/mailchimp_transactional-enable-async-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/mailchimp_transactional-enable-async-cleanup.sh",
+      "expected_output": "mailchimp_transactional.settings has process_async = true and queue_worker_timeout = 25, so mail is queued into mailchimp_transactional_queue and processed on cron."
+    }
+  ]
+}

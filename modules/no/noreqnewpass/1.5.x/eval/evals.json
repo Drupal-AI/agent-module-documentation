@@ -1,0 +1,80 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "noreqnewpass",
+  "version": "1.5.x",
+  "note": "No Request New Password removes Drupal's forgotten-password / 'Request new password' flow. Its whole configurable surface is (a) the boolean config key noreqnewpass.settings_form:noreqnewpass_disable and (b) the single permission `administer noreqnewpass` that gates its settings form. It defines no plugin types and no Drush commands, so the medium/hard tiers exercise the config value and the role-permission grant rather than plugin code. When the flag is TRUE a route subscriber sets _access=FALSE on the core user.pass / user.pass.http routes, a hook_form_alter swaps the ::validateFinal login validator, and a preprocess hook hides the login-block reset link. Cases span three tiers: recipe (easy, response-graded facts about the permission, config key, and behavior), introspection (medium — a known config value / role grant is set on the live site and the agent reads it back via drush), and execution (hard, persona drupal-expert — the agent actually sets the flag / grants the permission, verified against live site state).",
+  "evals": [
+    {
+      "id": "nrnp-permission",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "On a Drupal 11 site using the No Request New Password (noreqnewpass) module, what is the exact machine name of the permission the module adds, and what does that permission gate?",
+      "must_contain_any": ["administer noreqnewpass"],
+      "must_not_contain": [],
+      "expected_output": "The module defines one permission, `administer noreqnewpass` (title 'Administer No Request New Password', restrict access: true). It gates only the module's settings form route noreqnewpass.settings_form at /admin/config/people/noreqnewpass; it does not itself change login/reset behavior."
+    },
+    {
+      "id": "nrnp-config-key",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "In the noreqnewpass module, which config object and key toggle whether the 'Request new password' flow is disabled, what type is it, and what is its install default?",
+      "must_contain_any": ["noreqnewpass_disable", "noreqnewpass.settings_form"],
+      "must_not_contain": [],
+      "expected_output": "The config object noreqnewpass.settings_form holds the boolean key noreqnewpass_disable. Its install default is false (module inert). Set it TRUE to disable the password-reset flow."
+    },
+    {
+      "id": "nrnp-behavior",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "When noreqnewpass is enabled (noreqnewpass_disable = TRUE) on a Drupal site, what three things does it do to remove the forgotten-password flow, and which core routes are affected?",
+      "must_contain_any": ["user.pass", "/user/password", "request_password"],
+      "must_not_contain": [],
+      "expected_output": "With the flag TRUE the module: (1) a route subscriber sets _access=FALSE on the core routes user.pass and user.pass.http (/user/password), (2) a hook_form_alter on user_login_form / user_login_block replaces core's ::validateFinal login validator with its own, and (3) a preprocess hook removes the request_password link from the user login block. When FALSE the module is inert."
+    },
+    {
+      "id": "nrnp-inspect-flag",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site (drush available), the noreqnewpass module is configured. Inspect the live site and tell me whether the 'Request new password' flow is currently disabled, and the exact config object and key that says so.",
+      "setup": "agent-module-documentation/evaluation/verify/noreqnewpass-intro-disabled-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/noreqnewpass-intro-disabled-cleanup.sh",
+      "must_contain_any": ["noreqnewpass_disable", "noreqnewpass.settings_form"],
+      "must_not_contain": [],
+      "expected_output": "The config object noreqnewpass.settings_form key noreqnewpass_disable is currently TRUE, so the password-reset flow is disabled on this site (/user/password is denied and the login-block reset link is hidden)."
+    },
+    {
+      "id": "nrnp-inspect-perm-role",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site (drush available), which non-administrator role currently holds the noreqnewpass module's `administer noreqnewpass` permission? Inspect the live site to answer.",
+      "setup": "agent-module-documentation/evaluation/verify/noreqnewpass-intro-perm-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/noreqnewpass-intro-perm-cleanup.sh",
+      "must_contain_any": ["content_editor"],
+      "must_not_contain": [],
+      "expected_output": "The content_editor role currently holds the `administer noreqnewpass` permission, so members of that role can open the settings form and toggle noreqnewpass_disable."
+    },
+    {
+      "id": "nrnp-enable-disable-flag",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site (drush available), use the No Request New Password module to disable the forgotten-password flow site-wide, so /user/password is denied. Apply it to the live site so it really takes effect (rebuild routes if needed); don't just describe it. One-line summary.",
+      "reset": "agent-module-documentation/evaluation/verify/noreqnewpass-disable-flag-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/noreqnewpass-disable-flag-verify.sh",
+      "expected_output": "The config noreqnewpass.settings_form:noreqnewpass_disable is set TRUE and the router rebuilt, so the core user.pass route now carries _access=FALSE (/user/password denied). Verified against live site state."
+    },
+    {
+      "id": "nrnp-grant-permission",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site (drush available), give the `content_editor` role the ability to administer the No Request New Password settings, using the module's permission. Apply it to the live site; don't just describe it. One-line summary.",
+      "reset": "agent-module-documentation/evaluation/verify/noreqnewpass-grant-permission-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/noreqnewpass-grant-permission-verify.sh",
+      "expected_output": "The content_editor role is granted the permission `administer noreqnewpass`, applied to the live site so members can open the noreqnewpass settings form. Verified against live site state."
+    }
+  ]
+}

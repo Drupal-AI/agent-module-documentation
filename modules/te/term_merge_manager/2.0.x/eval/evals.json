@@ -1,0 +1,69 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "term_merge_manager",
+  "version": "2.0.x",
+  "note": "Term Merge Manager extends Term Merge. It records each merge as two content entities (term_merge_into = target term tid/vid; term_merge_from = source vid+name -> tmiid), populated by an event subscriber on term_merge.terms_merged, and re-applies them via hook_taxonomy_term_presave (a re-created source term is rewritten in place to become the existing target term). hook_taxonomy_term_delete removes a target's rules when it is deleted. No config schema, no configure route, no Drush, no plugins; permissions gate the two rule entities plus a message toggle. Medium/hard cases are grounded in that real behaviour: introspection reads back a live rule; execution builds a rule and proves the presave rewrite, and exercises the delete-cleanup hook. All fixtures are namespaced tmm_*.",
+  "evals": [
+    {
+      "id": "term_merge_manager-what-it-does",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "In Drupal, what does the term_merge_manager module add on top of the Term Merge module, and what happens the next time someone creates a taxonomy term whose name previously got merged into another term?",
+      "must_contain_any": ["reapply", "re-apply", "re-merge", "presave", "automatically", "existing", "target term"],
+      "must_not_contain": [],
+      "expected_output": "Term Merge only merges once; term_merge_manager records each merge as reusable rules and, via hook_taxonomy_term_presave, re-applies them: when a term with the same vocabulary and name is created again it is rewritten in place to become the existing target term instead of creating a duplicate."
+    },
+    {
+      "id": "term_merge_manager-event",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "How does term_merge_manager know a merge happened so it can save a rule for it? Name the event it listens to.",
+      "must_contain_any": ["term_merge.terms_merged", "terms_merged", "TermsMergedEvent"],
+      "must_not_contain": [],
+      "expected_output": "Its DefaultSubscriber event subscriber listens to the term_merge.terms_merged event (a Drupal\\term_merge\\TermsMergedEvent) and, on each merge, creates/updates a term_merge_into rule for the target term and a term_merge_from rule per source term."
+    },
+    {
+      "id": "term_merge_manager-entities",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "Where are the saved term-merge rules stored and managed in term_merge_manager, and what are the two entity types called?",
+      "must_contain_any": ["term_merge_from", "term_merge_into", "/admin/structure/term_merge"],
+      "must_not_contain": [],
+      "expected_output": "Rules are two content entity types: term_merge_into (the surviving target term, keyed by tid/vid) and term_merge_from (each source name, keyed by vid+name pointing at the into via tmiid). They are listed/managed at /admin/structure/term_merge_into and /admin/structure/term_merge_from."
+    },
+    {
+      "id": "term_merge_manager-known-rule",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "This Drupal site has a term_merge_manager rule configured in the vocabulary tmm_intro. If someone now creates a term named 'Cars' in that vocabulary, which existing term will it be merged into? Inspect the live site and give that target term's name.",
+      "must_contain_any": ["Automobiles"],
+      "must_not_contain": [],
+      "expected_output": "Automobiles. The term_merge_from rule for (vid=tmm_intro, name=Cars) has tmiid pointing at a term_merge_into whose tid is the 'Automobiles' term, so a new 'Cars' term folds into 'Automobiles'.",
+      "setup": "agent-module-documentation/evaluation/verify/term_merge_manager-known-rule-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/term_merge_manager-known-rule-cleanup.sh"
+    },
+    {
+      "id": "term_merge_manager-auto-merge",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site the vocabulary tmm_task has a term named 'Cats'. Using term_merge_manager, set up a merge rule so that whenever a new taxonomy term named 'kitten' is created in the tmm_task vocabulary it is automatically merged into the existing 'Cats' term. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/term_merge_manager-auto-merge-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/term_merge_manager-auto-merge-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/term_merge_manager-auto-merge-cleanup.sh",
+      "expected_output": "Create a term_merge_into for the 'Cats' term (tid + vid=tmm_task) and a term_merge_from with vid=tmm_task, name=kitten, tmiid=<into id>. The presave hook then rewrites any newly created 'kitten' term in tmm_task into 'Cats' (same tid)."
+    },
+    {
+      "id": "term_merge_manager-delete-cleanup",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site the vocabulary tmm_del has a term 'Obsolete' that is the target of a term_merge_manager merge rule (there is a term_merge_into and a term_merge_from rule referencing it). The editors want that term gone entirely. Delete the 'Obsolete' taxonomy term so that no merge rules for the tmm_del vocabulary remain.",
+      "reset": "agent-module-documentation/evaluation/verify/term_merge_manager-delete-cleanup-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/term_merge_manager-delete-cleanup-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/term_merge_manager-delete-cleanup-cleanup.sh",
+      "expected_output": "Deleting the 'Obsolete' taxonomy term triggers term_merge_manager_taxonomy_term_delete, which removes the term_merge_into rule for that tid and every term_merge_from rule pointing at it, leaving zero merge rules for the tmm_del vocabulary."
+    }
+  ]
+}

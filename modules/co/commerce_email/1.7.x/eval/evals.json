@@ -1,0 +1,101 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "commerce_email",
+  "version": "1.7.x",
+  "note": "Commerce Email defines commerce_email config entities that send emails on Commerce events. Each entity binds an email event plugin (order_placed -> commerce_order.place.post_transition, order_paid -> commerce_order.order.paid, order_transition:*, checkout_register, etc.) to a token-replaced message. Recipients: toType 'email' (address/token in 'to') or 'role' (toRole). queue flag defers sending to the commerce_email queue. Medium/hard cases create namespaced commerce_email entities (ce_*) and read/verify their live config via drush php:eval; cleanup/reset delete the throwaway entities.",
+  "evals": [
+    {
+      "id": "commerce_email-which-event",
+      "mode": "recipe",
+      "prompt": "In the Commerce Email module, I want to email the customer when their order is placed. Which email event should the email use, and what Drupal Commerce (Symfony) event does it map to?",
+      "must_contain_any": [
+        "order_placed",
+        "commerce_order.place.post_transition",
+        "place"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Use the 'order_placed' email event, which maps to the Symfony event commerce_order.place.post_transition (fired when an order is placed). Create a commerce_email entity with event: order_placed.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "commerce_email-recipients",
+      "mode": "recipe",
+      "prompt": "When defining a Commerce Email, how do I control who receives it? What are the options for the recipient and which config keys store them?",
+      "must_contain_any": [
+        "toType",
+        "toRole",
+        "role",
+        "email address"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The 'toType' key is either 'email' (a specific address or token stored in 'to', e.g. [commerce_order:mail]) or 'role' (all users with the role in 'toRole'). You can also set from, cc, bcc and replyTo.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "commerce_email-queue",
+      "mode": "recipe",
+      "prompt": "How does Commerce Email avoid sending emails synchronously during checkout, and what does it use to send them later?",
+      "must_contain_any": [
+        "queue",
+        "advancedqueue",
+        "commerce_email_queue",
+        "cron"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Turn on the email's 'queue' option; sending is then deferred to a queue processed on cron. If the advancedqueue module is installed it uses the 'commerce_email' Advanced Queue, otherwise the core 'commerce_email_queue' queue.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "commerce_email-known-event",
+      "mode": "introspection",
+      "prompt": "On this Drupal Commerce site, there is a Commerce Email with machine name 'ce_known'. Inspect its live configuration and state which Commerce event triggers it.",
+      "must_contain_any": [
+        "order_paid",
+        "order paid",
+        "paid"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The ce_known commerce_email entity has event: order_paid (maps to commerce_order.order.paid), and is sent to the administrator role.",
+      "setup": "agent-module-documentation/evaluation/verify/commerce_email-known-event-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/commerce_email-known-event-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "commerce_email-known-recipient",
+      "mode": "introspection",
+      "prompt": "On this Drupal Commerce site there is a Commerce Email 'ce_recipient'. Inspect its live configuration and state exactly what email address (the 'to' value) it sends to.",
+      "must_contain_any": [
+        "[commerce_order:mail]",
+        "commerce_order:mail"
+      ],
+      "must_not_contain": [],
+      "expected_output": "ce_recipient has toType: email and to: [commerce_order:mail] (a token that resolves to the order's email address).",
+      "setup": "agent-module-documentation/evaluation/verify/commerce_email-known-recipient-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/commerce_email-known-recipient-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "commerce_email-order-confirmation",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "site-owner",
+      "prompt": "On my Drupal Commerce store, set up an email so that when a customer places an order, they get an order-confirmation email at their own email address. Give it the machine name 'ce_confirm' and make it active. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/commerce_email-order-confirmation-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/commerce_email-order-confirmation-verify.sh",
+      "expected_output": "Create an enabled commerce_email entity id=ce_confirm with event=order_placed, toType=email (to=[commerce_order:mail]), a subject and body. Verified against the live config entity.",
+      "cleanup": "agent-module-documentation/evaluation/verify/commerce_email-order-confirmation-cleanup.sh"
+    },
+    {
+      "id": "commerce_email-admin-paid",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal Commerce site, create a Commerce Email with machine name 'ce_admin_paid' that fires on the 'order_paid' event and is sent to all users with the 'administrator' role. Make it enabled and apply it to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/commerce_email-admin-paid-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/commerce_email-admin-paid-verify.sh",
+      "expected_output": "Create an enabled commerce_email entity id=ce_admin_paid with event=order_paid, toType=role, toRole=administrator, plus subject/body. Verified against the live config entity.",
+      "cleanup": "agent-module-documentation/evaluation/verify/commerce_email-admin-paid-cleanup.sh"
+    }
+  ]
+}

@@ -1,0 +1,101 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "views_natural_sort",
+  "version": "2.0.x",
+  "note": "Views Natural Sort adds a Views sort handler id 'natural' (@ViewsSort) with NASC/NDESC orders, backed by an index table `views_natural_sort` (content column = transformed string). hook_views_data_alter upgrades eligible standard string sorts to 'natural'. Settings config object `views_natural_sort.settings` (form route views_natural_sort.settings, /admin/structure/views/settings/views_natural_sort, permission administer views) holds rebuild_items_per_batch and transformation_settings.<id>.{enabled,settings} for plugins remove_beginning_words/remove_words/remove_symbols/numbers/days_of_the_week. No drush; reindex is the form's Rebuild Index button / views_natural_sort_queue_data_for_rebuild(). Medium cases read the live settings config; hard cases switch a real view's title sort to natural, and toggle a transformation setting, verified against live config. Baseline restored explicitly in cleanup (rebuild_items_per_batch=100, days_of_the_week.enabled=false, default beginning words).",
+  "evals": [
+    {
+      "id": "views_natural_sort-order-option",
+      "mode": "recipe",
+      "prompt": "With Views Natural Sort enabled, how do I make a view's Title sort ignore a leading 'The'/'A' and sort naturally? What order option / sort plugin id does that correspond to?",
+      "must_contain_any": [
+        "Sort ascending naturally",
+        "naturally",
+        "NASC",
+        "NDESC",
+        "natural"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Edit the Title sort criterion and choose 'Sort ascending naturally' (or descending). That uses the module's sort handler id 'natural' with order NASC/NDESC; in config the sort's plugin_id is 'natural' and order 'NASC'/'NDESC'. Leading articles/words are stripped by the transformation pipeline.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "views_natural_sort-index-table",
+      "mode": "recipe",
+      "prompt": "How does Views Natural Sort actually sort — does it transform the title at query time? What database table does it use and when is it populated?",
+      "must_contain_any": [
+        "views_natural_sort",
+        "index",
+        "content",
+        "entity_insert",
+        "entity save"
+      ],
+      "must_not_contain": [],
+      "expected_output": "It sorts on a precomputed index table named views_natural_sort (columns eid, entity_type, field, delta, content), where content is the transformed sortable string. Rows are written on hook_entity_insert/update (and removed on delete); the natural sort joins this table and orders by content. After bulk changes you rebuild the index.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "views_natural_sort-settings-keys",
+      "mode": "recipe",
+      "prompt": "Where do I configure which beginning words Views Natural Sort strips, and how do I rebuild its index? Name the config object / settings page and how reindexing is triggered.",
+      "must_contain_any": [
+        "views_natural_sort.settings",
+        "/admin/structure/views/settings/views_natural_sort",
+        "Rebuild Index",
+        "remove_beginning_words"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Config object views_natural_sort.settings (settings form at /admin/structure/views/settings/views_natural_sort, permission 'administer views'). Beginning words are transformation_settings.remove_beginning_words.settings. Reindex via the form's 'Rebuild Index' button (there is no drush command); saving the settings form also reindexes.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "views_natural_sort-known-beginning-word",
+      "mode": "introspection",
+      "prompt": "On this site, Views Natural Sort has been configured with a custom list of words to strip from the beginning of a title before sorting. Inspect the live configuration and list those beginning words (there is an unusual custom one).",
+      "must_contain_any": [
+        "Xanadu"
+      ],
+      "must_not_contain": [],
+      "expected_output": "views_natural_sort.settings.transformation_settings.remove_beginning_words.settings is [The, A, An, La, Le, Il, Xanadu] — the unusual custom beginning word is 'Xanadu'.",
+      "setup": "agent-module-documentation/evaluation/verify/views_natural_sort-known-beginning-word-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/views_natural_sort-known-beginning-word-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "views_natural_sort-known-batch-size",
+      "mode": "introspection",
+      "prompt": "This site's Views Natural Sort has a non-default reindex batch size configured. Inspect the live configuration and give the number of records it processes per batch.",
+      "must_contain_any": [
+        "250"
+      ],
+      "must_not_contain": [],
+      "expected_output": "views_natural_sort.settings.rebuild_items_per_batch is 250 (default is 100).",
+      "setup": "agent-module-documentation/evaluation/verify/views_natural_sort-known-batch-size-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/views_natural_sort-known-batch-size-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "views_natural_sort-view-natural",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "The view 'views_natural_sort_demo' on this site sorts nodes by Title using the standard (ascending) sort. Using Views Natural Sort, change its default display's Title sort so it sorts ascending NATURALLY (ignoring leading articles). Apply the change to the live view.",
+      "reset": "agent-module-documentation/evaluation/verify/views_natural_sort-view-natural-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/views_natural_sort-view-natural-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/views_natural_sort-view-natural-cleanup.sh",
+      "expected_output": "In views.view.views_natural_sort_demo the default display's sorts.title has plugin_id 'natural' and order 'NASC' (the module's natural sort handler)."
+    },
+    {
+      "id": "views_natural_sort-enable-days",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this site, enable Views Natural Sort's 'days of the week' transformation so day names can sort in week order. Apply the setting to the live configuration.",
+      "reset": "agent-module-documentation/evaluation/verify/views_natural_sort-enable-days-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/views_natural_sort-enable-days-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/views_natural_sort-enable-days-cleanup.sh",
+      "expected_output": "views_natural_sort.settings transformation_settings.days_of_the_week.enabled is set to true (drush cset views_natural_sort.settings transformation_settings.days_of_the_week.enabled true, or via the settings form)."
+    }
+  ]
+}

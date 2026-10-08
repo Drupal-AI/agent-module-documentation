@@ -1,0 +1,70 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "composer_deploy",
+  "version": "1.10.x",
+  "note": "composer_deploy is a mostly read-only module: its core job is injecting version metadata into extension info via hook_system_info_alter(), which mutates nothing on the filesystem or DB. It does, however, ship ONE genuine writable config key, composer_deploy.settings:prefixes (a sequence of Composer vendor prefixes, default ['drupal']), which the alter hook reads at runtime. The hard (execution) case is therefore built around that real config toggle rather than fabricated state. Medium cases exercise (a) reading the live version/git-hash the module actually injects for a dev-installed module and (b) reading a known prefixes value. All live facts were confirmed on this site: votingapi (installed from dev-4.0.x, no version in its .info.yml) receives version 4.0.x-dev and composer_deploy_git_hash 010514d0b35e4790faef182a466a0acd82016d22.",
+  "evals": [
+    {
+      "id": "composer_deploy-which-hook",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "Which Drupal hook does the composer_deploy module implement to add version numbers to modules and themes on a Composer-managed site? Give the exact hook function/name.",
+      "must_contain_any": ["hook_system_info_alter", "system_info_alter"],
+      "must_not_contain": [],
+      "expected_output": "It implements hook_system_info_alter() (as composer_deploy_system_info_alter()) to inject the version into extension info."
+    },
+    {
+      "id": "composer_deploy-source-file",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "Composer Deploy reads package metadata from a Composer-generated file to determine each extension's version. Which file does it read?",
+      "must_contain_any": ["installed.json", "vendor/composer/installed.json"],
+      "must_not_contain": [],
+      "expected_output": "vendor/composer/installed.json (located via webflo/drupal-finder)."
+    },
+    {
+      "id": "composer_deploy-git-hash-key",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "When composer_deploy fills in an extension's version, it also stores the deployed git commit into a custom key in the extension's info array. Name that info key and say which composer field it comes from.",
+      "must_contain_any": ["composer_deploy_git_hash"],
+      "must_not_contain": [],
+      "expected_output": "composer_deploy_git_hash, taken from the package's source.reference in installed.json."
+    },
+    {
+      "id": "composer_deploy-injected-version-introspect",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "persona": "drupal-expert",
+      "prompt": "This Drupal site has composer_deploy enabled, and the votingapi module was installed from a Composer dev branch (its .info.yml has no version line). Inspect the running site (drush available) and tell me the exact version string AND the composer_deploy_git_hash that composer_deploy injected into votingapi's extension info.",
+      "setup": "agent-module-documentation/evaluation/verify/composer_deploy-injected-version-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/composer_deploy-injected-version-cleanup.sh",
+      "must_contain_any": ["010514d0b35e4790faef182a466a0acd82016d22"],
+      "must_not_contain": [],
+      "expected_output": "version = 4.0.x-dev and composer_deploy_git_hash = 010514d0b35e4790faef182a466a0acd82016d22, read live from \\Drupal::service('extension.list.module')->getExtensionInfo('votingapi')."
+    },
+    {
+      "id": "composer_deploy-prefixes-introspect",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "persona": "drupal-expert",
+      "prompt": "This Drupal site's composer_deploy module has a non-default set of Composer vendor prefixes configured (the setting it uses to match packages by name). Inspect the running site (drush available) and list the exact prefix value(s) it is currently configured with, besides 'drupal'.",
+      "setup": "agent-module-documentation/evaluation/verify/composer_deploy-prefixes-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/composer_deploy-prefixes-cleanup.sh",
+      "must_contain_any": ["zeta"],
+      "must_not_contain": [],
+      "expected_output": "composer_deploy.settings:prefixes is ['drupal', 'zeta'] — the non-default extra prefix is 'zeta', read from the live config."
+    },
+    {
+      "id": "composer_deploy-add-prefix",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site (drush available), some modules are installed under a private Composer vendor called `acme` instead of `drupal`. Configure composer_deploy so its name-based package matching also recognizes the `acme` vendor prefix, in addition to the default `drupal`. Apply the change to the running site (drush/config, not just a description) and give a one-line summary of what you changed.",
+      "reset": "agent-module-documentation/evaluation/verify/composer_deploy-prefixes-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/composer_deploy-add-prefix-verify.sh",
+      "expected_output": "composer_deploy.settings:prefixes now contains 'acme' (typically ['drupal','acme']) in live config. Verified by reading the config on the running site; must fail on the reset baseline of ['drupal']."
+    }
+  ]
+}

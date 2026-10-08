@@ -1,0 +1,103 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "field_label",
+  "version": "1.5.x",
+  "note": "Field Label has a global settings config (field_label.settings at route field_label.module_config_form) plus per-formatter-component third-party settings stored under field_label on entity_view_display config entities. Medium/hard cases are grounded in that real config: introspection reads a global setting value and reads a per-field label override on node.article.default; execution writes a label override / wrapper tag onto the body field's formatter component and is verified against the live entity_view_display. The default 'article' content type with a 'body' field exists on this site.",
+  "evals": [
+    {
+      "id": "field_label-override-where",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "Using the Drupal contrib module field_label, how do I override the displayed label text of a single field on one view mode, and where is that override stored in configuration?",
+      "must_contain_any": [
+        "Manage display",
+        "third_party_settings",
+        "field_label",
+        "entity_view_display",
+        "label_value"
+      ],
+      "must_not_contain": [],
+      "expected_output": "On the entity's Manage display for that view mode, open the field's formatter settings (cog), expand 'Label settings', and set 'Label value'. It is stored as a third-party setting on that formatter component: core.entity_view_display.<entity>.<bundle>.<mode> -> content.<field>.third_party_settings.field_label.label_value."
+    },
+    {
+      "id": "field_label-permissions",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "field_label gates each of its label features behind a permission. Name the permissions and what determines whether a given label option (e.g. the wrapper tag or the class field) actually appears on the formatter settings form.",
+      "must_contain_any": [
+        "edit_field_label_value",
+        "edit_field_label_tag",
+        "edit_field_label_class",
+        "edit_field_plural_label",
+        "_enabled"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Permissions: edit_field_label_value, edit_field_plural_label, edit_field_label_class, edit_field_label_class_select, edit_field_label_tag. An option appears only when its global *_enabled flag in field_label.settings is TRUE AND the user holds the matching permission; otherwise the field is hidden (value preserved)."
+    },
+    {
+      "id": "field_label-theming-tag",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "After enabling field_label and choosing an HTML wrapper tag (e.g. h3) for a field label, the label still renders in the default element in my custom theme. Why, and what Twig change makes the wrapper tag take effect?",
+      "must_contain_any": [
+        "label_tag",
+        "field.html.twig",
+        "default('div')",
+        "template"
+      ],
+      "must_not_contain": [],
+      "expected_output": "field_label exposes the chosen tag as the 'label_tag' Twig variable and only overrides the CORE field template. A theme that ships its own field*.html.twig must reference it, e.g. <{{ label_tag|default('div') }}{{ title_attributes }}>{{ label }}</{{ label_tag|default('div') }}>; otherwise the theme template wins and the tag is ignored (though text/classes still apply)."
+    },
+    {
+      "id": "field_label-setting-value",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "On this site, field_label's global settings have been customized. Inspect the live field_label.settings configuration and report the contents of its 'class_list' setting (the label-class select list).",
+      "must_contain_any": [
+        ".fl-primary",
+        "fl-primary",
+        "Primary label"
+      ],
+      "must_not_contain": [],
+      "expected_output": "field_label.settings.class_list is '.fl-primary|Primary label' (and label_class_select_enabled is TRUE). Readable via drush config:get field_label.settings.",
+      "setup": "agent-module-documentation/evaluation/verify/field_label-setting-value-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/field_label-setting-value-cleanup.sh"
+    },
+    {
+      "id": "field_label-known-override",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "On this site, the Article content type's default display has a field whose label has been overridden using field_label. Inspect the live default view display for Article and report the overridden label text.",
+      "must_contain_any": [
+        "FL Known Label"
+      ],
+      "must_not_contain": [],
+      "expected_output": "In core.entity_view_display.node.article.default the 'field_fl_target' field component carries third_party_settings.field_label.label_value = 'FL Known Label'.",
+      "setup": "agent-module-documentation/evaluation/verify/field_label-known-override-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/field_label-known-override-cleanup.sh"
+    },
+    {
+      "id": "field_label-set-override",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On the Article content type's default view display there is a field with machine name 'field_fl_target' (label 'FL Target'). Use field_label to override that field's displayed label so it reads 'Story Body'. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/field_label-set-override-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/field_label-set-override-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/field_label-target-cleanup.sh",
+      "expected_output": "In core.entity_view_display.node.article.default the field_fl_target component gets third_party_settings.field_label.label_value = 'Story Body' (set via the component API or Manage display -> field_fl_target formatter -> Label settings -> Label value)."
+    },
+    {
+      "id": "field_label-set-tag",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "site-owner",
+      "prompt": "On my site's Article default display there is a field 'field_fl_target' (label 'FL Target'). I want that field's label to be wrapped in an <h3> heading tag using the field_label module. Make that change on the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/field_label-set-tag-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/field_label-set-tag-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/field_label-target-cleanup.sh",
+      "expected_output": "In core.entity_view_display.node.article.default the field_fl_target component gets third_party_settings.field_label.label_tag = 'h3' (h3 is one of the default allowed_tags). Set via the component API or Manage display -> field_fl_target -> Label settings -> Label wrapper."
+    }
+  ]
+}

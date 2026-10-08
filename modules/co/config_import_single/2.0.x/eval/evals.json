@@ -1,0 +1,80 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "config_import_single",
+  "version": "2.0.x",
+  "note": "config_import_single is a command-only module: one Drush command config_import_single:single-import (alias cis) that imports a single config YAML file via core's ConfigImporter, deriving the config object name from the filename-without-extension. No config object of its own, no permissions, no UI. Easy cases are recipe. Medium cases seed a real image.style config object on the live site (an image style is exactly the kind of single object cis imports) and require the agent to inspect live config and read it back. Hard cases require actually running `cis` to import an image.style YAML file, verified against the live config object. SHARED-SITE CAVEAT (author-time): the site's active config currently contains orphaned objects (Drupal Canvas, file_entity, ... from uninstalled modules) that make core's global ConfigImporter validation fail, so `cis` cannot complete on this specific site right now; the reset (object absent => verify FAIL) and the verify logic (object present => PASS) were smoke-tested by materialising the target image style via the config API, but the live `cis` build path is blocked by that pre-existing orphaned config, which was deliberately not modified. (image.style objects are used for fixtures because user.role save currently throws on this site.)",
+  "evals": [
+    {
+      "id": "cis-command-alias",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "Which Drush command does the config_import_single module add to import a single configuration file, and what is its short alias?",
+      "must_contain_any": ["config_import_single:single-import", "single-import", "cis"],
+      "must_not_contain": [],
+      "expected_output": "config_import_single:single-import, alias `cis`. Usage: `drush cis path/to/file.yml`."
+    },
+    {
+      "id": "cis-filename-rule",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "When using config_import_single (drush cis) to import a file, how is the target configuration object name determined? If I want to import the object 'image.style.thumbnail', what must the file be called?",
+      "must_contain_any": ["filename", "without extension", "image.style.thumbnail.yml", "name of the file", "getFilenameWithoutExtension"],
+      "must_not_contain": [],
+      "expected_output": "The config object name comes from the filename without its extension (Path::getFilenameWithoutExtension), not the file contents. To import image.style.thumbnail the file must be named image.style.thumbnail.yml."
+    },
+    {
+      "id": "cis-error-behaviour",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "What happens when you run the config_import_single (cis) command with a path to a file that does not exist, or with no file argument at all?",
+      "must_contain_any": ["File not found", "No file specified", "exception", "throws"],
+      "must_not_contain": [],
+      "expected_output": "It throws an exception: 'No file specified.' when no path is given, and 'File not found.' when the path does not exist. A failed import throws 'Failed importing file'."
+    },
+    {
+      "id": "cis-known-style-label",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "A single image-style configuration object with machine name 'cis_seed_a' is present in this site's active configuration. Inspect the live configuration and report the human-readable label of that image style.",
+      "must_contain_any": ["CIS Seed Alpha"],
+      "must_not_contain": [],
+      "expected_output": "CIS Seed Alpha — image.style.cis_seed_a label is 'CIS Seed Alpha' (e.g. `drush config:get image.style.cis_seed_a label`).",
+      "setup": "agent-module-documentation/evaluation/verify/config_import_single-known-style-label-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/config_import_single-known-style-label-cleanup.sh"
+    },
+    {
+      "id": "cis-known-style-b-label",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "This site's active configuration contains an image-style config object with machine name 'cis_seed_b'. Inspect the live configuration and state that image style's human-readable label.",
+      "must_contain_any": ["CIS Seed Bravo"],
+      "must_not_contain": [],
+      "expected_output": "CIS Seed Bravo — image.style.cis_seed_b label is 'CIS Seed Bravo' (e.g. `drush config:get image.style.cis_seed_b label`).",
+      "setup": "agent-module-documentation/evaluation/verify/config_import_single-known-style-b-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/config_import_single-known-style-b-cleanup.sh"
+    },
+    {
+      "id": "cis-import-style-file",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "An exported configuration file for a single image style has been placed at /tmp/image.style.cis_hard_a.yml. Using the config_import_single module, import just that one file into the site's active configuration (do not run a full config import). Apply it to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/config_import_single-import-style-a-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/config_import_single-import-style-a-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/config_import_single-import-style-a-cleanup.sh",
+      "expected_output": "Run `drush cis /tmp/image.style.cis_hard_a.yml` (config_import_single:single-import). The filename maps to config object image.style.cis_hard_a; afterwards the image style cis_hard_a exists with label 'CIS Hard Alpha'."
+    },
+    {
+      "id": "cis-import-style-file-layman",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "site-owner-layman",
+      "prompt": "Someone gave me a single settings file at /tmp/image.style.cis_hard_b.yml that defines a new image style, and I only want to load that one file into my site's configuration without re-importing everything. I have the config_import_single module. Please load just that file.",
+      "reset": "agent-module-documentation/evaluation/verify/config_import_single-import-style-b-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/config_import_single-import-style-b-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/config_import_single-import-style-b-cleanup.sh",
+      "expected_output": "Run `drush cis /tmp/image.style.cis_hard_b.yml`. The image style cis_hard_b then exists with label 'CIS Hard Bravo'."
+    }
+  ]
+}

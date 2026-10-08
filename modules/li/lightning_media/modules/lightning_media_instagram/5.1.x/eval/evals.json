@@ -1,0 +1,96 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "lightning_media_instagram",
+  "version": "5.1.x",
+  "note": "Media Instagram is a glue submodule over contrib media_entity_instagram. Its single hook_media_source_info_alter() takes $sources['oembed:instagram'] and sets input_match => ['constraint' => 'InstagramEmbedCode', 'field_types' => ['string','string_long']], preview => TRUE, forms.media_library_add => Drupal\\lightning_media\\Form\\AddByUrlForm::class, then Override::pluginClass() swaps in the input-matching Instagram source; when the kernel is an UpdateKernel it also aliases the definition under the pre-3.x 'instagram' plugin id. No routes, permissions, services, settings form (configure = null), config schema, Drush or plugin types. config/install ships media.type.instagram (source oembed:instagram, source field embed_code - an instance of the parent module's shared media.embed_code storage), field_media_in_library and default/media_library form displays plus default/embedded/thumbnail view displays.",
+  "evals": [
+    {
+      "id": "lightning_media_instagram-source-id",
+      "mode": "recipe",
+      "prompt": "What media source plugin ID does the Instagram media type installed by lightning_media_instagram use, and which field stores the post URL?",
+      "must_contain_any": [
+        "oembed:instagram",
+        "embed_code"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The source plugin ID is oembed:instagram (provided by media_entity_instagram; it was plain 'instagram' before that module's 3.x) and the source field is embed_code, an instance of the media.embed_code string_long field storage that Lightning Media itself installs and shares with the Tweet media type.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "lightning_media_instagram-what-the-hook-adds",
+      "mode": "recipe",
+      "prompt": "lightning_media_instagram implements a single hook. Which three things does it add to the Instagram media source plugin definition, and what does each one enable?",
+      "must_contain_any": [
+        "input_match",
+        "preview",
+        "media_library_add",
+        "AddByUrlForm"
+      ],
+      "must_not_contain": [],
+      "expected_output": "hook_media_source_info_alter() adds input_match (constraint InstagramEmbedCode, field types string and string_long) so MediaHelper can recognise a pasted URL, preview => TRUE so Lightning Media's MediaForm renders a live preview, and forms.media_library_add => AddByUrlForm::class so the core media library gets an 'Add via URL' step. It then calls Override::pluginClass() to swap in the input-matching source subclass.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "lightning_media_instagram-update-kernel",
+      "mode": "recipe",
+      "prompt": "In lightning_media_instagram's hook_media_source_info_alter() there is a branch that only runs when the kernel is an UpdateKernel. What does it do and why?",
+      "must_contain_any": [
+        "UpdateKernel",
+        "instagram",
+        "update"
+      ],
+      "must_not_contain": [],
+      "expected_output": "During database updates it aliases the altered definition under the legacy plugin ID 'instagram' ($sources['instagram'] = $source), because Media Entity Instagram 3.x renamed the source to oembed:instagram and old sites would otherwise hit a missing-plugin error while running media_entity_instagram_post_update_change_source_name().",
+      "difficulty": "easy"
+    },
+    {
+      "id": "lightning_media_instagram-label",
+      "mode": "introspection",
+      "prompt": "A media type on this Drupal site is labelled 'LM IG Post'. Inspect the running site and tell me its machine name, the media source plugin ID it uses, and the machine name of its source field.",
+      "must_contain_any": [
+        "oembed:instagram"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Machine name instagram, source plugin oembed:instagram, source field embed_code.",
+      "setup": "agent-module-documentation/evaluation/verify/lightning_media_instagram-label-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/lightning_media_instagram-label-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "lightning_media_instagram-field-label",
+      "mode": "introspection",
+      "prompt": "Inspect the live field configuration of the Instagram media type on this Drupal site. What is the machine name of its source field, what label do editors currently see for it, and is it required?",
+      "must_contain_any": [
+        "LM Instagram URL"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The source field is embed_code; field.field.media.instagram.embed_code currently has the label 'LM Instagram URL' and is required.",
+      "setup": "agent-module-documentation/evaluation/verify/lightning_media_instagram-field-label-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/lightning_media_instagram-field-label-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "lightning_media_instagram-rename-hide",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, rename the Instagram media type so that its human-readable label is 'Instagram Post', and change its configuration so that newly created Instagram items are hidden from the media library by default (use the field Lightning Media attaches for that).",
+      "reset": "agent-module-documentation/evaluation/verify/lightning_media_instagram-rename-hide-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/lightning_media_instagram-rename-hide-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/lightning_media_instagram-rename-hide-cleanup.sh",
+      "expected_output": "media.type.instagram label is 'Instagram Post' and the FieldConfig field.field.media.instagram.field_media_in_library has its default value set to 0/FALSE."
+    },
+    {
+      "id": "lightning_media_instagram-reference-field",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, add a media reference field with the machine name field_lm_ig_post to the Article content type. It must reference media entities, be restricted so that only Instagram media items (the bundle installed by lightning_media_instagram) can be selected, and use the Media library widget on the default form display.",
+      "reset": "agent-module-documentation/evaluation/verify/lightning_media_instagram-reference-field-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/lightning_media_instagram-reference-field-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/lightning_media_instagram-reference-field-cleanup.sh",
+      "expected_output": "field.storage.node.field_lm_ig_post of type entity_reference with target_type media, field.field.node.article.field_lm_ig_post whose handler_settings.target_bundles is exactly ['instagram'], and a media_library_widget component for it on core.entity_form_display.node.article.default."
+    }
+  ]
+}

@@ -1,0 +1,97 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "acquia_search",
+  "version": "3.1.x",
+  "note": "Acquia Search integrates Drupal with Acquia's hosted Solr by adding a search_api_solr connector (solr_acquia_connector) and backend (acquia_search_solr) authenticated with the acquia_connector subscription. LIMITATION: a live Solr index requires network access to Acquia and a valid subscription, which this environment does not have — so medium/hard cases are grounded in config that can be built and verified WITHOUT contacting Acquia: the acquia_search.settings keys and the Search API server config entity the module manages. Easy cases are response-graded (no site changes). Medium cases stage a known value in acquia_search.settings and ask the agent to read it back (cleanup restores install defaults). Hard cases have the agent build config (read-only + pinned core; or the acquia_search_server entity) verified against live config (exit 0 = pass).",
+  "evals": [
+    {
+      "id": "acquia_search-drush-cores",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "On a Drupal 11 site with Acquia Search installed, which Drush command lists the Solr cores available to the site's Acquia subscription? Give the command and an alias if there is one.",
+      "must_contain_any": ["acquia:search-solr:cores", "acquia:ss:cores"],
+      "must_not_contain": [],
+      "expected_output": "drush acquia:search-solr:cores (alias acquia:ss:cores); add --format=json for machine output."
+    },
+    {
+      "id": "acquia_search-dependencies",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "What is Acquia Search's relationship to Search API and Solr — which Drupal modules must it be used with, and where do the Solr credentials come from?",
+      "must_contain_any": ["search_api_solr", "acquia_connector"],
+      "must_not_contain": [],
+      "expected_output": "It builds on search_api_solr (it adds the solr_acquia_connector connector and acquia_search_solr backend) and requires acquia_connector for the subscription; requests to Acquia's hosted Solr are HMAC-signed with the acquia_connector subscription credentials. It also depends on views."
+    },
+    {
+      "id": "acquia_search-readonly-key",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "How do you force Acquia Search into read-only mode via configuration, and what config object/key controls it? Why does the module enforce read-only automatically in some environments?",
+      "must_contain_any": ["read_only", "acquia_search.settings"],
+      "must_not_contain": [],
+      "expected_output": "Set acquia_search.settings:read_only to true (drush cset acquia_search.settings read_only true). The module also auto-enforces read-only on non-production / ambiguous environments so a staging copy cannot overwrite a shared production Solr index."
+    },
+    {
+      "id": "acquia_search-pin-core-setting",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "Which Acquia Search setting pins the module to one specific Solr core instead of auto-detecting the core for the environment, and what does its value look like?",
+      "must_contain_any": ["override_search_core"],
+      "must_not_contain": [],
+      "expected_output": "acquia_search.settings:override_search_core — a Solr core id string such as WXYZ-12345.prod.mysite; leave it null to auto-select the preferred core per environment."
+    },
+    {
+      "id": "acquia_search-known-core",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "This Drupal 11 site's Acquia Search is pinned to a specific Solr core and is in read-only mode. Inspect the live configuration and report: which Solr core id is it pinned to, and is read-only mode currently on?",
+      "setup": "agent-module-documentation/evaluation/verify/acquia_search-known-core-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/acquia_search-known-core-cleanup.sh",
+      "must_contain_any": ["ZZZZ-99999.prod.knownsite"],
+      "must_not_contain": [],
+      "expected_output": "acquia_search.settings:override_search_core is ZZZZ-99999.prod.knownsite and read_only is true."
+    },
+    {
+      "id": "acquia_search-api-host",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "On this live Drupal 11 site, which Acquia Search API endpoint (host) is Acquia Search configured to talk to when it discovers Solr cores? State the config key and its current value.",
+      "setup": "agent-module-documentation/evaluation/verify/acquia_search-api-host-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/acquia_search-api-host-cleanup.sh",
+      "must_contain_any": ["https://api.sr-eu01.acquia.com"],
+      "must_not_contain": [],
+      "expected_output": "acquia_search.settings:api_host is currently https://api.sr-eu01.acquia.com (the install default is https://api.sr-prod02.acquia.com)."
+    },
+    {
+      "id": "acquia_search-readonly-layman",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "Our Acquia Search is a staging copy and I don't want it writing to our search index. Make Acquia Search read-only so it stops indexing, and lock it to the search core ABCD-12345.prod.mysite so it always uses that one. Don't change anything else.",
+      "reset": "agent-module-documentation/evaluation/verify/acquia_search-readonly-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/acquia_search-readonly-verify.sh",
+      "expected_output": "acquia_search.settings:read_only is set to true and override_search_core is set to ABCD-12345.prod.mysite."
+    },
+    {
+      "id": "acquia_search-readonly-expert",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "Configure Acquia Search on this site: set acquia_search.settings read_only to true and pin override_search_core to ABCD-12345.prod.mysite. Leave the other keys at their defaults.",
+      "reset": "agent-module-documentation/evaluation/verify/acquia_search-readonly-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/acquia_search-readonly-verify.sh",
+      "expected_output": "acquia_search.settings:read_only == true and override_search_core == ABCD-12345.prod.mysite."
+    },
+    {
+      "id": "acquia_search-create-server",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "This site is missing the Acquia Search Solr server. Create a Search API server config entity with the machine id 'acquia_search_server' that uses the Acquia Search Solr connection: the search_api_solr backend with the Acquia connector (solr_acquia_connector). It does not need to reach a live Acquia subscription — I just need the server config entity to exist and be wired to the Acquia connector.",
+      "reset": "agent-module-documentation/evaluation/verify/acquia_search-create-server-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/acquia_search-create-server-verify.sh",
+      "expected_output": "A search_api.server.acquia_search_server config entity exists whose backend is search_api_solr with backend_config.connector solr_acquia_connector (or the module's acquia_search_solr backend)."
+    }
+  ]
+}

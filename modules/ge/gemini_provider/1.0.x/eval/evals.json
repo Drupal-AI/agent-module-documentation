@@ -1,0 +1,80 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "gemini_provider",
+  "version": "1.0.x",
+  "note": "Gemini Provider registers one AI-module provider plugin (id 'gemini', GeminiProvider, #[AiProvider(id:'gemini')]) using google-gemini-php/client. Supported operation types: chat, embeddings, text_to_image, text_to_speech, speech_to_text. Config object gemini_provider.settings has api_key (the machine name of a Key entity chosen via key_select - NOT the raw secret) and safety_settings (HarmCategory name => HarmBlockThreshold value like BLOCK_ONLY_HIGH). Settings form route gemini_provider.settings_form at /admin/config/ai/providers/gemini, permission 'administer ai providers' (from the ai module; gemini_provider defines no permissions and no Drush). Default chat model models/gemini-2.5-flash, embeddings models/gemini-embedding-001; embeddingsVectorSize: gemini-embedding-001=3072, text-embedding-004=768. getConfiguredModels()/chat()/embeddings() hit the live Gemini API and need a real key, so ALL eval cases are grounded in config + plugin metadata (no live API calls). Introspection reads the configured Key id and a configured safety threshold; execution sets api_key to a Key and sets a HarmCategory threshold. Cases use namespaced Key entities (gemini_eval_key/gemini_task_key) and restore gemini_provider.settings to empty baseline.",
+  "evals": [
+    {
+      "id": "gemini_provider-what-is",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "What is the gemini_provider module for, and which AI operation types does its provider support?",
+      "must_contain_any": ["chat", "embeddings", "gemini"],
+      "must_not_contain": [],
+      "expected_output": "It registers the 'gemini' AI provider plugin for the Drupal AI (ai) module, letting AI features run on Google Gemini via google-gemini-php/client. Supported operation types: chat, embeddings, text_to_image, text_to_speech, speech_to_text."
+    },
+    {
+      "id": "gemini_provider-configure-key",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "How do I configure the Gemini API key for the gemini_provider module, and where is that stored? Which permission and route control the settings form?",
+      "must_contain_any": ["Key", "api_key", "administer ai providers", "/admin/config/ai/providers/gemini"],
+      "must_not_contain": [],
+      "expected_output": "Create a Key entity (key module) for the Gemini API key and select it on the Gemini settings form at /admin/config/ai/providers/gemini (route gemini_provider.settings_form, permission 'administer ai providers'). The chosen Key's machine name is saved to gemini_provider.settings.api_key - the config stores a Key reference, not the raw secret."
+    },
+    {
+      "id": "gemini_provider-default-models",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "For the gemini_provider, what is the default chat model and the default embeddings model, and what embeddings vector size does gemini-embedding-001 produce?",
+      "must_contain_any": ["gemini-2.5-flash", "gemini-embedding-001", "3072"],
+      "must_not_contain": [],
+      "expected_output": "Default chat model models/gemini-2.5-flash, default embeddings model models/gemini-embedding-001 (from getSetupData()); embeddingsVectorSize() returns 3072 for gemini-embedding-001 (and 768 for text-embedding-004)."
+    },
+    {
+      "id": "gemini_provider-which-key",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "On this site the Gemini provider is configured with an API key. Inspect the live gemini_provider configuration and tell me the machine name of the Key entity it is set to use.",
+      "must_contain_any": ["gemini_eval_key"],
+      "must_not_contain": [],
+      "expected_output": "gemini_eval_key - gemini_provider.settings.api_key holds 'gemini_eval_key', the id of the Key entity selected for the Gemini API key.",
+      "setup": "agent-module-documentation/evaluation/verify/gemini_provider-key-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/gemini_provider-key-cleanup.sh"
+    },
+    {
+      "id": "gemini_provider-safety-value",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "A Gemini safety setting has been configured on this site for the harassment harm category. Inspect the live gemini_provider configuration and tell me the block threshold set for HARM_CATEGORY_HARASSMENT.",
+      "must_contain_any": ["BLOCK_ONLY_HIGH"],
+      "must_not_contain": [],
+      "expected_output": "BLOCK_ONLY_HIGH - gemini_provider.settings.safety_settings maps HARM_CATEGORY_HARASSMENT to BLOCK_ONLY_HIGH.",
+      "setup": "agent-module-documentation/evaluation/verify/gemini_provider-safety-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/gemini_provider-safety-cleanup.sh"
+    },
+    {
+      "id": "gemini_provider-set-key",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "This site has a Key entity named 'gemini_task_key'. Configure the gemini_provider module to use that key as its Gemini API key, and apply the change to the live configuration.",
+      "reset": "agent-module-documentation/evaluation/verify/gemini_provider-set-key-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/gemini_provider-set-key-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/gemini_provider-set-key-cleanup.sh",
+      "expected_output": "gemini_provider.settings.api_key = 'gemini_task_key' (selected via the key_select on /admin/config/ai/providers/gemini, or set in config)."
+    },
+    {
+      "id": "gemini_provider-set-safety",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "Configure the gemini_provider safety settings so that the HARM_CATEGORY_HATE_SPEECH category uses the block threshold BLOCK_MEDIUM_AND_ABOVE. Apply the change to the live configuration.",
+      "reset": "agent-module-documentation/evaluation/verify/gemini_provider-set-safety-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/gemini_provider-set-safety-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/gemini_provider-set-safety-cleanup.sh",
+      "expected_output": "gemini_provider.settings.safety_settings['HARM_CATEGORY_HATE_SPEECH'] = 'BLOCK_MEDIUM_AND_ABOVE' (set via the Safety settings on the Gemini settings form, or in config)."
+    }
+  ]
+}

@@ -1,0 +1,101 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "email_tfa",
+  "version": "3.0.x",
+  "note": "Email TFA is email-based two-factor auth: it overrides the core user.login form (and user.login.http REST endpoint) via a route subscriber, emails a one-time numeric code (hook_mail key send_email_tfa, [user:email_tfa] token), and requires the user to verify it at /tfa/verify/{uid}/{hash}. All state is the config object email_tfa.settings (status bool default FALSE; tracks globally_enabled|optionally_by_users; role_exclusion_type disable_for|force_for + ignore_role list; user_one; security_code_length 4-9 default 4; timeouts seconds min 60 default 300; dev_mode; log_events; flood_threshold 5 / flood_window 3600; subject/body). Config route email_tfa.settings at /admin/config/people/email-tfa (perm 'administer email tfa'). A boolean user base field email_tfa_status enables per-user opt-in. Requires hash_salt in settings.php. Actually sending/verifying a code needs a working mail transport (external), so ALL eval cases are grounded in the local email_tfa.settings config only (never a real email round-trip): introspection reads back a planted setting; execution writes settings verified against the live config.",
+  "evals": [
+    {
+      "id": "etfa-enable-how",
+      "mode": "recipe",
+      "prompt": "In the Drupal email_tfa module, which configuration object and keys turn on email two-factor authentication and choose between forcing it on everyone versus letting each user opt in? What does the module override so the challenge happens at login?",
+      "must_contain_any": [
+        "email_tfa.settings",
+        "status",
+        "tracks",
+        "globally_enabled",
+        "optionally_by_users"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Config object email_tfa.settings: the boolean 'status' is the master switch and 'tracks' chooses globally_enabled (all users) vs optionally_by_users (per-user opt-in via the email_tfa_status field). The module's route subscriber overrides the core user.login form (and user.login.http REST endpoint) so login triggers the emailed code + /tfa/verify/{uid}/{hash} step.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "etfa-email-token",
+      "mode": "recipe",
+      "prompt": "How do I customize the one-time-password email that email_tfa sends, and which token inserts the actual code into the email body? What must be set in settings.php for the module to work?",
+      "must_contain_any": [
+        "[user:email_tfa]",
+        "subject",
+        "body",
+        "hash_salt"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Edit the 'subject' and 'body' keys of email_tfa.settings; the [user:email_tfa] token is replaced with the generated code (alongside standard tokens like [user:name], [site:name]). The email is sent via hook_mail key send_email_tfa. A non-empty hash_salt must be set in settings.php because the code hash depends on it.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "etfa-code-and-roles",
+      "mode": "recipe",
+      "prompt": "With the email_tfa module, what are the allowed values for the security code length and the code timeout, and how do I make TFA apply only to users with certain roles?",
+      "must_contain_any": [
+        "security_code_length",
+        "timeouts",
+        "role_exclusion_type",
+        "force_for",
+        "ignore_role"
+      ],
+      "must_not_contain": [],
+      "expected_output": "security_code_length is 4-9 digits (default 4); timeouts is in seconds and must be >= 60 (default 300). To require TFA only for specific roles set role_exclusion_type to 'force_for' and list those roles in ignore_role (whereas 'disable_for' exempts the listed roles). user_one can exclude user 1.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "etfa-known-codelen",
+      "mode": "introspection",
+      "prompt": "On this Drupal site, the email_tfa module has been configured with a specific security code length. Inspect the live configuration and report how many digits the one-time code will have.",
+      "must_contain_any": [
+        "8"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The security code length is 8 digits: email_tfa.settings -> security_code_length is 8 (drush cget email_tfa.settings security_code_length).",
+      "setup": "agent-module-documentation/evaluation/verify/email_tfa-known-codelen-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/email_tfa-known-codelen-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "etfa-known-subject",
+      "mode": "introspection",
+      "prompt": "The email_tfa module on this site uses a customized subject line for its one-time-password email. Inspect the live configuration and report the exact email subject that is configured.",
+      "must_contain_any": [
+        "EMAILTFA Custom Subject 88"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The OTP email subject is 'EMAILTFA Custom Subject 88': email_tfa.settings -> subject (drush cget email_tfa.settings subject).",
+      "setup": "agent-module-documentation/evaluation/verify/email_tfa-known-subject-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/email_tfa-known-subject-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "etfa-enable-global",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this site, turn on the email_tfa module's email two-factor authentication for all users (global mode) and apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/email_tfa-enable-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/email_tfa-enable-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/email_tfa-enable-cleanup.sh",
+      "expected_output": "Set email_tfa.settings -> status to TRUE and tracks to 'globally_enabled' (e.g. `drush cset email_tfa.settings status true -y` and `drush cset email_tfa.settings tracks globally_enabled -y`, or via the settings form at /admin/config/people/email-tfa)."
+    },
+    {
+      "id": "etfa-code-policy",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-layman",
+      "prompt": "For the email login-code feature (email_tfa), make the code 6 digits long and have it stay valid for 10 minutes. Save the change to the site.",
+      "reset": "agent-module-documentation/evaluation/verify/email_tfa-code-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/email_tfa-code-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/email_tfa-code-cleanup.sh",
+      "expected_output": "In email_tfa.settings set security_code_length to 6 and timeouts to 600 (10 minutes in seconds; must be >= 60). E.g. `drush cset email_tfa.settings security_code_length 6 -y` and `drush cset email_tfa.settings timeouts 600 -y`."
+    }
+  ]
+}

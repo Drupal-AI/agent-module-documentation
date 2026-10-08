@@ -1,0 +1,80 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "animated_gif",
+  "version": "2.2.x",
+  "note": "animated_gif renders animated GIFs without an image style (GD styles flatten them). Detection: service Drupal\\animated_gif\\Service\\AnimatedGifInterface, isFileAnAnimatedGif()/isAnAnimatedGif() -> TRUE when an image/gif has >=2 frame headers (MINIMUM_NUMBER_OF_ANIMATED_FRAMES=2). It ships field formatter animated_gif_image_url (extends core image_url) and #[Hook] preprocess methods (preprocess_image_formatter/responsive_image_formatter/image_style/responsive_image) that strip the image style/srcset for animated GIFs, plus an image-widget warning. No settings form/configure route/permissions/Drush. Config-only evals grounded in the real formatter id, using image fields on Article. Field/view-display deletes only (no nodes), safe on this shared site.",
+  "evals": [
+    {
+      "id": "animated_gif-detection",
+      "mode": "recipe",
+      "prompt": "How does the Drupal animated_gif module decide whether a GIF file is animated (and therefore should skip image styles)?",
+      "must_contain_any": ["frame"],
+      "must_not_contain": [],
+      "expected_output": "Its AnimatedGif service (isFileAnAnimatedGif / isAnAnimatedGif) checks the file is image/gif and scans the bytes for GIF frame headers, returning TRUE when at least two frames are found (MINIMUM_NUMBER_OF_ANIMATED_FRAMES = 2). A single-frame or non-GIF file is not animated.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "animated_gif-formatter",
+      "mode": "recipe",
+      "prompt": "Which field formatter does the animated_gif module provide for image fields, and how does it differ from core's URL-to-image formatter?",
+      "must_contain_any": ["animated_gif_image_url"],
+      "must_not_contain": [],
+      "expected_output": "It provides the 'animated_gif_image_url' formatter ('Animated GIF URL to image'), which extends core's image_url formatter but outputs the original (un-styled) file URL for animated GIFs so the animation is preserved, while static images keep their styled URL.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "animated_gif-bypass-styles",
+      "mode": "recipe",
+      "prompt": "With the animated_gif module enabled, how are animated GIFs shown so their animation isn't lost when a field uses an image style?",
+      "must_contain_any": ["image style"],
+      "must_not_contain": [],
+      "expected_output": "The module's preprocess hooks (preprocess_image_formatter, preprocess_responsive_image_formatter, preprocess_image_style, preprocess_responsive_image) detect animated GIFs and strip the image style / responsive srcset, rendering the original file so the animation plays. It also warns editors on the image upload widget.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "animated_gif-known-formatter",
+      "mode": "introspection",
+      "prompt": "On this Drupal site the Article content type has an image field field_ag_shown. Inspect the live default view display for Article and give the exact formatter (plugin id) configured for field_ag_shown.",
+      "must_contain_any": ["animated_gif_image_url"],
+      "must_not_contain": [],
+      "expected_output": "In core.entity_view_display.node.article.default the field_ag_shown component has type: animated_gif_image_url.",
+      "setup": "agent-module-documentation/evaluation/verify/animated_gif-known-formatter-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/animated_gif-known-formatter-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "animated_gif-known-field",
+      "mode": "introspection",
+      "prompt": "On this Drupal site, one image field on the Article content type is configured with the Animated GIF URL formatter on the default view display. Inspect the live site and give the machine name of that field.",
+      "must_contain_any": ["field_ag_gallery"],
+      "must_not_contain": [],
+      "expected_output": "field_ag_gallery: in core.entity_view_display.node.article.default its component uses type animated_gif_image_url.",
+      "setup": "agent-module-documentation/evaluation/verify/animated_gif-known-field-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/animated_gif-known-field-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "animated_gif-set-formatter",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site the Article content type has an image field field_ag_pic using the plain 'image' formatter on the default view display. Using the animated_gif module, change field_ag_pic's default view-display formatter so animated GIFs are served without an image style, and apply it to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/animated_gif-set-formatter-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/animated_gif-set-formatter-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/animated_gif-set-formatter-cleanup.sh",
+      "expected_output": "Set the field_ag_pic component type in core.entity_view_display.node.article.default to animated_gif_image_url and save."
+    },
+    {
+      "id": "animated_gif-teaser-formatter",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, add an image field field_ag_hero to the Article content type and configure the teaser view display to render it with the Animated GIF URL formatter, applied to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/animated_gif-teaser-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/animated_gif-teaser-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/animated_gif-teaser-reset.sh",
+      "expected_output": "Create image field field_ag_hero on node/article, then set the field_ag_hero component type in core.entity_view_display.node.article.teaser to animated_gif_image_url and save."
+    }
+  ]
+}

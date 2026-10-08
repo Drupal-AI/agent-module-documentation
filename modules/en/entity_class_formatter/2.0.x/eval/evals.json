@@ -1,0 +1,95 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "entity_class_formatter",
+  "version": "2.0.x",
+  "note": "Entity Class Formatter is a single field formatter (id entity_class_formatter, label 'Entity Class') plus one hook_entity_view_alter(). The formatter's viewElements() returns an empty array; the hook copies the field's values onto $build['#attributes'][<attr>] of the rendered entity. Settings are prefix, suffix, attr (default 'class') and field (entity-reference only); attr is required in the UI for decimal/float/integer fields. Supported field types: boolean, decimal, entity_reference, float, integer, list_string, string. There is no settings form and no configure route - all state is the component in core.entity_view_display.<entity>.<bundle>.<mode>. Every medium/hard case therefore reads or writes that real view-display component on node.article.default.",
+  "evals": [
+    {
+      "id": "entity_class_formatter-what-it-does",
+      "mode": "recipe",
+      "prompt": "On a Drupal 11 site I want the value of a node field to end up as a CSS class on the rendered node's wrapper element, without the field itself being printed. The entity_class_formatter contrib module is installed. What do I configure, and what is the machine name of the formatter?",
+      "must_contain_any": [
+        "entity_class_formatter",
+        "Entity Class"
+      ],
+      "must_not_contain": [],
+      "expected_output": "On the bundle's Manage display page choose the 'Entity Class' format (formatter id entity_class_formatter) for that field. The formatter renders nothing; the module's hook_entity_view_alter() appends the field's values to $build['#attributes']['class'] of the entity, so the class shows up on the entity wrapper. The choice is stored in core.entity_view_display.<entity>.<bundle>.<view_mode> under content.<field>.type.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "entity_class_formatter-settings",
+      "mode": "recipe",
+      "prompt": "What settings does the Drupal entity_class_formatter field formatter expose, and which one do I use to write the field value into a data-* attribute instead of the class attribute? Are there field types where that setting is mandatory?",
+      "must_contain_any": [
+        "attr",
+        "prefix",
+        "suffix"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Four settings: prefix, suffix, attr and field. 'attr' is the attribute name to use instead of 'class' (e.g. data-variant) and it is #required in the settings form for decimal, float and integer fields. 'prefix'/'suffix' are concatenated around each value. 'field' only appears for entity_reference fields and names a field on the referenced entity to read instead of its label.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "entity_class_formatter-value-rules",
+      "mode": "recipe",
+      "prompt": "Which field types can the Drupal entity_class_formatter formatter be used on, and what value does it contribute for an entity reference field and for a boolean field?",
+      "must_contain_any": [
+        "entity_reference",
+        "boolean",
+        "list_string"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Supported field types are boolean, decimal, entity_reference, float, integer, list_string and string. For an entity_reference field it uses each referenced entity's label(), unless the 'field' setting names a field on the referenced entity, in which case it recurses into that field's values. For a boolean field it uses the field definition's on_label when the value is truthy and off_label otherwise. Plain values are split on spaces into several classes when the target attribute is 'class'.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "entity_class_formatter-known-settings",
+      "mode": "introspection",
+      "prompt": "On this Drupal site the Article content type has a field named field_ecf_known that is rendered with the Entity Class formatter from the entity_class_formatter module. Inspect the live default view display for Article and tell me the exact prefix and suffix configured for that formatter.",
+      "must_contain_any": [
+        "ecfx-"
+      ],
+      "must_not_contain": [],
+      "expected_output": "prefix is 'ecfx-' and suffix is '-tone': in core.entity_view_display.node.article.default the field_ecf_known component has type entity_class_formatter with settings.prefix = 'ecfx-' and settings.suffix = '-tone'.",
+      "setup": "agent-module-documentation/evaluation/verify/entity_class_formatter-known-settings-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/entity_class_formatter-known-settings-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "entity_class_formatter-known-attr",
+      "mode": "introspection",
+      "prompt": "This Drupal site's Article content type has two string fields, field_ecf_attr and field_ecf_plain. One of them is configured with the entity_class_formatter module to write its value into a custom HTML attribute instead of a CSS class. Inspect the live view display configuration and tell me which field it is and the exact attribute name it writes to.",
+      "must_contain_any": [
+        "data-ecf-variant"
+      ],
+      "must_not_contain": [],
+      "expected_output": "field_ecf_attr. In core.entity_view_display.node.article.default its component uses type entity_class_formatter with settings.attr = 'data-ecf-variant'; field_ecf_plain uses the ordinary 'string' formatter.",
+      "setup": "agent-module-documentation/evaluation/verify/entity_class_formatter-known-attr-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/entity_class_formatter-known-attr-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "entity_class_formatter-class-from-list",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "This Drupal site has the entity_class_formatter module installed and the Article content type has a text field field_ecf_task. Configure the default view display for Article so that this field's value is added as a CSS class on the rendered article (and is not printed as text), with every generated class prefixed with 'palette-'. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/entity_class_formatter-class-from-list-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/entity_class_formatter-class-from-list-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/entity_class_formatter-class-from-list-cleanup.sh",
+      "expected_output": "In core.entity_view_display.node.article.default the field_ecf_task component must have type: entity_class_formatter with settings.prefix = 'palette-' and settings.attr left empty (so values go into the class attribute)."
+    },
+    {
+      "id": "entity_class_formatter-data-attr",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "The Article content type on this Drupal site has an integer field field_ecf_cols. Using the entity_class_formatter module, make the rendered article carry the field's value in an HTML attribute named data-ecf-columns instead of printing the number. Apply the change to the live default view display.",
+      "reset": "agent-module-documentation/evaluation/verify/entity_class_formatter-data-attr-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/entity_class_formatter-data-attr-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/entity_class_formatter-data-attr-cleanup.sh",
+      "expected_output": "In core.entity_view_display.node.article.default the field_ecf_cols component must have type: entity_class_formatter with settings.attr = 'data-ecf-columns'. (The attr setting is required for integer fields, which is why an empty attr is not acceptable here.)"
+    }
+  ]
+}

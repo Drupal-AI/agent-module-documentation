@@ -1,0 +1,57 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "gin_type_tray",
+  "version": "1.0.x",
+  "note": "Gin Type Tray is a presentation-only bridge that restyles the Type Tray /node/add screen for the Gin admin theme. It has no config, permissions, schema, entities, or Drush (configure=null). Its only live-inspectable, module-owned effect is that its route subscriber (GinTypeTrayRouteSubscriber) overrides the node.add_page route's _controller to \\Drupal\\gin_type_tray\\Controller\\GinTypeTrayController::addPage; the rest is theme-hook/template overrides (type_tray_teaser, type_tray_page), a CSS library swap (css/gin_type_tray.css), and icon preprocessing. Because the module has no buildable config of its own, the hard case is grounded in the Type Tray screen it themes: the agent configures a content type to appear in that tray via type_tray node-type third-party settings (type_tray.type_category), verified live. The medium case reads the live node.add_page controller to prove the route override is active.",
+  "evals": [
+    {
+      "id": "gin_type_tray-what",
+      "mode": "recipe",
+      "prompt": "What does the Drupal gin_type_tray module do, and what two things does it require to be present to work?",
+      "must_contain_any": ["Type Tray", "type_tray", "Gin"],
+      "must_not_contain": [],
+      "expected_output": "It restyles the Type Tray module's /node/add content-creation screen to match the Gin administrative theme, including dark-mode support. It requires the type_tray module and the gin theme (its composer.json requires drupal/type_tray and drupal/gin). It has no configuration of its own.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "gin_type_tray-mechanism",
+      "mode": "recipe",
+      "prompt": "How does gin_type_tray change the Drupal /node/add page without patching the Type Tray module? Name the route it overrides and roughly how the styling is applied.",
+      "must_contain_any": ["node.add_page", "route subscriber", "GinTypeTrayController", "theme_registry_alter"],
+      "must_not_contain": [],
+      "expected_output": "A route subscriber (GinTypeTrayRouteSubscriber) overrides the node.add_page route's _controller to GinTypeTrayController::addPage (a subclass of Type Tray's controller that swaps the default icon). Styling comes from hook_theme_registry_alter() repointing the type_tray_teaser/type_tray_page theme hooks at this module's Twig templates, plus hook_library_info_alter() swapping in css/gin_type_tray.css, and hook_preprocess_type_tray_teaser() inlining SVG icons for dark mode.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "gin_type_tray-config",
+      "mode": "recipe",
+      "prompt": "Where do I configure gin_type_tray itself, and where do the content-type categories and icons shown in the tray actually come from?",
+      "must_contain_any": ["no configuration", "no settings", "type_tray", "third-party"],
+      "must_not_contain": [],
+      "expected_output": "gin_type_tray has no configuration page (configure=null) and no settings of its own - enabling it (with Gin active) is the whole setup. The categories, icons, thumbnails and descriptions come from the parent Type Tray module's per-content-type third-party settings (node.type.*.third_party.type_tray, e.g. type_category, type_icon), configured on each content type's edit form; gin_type_tray only themes that output.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "gin_type_tray-live-controller",
+      "mode": "introspection",
+      "prompt": "On this running Drupal site, gin_type_tray is enabled. Inspect the live routing and state which controller method now handles the node.add_page route.",
+      "must_contain_any": ["GinTypeTrayController"],
+      "must_not_contain": [],
+      "expected_output": "node.add_page is served by \\Drupal\\gin_type_tray\\Controller\\GinTypeTrayController::addPage, because gin_type_tray's route subscriber overrides the route's _controller default.",
+      "setup": "agent-module-documentation/evaluation/verify/gin_type_tray-route-override-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/gin_type_tray-route-override-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "gin_type_tray-tray-type",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site (which uses the Gin-themed Type Tray via gin_type_tray), create a content type with machine name 'gtt_task' and configure it so it appears grouped under a category on the Type Tray /node/add screen. Apply the change live.",
+      "reset": "agent-module-documentation/evaluation/verify/gin_type_tray-tray-type-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/gin_type_tray-tray-type-verify.sh",
+      "expected_output": "A node type 'gtt_task' exists and carries a non-empty type_tray.type_category third-party setting so Type Tray (rendered by gin_type_tray) groups it under that category, e.g. $type->setThirdPartySetting('type_tray','type_category','gtt_marketing')->save()."
+    }
+  ]
+}

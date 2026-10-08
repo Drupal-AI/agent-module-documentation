@@ -1,0 +1,97 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "video_embed_facebook",
+  "version": "2.0.x",
+  "note": "video_embed_facebook adds ONE Video Embed Field provider plugin (class Facebook, @VideoEmbedProvider id='facebook') for the video_embed_field module. Recognised URLs: https://www.facebook.com/<page>/videos/<id> and https://www.facebook.com/video.php?v=<id>; embed iframe -> https://www.facebook.com/plugins/video.php?href=<url>; thumbnail -> https://graph.facebook.com/<id>/picture. No config/permissions/Drush/own plugin types. ENVIRONMENT NOTE: on this site Facebook::renderEmbedCode($width,$height,$autoplay) is incompatible with the installed ProviderPluginBase::renderEmbedCode($width,$height,$autoplay,$title_format=NULL,$use_title_fallback=TRUE), so LOADING the provider class fatals; storing/reading a Facebook URL in a video_embed_field works but rendering/provider-resolution does not. Therefore medium cases inspect the stored raw URL value, and hard verify checks the stored value against the facebook URL pattern WITHOUT loading the provider class.",
+  "evals": [
+    {
+      "id": "video_embed_facebook-url-formats",
+      "mode": "recipe",
+      "prompt": "Which Facebook video URL formats does the video_embed_facebook provider recognise for a Video Embed Field?",
+      "must_contain_any": [
+        "facebook.com",
+        "/videos/",
+        "video.php"
+      ],
+      "must_not_contain": [],
+      "expected_output": "It recognises https://www.facebook.com/<page>/videos/<id> and https://www.facebook.com/video.php?v=<id> (with or without www.); getIdFromInput() extracts the numeric <id> from either.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "video_embed_facebook-plugin-integration",
+      "mode": "recipe",
+      "prompt": "How does video_embed_facebook integrate with Drupal — what kind of plugin is it and which module must it work with?",
+      "must_contain_any": [
+        "video_embed_field",
+        "VideoEmbedProvider",
+        "provider",
+        "facebook"
+      ],
+      "must_not_contain": [],
+      "expected_output": "It is a single Video Embed Field provider plugin: class Facebook annotated @VideoEmbedProvider(id = \"facebook\") extending ProviderPluginBase, and it depends on the video_embed_field module. Enabling it makes any video_embed_field field accept Facebook URLs; there is no separate configuration.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "video_embed_facebook-embed-thumbnail",
+      "mode": "recipe",
+      "prompt": "When video_embed_facebook renders a Facebook video, what iframe URL does it embed, and where does it get the video thumbnail from?",
+      "must_contain_any": [
+        "plugins/video.php",
+        "graph.facebook.com",
+        "iframe"
+      ],
+      "must_not_contain": [],
+      "expected_output": "renderEmbedCode() emits a video_embed_iframe pointing at https://www.facebook.com/plugins/video.php?href=<url> (with autoplay and show_text=0); getRemoteThumbnailUrl() returns https://graph.facebook.com/<id>/picture for the thumbnail.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "video_embed_facebook-read-videos-id",
+      "mode": "introspection",
+      "prompt": "On this site, the Article 'vef_known' has a Video Embed Field (field_vef_known) holding a Facebook video. Inspect the stored value and tell me the Facebook video id.",
+      "must_contain_any": [
+        "9876543210"
+      ],
+      "must_not_contain": [],
+      "expected_output": "field_vef_known stores https://www.facebook.com/somepage/videos/9876543210 — the Facebook video id is 9876543210 (the trailing numeric segment after /videos/).",
+      "setup": "agent-module-documentation/evaluation/verify/video_embed_facebook-known-videos-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/video_embed_facebook-known-videos-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "video_embed_facebook-read-videophp-id",
+      "mode": "introspection",
+      "prompt": "The Article 'vef_alt' on this site stores a Facebook video in the Video Embed Field field_vef_alt using the video.php URL form. Inspect the stored value and give the Facebook video id.",
+      "must_contain_any": [
+        "1234567890"
+      ],
+      "must_not_contain": [],
+      "expected_output": "field_vef_alt stores https://www.facebook.com/video.php?v=1234567890 — the video id is 1234567890 (the v= query value).",
+      "setup": "agent-module-documentation/evaluation/verify/video_embed_facebook-known-videophp-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/video_embed_facebook-known-videophp-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "video_embed_facebook-add-video-field",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, add a Video Embed Field named field_vef_task to the Article content type (so it can hold Facebook videos via video_embed_facebook), then create an Article titled 'vef_task' whose field_vef_task contains the Facebook video https://www.facebook.com/somepage/videos/9876543210. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/video_embed_facebook-embed-videos-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/video_embed_facebook-embed-videos-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/video_embed_facebook-embed-videos-cleanup.sh",
+      "expected_output": "A field storage/instance field_vef_task of type video_embed_field exists on node.article, and an Article 'vef_task' stores a facebook.com video URL (e.g. https://www.facebook.com/somepage/videos/9876543210) in it."
+    },
+    {
+      "id": "video_embed_facebook-embed-a-video",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "site-owner",
+      "prompt": "My Article pages already have a video field called field_vef_show. Please add a new Article titled 'vef_show' that embeds this Facebook video: https://www.facebook.com/video.php?v=555000111",
+      "reset": "agent-module-documentation/evaluation/verify/video_embed_facebook-embed-show-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/video_embed_facebook-embed-show-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/video_embed_facebook-embed-show-cleanup.sh",
+      "expected_output": "An Article 'vef_show' stores https://www.facebook.com/video.php?v=555000111 (facebook.com URL containing id 555000111) in the video_embed_field field_vef_show."
+    }
+  ]
+}

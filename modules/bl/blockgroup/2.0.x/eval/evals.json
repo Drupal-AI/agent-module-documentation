@@ -1,0 +1,80 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "blockgroup",
+  "version": "2.0.x",
+  "note": "Block Group bundles several blocks into one placeable block. Creating a `block_group_content` config entity (config name blockgroup.block_group_content.<id>; only id + label exported) registers a derived block plugin `block_group:<id>` and, via hook_system_info_alter(), a theme region named after the group id. Cases span three tiers: easy/recipe (response-graded facts from 2.0.x/agent/), medium/introspection (a setup script installs a KNOWN block_group_content entity, the agent inspects the running site via drush to answer, a cleanup script removes it), and hard/execution (a reset script deletes any matching group, the agent creates the block_group_content entity on the live site, a verify script checks live state — reset -> model -> verify). Grounded in module source; the module ships no Drush commands or services, so hard cases use the entity storage API.",
+  "evals": [
+    {
+      "id": "blockgroup-config-entity-type",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "On a Drupal 11 site with the Block Group (`blockgroup`) module, what kind of Drupal object represents a block group, what is its entity type id, and which fields does it store?",
+      "must_contain_any": ["block_group_content", "config entity", "label"],
+      "must_not_contain": [],
+      "expected_output": "A block group is a config entity of type `block_group_content` (config name blockgroup.block_group_content.<id>). It exports only two meaningful keys: `id` (machine name) and `label` (human name); there are no other configurable fields."
+    },
+    {
+      "id": "blockgroup-derived-block",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "How does the Block Group module turn a saved block group into something you can place on the block layout page? What block plugin id is produced for a group whose machine name is `header`?",
+      "must_contain_any": ["block_group:header", "deriver", "block_group"],
+      "must_not_contain": [],
+      "expected_output": "The module defines a single `block_group` block plugin with a deriver (BlockGroups) that emits one derivative per block_group_content entity. A group with id `header` yields the placeable block plugin `block_group:header`, whose admin label is the group's label."
+    },
+    {
+      "id": "blockgroup-region-grouping",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "With the Block Group module, how are individual blocks actually grouped together, and where do child blocks get placed so they render inside the group block?",
+      "must_contain_any": ["region", "hook_system_info_alter", "block layout"],
+      "must_not_contain": [],
+      "expected_output": "Each block group adds a theme region named after the group id (via hook_system_info_alter()). On the block layout page you place the group's own block into a normal region, then drag other blocks into the group's region; when the group block renders it collects every enabled block assigned to that region (in weight order, access-checked) and outputs them together. Groups can be nested by placing one group's block into another group's region."
+    },
+    {
+      "id": "blockgroup-introspect-label",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "persona": "drupal-expert",
+      "prompt": "This Drupal site already has a block group configured whose machine name (id) is `eval_footer_group` (drush available). Inspect the running site and tell me its exact human-readable label.",
+      "setup": "agent-module-documentation/evaluation/verify/blockgroup-known-label-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/blockgroup-known-label-cleanup.sh",
+      "must_contain_any": ["Eval Footer Group"],
+      "must_not_contain": [],
+      "expected_output": "The block_group_content config entity `eval_footer_group` (config blockgroup.block_group_content.eval_footer_group) has the label `Eval Footer Group`."
+    },
+    {
+      "id": "blockgroup-introspect-derived-block",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site a block group is configured (drush available). Inspect the running site, find every block_group_content config entity, and tell me the placeable block plugin id that the Block Group deriver produces for it.",
+      "setup": "agent-module-documentation/evaluation/verify/blockgroup-known-derived-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/blockgroup-known-derived-cleanup.sh",
+      "must_contain_any": ["block_group:eval_promo_sidebar"],
+      "must_not_contain": [],
+      "expected_output": "There is a block_group_content entity `eval_promo_sidebar`, so the deriver produces the placeable block plugin `block_group:eval_promo_sidebar` (admin label 'Eval Promo Sidebar')."
+    },
+    {
+      "id": "blockgroup-create-header",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site (drush available), use the Block Group module to create a new block group with machine name `header` and label `Header`. Apply it to the live site as a `block_group_content` config entity so its placeable block becomes available; don't just describe it. One-line summary.",
+      "reset": "agent-module-documentation/evaluation/verify/blockgroup-create-header-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/blockgroup-create-header-verify.sh",
+      "expected_output": "A block_group_content config entity `header` (label Header) exists on the live site and the deriver has registered the placeable block plugin `block_group:header`. Verified against live site state."
+    },
+    {
+      "id": "blockgroup-create-region",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site (drush available), create a block group named `sidebar_promo` with label `Sidebar Promo` using the Block Group module, so that a new theme region for the group appears and other blocks can be dragged into it. Create it as a `block_group_content` config entity on the live site; don't just describe it. One-line summary.",
+      "reset": "agent-module-documentation/evaluation/verify/blockgroup-create-region-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/blockgroup-create-region-verify.sh",
+      "expected_output": "A block_group_content config entity `sidebar_promo` (label Sidebar Promo) exists and Block Group has added a `sidebar_promo` region to the active theme (via hook_system_info_alter). Verified against live site state."
+    }
+  ]
+}

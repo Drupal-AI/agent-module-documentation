@@ -1,0 +1,93 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "saml_sp_drupal_login",
+  "version": "4.6.x",
+  "note": "saml_sp_drupal_login logs Drupal users in from a validated SAML response (callback saml_sp_drupal_login__saml_authenticate). Login starts at /saml/drupal_login/{idp}; config UI /admin/config/people/saml_sp/login. All behaviour is the saml_sp_drupal_login.config object (keys: idp, logout, logged_in_redirect (default <front>), force_authentication, force_saml_only, account_request_request_account, account_request_create_account, no_account_authenticated_user_role/_account, update_email, update_language). No permissions/plugins/Drush of its own. Evals are grounded in that config and the login route: recipe covers the login URL and key config flags; introspection reads back known force_saml_only and logged_in_redirect values; execution enables force_saml_only and account_request_create_account, verified against live config. Config values are restored to shipped defaults on cleanup/reset.",
+  "evals": [
+    {
+      "id": "saml_sp_drupal_login-login-url",
+      "mode": "recipe",
+      "prompt": "Using the saml_sp_drupal_login submodule, what URL do I send a user to in order to start logging them into Drupal through a registered SAML Identity Provider?",
+      "must_contain_any": [
+        "/saml/drupal_login"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Send them to /saml/drupal_login/{idp} (route saml_sp_drupal_login.login), where {idp} is the machine name of a registered saml_sp IdP config entity.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "saml_sp_drupal_login-force-only",
+      "mode": "recipe",
+      "prompt": "I want anonymous users who visit /user on my Drupal site to be redirected straight to SAML login instead of seeing the normal Drupal login form. Which saml_sp_drupal_login config setting turns that on?",
+      "must_contain_any": [
+        "force_saml_only"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Enable force_saml_only in saml_sp_drupal_login.config. When TRUE the Drupal login form is bypassed and an anonymous user going to /user is automatically redirected to the SAML authentication page.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "saml_sp_drupal_login-autocreate-recipe",
+      "mode": "recipe",
+      "prompt": "With saml_sp_drupal_login, which config setting makes Drupal automatically create a new account (without administrator approval) when a user authenticates via SAML but has no existing account?",
+      "must_contain_any": [
+        "account_request_create_account"
+      ],
+      "must_not_contain": [],
+      "expected_output": "account_request_create_account: when TRUE, a successful SAML authentication for a user with no matching account creates and activates a new Drupal account without admin approval.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "saml_sp_drupal_login-known-forcesaml",
+      "mode": "introspection",
+      "prompt": "On this Drupal site, inspect the saml_sp_drupal_login configuration and state whether anonymous users are forced straight to SAML login (i.e. the Drupal login form is bypassed).",
+      "must_contain_any": [
+        "force_saml_only",
+        "true",
+        "TRUE",
+        "bypass"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Yes - saml_sp_drupal_login.config:force_saml_only is TRUE, so /user redirects anonymous users to SAML and the Drupal login form is bypassed.",
+      "setup": "agent-module-documentation/evaluation/verify/saml_sp_drupal_login-known-forcesaml-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/saml_sp_drupal_login-known-forcesaml-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "saml_sp_drupal_login-known-redirect",
+      "mode": "introspection",
+      "prompt": "On this site the saml_sp_drupal_login module redirects already-logged-in users who hit the login route to a specific path. Inspect the live configuration and report that path.",
+      "must_contain_any": [
+        "/user/dashboard-smlsp"
+      ],
+      "must_not_contain": [],
+      "expected_output": "saml_sp_drupal_login.config:logged_in_redirect is '/user/dashboard-smlsp' (the default is '<front>').",
+      "setup": "agent-module-documentation/evaluation/verify/saml_sp_drupal_login-known-redirect-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/saml_sp_drupal_login-known-redirect-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "saml_sp_drupal_login-force-saml",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, configure saml_sp_drupal_login so that the standard Drupal login form is bypassed and anonymous users visiting /user are sent straight to SAML authentication. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/saml_sp_drupal_login-force-saml-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/saml_sp_drupal_login-force-saml-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/saml_sp_drupal_login-force-saml-cleanup.sh",
+      "expected_output": "saml_sp_drupal_login.config:force_saml_only is TRUE (e.g. drush cset saml_sp_drupal_login.config force_saml_only 1, or tick 'Force SAML Login' on /admin/config/people/saml_sp/login)."
+    },
+    {
+      "id": "saml_sp_drupal_login-autocreate",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "site-owner",
+      "prompt": "On my site I want people who successfully log in through our SSO but don't yet have an account to automatically get a Drupal account created for them, without an administrator having to approve it. Configure saml_sp_drupal_login to do that, and apply it to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/saml_sp_drupal_login-autocreate-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/saml_sp_drupal_login-autocreate-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/saml_sp_drupal_login-autocreate-cleanup.sh",
+      "expected_output": "saml_sp_drupal_login.config:account_request_create_account is TRUE (e.g. drush cset saml_sp_drupal_login.config account_request_create_account 1, or tick 'Create account upon authentication' on the SAML login settings form)."
+    }
+  ]
+}

@@ -1,0 +1,91 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "manage_display",
+  "version": "3.0.x",
+  "note": "Manage Display has no configure route (configure=null), no permissions, no Drush commands, no services and defines no plugin types. It flips core base fields to display-configurable via hook_entity_base_field_info_alter() and supplies three field formatters: `title` (settings tag [span|div|h1..h5], default h2, plus StringFormatter's link_to_entity, default TRUE), `submitted` (single setting user_picture = a user view mode id or '') and `in_reply_to` (no settings, isApplicable() restricted to comment entity type field pid). Its entire persistent footprint is component entries inside core.entity_view_display.<entity>.<bundle>.<mode>. All medium/hard cases are therefore grounded in that real config, using view modes namespaced md_* on the existing node.article bundle (creating new node types is not possible on this shared site). Media/node entities are never saved by these scripts. The verify scripts reset the config factory and entity storage caches before reading, because a stale config cache was observed returning an out-of-date value on this busy shared site.",
+  "evals": [
+    {
+      "id": "manage_display-title-tag-setting",
+      "mode": "recipe",
+      "prompt": "On a Drupal 11 site with the manage_display contrib module, I want the node title on the Manage display page to be wrapped in an H1 instead of the default heading. Name the field formatter plugin id manage_display provides for titles, the settings key that controls the wrapper element, and that key's default value.",
+      "must_contain_any": [
+        "tag"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The formatter plugin id is `title` (Drupal\\manage_display\\Plugin\\Field\\FieldFormatter\\TitleFormatter). The wrapper element is controlled by the `tag` setting, which defaults to `h2`; the allowed values are span, div, h1, h2, h3, h4 and h5. It is stored at core.entity_view_display.<entity>.<bundle>.<mode> -> content.title.settings.tag. The formatter also inherits StringFormatter's `link_to_entity` setting, which manage_display defaults to TRUE.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "manage_display-submitted-assembly",
+      "mode": "recipe",
+      "prompt": "I am using the Drupal manage_display module. I set the `submitted` formatter on a node's uid field and also added the `created` field as its own component on the same view mode, but the created date no longer renders in its own slot - it turns up inside the 'Submitted by ... on ...' sentence instead. Which hook does manage_display use to do that, and what exactly does it do to the created component?",
+      "must_contain_any": [
+        "hook_entity_view_alter",
+        "entity_view_alter"
+      ],
+      "must_not_contain": [],
+      "expected_output": "manage_display_entity_view_alter() checks whether the entity's owner-key component uses the `submitted` formatter. If so it builds a new $build['submitted'] element with '#theme' => 'submitted', moves the author render array into #author_name, moves the user_picture into #user_picture, unsets the owner component, and - when a `created` component exists whose #field_type is 'created' - moves it into #date and unsets it. For comments it also absorbs the `pid` component into #parent. So the date is deliberately folded into the single byline sentence; to render it separately, use core's `author` formatter on uid instead of `submitted`.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "manage_display-in-reply-to-scope",
+      "mode": "recipe",
+      "prompt": "The Drupal manage_display module ships an 'In reply to' field formatter. Which entity type and which field is it restricted to, which method enforces that restriction, and does it have any configurable settings?",
+      "must_contain_any": [
+        "pid"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The formatter id is `in_reply_to` (InReplyToFormatter). Its isApplicable() returns TRUE only when the field definition's target entity type is `comment` and the field name is `pid`, so it is offered nowhere else. It has no settings (no defaultSettings(), no settings form, no config schema entry). It renders the referenced parent comment's subject (as a `string` formatter with link_to_entity TRUE) and uid (core's `author` formatter) into the `in_reply_to` theme hook, producing 'In reply to <subject> by <author>'.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "manage_display-known-tag",
+      "mode": "introspection",
+      "prompt": "This Drupal site has a node view mode called 'MD Eval' (machine name md_eval) configured for the Article content type, where the title base field is rendered through the manage_display module. Inspect the live configuration and tell me which HTML tag the title is wrapped in for that view mode.",
+      "must_contain_any": [
+        "h4"
+      ],
+      "must_not_contain": [],
+      "expected_output": "h4. In core.entity_view_display.node.article.md_eval the `title` component uses type `title` with settings.tag: h4 (and settings.link_to_entity: false).",
+      "setup": "agent-module-documentation/evaluation/verify/manage_display-known-tag-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/manage_display-known-tag-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "manage_display-known-picture",
+      "mode": "introspection",
+      "prompt": "On this Drupal site the Article content type has a node view mode 'MD Byline' (machine name md_byline) whose author byline is produced by the manage_display `submitted` formatter, including an author picture. Inspect the running site and tell me which user view mode is configured to render that picture.",
+      "must_contain_any": [
+        "compact"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The `compact` user view mode. In core.entity_view_display.node.article.md_byline the `uid` component has type: submitted with settings.user_picture: compact.",
+      "setup": "agent-module-documentation/evaluation/verify/manage_display-known-picture-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/manage_display-known-picture-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "manage_display-title-h1",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "This Drupal site has the manage_display module enabled and a node view mode 'MD Task' (machine name md_task) configured for the Article content type. In that view mode, change the title base field so it renders as an H1 and is NOT linked to the node. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/manage_display-title-h1-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/manage_display-title-h1-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/manage_display-title-h1-cleanup.sh",
+      "expected_output": "In core.entity_view_display.node.article.md_task the `title` component keeps type `title` but gets settings.tag: h1 and settings.link_to_entity: false - e.g. load the entity_view_display 'node.article.md_task', take getComponent('title'), set those two settings and save, or tick them on the title row of Manage display for that view mode."
+    },
+    {
+      "id": "manage_display-byline",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "site-builder-layman",
+      "prompt": "On this Drupal site, Article pages have a display variant called 'MD Author' (machine name md_author) that currently shows no author information at all. Make it show a byline reading 'Submitted by <author> on <date>' with the author's picture next to it, using the author's 'Compact' profile display for that picture. Please apply it to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/manage_display-byline-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/manage_display-byline-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/manage_display-byline-cleanup.sh",
+      "expected_output": "In core.entity_view_display.node.article.md_author the owner field `uid` must use the manage_display `submitted` formatter with settings.user_picture: compact, and a visible `created` component (e.g. type timestamp) must also be present so hook_entity_view_alter() has a date to fold into the sentence. Both components must be in the content region."
+    }
+  ]
+}

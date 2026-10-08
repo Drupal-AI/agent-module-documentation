@@ -1,0 +1,106 @@
+{
+  "name": "File Gate",
+  "data_name": "file_gate",
+  "description": "Gate access to private files with pluggable methods (short-lived HMAC-signed URLs, authenticated access, revocable tokens, referrer-lock, emailed OTP; optional form/commerce/assurance/mcp submodules) and deliver them to any decoupled front end. Secure-by-default: hook_file_download denies (returns -1) gated private files at /system/files unless a valid grant. Inject the signing secret from the environment. Supports Drupal 10.6 / 11.3 / 11.4 / 12 via a revision-aware file-reference backport on older core.",
+  "version": "1.11.x",
+  "package": "Security",
+  "composer_namespace": "drupal/file_gate",
+  "composer_requirements": {},
+  "dependent_modules": [
+    "drupal:file"
+  ],
+  "configure": "file_gate.settings_form",
+  "core_version_requirement": "^10.6 || ^11.3 || ^12",
+  "active_installs": null,
+  "list_position": null,
+  "project_url": "https://www.drupal.org/project/file_gate",
+  "license": "GPL-2.0-or-later",
+  "php_requirement": ">=8.2",
+  "library_dependencies": [],
+  "suggests": {
+    "firebase/php-jwt": "Required only by the File Gate Assurance submodule (file_gate_assurance) for OIDC token verification: ^6.10 || ^7.0.",
+    "web-auth/webauthn-lib": "Required for native WebAuthn mode in file_gate_assurance: ^5.0.",
+    "drupal/audit_chain": "Optional durable, hash-chained audit log for mint/download/deny/revoke events (soft dependency).",
+    "drupal/mcp_sentinel": "Required only by the File Gate MCP submodule (file_gate_mcp): ^2.22.",
+    "drupal/tool": "Required only by the File Gate MCP submodule (file_gate_mcp): ^1.0.0-beta8."
+  },
+  "submodules": [
+    "file_gate_form",
+    "file_gate_commerce",
+    "file_gate_assurance",
+    "file_gate_mcp"
+  ],
+  "provides_permissions": true,
+  "provides_drush_commands": false,
+  "provides_config_schema": true,
+  "provides_plugin_types": [
+    "GateMethod"
+  ],
+  "categories": [
+    "Access control"
+  ],
+  "subcategories": [
+    "Private file access",
+    "Token-based access control"
+  ],
+  "keywords": [
+    "file gate",
+    "private files",
+    "signed url",
+    "hmac",
+    "decoupled",
+    "otp",
+    "gated download"
+  ],
+  "project_description": "File Gate gates the delivery of private files behind pluggable \"gate methods\" and streams them through its own signed endpoint. It is built for decoupled and traditional Drupal alike: a trusted back end mints a short-lived signed URL after running its own gate (a lead form, a login, a purchase, a step-up authentication) and any front end redeems it — the bytes are delivered only through File Gate, never through /system/files .\n\n The problem it solves \n Core's private file system grants an anonymous visitor download access to a private file whenever any published entity that references it is viewable. That is often too permissive for gated content, and it ties delivery to your Drupal site's own access model — awkward when the front end lives elsewhere. File Gate replaces that with an explicit, deny-by-default decision:\n\n \n Deny by default. A hook_file_download() implementation returns a hard veto for any gated private file requested at /system/files , overriding core's permissive behaviour (unless the account holds an explicit bypass permission). \n Self-hosted signed delivery. The file is streamed from GET /api/file-gate/download only after a gate method approves the request. The private path is never disclosed, and delivery does not depend on anonymous file access. \n Front-end-agnostic. Mint returns a root-relative, host-agnostic path; your front end prepends its own public origin. The signing secret never reaches the browser. \n \n Gate methods \n A gate method answers one question: has this request passed the gate for this file? Five ship in the core module:\n\n \n signed_url — a short-lived, HMAC-signed URL. Per-field TTL, an absolute availability window, and usage limits (a one-time link is max_uses = 1 ), all bound into the signature. Outstanding grants can be listed and revoked individually or in bulk ( GET /api/file-gate/grants , POST /api/file-gate/grants/revoke-bulk , or by jti ). \n authenticated — deliver to a logged-in Drupal user, with an optional role allowlist. \n token — a revocable per-grant token (its hash is stored and bound into the signature; revoke by deleting the hash, no secret rotation) and/or a pre-shared campaign-token allowlist for static links, with optional per-token TTL and max uses. Revoke is scoped to the mint credential's field allowlist. \n referrer_lock — a signed URL that is additionally only redeemable from an allowed origin/referrer. Defence in depth, not authorization — the header is spoofable. \n otp — a single-use one-time passcode e-mailed to a self-identified address. TTL-limited, attempt-locked, and hashed with the same authenticated secret material used for mint (named secrets and dual-key rotation included). Prefer POST /api/file-gate/otp/session so redeem uses an HttpOnly FG_OTP cookie instead of putting secrets in the query string. \n \n Optional submodules keep the core module dependency-light:\n\n \n File Gate Form — a coupled form method: Drupal renders a lightweight email / lead-capture form and grants the download on submission. Spam-guarded (honeypot + per-IP rate limit); a LeadCapturedEvent lets the site persist leads into Contact, Webform, or a CRM without File Gate storing PII. \n File Gate Commerce — a commerce method: deliver only to a buyer or licensee, re-checked live on every download so expiry and revocation take effect immediately. The bundled checker grants on a completed Drupal Commerce order matching a configured SKU via a SKU-scoped query; swap the entitlement-checker service for licences or an external API. Access gating, not DRM. \n File Gate Assurance — an assurance method: gate delivery on a hardware-backed, phishing-resistant OIDC assurance level (PIV/CAC — HSPD-12 / FIPS 201 — or FIDO2/WebAuthn) proven at any standards-compliant IdP. Provider-agnostic (OIDC discovery + JWKS). A field can list several trusted issuers, each with its own audience and required ACR. Opt-in DPoP (RFC 9449), edge-mTLS for PIV/CAC, and a native WebAuthn RP mode. \n File Gate MCP — optional Tool API plugins (governed by MCP Sentinel) exposing gate status, per-file gate lookup, active grants, metrics, and single-grant revoke to AI agents. Read tools return no secret material, file paths, or download URLs. \n",
+  "maintenance_status": "Actively maintained",
+  "development_status": "Under active development",
+  "security_advisory_coverage": "not-covered",
+  "project_created": "2026-07-13",
+  "project_changed": "2026-08-27",
+  "core_semver_minimum": 11004000,
+  "core_semver_maximum": 13000000,
+  "tooling": {
+    "provides_tool_plugins": true,
+    "tool_plugins": [
+      {
+        "id": "file_gate_file_gate",
+        "label": "File Gate lookup for a file",
+        "description": "For one file UUID or media UUID, report whether the file is gated, which field and method apply, and whether the plain /system/files URL can serve it. A gated file is served only through a minted grant, so the URL an upload or entity read returns will answer 403. Returns no file path, no URL, no grant and no method settings. A media UUID resolves only when the acting account may view that media; a file UUID resolves for any holder of the permission this tool requires. Provide exactly one of file or media.",
+        "deriver": false,
+        "file": "file_gate/modules/file_gate_mcp/src/Plugin/tool/Tool/FileLookupTool.php"
+      },
+      {
+        "id": "file_gate_grant_revoke",
+        "label": "Revoke one File Gate grant",
+        "description": "Revoke one grant by field and grant id so it can no longer be redeemed. Acts with site-operator reach: the grant may have been minted by any secret. The grant must be recorded against that exact field; a grant id from another field is refused. Cannot be undone: the holder needs a new grant. Revokes one grant per call; there is no bulk form. Written to the audit log when Audit Chain is installed.",
+        "deriver": false,
+        "file": "file_gate/modules/file_gate_mcp/src/Plugin/tool/Tool/GrantRevokeTool.php"
+      },
+      {
+        "id": "file_gate_grants_list",
+        "label": "File Gate grants for a field",
+        "description": "List grants that have not expired for one gated field, across every secret that minted them: grant id, file UUID, expiry, maximum uses, whether the grant is bound to a subject, and the id of the minting secret. At most 200 rows. A grant id identifies a grant for revocation; it is not a download token. Only usage-limited grants are recorded, so an empty list does not mean no link is live.",
+        "deriver": false,
+        "file": "file_gate/modules/file_gate_mcp/src/Plugin/tool/Tool/GrantsListTool.php"
+      },
+      {
+        "id": "file_gate_metrics",
+        "label": "File Gate metrics",
+        "description": "Report mints, deliveries, denials and authentication failures for the last 1 to 90 days, per day and per method, with the ten most requested file UUIDs. Counts come from the database log and cover at most the 5000 newest entries. \"available: false\" means Database Logging is not installed, not that nothing happened.",
+        "deriver": false,
+        "file": "file_gate/modules/file_gate_mcp/src/Plugin/tool/Tool/MetricsTool.php"
+      },
+      {
+        "id": "file_gate_status",
+        "label": "File Gate status",
+        "description": "Report whether File Gate protects what its configuration claims: runtime findings, whether any signing secret is configured, named secret ids and whether each has a field scope, and every gated field with its method and storage scheme. A gated field on any scheme other than private is not protected. Returns secret ids only, never secret material.",
+        "deriver": false,
+        "file": "file_gate/modules/file_gate_mcp/src/Plugin/tool/Tool/StatusTool.php"
+      }
+    ],
+    "provides_agent_skills": false,
+    "agent_skills": []
+  },
+  "contributor_count": 5
+}

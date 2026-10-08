@@ -1,0 +1,100 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "media_gallery_migration2",
+  "version": "3.2.x",
+  "note": "media_gallery_migration2 is a submodule of media_gallery that imports Drupal 7 Media 7.x-2.x galleries (the counterpart of media_gallery_migration for Media 7.x-1.x). It ships three migrate_plus.migration config entities (group media_gallery, all enforced by media_gallery_migration2): d7_media_gallery_files (source d7_media_gallery_file -> entity:file), d7_media_gallery_media (source d7_media_gallery_file -> entity:media bundle image), d7_media_gallery_entity (source d7_node node_type media_gallery -> entity:media_gallery; images sub_process reads source 'media_gallery_file'). Its source plugin d7_media_gallery_file (MediaGalleryFile extends DrupalSqlBase) reads file_managed and in prepareRow filters to gallery files via the D7 table field_data_media_gallery_file (column media_gallery_file_fid) -- that table/column plus the 'media_gallery_file' images source are the only meaningful differences from media_gallery_migration (which uses field_data_media_gallery_media / media_gallery_media). Depends on media_gallery, migrate, migrate_drupal, migrate_plus, migrate_tools. No permissions, no config schema, no own Drush commands. source.constants.source_base_path defaults to the placeholder http://d7media.docksal.site. Shares migration ids with media_gallery_migration, so only one can be enabled at once. Medium cases enable the submodule and read live migration config; hard cases start from it uninstalled and require enabling it so the migration config becomes registered, verified against config.",
+  "evals": [
+    {
+      "id": "media_gallery_migration2-which-variant",
+      "mode": "recipe",
+      "prompt": "There are two migration submodules for media_gallery. Which Drupal 7 Media version does media_gallery_migration2 target, and what migration ids does it define?",
+      "must_contain_any": [
+        "7.x-2.x",
+        "d7_media_gallery_entity",
+        "d7_media_gallery_files",
+        "d7_media_gallery_media"
+      ],
+      "must_not_contain": [],
+      "expected_output": "media_gallery_migration2 targets Media 7.x-2.x. It defines three migrate_plus migrations in group media_gallery: d7_media_gallery_files (-> file), d7_media_gallery_media (-> media, bundle image), and d7_media_gallery_entity (D7 media_gallery nodes -> media_gallery entities). media_gallery_migration is the 7.x-1.x variant.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "media_gallery_migration2-source-table",
+      "mode": "recipe",
+      "prompt": "In media_gallery_migration2, the d7_media_gallery_file source plugin decides which files belong to a gallery. Which Drupal 7 table (and column) does it join in prepareRow(), and how does that differ from the other migration submodule?",
+      "must_contain_any": [
+        "field_data_media_gallery_file",
+        "media_gallery_file_fid",
+        "media_gallery_file"
+      ],
+      "must_not_contain": [],
+      "expected_output": "It joins field_data_media_gallery_file (column media_gallery_file_fid) and skips files not in a gallery. The 7.x-1.x submodule (media_gallery_migration) instead joins field_data_media_gallery_media / media_gallery_media_fid. Correspondingly, media_gallery_migration2's d7_media_gallery_entity reads the images sub_process from source 'media_gallery_file'.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "media_gallery_migration2-coexist",
+      "mode": "recipe",
+      "prompt": "Can media_gallery_migration and media_gallery_migration2 both be enabled on the same Drupal site at once? Why or why not, and what must you set before running either?",
+      "must_contain_any": [
+        "same",
+        "identical",
+        "config",
+        "migration id",
+        "one"
+      ],
+      "must_not_contain": [],
+      "expected_output": "No. Both submodules ship migrate_plus migration config entities with the same ids (d7_media_gallery_entity/_files/_media), so only one can be enabled at a time -- choose the one matching your D7 Media version. Before running either, set source.constants.source_base_path (default placeholder http://d7media.docksal.site) and register the legacy D7 database as the migrate source connection.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "media_gallery_migration2-live-images-source",
+      "mode": "introspection",
+      "prompt": "On this site the media_gallery_migration2 submodule is enabled. Inspect the live migrate_plus.migration.d7_media_gallery_entity configuration and report which source property the 'images' field is built from (the sub_process source).",
+      "must_contain_any": [
+        "media_gallery_file"
+      ],
+      "must_not_contain": [],
+      "expected_output": "In d7_media_gallery_entity, process.images is a sub_process whose source is 'media_gallery_file' (with a migration_lookup on d7_media_gallery_media). This is the Media 7.x-2.x property name, discoverable via drush config:get migrate_plus.migration.d7_media_gallery_entity process.images.",
+      "setup": "agent-module-documentation/evaluation/verify/media_gallery_migration2-enabled-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/media_gallery_migration2-enabled-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "media_gallery_migration2-live-enforced",
+      "mode": "introspection",
+      "prompt": "The media_gallery_migration2 submodule is enabled on this site. Inspect the live migrate_plus.migration.d7_media_gallery_files configuration and report the source plugin it uses and the module it is enforced by.",
+      "must_contain_any": [
+        "d7_media_gallery_file",
+        "media_gallery_migration2"
+      ],
+      "must_not_contain": [],
+      "expected_output": "d7_media_gallery_files uses source.plugin d7_media_gallery_file and its dependencies.enforced.module is media_gallery_migration2. Discoverable via drush config:get migrate_plus.migration.d7_media_gallery_files.",
+      "setup": "agent-module-documentation/evaluation/verify/media_gallery_migration2-enabled-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/media_gallery_migration2-enabled-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "media_gallery_migration2-make-available",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "This Drupal site has the media_gallery module but the Media 7.x-2.x gallery migrations are not currently available. Using the media_gallery_migration2 submodule, make those D7 gallery migrations available on the live site (so the d7_media_gallery_entity migration is registered).",
+      "reset": "agent-module-documentation/evaluation/verify/media_gallery_migration2-available-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/media_gallery_migration2-available-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/media_gallery_migration2-available-cleanup.sh",
+      "expected_output": "Enable the submodule (drush en media_gallery_migration2 -y), which installs its enforced migration config. Afterwards migrate_plus.migration.d7_media_gallery_entity exists with source.plugin d7_node, images sub_process source 'media_gallery_file', and dependencies.enforced.module including media_gallery_migration2."
+    },
+    {
+      "id": "media_gallery_migration2-register-files",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this site, ensure the media_gallery_migration2 submodule's D7 file import migration is registered live: after your change, the d7_media_gallery_files migration (which uses the custom d7_media_gallery_file source plugin) must exist in the site configuration.",
+      "reset": "agent-module-documentation/evaluation/verify/media_gallery_migration2-registered-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/media_gallery_migration2-registered-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/media_gallery_migration2-registered-cleanup.sh",
+      "expected_output": "Enable the submodule (drush en media_gallery_migration2 -y). Then migrate_plus.migration.d7_media_gallery_files exists with source.plugin d7_media_gallery_file and dependencies.enforced.module including media_gallery_migration2."
+    }
+  ]
+}

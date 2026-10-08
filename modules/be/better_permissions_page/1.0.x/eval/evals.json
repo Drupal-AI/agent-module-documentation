@@ -1,0 +1,85 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "better_permissions_page",
+  "version": "1.0.x",
+  "note": "Better permissions page has NO config, no configure route, no config schema, no permissions of its own, no Drush, and no plugins. It only swaps the _form of the existing user.admin_permissions route (via a RouteSubscriber) to BetterPermissionsForm (extends core UserPermissionsForm), which adds a provider select that AJAX-loads only one module's permissions at a time. Saving still calls core user_role_change_permissions(), so the ONLY persistent state a change produces is on the user.role.<rid> config entities. Medium/hard cases are therefore grounded in role->permission assignments (what the page actually writes), verified by reading user.role config, not any module setting.",
+  "evals": [
+    {
+      "id": "better_permissions_page-route-swap",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "The Drupal contrib module better_permissions_page makes the /admin/people/permissions page usable on sites with thousands of permissions. Does it add a new route, and what is its core trick for avoiding the full permissions table? Name the route it affects and the mechanism.",
+      "must_contain_any": [
+        "user.admin_permissions",
+        "route subscriber",
+        "RouteSubscriber",
+        "BetterPermissionsForm",
+        "provider"
+      ],
+      "must_not_contain": [],
+      "expected_output": "It does not add a route. A RouteSubscriber (BetterPermissionsPageRouteSubscriber) sets the _form default of the existing user.admin_permissions route to BetterPermissionsForm (a subclass of core UserPermissionsForm). That form adds a 'Permission provider' select that AJAX-loads only the chosen module's permissions, so the full table is never rendered."
+    },
+    {
+      "id": "better_permissions_page-save-api",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "When I save permissions on the better_permissions_page screen, which core function actually writes the role permission changes, and where do the resulting grants live in configuration?",
+      "must_contain_any": [
+        "user_role_change_permissions",
+        "user.role",
+        "user_role_grant_permissions"
+      ],
+      "must_not_contain": [],
+      "expected_output": "submitForm() calls core user_role_change_permissions($role, $perms) per role, exactly like the stock permissions page. Grants are stored on the role config entities user.role.<rid> (their permissions list). The module has no config object of its own."
+    },
+    {
+      "id": "better_permissions_page-role-perms",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "On this Drupal site there is a role with machine name bpp_editor. Using the same role/permission configuration that the better_permissions_page screen manages, inspect the live site and state the machine name of the permission granted to that role.",
+      "must_contain_any": [
+        "access site reports"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The bpp_editor role holds the 'access site reports' permission (readable from the user.role.bpp_editor config entity / Role::load('bpp_editor')->getPermissions()).",
+      "setup": "agent-module-documentation/evaluation/verify/better_permissions_page-role-perms-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/better_permissions_page-role-perms-cleanup.sh"
+    },
+    {
+      "id": "better_permissions_page-two-roles",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "This site has two roles, bpp_alpha and bpp_beta, each granted one distinct permission via the permissions screen. Inspect the live role configuration and state which of the two roles can access the site reports.",
+      "must_contain_any": [
+        "bpp_alpha"
+      ],
+      "must_not_contain": [],
+      "expected_output": "bpp_alpha has the 'access site reports' permission; bpp_beta has 'view the administration theme'. So bpp_alpha is the role that can access site reports.",
+      "setup": "agent-module-documentation/evaluation/verify/better_permissions_page-two-roles-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/better_permissions_page-two-roles-cleanup.sh"
+    },
+    {
+      "id": "better_permissions_page-grant-perm",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site there is a role bpp_task with no extra permissions. Grant it the 'access site reports' permission (the same result the better_permissions_page screen would produce) and apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/better_permissions_page-grant-perm-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/better_permissions_page-grant-perm-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/better_permissions_page-grant-perm-cleanup.sh",
+      "expected_output": "The bpp_task role gains 'access site reports' (e.g. user_role_grant_permissions('bpp_task', ['access site reports']) or by editing user.role.bpp_task). Verified against Role::load('bpp_task')->getPermissions()."
+    },
+    {
+      "id": "better_permissions_page-multi",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "The role bpp_multi on this site has no extra permissions. Grant it BOTH 'access site reports' and 'view the administration theme', and apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/better_permissions_page-multi-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/better_permissions_page-multi-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/better_permissions_page-multi-cleanup.sh",
+      "expected_output": "The bpp_multi role gains both 'access site reports' and 'view the administration theme' (via user_role_grant_permissions or by editing user.role.bpp_multi). Verified against the role's getPermissions()."
+    }
+  ]
+}

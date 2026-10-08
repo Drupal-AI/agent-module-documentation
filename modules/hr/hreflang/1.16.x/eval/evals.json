@@ -1,0 +1,73 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "hreflang",
+  "version": "1.16.x",
+  "note": "Hreflang is a small module: one page-attachments hook, a three-key config object, a config settings form, and a config-save cache-clearing subscriber. Cases are `recipe` (response-graded) probing documented facts an agent would otherwise read source to answer; no site mutation.",
+  "evals": [
+    {
+      "id": "hreflang-what-it-adds",
+      "mode": "recipe",
+      "prompt": "On a multilingual Drupal 11 site, what exactly does the Hreflang module add to a page, and how does that differ from Drupal core Content Translation?",
+      "must_contain_any": ["rel=\"alternate\"", "rel-alternate", "rel=alternate", "hreflang"],
+      "must_not_contain": [],
+      "expected_output": "It adds <link rel=\"alternate\" hreflang=\"…\" href=\"…\"> tags to every page for each enabled language, whereas core Content Translation adds hreflang tags only to translated entity pages."
+    },
+    {
+      "id": "hreflang-x-default",
+      "mode": "recipe",
+      "prompt": "I want an additional hreflang=\"x-default\" tag pointing at my site's default language. Which Hreflang setting enables it, and what config object holds it?",
+      "must_contain_any": ["x_default", "hreflang.settings"],
+      "must_not_contain": [],
+      "expected_output": "Enable the x_default key (default true) on the hreflang.settings config object; add the setting via the form at /admin/config/search/hreflang or drush cset hreflang.settings x_default 1."
+    },
+    {
+      "id": "hreflang-x-default-fallback",
+      "mode": "recipe",
+      "prompt": "Which Hreflang setting makes the x-default tag point at the configured fallback (selected) language instead of the site default language?",
+      "must_contain_any": ["x_default_fallback"],
+      "must_not_contain": [],
+      "expected_output": "The x_default_fallback key (default true) on hreflang.settings points the x-default tag at the language.negotiation selected_langcode fallback language when one is configured."
+    },
+    {
+      "id": "hreflang-defer-content-translation",
+      "mode": "recipe",
+      "prompt": "How do I make Hreflang stop adding per-language tags on content entity pages and let core Content Translation handle them instead, and what is the caching trade-off?",
+      "must_contain_any": ["defer_to_content_translation"],
+      "must_not_contain": [],
+      "expected_output": "Enable defer_to_content_translation (default false) on hreflang.settings; Hreflang then adds only the x-default tag on entity pages. Trade-off: Content Translation omits query args from its tags (invalid tag set on query-arg pages) but improves cache efficiency."
+    },
+    {
+      "id": "hreflang-config-route",
+      "mode": "recipe",
+      "prompt": "What is the admin path and route for the Hreflang settings form, and which permission gates it?",
+      "must_contain_any": ["/admin/config/search/hreflang", "hreflang.admin_settings"],
+      "must_not_contain": [],
+      "expected_output": "The form is at /admin/config/search/hreflang (route hreflang.admin_settings, under Search and metadata), gated by the 'administer site configuration' permission."
+    },
+    {
+      "id": "hreflang-alter-tags",
+      "mode": "recipe",
+      "prompt": "In a custom Drupal module I want to modify or remove the hreflang tags Hreflang adds. Hreflang has no API of its own — which core hooks do I implement?",
+      "must_contain_any": ["hook_language_switch_links_alter", "hook_page_attachments_alter", "language_switch_links_alter", "page_attachments_alter"],
+      "must_not_contain": [],
+      "expected_output": "Implement hook_language_switch_links_alter() (changes the source language-switch links) or hook_page_attachments_alter() (edits the generated html_head_link entries); Hreflang provides no module-specific hook."
+    },
+    {
+      "id": "hreflang-multilingual-requirement",
+      "mode": "recipe",
+      "prompt": "On a single-language Drupal site, will the Hreflang module output any hreflang tags? And are tags added on 404/403 pages?",
+      "must_contain_any": ["multilingual", "isMultilingual"],
+      "must_not_contain": [],
+      "expected_output": "No — hreflang_page_attachments() returns early when the site is not multilingual, and it also skips 403/404 (exception) pages, so no hreflang tags are emitted in those cases."
+    },
+    {
+      "id": "hreflang-settings-cache-clear",
+      "mode": "recipe",
+      "prompt": "When I change Hreflang settings, why do the new hreflang tags appear immediately without a manual cache clear?",
+      "must_contain_any": ["http_response", "HreflangConfigSubscriber", "invalidate"],
+      "must_not_contain": [],
+      "expected_output": "The hreflang.config_subscriber (HreflangConfigSubscriber) listens on config save and, when any of the three keys change, invalidates the http_response cache tag so page caches are rebuilt with the new settings."
+    }
+  ]
+}

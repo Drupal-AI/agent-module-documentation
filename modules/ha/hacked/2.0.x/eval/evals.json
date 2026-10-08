@@ -1,0 +1,96 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "hacked",
+  "version": "2.0.x",
+  "note": "Hacked! detects whether Drupal core/contrib has been changed from its official release by re-downloading each release and comparing file hashes; report at /admin/reports/hacked and via Drush (hacked:list-projects/hlp, hacked:details/hd, hacked:diff). Its only config is hacked.settings:selected_file_hasher (hacked_ignore_line_endings default, or hacked_include_line_endings), chosen at /admin/reports/hacked/settings. It defines the restricted permission 'view diffs of changed files' and reuses core 'administer site configuration' for the report. Depends on core update module. Medium cases read back the configured hasher and which role holds the diff permission; hard cases switch the hasher and grant the diff permission, verified against live config. Cases avoid the network-bound report itself.",
+  "evals": [
+    {
+      "id": "hacked-what-it-does",
+      "mode": "recipe",
+      "prompt": "What does the Drupal 'Hacked!' module do, and where does it show its results in the admin UI?",
+      "must_contain_any": [
+        "/admin/reports/hacked",
+        "changed",
+        "official release",
+        "modified"
+      ],
+      "must_not_contain": [],
+      "expected_output": "It reports whether Drupal core or any contrib project has been changed from its official packaged release, by downloading each release and comparing file hashes. Results appear at /admin/reports/hacked (statuses Unchanged/Changed/Unchecked). It only reports drift; it does not revert code.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "hacked-drush",
+      "mode": "recipe",
+      "prompt": "Which Drush command lists all projects Hacked! can analyse along with whether each has been changed, and what is its short alias?",
+      "must_contain_any": [
+        "hacked:list-projects",
+        "hlp"
+      ],
+      "must_not_contain": [],
+      "expected_output": "drush hacked:list-projects (alias hlp) prints a table of every project with its version and status (Unchanged/Changed/Unchecked) plus changed/deleted file counts; --force-rebuild bypasses the cache. Related: hacked:details (hd) and hacked:diff.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "hacked-hasher-setting",
+      "mode": "recipe",
+      "prompt": "Hacked! can ignore or include line-ending differences when comparing files. Which config object/key controls the file hasher, and what are the two values?",
+      "must_contain_any": [
+        "selected_file_hasher",
+        "hacked_ignore_line_endings",
+        "hacked_include_line_endings"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Config hacked.settings key selected_file_hasher, either hacked_ignore_line_endings (default, ignores newline differences) or hacked_include_line_endings; set on /admin/reports/hacked/settings.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "hacked-current-hasher",
+      "mode": "introspection",
+      "prompt": "Which file hasher is Hacked! currently configured to use on this site? Inspect the live configuration and give its machine name.",
+      "must_contain_any": [
+        "hacked_include_line_endings"
+      ],
+      "must_not_contain": [],
+      "expected_output": "It is hacked_include_line_endings (config hacked.settings key selected_file_hasher).",
+      "setup": "agent-module-documentation/evaluation/verify/hacked-hasher-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/hacked-hasher-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "hacked-diffperm-role",
+      "mode": "introspection",
+      "prompt": "On this site, one custom role has been granted Hacked!'s permission to view diffs of changed files. Inspect the live role configuration and give that role's machine name.",
+      "must_contain_any": [
+        "hacked_auditor"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The role is hacked_auditor: its role config includes the 'view diffs of changed files' permission.",
+      "setup": "agent-module-documentation/evaluation/verify/hacked-diffperm-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/hacked-diffperm-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "hacked-set-hasher",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, configure Hacked! so that its file comparison includes (does not ignore) line-ending differences. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/hacked-set-hasher-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/hacked-set-hasher-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/hacked-set-hasher-cleanup.sh",
+      "expected_output": "config hacked.settings selected_file_hasher is set to hacked_include_line_endings, e.g. drush cset hacked.settings selected_file_hasher hacked_include_line_endings, or the 'Include line endings' radio on /admin/reports/hacked/settings."
+    },
+    {
+      "id": "hacked-grant-diffperm",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "site-owner",
+      "prompt": "I have a role called hacked_diff_role on my Drupal site. I want people in it to be able to view the file diffs that the Hacked! module produces. Grant that ability on the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/hacked-grantdiff-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/hacked-grantdiff-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/hacked-grantdiff-cleanup.sh",
+      "expected_output": "Role hacked_diff_role is granted the 'view diffs of changed files' permission (e.g. drush role:perm:add hacked_diff_role 'view diffs of changed files'). Note viewing the diff pages also needs the diff module and administer site configuration to reach the report."
+    }
+  ]
+}

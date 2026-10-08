@@ -1,0 +1,100 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "crazyegg",
+  "version": "1.7.x",
+  "note": "Crazy Egg is a third-party JS snippet integration. All state is the crazyegg.settings config object: crazyegg_enabled (int), crazyegg_account_id (numeric account number), crazyegg_js_scope ('header'|'footer'), crazyegg_paths (path patterns, empty=all), crazyegg_roles_excluded (role ids not tracked). Settings form /admin/config/system/crazyegg (route crazyegg.config, permission 'administer crazy egg'). The account id is padded to 8 digits and split NNNN/NNNN to form the external script URL script.crazyegg.com/pages/scripts/NNNN/NNNN.js; the snippet only runs client-side. Evals are grounded purely in this config (no external network calls).",
+  "evals": [
+    {
+      "id": "crazyegg-account-config",
+      "mode": "recipe",
+      "prompt": "I installed the crazyegg module on Drupal. Where do I enter my Crazy Egg account number, which config object stores it, and how is that number turned into the tracking script URL?",
+      "must_contain_any": [
+        "crazyegg.settings",
+        "crazyegg_account_id",
+        "/admin/config/system/crazyegg",
+        "script.crazyegg.com"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Enter it on the settings form at /admin/config/system/crazyegg; it is stored as crazyegg_account_id in the crazyegg.settings config object. The numeric id is left-padded to 8 digits and split NNNN/NNNN to build the external async script URL https://script.crazyegg.com/pages/scripts/NNNN/NNNN.js (e.g. 1234567 -> 0123/4567).",
+      "difficulty": "easy"
+    },
+    {
+      "id": "crazyegg-inject-conditions",
+      "mode": "recipe",
+      "prompt": "For the crazyegg Drupal module, under what conditions is the tracking script actually added to a page, and what does the crazyegg_js_scope setting change?",
+      "must_contain_any": [
+        "crazyegg_enabled",
+        "crazyegg_account_id",
+        "crazyegg_paths",
+        "crazyegg_roles_excluded",
+        "header",
+        "footer"
+      ],
+      "must_not_contain": [],
+      "expected_output": "hook_page_attachments attaches the crazyegg/crazyegg library only when: crazyegg_enabled > 0, a numeric crazyegg_account_id is set, the current path matches crazyegg_paths (empty = every page), and the current user is in none of crazyegg_roles_excluded. crazyegg_js_scope ('header' or 'footer') controls whether the script tag is placed in the header or footer.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "crazyegg-exclude-roles-paths",
+      "mode": "recipe",
+      "prompt": "Using the crazyegg module, how do I stop logged-in administrators from being tracked, and how do I limit Crazy Egg tracking to only certain pages?",
+      "must_contain_any": [
+        "crazyegg_roles_excluded",
+        "crazyegg_paths"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Add the role (e.g. administrator) to crazyegg_roles_excluded so users in that role are not tracked, and list the desired path patterns (one per line, wildcards allowed) in crazyegg_paths to restrict tracking to those pages; leaving crazyegg_paths empty tracks every page.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "crazyegg-introspect-account",
+      "mode": "introspection",
+      "prompt": "On this Drupal site, the crazyegg module has been configured. Inspect the live configuration and report the Crazy Egg account number currently set and whether the tracking script is set to load in the header or the footer.",
+      "must_contain_any": [
+        "7654321",
+        "footer"
+      ],
+      "must_not_contain": [],
+      "expected_output": "In crazyegg.settings, crazyegg_account_id is 7654321 and crazyegg_js_scope is 'footer'.",
+      "setup": "agent-module-documentation/evaluation/verify/crazyegg-introspect-account-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/crazyegg-introspect-account-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "crazyegg-introspect-exclusion",
+      "mode": "introspection",
+      "prompt": "The crazyegg module on this site has been set up to skip tracking for one particular user role. Inspect the live configuration and state which role is excluded from Crazy Egg tracking.",
+      "must_contain_any": [
+        "administrator"
+      ],
+      "must_not_contain": [],
+      "expected_output": "crazyegg.settings crazyegg_roles_excluded contains 'administrator', so users with the administrator role are not tracked.",
+      "setup": "agent-module-documentation/evaluation/verify/crazyegg-introspect-exclusion-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/crazyegg-introspect-exclusion-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "crazyegg-set-account",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, configure the crazyegg module to use Crazy Egg account number 1234567 and to load the tracking script in the footer. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/crazyegg-set-account-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/crazyegg-set-account-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/crazyegg-set-account-cleanup.sh",
+      "expected_output": "Set crazyegg.settings crazyegg_account_id to 1234567 and crazyegg_js_scope to 'footer' (e.g. drush cset crazyegg.settings crazyegg_account_id 1234567 -y; drush cset crazyegg.settings crazyegg_js_scope footer -y, or via the settings form)."
+    },
+    {
+      "id": "crazyegg-exclude-role",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-layman",
+      "prompt": "I use Crazy Egg on my Drupal site but I don't want my site administrators' visits to show up in the heatmaps. Using the crazyegg module, stop users with the administrator role from being tracked, and save it on the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/crazyegg-exclude-role-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/crazyegg-exclude-role-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/crazyegg-exclude-role-cleanup.sh",
+      "expected_output": "Add 'administrator' to crazyegg.settings crazyegg_roles_excluded (a sequence of role ids), e.g. set crazyegg_roles_excluded to include administrator via config, so crazyegg_is_role_allowed() returns FALSE for admins."
+    }
+  ]
+}

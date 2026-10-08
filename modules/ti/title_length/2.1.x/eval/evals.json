@@ -1,0 +1,80 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "title_length",
+  "version": "2.1.x",
+  "note": "title_length is machinery only: an abstract service Drupal\\title_length\\EntityTitleLength (interface EntityTitleLengthInterface, constants ORIGINAL_LENGTH=255, DEFAULT_LENGTH=500) plus a Drush command title_length:update <entity_type>. It has configure=null, no config object, no permissions, no config schema, no plugins. Enabling the parent alone changes nothing; the node_title_length / taxonomy_term_title_length submodules subclass the service and actually widen a title column. getLength() returns Settings::get('<entity_type>_title_length_chars') ?: 500 from settings.php. changeLength() runs Schema::changeField() on the entity data table (and revision data table) title/name column and re-installs the base-field storage definition. The module's real, live-inspectable effect is the width of the DB column (node_field_data.title / taxonomy_term_field_data.name) - the runtime hook_entity_base_field_info_alter always reports getLength(), so introspection/execution cases are grounded in the actual information_schema column width. Medium cases widen a column to a known size and read it back; hard cases shrink a column to 255 then require re-applying via the Drush command.",
+  "evals": [
+    {
+      "id": "title_length-default-length",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "The Drupal contrib module title_length raises the maximum length of entity title fields above Drupal's default. If I enable a title_length submodule without setting anything in settings.php, how many characters will titles then allow, and what constant defines that default?",
+      "must_contain_any": ["500"],
+      "must_not_contain": [],
+      "expected_output": "By default titles are widened to 500 characters, defined by EntityTitleLengthInterface::DEFAULT_LENGTH (the original core length is 255, EntityTitleLengthInterface::ORIGINAL_LENGTH). EntityTitleLength::getLength() returns Settings::get('<entity_type>_title_length_chars') ?: 500."
+    },
+    {
+      "id": "title_length-override-setting",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "Using the title_length module, I want node titles to allow 1000 characters instead of the default. There is no admin form - where and how do I set the desired length?",
+      "must_contain_any": ["settings.php", "node_title_length_chars", "$settings"],
+      "must_not_contain": [],
+      "expected_output": "There is no UI (configure=null). Set $settings['node_title_length_chars'] = 1000; in settings.php (and $settings['taxonomy_term_title_length_chars'] for terms). The variable is <entity_type>_title_length_chars, read by getLength() via Settings::get(); then re-apply with drush title_length:update node."
+    },
+    {
+      "id": "title_length-reapply-drush",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "I changed the title_length setting in settings.php on a running Drupal site after the module was already installed. Which Drush command re-applies the new length to node titles?",
+      "must_contain_any": ["title_length:update"],
+      "must_not_contain": [],
+      "expected_output": "Run `drush title_length:update node` (and `drush title_length:update taxonomy_term` for term names). The command resolves the service <entity_type>_title_length.<entity_type>, refuses to shrink below existing data via checkIfExistEntitiesWithLongTitles(), then calls changeLength(getLength())."
+    },
+    {
+      "id": "title_length-node-column-width",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "On this Drupal site the node title database column (node_field_data.title) has been widened by the title_length machinery to a specific size. Inspect the live database schema and state the current maximum character length of that column.",
+      "must_contain_any": ["731"],
+      "must_not_contain": [],
+      "expected_output": "The node_field_data.title column is varchar(731). It is discoverable from information_schema.COLUMNS (CHARACTER_MAXIMUM_LENGTH for TABLE_NAME='node_field_data', COLUMN_NAME='title'); note the runtime base-field max_length reported by the entity field manager reflects getLength() (500) and not the actual column, so the schema is the source of truth.",
+      "setup": "agent-module-documentation/evaluation/verify/title_length-node-width-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/title_length-node-width-cleanup.sh"
+    },
+    {
+      "id": "title_length-term-column-width",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "On this Drupal site the taxonomy term name database column (taxonomy_term_field_data.name) has been widened by title_length to a specific size. Inspect the live database schema and report the current maximum character length of that column.",
+      "must_contain_any": ["617"],
+      "must_not_contain": [],
+      "expected_output": "The taxonomy_term_field_data.name column is varchar(617), readable from information_schema.COLUMNS (CHARACTER_MAXIMUM_LENGTH for TABLE_NAME='taxonomy_term_field_data', COLUMN_NAME='name').",
+      "setup": "agent-module-documentation/evaluation/verify/title_length-term-width-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/title_length-term-width-cleanup.sh"
+    },
+    {
+      "id": "title_length-reapply-node",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site the node title database column has been shrunk back to the core default of 255 characters, even though the node_title_length module is enabled. Using the title_length module, re-apply the module's default title length (500) to node titles on the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/title_length-node-reapply-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/title_length-node-reapply-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/title_length-node-reapply-cleanup.sh",
+      "expected_output": "Run `drush title_length:update node` (or call \\Drupal::service('node_title_length.node')->changeLength(500)). This widens node_field_data.title (and node_field_revision.title) back to varchar(500) via Schema::changeField()."
+    },
+    {
+      "id": "title_length-reapply-term",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site the taxonomy term name database column has been shrunk to 255 characters even though taxonomy_term_title_length is enabled. Use the title_length module to re-apply its default length (500) to taxonomy term names on the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/title_length-term-reapply-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/title_length-term-reapply-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/title_length-term-reapply-cleanup.sh",
+      "expected_output": "Run `drush title_length:update taxonomy_term` (or call \\Drupal::service('taxonomy_term_title_length.taxonomy_term')->changeLength(500)), widening taxonomy_term_field_data.name (and its revision table) back to varchar(500)."
+    }
+  ]
+}

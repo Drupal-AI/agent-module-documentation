@@ -1,0 +1,80 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "core_context",
+  "version": "1.2.x",
+  "note": "Core Context attaches ctools-style context values to entities and exposes them as runtime contexts. hook_entity_type_alter gives every entity type a 'context' handler: FieldContextHandler (fieldable, reads the no_ui 'context' field type) or SettingsContextHandler (config entities implementing ThirdPartySettingsInterface, reads getThirdPartySetting('core_context','contexts')). Each stored context is a ctools config {type,label,description,value} mapped via ctools.context_mapper->getContextValues() to a \\Drupal\\Core\\Plugin\\Context\\Context. Providers: core_context (Generic, aggregates tag core_context.context_provider), core_context.canonical_entity (CanonicalEntity), and with layout_builder core_context.layout_builder + a section-component render subscriber. No configure route, permissions, or Drush. Introspection reads a core_context third-party setting stored on the node.article.default entity_view_display; execution attaches a context (verified through the live SettingsContextHandler getContexts() code path) to that display and to the Article node type.",
+  "evals": [
+    {
+      "id": "core_context-what-it-does",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "What does the core_context module do, and how does it make an entity's attached contexts available? Name the entity handler key it registers.",
+      "must_contain_any": ["context", "context handler", "getContexts", "context provider"],
+      "must_not_contain": [],
+      "expected_output": "It attaches ctools context values to entities and exposes them as runtime contexts. hook_entity_type_alter registers a 'context' entity handler on every entity type (FieldContextHandler for fieldable entities, SettingsContextHandler for config entities), whose getContexts() returns the attached contexts; context provider services surface them at canonical routes and in Layout Builder."
+    },
+    {
+      "id": "core_context-where-stored",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "Where does core_context store the contexts attached to a config entity versus a fieldable entity?",
+      "must_contain_any": ["third_party_settings", "third-party setting", "contexts", "context field"],
+      "must_not_contain": [],
+      "expected_output": "On a config entity (ThirdPartySettingsInterface) they live in the third-party setting core_context/contexts (schema core_context.sequence). On a fieldable entity they live in a field of the module's no_ui 'context' field type, read by FieldContextHandler."
+    },
+    {
+      "id": "core_context-providers",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "Which context provider services does core_context register, and how do I add my own context provider to it?",
+      "must_contain_any": ["core_context.context_provider", "canonical", "Generic", "core_context.canonical_entity"],
+      "must_not_contain": [],
+      "expected_output": "It registers core_context (Generic, aggregating services tagged core_context.context_provider), core_context.canonical_entity (CanonicalEntity, contexts at canonical entity routes), and with layout_builder core_context.layout_builder. Add your own by registering a ContextProviderInterface service tagged core_context.context_provider."
+    },
+    {
+      "id": "core_context-probe-value",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "On this Drupal site, a core_context context has been attached to the Article default view display. Inspect the live configuration and state the value of that attached context.",
+      "must_contain_any": ["probe-value-42"],
+      "must_not_contain": [],
+      "expected_output": "The context value is 'probe-value-42' (core.entity_view_display.node.article.default third_party_settings.core_context.contexts.cc_probe.value).",
+      "setup": "agent-module-documentation/evaluation/verify/core_context-probe-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/core_context-probe-cleanup.sh"
+    },
+    {
+      "id": "core_context-probe-key",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "On this Drupal site, a single core_context context is attached to the Article default view display. Inspect the live configuration and state the machine key/name of that context.",
+      "must_contain_any": ["cc_probe"],
+      "must_not_contain": [],
+      "expected_output": "The context key is 'cc_probe' (third_party_settings.core_context.contexts.cc_probe on core.entity_view_display.node.article.default).",
+      "setup": "agent-module-documentation/evaluation/verify/core_context-probe-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/core_context-probe-cleanup.sh"
+    },
+    {
+      "id": "core_context-attach-display",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, use core_context to attach a context to the Article content type's default view display (node.article.default). The context must have the key 'cc_task', data type 'string', and value 'built'. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/core_context-display-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/core_context-display-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/core_context-display-cleanup.sh",
+      "expected_output": "Set third_party_settings.core_context.contexts.cc_task = {type: string, label: ..., description: '', value: 'built'} on core.entity_view_display.node.article.default (e.g. $display->setThirdPartySetting('core_context','contexts', ['cc_task' => ['type'=>'string','label'=>'...','description'=>'','value'=>'built']])->save()), so the display's 'context' handler getContexts() returns a cc_task context valued 'built'."
+    },
+    {
+      "id": "core_context-attach-nodetype",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, use core_context to attach a context to the Article content type entity itself (the node_type config entity 'article'). The context must have the key 'cc_ntype', data type 'string', and value 'typed'. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/core_context-nodetype-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/core_context-nodetype-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/core_context-nodetype-cleanup.sh",
+      "expected_output": "Set third_party_settings.core_context.contexts.cc_ntype = {type: string, label: ..., description: '', value: 'typed'} on the article node type (NodeType is a ThirdPartySettingsInterface config entity handled by SettingsContextHandler), so node_type's 'context' handler getContexts() returns a cc_ntype context valued 'typed'."
+    }
+  ]
+}

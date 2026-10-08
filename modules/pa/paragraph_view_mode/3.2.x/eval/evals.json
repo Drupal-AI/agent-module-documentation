@@ -1,0 +1,98 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "paragraph_view_mode",
+  "version": "3.2.x",
+  "note": "Paragraph View Mode has no settings page and no configure route (configure=null). Its entire persistent state is (a) the FieldConfig paragraph.<bundle>.paragraph_view_mode - whose mere existence is what 'enabled on this paragraph type' means - and (b) the widget settings on that field's component in core.entity_form_display.paragraph.<bundle>.default (view_modes, default_view_mode, form_mode_bind, apply_to_preview). The field name, field type, widget id and formatter id are all the literal string 'paragraph_view_mode'. A notable trap verified on the live site: the config schema declares paragraphs.paragraphs_type.*.third_party.paragraph_view_mode.enabled, but no code ever writes it, so the paragraph type's third-party settings stay empty. Runtime behaviour is two alter hooks (hook_entity_view_mode_alter / hook_entity_form_mode_alter) delegating to the paragraph_view_mode.matcher.display_mode service, which refuses to override the 'preview' view mode unless apply_to_preview is TRUE. All medium/hard cases are grounded in that real config, created and read back through paragraph_view_mode.storage_manager.",
+  "evals": [
+    {
+      "id": "paragraph_view_mode-where-enabled",
+      "mode": "recipe",
+      "prompt": "I installed the Drupal contrib module paragraph_view_mode on a Drupal 11 site but I cannot find an admin settings page for it. How do I turn the feature on for a single paragraph type, and what does the module actually create when I do?",
+      "must_contain_any": [
+        "paragraphs_type",
+        "paragraph type",
+        "Manage form display",
+        "form display",
+        "paragraph_view_mode field",
+        "storage_manager"
+      ],
+      "must_not_contain": [],
+      "expected_output": "There is no configure route (configure=null) and no settings form. hook_form_paragraphs_type_edit_form_alter() injects an 'Enable Paragraph view mode field on this paragraph type.' checkbox into the paragraph type edit form at /admin/structure/paragraphs_type/<bundle>. Ticking it makes paragraph_view_mode.storage_manager create the field storage paragraph.paragraph_view_mode (type paragraph_view_mode) plus a FieldConfig on that bundle, and place it on core.entity_form_display.paragraph.<bundle>.default at weight -100. From code: \\Drupal::service('paragraph_view_mode.storage_manager')->addField($bundle) then ->addToFormDisplay($bundle).",
+      "difficulty": "easy"
+    },
+    {
+      "id": "paragraph_view_mode-preview-guard",
+      "mode": "recipe",
+      "prompt": "In the Drupal paragraph_view_mode module, why does the view mode an editor picks normally NOT get applied when Paragraphs renders the item in its 'preview' view mode, and which widget setting changes that?",
+      "must_contain_any": [
+        "apply_to_preview",
+        "Apply to preview"
+      ],
+      "must_not_contain": [],
+      "expected_output": "DisplayModeMatcher::isAllowedMode() returns FALSE for the 'preview' mode unless WidgetSettingsChecker::hasApplyToPreviewEnabled() is TRUE, so hook_entity_view_mode_alter() leaves 'preview' alone. The setting is the widget's 'Apply to preview mode' checkbox, stored as apply_to_preview (default FALSE) in the paragraph_view_mode component's settings on the bundle's default form display. This guard keeps Paragraphs' own back-end preview working.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "paragraph_view_mode-form-mode-bind",
+      "mode": "recipe",
+      "prompt": "The paragraph_view_mode module for Drupal has a widget setting called 'Bind with the form mode'. What is its machine name, what does it do at runtime, and what has to exist for it to have any visible effect?",
+      "must_contain_any": [
+        "form_mode_bind",
+        "hook_entity_form_mode_alter",
+        "entity_form_mode_alter"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The setting is form_mode_bind (default TRUE). When on, ParagraphViewModeWidget adds an #ajax change handler (reloadSubform) to the view mode select that rebuilds the paragraph subform; that rebuild makes hook_entity_form_mode_alter() fire, and DisplayModeMatcher::matchFormForModeAndEntity() then swaps the form mode to the chosen value. It only has a visible effect if a paragraph form mode exists whose machine name is exactly the same as the chosen view mode; otherwise Drupal falls back to the default form display.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "paragraph_view_mode-known-bundle",
+      "mode": "introspection",
+      "prompt": "This Drupal site has two paragraph types whose machine names start with pvm_: pvm_known and pvm_plain. Exactly one of them has the paragraph_view_mode module's 'Paragraph view mode' feature enabled. Inspect the running site and tell me which one it is, and which view mode its widget is configured to pre-select for new paragraph items.",
+      "must_contain_any": [
+        "pvm_known"
+      ],
+      "must_not_contain": [],
+      "expected_output": "pvm_known has the feature enabled - FieldConfig paragraph.pvm_known.paragraph_view_mode exists and core.entity_form_display.paragraph.pvm_known.default has a paragraph_view_mode component. Its widget settings have default_view_mode: preview (view_modes restricted to default + preview, form_mode_bind: false). pvm_plain has no such field. Note the paragraph type's third-party settings are empty - existence of the FieldConfig is what 'enabled' means.",
+      "setup": "agent-module-documentation/evaluation/verify/paragraph_view_mode-known-bundle-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/paragraph_view_mode-known-bundle-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "paragraph_view_mode-preview-setting",
+      "mode": "introspection",
+      "prompt": "On this Drupal site the paragraph type pvm_prev uses the paragraph_view_mode module. Inspect the live configuration and tell me whether the editor's chosen view mode will also be applied when that paragraph is rendered in the 'preview' view mode, naming the setting and its value.",
+      "must_contain_any": [
+        "apply_to_preview"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Yes. In core.entity_form_display.paragraph.pvm_prev.default the paragraph_view_mode component has settings.apply_to_preview: true, so DisplayModeMatcher will override the 'preview' view mode too (form_mode_bind is also true, default_view_mode is 'default'). Readable with: drush cget core.entity_form_display.paragraph.pvm_prev.default content.paragraph_view_mode.settings",
+      "setup": "agent-module-documentation/evaluation/verify/paragraph_view_mode-preview-setting-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/paragraph_view_mode-preview-setting-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "paragraph_view_mode-enable-bundle",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "This Drupal site has a paragraph type with the machine name pvm_task. Using the paragraph_view_mode module, enable its 'Paragraph view mode' feature on that paragraph type and make sure the field is actually placed (not disabled) on the paragraph type's default form display. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/paragraph_view_mode-enable-bundle-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/paragraph_view_mode-enable-bundle-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/paragraph_view_mode-enable-bundle-cleanup.sh",
+      "expected_output": "FieldConfig paragraph.pvm_task.paragraph_view_mode exists with field type paragraph_view_mode, and core.entity_form_display.paragraph.pvm_task.default has a paragraph_view_mode component with widget type paragraph_view_mode in region 'content'. Easiest route: \\Drupal::service('paragraph_view_mode.storage_manager')->addField('pvm_task'); then ->addToFormDisplay('pvm_task'); (or tick the checkbox on the paragraph type edit form and place the field on Manage form display)."
+    },
+    {
+      "id": "paragraph_view_mode-widget-settings",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site the paragraph type pvm_cfg already has the paragraph_view_mode field enabled, and a paragraph view mode 'pvm_teaser' exists and is enabled for that bundle. Reconfigure the 'Paragraph view mode' widget on pvm_cfg's default form display so that editors may only choose between the 'default' and 'pvm_teaser' view modes, so that 'pvm_teaser' is the value pre-selected for new paragraph items, and so that the widget does NOT reload the paragraph subform to bind the form mode. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/paragraph_view_mode-widget-settings-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/paragraph_view_mode-widget-settings-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/paragraph_view_mode-widget-settings-cleanup.sh",
+      "expected_output": "In core.entity_form_display.paragraph.pvm_cfg.default the paragraph_view_mode component's settings must be view_modes limited to the default and pvm_teaser keys, default_view_mode: pvm_teaser, and form_mode_bind: false. Set via the widget cog on Manage form display, or by loading the entity_form_display, editing getComponent('paragraph_view_mode')['settings'] and calling setComponent()->save()."
+    }
+  ]
+}

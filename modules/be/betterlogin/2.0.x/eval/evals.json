@@ -1,0 +1,80 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "betterlogin",
+  "version": "2.0.x",
+  "note": "Better Login restyles the login/register/password/reset pages via four page templates (page--user--login/register/password/reset) plus hooks (form_alter autofocus + attaches betterlogin/betterlogin_css, preprocess_html titles, local_tasks_alter, a ?user= redirect subscriber). It has NO config, settings form, routes, permissions or plugins (configure=null) - it works on enable. The one piece of per-site behaviour that varies is whether its login page shows the 'Register a new account' link, which its preprocess sets ONLY when the user.register route is accessible i.e. core user.settings:register != 'admin_only'; and the header shows system.site:name. Medium cases seed those two core settings (user.settings register, system.site name) and the agent reads them back; hard cases have the agent toggle the register setting to show/hide the link, verified against user.settings. Baseline restored by setup/cleanup: user.settings register='visitors', system.site name='module-documentor'.",
+  "evals": [
+    {
+      "id": "betterlogin-what-it-does",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "What does the Drupal Better Login module change, and which templates does it use so I can override the look?",
+      "must_contain_any": ["page--user--login", "page__user__login", "template", "betterlogin/betterlogin_css"],
+      "must_not_contain": [],
+      "expected_output": "It restyles the login/register/password/reset pages using four templates (page--user--login/register/password/reset). Override by copying those templates into your theme or editing the betterlogin/betterlogin_css CSS."
+    },
+    {
+      "id": "betterlogin-no-config",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "Where is the settings/configuration page for the Better Login Drupal module?",
+      "must_contain_any": ["no config", "no settings", "no configuration", "immediately", "out of the box", "configure", "works on install", "on enable"],
+      "must_not_contain": [],
+      "expected_output": "There is none - Better Login has no settings, no configure route (configure=null); it works immediately once enabled. Customise via templates or CSS."
+    },
+    {
+      "id": "betterlogin-template-vars",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "Which variables are available in Better Login's login page template, and what controls whether the 'Register a new account' link appears?",
+      "must_contain_any": ["register_url", "site_name", "logo", "user.register"],
+      "must_not_contain": [],
+      "expected_output": "The templates expose site_name, logo, title and register_url. register_url (and the register link) is only set when the user.register route is accessible - i.e. when user.settings:register is not admin_only."
+    },
+    {
+      "id": "betterlogin-known-register-setting",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "Better Login only shows the 'Register a new account' link when public registration is allowed. Inspect this site's live configuration and report the current value of the core registration setting (user.settings:register) that governs it.",
+      "must_contain_any": ["admin_only"],
+      "must_not_contain": [],
+      "expected_output": "user.settings:register is 'admin_only', so Better Login's login page will NOT show the register link.",
+      "setup": "agent-module-documentation/evaluation/verify/betterlogin-known-register-setting-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/betterlogin-known-register-setting-cleanup.sh"
+    },
+    {
+      "id": "betterlogin-known-site-name",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "Better Login's login page header shows the site name. Inspect the live configuration and report the site name that would be displayed.",
+      "must_contain_any": ["BetterloginQA Portal"],
+      "must_not_contain": [],
+      "expected_output": "The site name (system.site:name) is 'BetterloginQA Portal', which Better Login shows via its site_name template variable.",
+      "setup": "agent-module-documentation/evaluation/verify/betterlogin-known-site-name-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/betterlogin-known-site-name-cleanup.sh"
+    },
+    {
+      "id": "betterlogin-show-register-link",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this site, Better Login's login page is currently NOT showing the 'Register a new account' link because public registration is disabled. Change the site so that anonymous visitors CAN register, which makes Better Login show the register link. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/betterlogin-show-register-link-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/betterlogin-show-register-link-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/betterlogin-register-baseline-cleanup.sh",
+      "expected_output": "Set user.settings:register to 'visitors' (or 'visitors_admin_approval') so the user.register route is accessible to anonymous users; Better Login then sets register_url and shows the link."
+    },
+    {
+      "id": "betterlogin-hide-register-link",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "Make Better Login's login page hide the 'Register a new account' link by restricting account creation to administrators only. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/betterlogin-hide-register-link-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/betterlogin-hide-register-link-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/betterlogin-register-baseline-cleanup.sh",
+      "expected_output": "Set user.settings:register to 'admin_only'; the user.register route becomes inaccessible to anonymous users, so Better Login does not set register_url and the link disappears."
+    }
+  ]
+}

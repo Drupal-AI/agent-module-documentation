@@ -1,0 +1,101 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "hcaptcha",
+  "version": "1.3.x",
+  "note": "hCaptcha is a hook_captcha() integration for the contrib CAPTCHA module. It has no plugins, no Drush, one permission (administer hcaptcha) and one config object (hcaptcha.settings: site_key, secret_key, hcaptcha_src, widget.theme/size/tabindex/max_score). A form is protected by assigning the challenge hcaptcha/hCaptcha either as a captcha.captcha_point.<form_id> config entity or as captcha.settings.default_challenge. Because real hCaptcha verification needs external keys and a live browser challenge, all medium/hard cases are grounded in local config only: introspection reads back known hcaptcha.settings widget values and a captcha point's captchaType; execution sets the config keys/theme and creates a captcha point that assigns the hCaptcha challenge, both verified against live config. Namespaced test artifacts: captcha points hcaptcha_eval_contact (medium) and hcaptcha_eval_form (hard).",
+  "evals": [
+    {
+      "id": "hcaptcha-keys-config",
+      "mode": "recipe",
+      "prompt": "On a Drupal site using the hcaptcha module, where are the hCaptcha site key and secret key stored (which config object and keys), and which admin route/permission gates the settings form?",
+      "must_contain_any": [
+        "hcaptcha.settings",
+        "site_key",
+        "secret_key",
+        "administer hcaptcha",
+        "hcaptcha.admin_settings_form"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Keys live in the hcaptcha.settings config object as site_key and secret_key (plus hcaptcha_src and widget.theme/size/tabindex/max_score). The settings form is route hcaptcha.admin_settings_form at /admin/config/people/captcha/hcaptcha, gated by the 'administer hcaptcha' permission.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "hcaptcha-no-keys-fallback",
+      "mode": "recipe",
+      "prompt": "I enabled the Drupal hcaptcha module but have not entered a site key or secret key yet. What challenge do users actually see on a protected form, and why?",
+      "must_contain_any": [
+        "Math",
+        "math",
+        "fallback"
+      ],
+      "must_not_contain": [],
+      "expected_output": "When either site_key or secret_key is empty, hook_captcha generate() returns captcha_captcha('generate', 'Math'), so the form falls back to the CAPTCHA module's built-in Math challenge instead of rendering the hCaptcha widget. This keeps the form protected until keys are provisioned.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "hcaptcha-assign-to-form",
+      "mode": "recipe",
+      "prompt": "The hcaptcha module has no 'protect this form' setting of its own. How do you actually make a specific Drupal form show the hCaptcha widget, and what is the challenge identifier?",
+      "must_contain_any": [
+        "hcaptcha/hCaptcha",
+        "captcha point",
+        "captcha_point",
+        "default_challenge",
+        "CAPTCHA point"
+      ],
+      "must_not_contain": [],
+      "expected_output": "hCaptcha registers the challenge 'hCaptcha' (identifier hcaptcha/hCaptcha) via hook_captcha. You assign it through the CAPTCHA module: either create a captcha.captcha_point.<form_id> config entity with captchaType 'hcaptcha/hCaptcha', or set captcha.settings.default_challenge to 'hcaptcha/hCaptcha' for all forms.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "hcaptcha-known-widget",
+      "mode": "introspection",
+      "prompt": "On this Drupal site the hCaptcha widget has been customised in hcaptcha.settings. Inspect the live configuration and report the configured widget theme and the maximum score value.",
+      "must_contain_any": [
+        "dark"
+      ],
+      "must_not_contain": [],
+      "expected_output": "hcaptcha.settings has widget.theme = 'dark' and widget.max_score = 0.3 (read via 'drush cget hcaptcha.settings').",
+      "setup": "agent-module-documentation/evaluation/verify/hcaptcha-known-widget-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/hcaptcha-known-widget-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "hcaptcha-form-challenge",
+      "mode": "introspection",
+      "prompt": "On this Drupal site a CAPTCHA point protects the form with id 'hcaptcha_eval_contact'. Inspect the live CAPTCHA configuration and state which challenge type (captchaType) is assigned to that form.",
+      "must_contain_any": [
+        "hcaptcha/hCaptcha",
+        "hCaptcha"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The config entity captcha.captcha_point.hcaptcha_eval_contact has captchaType 'hcaptcha/hCaptcha' — i.e. the form is protected by the hCaptcha challenge.",
+      "setup": "agent-module-documentation/evaluation/verify/hcaptcha-form-challenge-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/hcaptcha-form-challenge-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "hcaptcha-configure-keys",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, configure the hcaptcha module so the hCaptcha widget is ready to render: set a non-empty site key and secret key in hcaptcha.settings, and set the widget theme to 'dark'. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/hcaptcha-configure-keys-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/hcaptcha-configure-keys-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/hcaptcha-configure-keys-cleanup.sh",
+      "expected_output": "hcaptcha.settings now has a non-empty site_key and secret_key and widget.theme === 'dark' (e.g. via 'drush cset hcaptcha.settings site_key ...', secret_key, and widget.theme dark)."
+    },
+    {
+      "id": "hcaptcha-assign-point",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, protect the form with id 'hcaptcha_eval_form' with the hCaptcha challenge using the CAPTCHA module. Create the CAPTCHA point on the live site so that form's captchaType is the hCaptcha challenge provided by the hcaptcha module.",
+      "reset": "agent-module-documentation/evaluation/verify/hcaptcha-assign-point-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/hcaptcha-assign-point-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/hcaptcha-assign-point-cleanup.sh",
+      "expected_output": "A captcha_point config entity with id/formId 'hcaptcha_eval_form' exists (config captcha.captcha_point.hcaptcha_eval_form) with captchaType 'hcaptcha/hCaptcha'."
+    }
+  ]
+}

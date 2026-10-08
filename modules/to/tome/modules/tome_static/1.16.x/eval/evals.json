@@ -1,0 +1,58 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "tome_static",
+  "version": "1.16.x",
+  "note": "Tome Static renders public paths to static HTML (drush tome:static, --uri important) into tome_static_directory (../html). No config object; directories are settings.php keys and build progress lives in the state keys tome_static.url (last build base URL) and tome_static.building. Permission 'use tome static' gates the UI at /admin/config/tome/static. Extension is via TomeStaticEvents. The medium case reads the live tome_static.url state; the hard case writes it (the value the Generate form persists). Hard cases deliberately do NOT run a full HTML render: on this shared host page rendering is broken by an unrelated contrib module (restrict_ip), and the brief calls for grounding in real state/commands rather than a full site export. Setting the build URL state is a real, isolated, verifiable tome_static operation.",
+  "evals": [
+    {
+      "id": "tome_static-generate-command",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "How do you generate a full static HTML copy of a Drupal site with Tome Static from the command line, and which option must you pass so absolute URLs in the output are correct?",
+      "must_contain_any": ["tome:static"],
+      "must_not_contain": [],
+      "expected_output": "Run 'drush tome:static' and pass '--uri=https://your-site.com'. Without --uri Tome warns absolute URLs may be invalid. Output is written to tome_static_directory (default ../html); preview it with 'drush tome:preview'."
+    },
+    {
+      "id": "tome_static-permission-ui",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "A content editor needs to trigger a Tome Static build from the Drupal admin UI, not the CLI. Which permission do they need and at what admin path is the Generate form?",
+      "must_contain_any": ["use tome static", "/admin/config/tome/static"],
+      "must_not_contain": [],
+      "expected_output": "Grant the 'use tome static' permission (restrict access: true). The Generate form is at /admin/config/tome/static/generate (menu root /admin/config/tome/static), alongside Download and Preview."
+    },
+    {
+      "id": "tome_static-add-paths-event",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "Tome Static did not pick up a custom path I want in the static build. Which Tome Static event do I subscribe to in order to add extra paths to the crawl, and which method adds a path?",
+      "must_contain_any": ["tome_static.collect_paths", "COLLECT_PATHS", "CollectPathsEvent", "addPath"],
+      "must_not_contain": [],
+      "expected_output": "Subscribe to TomeStaticEvents::COLLECT_PATHS ('tome_static.collect_paths') and call CollectPathsEvent::addPath()/addPaths() (you can also replacePath()/deletePath())."
+    },
+    {
+      "id": "tome_static-last-build-url",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "Tome Static remembers the base URL of the last build on this site. Inspect the live site and report that URL.",
+      "must_contain_any": ["static-live.example.org"],
+      "must_not_contain": [],
+      "setup": "agent-module-documentation/evaluation/verify/tome_static-build-url-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/tome_static-build-url-cleanup.sh",
+      "expected_output": "https://static-live.example.org — stored in the 'tome_static.url' state key (read with 'drush sget tome_static.url')."
+    },
+    {
+      "id": "tome_static-set-build-url",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "Configure Tome Static on this site so that its recorded static-build base URL is exactly https://tome-static-prod.example.com (the value the Generate form persists and later builds default to). Apply it to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/tome_static-set-url-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/tome_static-set-url-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/tome_static-set-url-cleanup.sh",
+      "expected_output": "Set the 'tome_static.url' state key to https://tome-static-prod.example.com, e.g. 'drush sset tome_static.url https://tome-static-prod.example.com'. This is the StaticGeneratorInterface::STATE_KEY_URL value the Generate form stores."
+    }
+  ]
+}

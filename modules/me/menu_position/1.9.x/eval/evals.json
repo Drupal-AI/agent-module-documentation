@@ -1,0 +1,98 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "menu_position",
+  "version": "1.9.x",
+  "note": "Menu Position stores each rule as a `menu_position_rule` config entity (menu_position.menu_position_rule.<id>) with exported keys id/label/enabled/conditions/menu_name/parent/menu_link/weight. It defines NO condition plugin type of its own — the rule form lists core Condition plugins from plugin.manager.condition (entity_bundle:node, request_path, user_role, current_theme, language) and stores their configuration under conditions.<plugin_id>. Placement is done by Drupal\\menu_position\\Menu\\MenuPositionActiveTrail, a service decorating menu.active_trail at decoration_priority 9, driven by the single setting menu_position.settings:link_display (parent | child | none). Each rule derives a menu link menu_position_link:<rule_id>. Only permission: 'administer menu positions' (the settings form uses core 'administer site configuration'). Medium cases read live rule config and the live link_display; hard cases build real rules (a content-type rule and a request_path rule) verified against the live config entities. On this site the Main navigation contains exactly one link, standard.front_page ('Home'), which the hard cases use as the parent.",
+  "evals": [
+    {
+      "id": "menu_position-condition-plugins",
+      "mode": "recipe",
+      "prompt": "I want to add a new kind of matching condition to Drupal's menu_position module — something beyond 'content type' and 'pages'. What plugin type do menu position rule conditions actually use, and where is a rule's condition configuration stored?",
+      "must_contain_any": [
+        "condition",
+        "Condition",
+        "plugin.manager.condition",
+        "entity_bundle:node",
+        "request_path"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Menu Position defines no condition plugin type of its own: the rule form lists core Condition plugins returned by plugin.manager.condition (entity_bundle:node relabelled 'Content types', request_path relabelled 'Pages', user_role, current_theme, language). Write a normal core Condition plugin and it shows up on the rule form automatically. Each plugin's configuration is stored verbatim in the rule config entity under conditions.<plugin_id> (menu_position.menu_position_rule.<id>).",
+      "difficulty": "easy"
+    },
+    {
+      "id": "menu_position-link-display-options",
+      "mode": "recipe",
+      "prompt": "In the Drupal menu_position module, which configuration object and key decide what happens when a rule matches, and what are the three possible values and their meanings?",
+      "must_contain_any": [
+        "link_display",
+        "menu_position.settings"
+      ],
+      "must_not_contain": [],
+      "expected_output": "menu_position.settings:link_display, one of: 'parent' (default — mark the rule's parent menu item as active), 'child' (insert the current page's title into the menu tree using the derived menu_position_link:<rule id> link) and 'none' (mark nothing active). Set it at /admin/structure/menu-position/settings or with drush config:set menu_position.settings link_display child.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "menu_position-mechanism",
+      "mode": "recipe",
+      "prompt": "How does the Drupal menu_position module make an arbitrary page appear highlighted in a menu — which core service does it replace or wrap, and what does that make happen to breadcrumbs and menu blocks?",
+      "must_contain_any": [
+        "menu.active_trail",
+        "active trail",
+        "decorates",
+        "MenuPositionActiveTrail"
+      ],
+      "must_not_contain": [],
+      "expected_output": "It registers menu_position.menu.active_trail (Drupal\\menu_position\\Menu\\MenuPositionActiveTrail) as a decorator of the core menu.active_trail service (decoration_priority: 9) and overrides getActiveLink(). Rules for the requested menu are loaded sorted by weight; the first rule whose core conditions all pass decides the active link (parent link, the derived child link, or nothing per link_display), otherwise it falls through to the decorated core service. Because the active trail drives them, theme main/secondary links, breadcrumbs and every menu block follow automatically.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "menu_position-known-rule",
+      "mode": "introspection",
+      "prompt": "This Drupal site has two menu position rules whose ids start with mp_intro_. Exactly one of them is currently enabled. Inspect the live configuration and tell me the id of the enabled rule and which content type its condition matches.",
+      "must_contain_any": [
+        "mp_intro_a"
+      ],
+      "must_not_contain": [],
+      "expected_output": "mp_intro_a is the enabled rule, and its entity_bundle:node condition matches the 'article' content type (mp_intro_b is disabled and matches 'page'). Read it with `drush config:get menu_position.menu_position_rule.mp_intro_a` or by loading the menu_position_rule entities.",
+      "setup": "agent-module-documentation/evaluation/verify/menu_position-known-rule-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/menu_position-known-rule-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "menu_position-link-display",
+      "mode": "introspection",
+      "prompt": "On this Drupal site, when a menu position rule matches a page, does the module mark the rule's parent menu item as active, insert the current page into the menu tree, or mark nothing at all? Inspect the running site's configuration and answer with the value that is actually set here.",
+      "must_contain_any": [
+        "child"
+      ],
+      "must_not_contain": [],
+      "expected_output": "menu_position.settings:link_display is set to 'child' on this site, so a matching rule inserts the current page's title into the menu tree via the derived menu_position_link plugin (the module's shipped default would be 'parent').",
+      "setup": "agent-module-documentation/evaluation/verify/menu_position-link-display-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/menu_position-link-display-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "menu_position-article-rule",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, use the menu_position module to create an enabled menu position rule with the machine id mp_task_article, labelled 'Articles under Home'. It must apply to nodes of the Article content type and position them in the Main navigation ('main') under the existing 'Home' menu link. Apply it to the live site so the rule is stored as configuration.",
+      "reset": "agent-module-documentation/evaluation/verify/menu_position-article-rule-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/menu_position-article-rule-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/menu_position-article-rule-cleanup.sh",
+      "expected_output": "A menu_position.menu_position_rule.mp_task_article config entity with enabled: true, menu_name: main, parent: standard.front_page (the Home link plugin id), menu_link: 'menu_position_link:mp_task_article', and a conditions['entity_bundle:node'] entry whose bundles include 'article' — created through /admin/structure/menu-position/add or with MenuPositionRule::create([...])->save() followed by plugin.manager.menu.link rebuild()."
+    },
+    {
+      "id": "menu_position-path-rule",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "site-owner-layman",
+      "prompt": "On my Drupal site I have a documentation section at /docs (and everything underneath it, like /docs/install). Whenever a visitor is on one of those pages I want that page to show up inside the Main navigation menu underneath the Home item, with the page's own title appearing in the menu — not just the Home item being highlighted. Please set that up on the live site. Name the rule mp_task_docs.",
+      "reset": "agent-module-documentation/evaluation/verify/menu_position-path-rule-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/menu_position-path-rule-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/menu_position-path-rule-cleanup.sh",
+      "expected_output": "Two changes: (1) a menu_position.menu_position_rule.mp_task_docs config entity, enabled, menu_name main, parent standard.front_page, with a core request_path condition whose 'pages' value lists /docs and /docs/*; (2) menu_position.settings:link_display set to 'child' so a matched rule inserts the current page's title into the tree instead of just highlighting the parent."
+    }
+  ]
+}

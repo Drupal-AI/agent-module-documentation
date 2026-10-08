@@ -1,0 +1,98 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "tinypng",
+  "version": "2.0.x",
+  "note": "TinyPNG integrates the external TinyPNG/Tinify API via the tinify/tinify lib. Config object tinypng.settings (api_key, on_upload, upload_method upload|download, image_action); settings form tinypng.settings.form at /admin/config/tinypng, permission 'administer tynipng' (literal misspelling). Per-image-style compression is the third-party setting image.style.<name>.third_party.tinypng.tinypng_compress (checkbox shown only when image_action on + api_key set); a RouteSubscriber compresses flagged style derivatives. Services tinypng.compress (TinyPng), tinypng.image_handler. No Drush, no plugin types. Because the real API needs a key the agent won't have, ALL evals are grounded in local config/third-party settings only — no image is actually sent to TinyPNG.",
+  "evals": [
+    {
+      "id": "tinypng-settings-location",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "On a Drupal site with the tinypng module enabled, where do I set the TinyPNG API key, what config object stores it, and which permission controls that settings page?",
+      "must_contain_any": [
+        "tinypng.settings",
+        "/admin/config/tinypng",
+        "administer tynipng",
+        "api_key"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Set it on the TinyPNG settings form at /admin/config/tinypng (route tinypng.settings.form), stored as tinypng.settings.api_key. The page is gated by the permission 'administer tynipng' (note: that id is misspelled in the module)."
+    },
+    {
+      "id": "tinypng-compress-image-style",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "With the tinypng module, how do I make just one image style's derivatives get compressed by TinyPNG, and where is that choice stored?",
+      "must_contain_any": [
+        "tinypng_compress",
+        "third_party",
+        "Compress with TinyPNG",
+        "image style"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Enable the 'Enable TinyPNG image action' (image_action) setting and set an API key; then on the image style's edit form tick 'Compress with TinyPNG'. It is stored as a third-party setting image.style.<name>.third_party.tinypng.tinypng_compress: true. A route subscriber compresses that style's derivatives."
+    },
+    {
+      "id": "tinypng-upload-methods",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "The tinypng module offers an 'Integration Method' setting with two options for compressing on upload. What are they (config key upload_method) and when do you pick each?",
+      "must_contain_any": [
+        "upload",
+        "download",
+        "upload_method"
+      ],
+      "must_not_contain": [],
+      "expected_output": "upload_method is 'upload' or 'download'. 'upload' sends the image bytes to TinyPNG (required on localhost / non-public sites); 'download' gives TinyPNG a public URL to fetch the image (requires the site to be reachable from the internet). It applies when 'Compress on upload' (on_upload) is enabled."
+    },
+    {
+      "id": "tinypng-which-settings",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "On this Drupal site, inspect the live tinypng configuration and report whether images are compressed on upload and which integration/upload method is set.",
+      "must_contain_any": [
+        "download"
+      ],
+      "must_not_contain": [],
+      "expected_output": "tinypng.settings has on_upload = true (compress on upload enabled) and upload_method = 'download'. Discoverable via `drush cget tinypng.settings` (on_upload: true, upload_method: download).",
+      "setup": "agent-module-documentation/evaluation/verify/tinypng-settings-intro-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/tinypng-settings-intro-cleanup.sh"
+    },
+    {
+      "id": "tinypng-which-style",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "On this Drupal site, one image style is configured to have its derivatives compressed by TinyPNG. Inspect the live image style configuration and give the machine name of that image style.",
+      "must_contain_any": [
+        "tinypng_intro"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The image style tinypng_intro carries the third-party setting tinypng.tinypng_compress: true. Discoverable via `drush cget image.style.tinypng_intro` (third_party_settings.tinypng.tinypng_compress: true) or ImageStyle::load('tinypng_intro')->getThirdPartySetting('tinypng','tinypng_compress').",
+      "setup": "agent-module-documentation/evaluation/verify/tinypng-style-intro-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/tinypng-style-intro-cleanup.sh"
+    },
+    {
+      "id": "tinypng-enable-style-compression",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site there is an image style named tinypng_task. Using the tinypng module, configure that image style so its derivatives are compressed with TinyPNG. Apply the change to the live site (you do not need a working API key for this configuration step).",
+      "reset": "agent-module-documentation/evaluation/verify/tinypng-compress-style-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/tinypng-compress-style-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/tinypng-compress-style-cleanup.sh",
+      "expected_output": "The image style tinypng_task carries third-party setting tinypng.tinypng_compress = TRUE, e.g. ImageStyle::load('tinypng_task')->setThirdPartySetting('tinypng','tinypng_compress',TRUE)->save(), or tick 'Compress with TinyPNG' on its edit form."
+    },
+    {
+      "id": "tinypng-enable-style-compression-layman",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "site-owner",
+      "prompt": "I have an image preset called tinypng_task on my Drupal site and I want the pictures it produces to be squished smaller by TinyPNG. Please turn that on for this preset and save it. (No need for a real TinyPNG account key for this step.)",
+      "reset": "agent-module-documentation/evaluation/verify/tinypng-compress-style-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/tinypng-compress-style-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/tinypng-compress-style-cleanup.sh",
+      "expected_output": "Same end state as the expert phrasing: image style tinypng_task has third-party setting tinypng.tinypng_compress = TRUE."
+    }
+  ]
+}

@@ -1,0 +1,72 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "memory_limit_policy_drush",
+  "version": "2.0.x",
+  "note": "Submodule of memory_limit_policy providing the 'drush' MemoryLimitConstraint plugin (class Drush). Cases are grounded in the real plugin id, its config keys, and its evaluate() logic. Medium/hard scripts use mlp_drush_* policies built with the real 'drush' constraint config and verified by loading the memory_limit_policy config entity.",
+  "evals": [
+    {
+      "id": "mlp_drush-plugin-id",
+      "mode": "recipe",
+      "prompt": "What does memory_limit_policy_drush add, and where is the memory limit actually applied for a Drush command?",
+      "must_contain_any": [
+        "drush",
+        "command-event",
+        "preCommandEvent",
+        "ini_set"
+      ],
+      "must_not_contain": [],
+      "expected_output": "It adds the 'drush' MemoryLimitConstraint plus a Drush command-event hook (MemoryLimitPolicyCommands::preCommandEvent). The hook runs before each command, matches the command name/aliases against the configured commands, and applies the policy memory via ini_set().",
+      "difficulty": "easy"
+    },
+    {
+      "id": "mlp_drush-config-key",
+      "mode": "recipe",
+      "prompt": "Under which configuration key are the Drush command names stored for a memory_limit_policy drush constraint (note the schema)?",
+      "must_contain_any": [
+        "drush_commands"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The plugin stores the value under 'drush_commands' (one command per line). Note the shipped schema mistakenly declares a 'paths' key, but the code uses 'drush_commands'.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "mlp_drush-web-noop",
+      "mode": "recipe",
+      "prompt": "Why does a memory_limit_policy drush constraint do nothing on web requests?",
+      "must_contain_any": [
+        "CLI",
+        "no-op",
+        "command-event",
+        "negate"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Its evaluate() returns only the negate flag (a no-op) for non-CLI clients; enforcement is done entirely by the Drush command-event hook, so the web request subscriber never applies a drush constraint. Also note core commands loaded very early are not covered (#3276442).",
+      "difficulty": "easy"
+    },
+    {
+      "id": "memory_limit_policy_drush-known-value",
+      "mode": "introspection",
+      "prompt": "This Drupal site has an enabled memory limit policy 'mlp_drush_known' whose only constraint is the 'drush' condition from the memory_limit_policy_drush submodule. Inspect the live configuration and report the value(s) configured for that constraint.",
+      "must_contain_any": [
+        "cache:rebuild"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The policy mlp_drush_known (config memory_limit_policy.memory_limit_policy.mlp_drush_known) has a single 'drush' constraint configured with cache:rebuild. Read it from the entity's policy_constraints.",
+      "setup": "agent-module-documentation/evaluation/verify/memory_limit_policy_drush-known-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/memory_limit_policy_drush-known-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "memory_limit_policy_drush-build",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, create an enabled memory limit policy with machine id 'mlp_drush_exec' (memory 768M) whose single constraint uses the 'drush' condition from the memory_limit_policy_drush submodule: a Drush constraint listing 'migrate:import'. Apply it to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/memory_limit_policy_drush-exec-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/memory_limit_policy_drush-exec-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/memory_limit_policy_drush-exec-cleanup.sh",
+      "expected_output": "Create the memory_limit_policy config entity mlp_drush_exec with memory '768M', status TRUE, and a policy_constraints entry {id: drush, negate: false, ...} matching 'a Drush constraint listing 'migrate:import'' (e.g. via the entity storage or the add-policy form)."
+    }
+  ]
+}

@@ -1,0 +1,84 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "optimizely",
+  "version": "4.0.x",
+  "note": "Optimizely loads Optimizely A/B-testing JS onto targeted paths. Code-grounded facts: global config optimizely.settings:optimizely_id (account ID), form route optimizely.settings; experiments are 'optimizely' config entities (optimizely.optimizely.<id>) with fields id,label,code(int project code),state(bool),paths(newline-separated patterns, '*' wildcard/sitewide); a shipped 'default' project (paths '*') can't be deleted only disabled; hook_page_attachments() injects <script src=//cdn.optimizely.com/js/<code>.js> when the current path (system path or alias) matches an enabled project; permission 'administer optimizely'; entity UI under /admin/config/system/optimizely. Medium cases install known state (a project with code 555000; account id 4242000). Hard cases build real state verified against live config entities: create a path-targeted project (code 777000), and disable the sitewide default project. Fixtures namespaced optimizely_*.",
+  "evals": [
+    {
+      "id": "optimizely-snippet-mechanism",
+      "mode": "recipe",
+      "prompt": "How does the Drupal Optimizely module add the Optimizely experiment JavaScript to a page, and what URL does the injected script point at?",
+      "must_contain_any": ["cdn.optimizely.com", "//cdn.optimizely.com/js/", "page_attachments"],
+      "must_not_contain": [],
+      "expected_output": "On each page render hook_page_attachments() checks the current path against enabled project entries and, on a match, injects a <script src=\"//cdn.optimizely.com/js/<code>.js\"> into the page head (#attached['html_head']), where <code> is the project's code.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "optimizely-account-id",
+      "mode": "recipe",
+      "prompt": "In the Drupal Optimizely module, where is the Optimizely account ID stored, at which admin route is it set, and which permission is required?",
+      "must_contain_any": ["optimizely.settings", "optimizely_id", "administer optimizely"],
+      "must_not_contain": [],
+      "expected_output": "The account ID is stored in config optimizely.settings under key optimizely_id, set at route optimizely.settings (/admin/config/system/optimizely/settings), and all Optimizely admin routes require the 'administer optimizely' permission.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "optimizely-project-fields",
+      "mode": "recipe",
+      "prompt": "In the Drupal Optimizely module, each experiment is a 'project' config entity. Which fields define a project (including how you scope which pages it loads on), and what is special about the built-in 'default' project?",
+      "must_contain_any": ["paths", "code", "state"],
+      "must_not_contain": [],
+      "expected_output": "An 'optimizely' config entity has id, label, code (the Optimizely project code used in the snippet URL), state (enabled boolean) and paths (newline-separated path patterns with '*' wildcards; '*' alone means sitewide). The shipped 'default' project targets '*' sitewide and cannot be deleted, only disabled.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "optimizely-known-code",
+      "mode": "introspection",
+      "prompt": "On this Drupal site there is an enabled Optimizely project (besides the default) targeting a specific path. Inspect the live configuration and give the numeric Optimizely project code configured for it.",
+      "must_contain_any": ["555000"],
+      "must_not_contain": [],
+      "expected_output": "The project optimizely_known has code 555000 (readable via `drush cget optimizely.optimizely.optimizely_known code`), targeting /optimizely-eval/*.",
+      "setup": "agent-module-documentation/evaluation/verify/optimizely-known-project-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/optimizely-known-project-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "optimizely-known-account",
+      "mode": "introspection",
+      "prompt": "On this Drupal site the Optimizely account ID has been configured. Inspect the live configuration and report the account ID value currently set.",
+      "must_contain_any": ["4242000"],
+      "must_not_contain": [],
+      "expected_output": "optimizely.settings:optimizely_id is 4242000 (readable via `drush cget optimizely.settings optimizely_id`).",
+      "setup": "agent-module-documentation/evaluation/verify/optimizely-account-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/optimizely-account-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "optimizely-create-project",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, using the Optimizely module, create a new enabled Optimizely project that loads Optimizely project code 777000 only on campaign pages under the path /campaign/* (not sitewide). Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/optimizely-create-project-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/optimizely-create-project-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/optimizely-create-project-cleanup.sh",
+      "expected_output": "A new 'optimizely' config entity exists with code 777000, state TRUE and paths containing /campaign/* (created via the add-project form at /admin/config/system/optimizely/add or the optimizely entity storage). The built-in default project is left alone.",
+      "must_contain_any": [],
+      "must_not_contain": []
+    },
+    {
+      "id": "optimizely-disable-default",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, the built-in sitewide Optimizely 'default' project is currently enabled and loads Optimizely on every page. Using the Optimizely module, stop it from loading sitewide without deleting it. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/optimizely-disable-default-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/optimizely-disable-default-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/optimizely-disable-default-cleanup.sh",
+      "expected_output": "The 'default' project's state is set to FALSE (disabled) - e.g. via the edit form at /admin/config/system/optimizely/default or by setting state on optimizely.optimizely.default - so getState() is falsey and the sitewide snippet no longer loads. The entity is not deleted (it cannot be).",
+      "must_contain_any": [],
+      "must_not_contain": []
+    }
+  ]
+}

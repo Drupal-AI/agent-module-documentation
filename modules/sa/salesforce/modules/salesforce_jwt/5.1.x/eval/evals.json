@@ -1,0 +1,99 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "salesforce_jwt",
+  "version": "5.1.x",
+  "note": "Salesforce JWT Auth Provider adds key-based (JWT bearer) auth via two @SalesforceAuthProvider plugins: jwt and jwt_govcloud. Each authorization is a salesforce_auth config entity with provider=jwt and provider_settings (login_url, consumer_key, username, encrypt_key referencing a Key entity). Creating/reading the auth config entity is local (no connection needed - only AUTHORIZING/token exchange needs the org), so all medium/hard cases are grounded in real salesforce_auth config entities created/read/modified locally and verified by pure reads. Namespaced sfj_* auth entities are removed on cleanup.",
+  "evals": [
+    {
+      "id": "salesforce_jwt-what",
+      "mode": "recipe",
+      "prompt": "What kind of Salesforce authentication does the Salesforce JWT Auth Provider module add, and what are its plugin ids?",
+      "must_contain_any": [
+        "jwt",
+        "jwt_govcloud",
+        "key",
+        "server-to-server",
+        "server to server"
+      ],
+      "must_not_contain": [],
+      "expected_output": "It adds key-based JWT bearer (server-to-server) authentication - no interactive login. It provides the auth-provider plugins jwt and jwt_govcloud, which sign a JWT assertion with a private key stored via the Key module.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "salesforce_jwt-settings",
+      "mode": "recipe",
+      "prompt": "When configuring a JWT Salesforce authorization, what settings do you provide (consumer key, login URL, key, user), and where is the private signing key stored?",
+      "must_contain_any": [
+        "login_url",
+        "consumer_key",
+        "encrypt_key",
+        "Key"
+      ],
+      "must_not_contain": [],
+      "expected_output": "A jwt salesforce_auth stores provider_settings: login_url (production https://login.salesforce.com or sandbox https://test.salesforce.com), consumer_key (connected app), username (to impersonate), and encrypt_key - the id of a Key module entity holding the private key that signs the JWT.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "salesforce_jwt-sandbox-url",
+      "mode": "recipe",
+      "prompt": "For a JWT Salesforce authorization, what login_url do I use to connect to a Salesforce sandbox versus production?",
+      "must_contain_any": [
+        "test.salesforce.com",
+        "login.salesforce.com"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Use https://test.salesforce.com for a sandbox and https://login.salesforce.com for production, set as the login_url in the jwt authorization's provider_settings.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "salesforce_jwt-known-provider",
+      "mode": "introspection",
+      "prompt": "On this Drupal site there is a Salesforce authorization named sfj_known. Inspect its live configuration and state which auth provider it uses.",
+      "must_contain_any": [
+        "jwt"
+      ],
+      "must_not_contain": [],
+      "expected_output": "It uses the jwt provider: salesforce_auth sfj_known has provider = jwt (key-based JWT authentication).",
+      "setup": "agent-module-documentation/evaluation/verify/salesforce_jwt-known-provider-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/salesforce_jwt-known-provider-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "salesforce_jwt-known-loginurl",
+      "mode": "introspection",
+      "prompt": "On this Drupal site there is a JWT Salesforce authorization named sfj_env. Inspect its live configuration and state its login URL - is it pointing at production or a sandbox?",
+      "must_contain_any": [
+        "login.salesforce.com",
+        "production"
+      ],
+      "must_not_contain": [],
+      "expected_output": "It points at production: salesforce_auth sfj_env has provider_settings.login_url = https://login.salesforce.com.",
+      "setup": "agent-module-documentation/evaluation/verify/salesforce_jwt-known-loginurl-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/salesforce_jwt-known-loginurl-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "salesforce_jwt-create",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, create a Salesforce authorization named sfj_task that uses key-based JWT authentication (the jwt provider). Apply the change to the live site (you do not need to complete the token exchange with Salesforce).",
+      "reset": "agent-module-documentation/evaluation/verify/salesforce_jwt-create-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/salesforce_jwt-create-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/salesforce_jwt-create-cleanup.sh",
+      "expected_output": "A salesforce_auth config entity sfj_task exists with provider = jwt (created via the Salesforce auth UI or the salesforce_auth storage)."
+    },
+    {
+      "id": "salesforce_jwt-set-loginurl",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site there is a JWT Salesforce authorization sfj_ltask currently pointed at a sandbox. Repoint it to production by setting its login URL to https://login.salesforce.com. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/salesforce_jwt-set-loginurl-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/salesforce_jwt-set-loginurl-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/salesforce_jwt-set-loginurl-cleanup.sh",
+      "expected_output": "salesforce_auth sfj_ltask has provider_settings.login_url = https://login.salesforce.com."
+    }
+  ]
+}

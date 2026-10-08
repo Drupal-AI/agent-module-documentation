@@ -1,0 +1,101 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "field_config_cardinality",
+  "version": "4.0.x",
+  "note": "Field Config Cardinality overrides a field's cardinality per instance (per bundle). Core cardinality is a field-STORAGE property shared by all bundles; this module stores a per-instance override as the third-party setting field.field.<entity>.<bundle>.<field> -> third_party_settings.field_config_cardinality.cardinality_config (string: positive number, or -1 for unlimited), saved via the 'Allowed number of values (Cardinality Instance)' fieldset on field_config_edit_form. Enforcement is at render time (widget swaps of media_library_widget/image_image/entity_reference_autocomplete, provided widgets cardinality_email_default/cardinality_options_select/cardinality_ief_simple, and multi-value form alters). Medium/hard cases create namespaced content types fcc_* with a shared-storage (unlimited) field and read/write cardinality_config.",
+  "evals": [
+    {
+      "id": "field_config_cardinality-what-and-where",
+      "mode": "recipe",
+      "prompt": "In Drupal, cardinality is a field-storage property shared by every bundle. What does the field_config_cardinality module let you do about that, and where does it store the per-bundle override?",
+      "must_contain_any": [
+        "cardinality_config",
+        "third_party",
+        "per instance",
+        "per-instance",
+        "per bundle",
+        "FieldConfig"
+      ],
+      "must_not_contain": [],
+      "expected_output": "It lets you override cardinality per field instance (per bundle) so one shared field storage can be single-value on one bundle and multi-value on another. The override is stored as the third-party setting field.field.<entity>.<bundle>.<field> -> third_party_settings.field_config_cardinality.cardinality_config.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "field_config_cardinality-widget-swaps",
+      "mode": "recipe",
+      "prompt": "How does field_config_cardinality actually enforce a lower per-instance cardinality in the edit form? Name at least one core field widget it replaces to do so.",
+      "must_contain_any": [
+        "media_library_widget",
+        "image_image",
+        "entity_reference_autocomplete"
+      ],
+      "must_not_contain": [],
+      "expected_output": "In hook_field_widget_info_alter it swaps core widget classes for cardinality-aware subclasses - media_library_widget -> CardinalityMediaLibraryWidget, image_image -> CardinalityImageWidget, entity_reference_autocomplete -> CardinalityEntityReferenceAutocompleteWidget - and alters the multi-value form to cap value rows and drop the extra 'Add more' button.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "field_config_cardinality-where-ui",
+      "mode": "recipe",
+      "prompt": "Where in the Drupal admin UI do I set a field_config_cardinality per-instance limit, and what is the fieldset called?",
+      "must_contain_any": [
+        "Allowed number of values",
+        "Cardinality Instance",
+        "field_config_edit_form",
+        "Manage fields"
+      ],
+      "must_not_contain": [],
+      "expected_output": "On the field instance edit form (Structure -> Content types -> <type> -> Manage fields -> <field> -> Edit, form field_config_edit_form). The module adds an 'Allowed number of values (Cardinality Instance)' fieldset where you pick Limited (+ a number) or Unlimited.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "field_config_cardinality-read-limit",
+      "mode": "introspection",
+      "prompt": "On this Drupal site, content type 'fcc_m1' has a multi-value field 'field_fcc_m1' whose storage is unlimited, but field_config_cardinality overrides the per-instance limit. Inspect the live field configuration and state the per-instance cardinality limit for that field on fcc_m1.",
+      "must_contain_any": [
+        "cardinality_config",
+        "2"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The per-instance limit is 2: field.field.node.fcc_m1.field_fcc_m1 has third_party_settings.field_config_cardinality.cardinality_config = '2', even though the field storage is unlimited (-1).",
+      "setup": "agent-module-documentation/evaluation/verify/field_config_cardinality-read-limit-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/field_config_cardinality-read-limit-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "field_config_cardinality-read-single",
+      "mode": "introspection",
+      "prompt": "On this Drupal site, the field 'field_fcc_m2' on content type 'fcc_m2' uses field_config_cardinality. Inspect the live configuration: is this instance limited to a single value, and which config key stores that limit?",
+      "must_contain_any": [
+        "cardinality_config"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Yes - the instance is limited to 1 value: field.field.node.fcc_m2.field_fcc_m2 has third_party_settings.field_config_cardinality.cardinality_config = '1'. The key that stores the per-instance limit is cardinality_config.",
+      "setup": "agent-module-documentation/evaluation/verify/field_config_cardinality-read-single-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/field_config_cardinality-read-single-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "field_config_cardinality-limit-to-3",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, content type 'fcc_h1' has a field 'field_fcc_h1' whose storage allows unlimited values. Using field_config_cardinality, limit THIS instance (on fcc_h1) to at most 3 values, without changing the shared field storage. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/field_config_cardinality-limit-to-3-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/field_config_cardinality-limit-to-3-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/field_config_cardinality-limit-to-3-cleanup.sh",
+      "expected_output": "On field.field.node.fcc_h1.field_fcc_h1 set third_party_settings.field_config_cardinality.cardinality_config to '3' (e.g. $fc->setThirdPartySetting('field_config_cardinality','cardinality_config','3')->save(), or Limited=3 in the 'Allowed number of values (Cardinality Instance)' fieldset). Verify checks cardinality_config === '3' while the storage stays unlimited."
+    },
+    {
+      "id": "field_config_cardinality-limit-to-1",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, content type 'fcc_h2' has a field 'field_fcc_h2' with unlimited storage cardinality. Using field_config_cardinality, make this particular instance single-value (limit 1) without altering the field storage. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/field_config_cardinality-limit-to-1-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/field_config_cardinality-limit-to-1-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/field_config_cardinality-limit-to-1-cleanup.sh",
+      "expected_output": "On field.field.node.fcc_h2.field_fcc_h2 set third_party_settings.field_config_cardinality.cardinality_config to '1'. Verify checks cardinality_config === '1' while the storage stays unlimited."
+    }
+  ]
+}

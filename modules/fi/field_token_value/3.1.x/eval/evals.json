@@ -1,0 +1,80 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "field_token_value",
+  "version": "3.1.x",
+  "note": "Field Token Value provides a field type `field_token_value` (widget field_token_value_default, formatter field_token_value_text) whose value is generated from a token string on hook_entity_presave via the field_token_value.field_value_generator service. Instance settings: field_value (token string) and remove_empty. Formatter settings: wrapper (YAML wrapper plugin id) + link. Wrappers come from EXTENSION.field_token_value.yml files collected by field_token_value.wrapper_manager. No configure route, no permissions, no Drush. Medium cases create field_ftv_known on node.article with a known token string and a blockquote wrapper and inspect the config. Hard cases build a field (hard-1) and prove the presave token replacement by creating a node (hard-2).",
+  "evals": [
+    {
+      "id": "field_token_value-where-set",
+      "mode": "recipe",
+      "prompt": "Using the field_token_value module in Drupal, where do you enter the token string for a Field Token Value field, and when is the value actually computed and saved?",
+      "must_contain_any": ["field settings", "field_value", "presave", "hook_entity_presave", "Manage fields"],
+      "must_not_contain": [],
+      "expected_output": "You enter the token string in the field's instance settings as 'Field value' (settings.field_value); there is no visible input on the edit form (the widget is hidden). The value is generated on hook_entity_presave by the field_token_value.field_value_generator service, which runs Token::replace() with the entity as context and writes the result into the field.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "field_token_value-remove-empty",
+      "mode": "recipe",
+      "prompt": "What does the 'Remove empty tokens' setting on a field_token_value field do?",
+      "must_contain_any": ["remove_empty", "clear", "empty", "unresolved"],
+      "must_not_contain": [],
+      "expected_output": "remove_empty maps to Token::replace()'s 'clear' option: when enabled (default) any token that has no replacement value is removed from the output; when disabled the unresolved token markers are left in the generated string.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "field_token_value-wrapper",
+      "mode": "recipe",
+      "prompt": "The field_token_value_text formatter can wrap output in an HTML tag. How are the available wrappers defined, and how would a custom module add its own wrapper (e.g. a div with a CSS class)?",
+      "must_contain_any": ["field_token_value.yml", "wrapper", "tag", "WrapperManager"],
+      "must_not_contain": [],
+      "expected_output": "Wrappers are a YAML plugin type collected by field_token_value.wrapper_manager. A module/theme ships an EXTENSION.field_token_value.yml file with entries keyed by machine name, each having title, summary, tag, and optional attributes (e.g. tag: div, attributes.class: [my-class]). No PHP class is needed. The formatter's Wrapper select then offers it; the hook_field_token_value_wrapper_info_alter hook can also alter the list.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "field_token_value-known-string",
+      "mode": "introspection",
+      "prompt": "The Article content type on this site has a Field Token Value field named field_ftv_known. Inspect the live field configuration and report the token string configured as its 'Field value'.",
+      "must_contain_any": ["[node:title]"],
+      "must_not_contain": [],
+      "expected_output": "field_ftv_known's settings.field_value is '[node:title] — [node:nid]' (in field.field.node.article.field_ftv_known -> settings.field_value).",
+      "setup": "agent-module-documentation/evaluation/verify/field_token_value-known-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/field_token_value-known-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "field_token_value-known-wrapper",
+      "mode": "introspection",
+      "prompt": "On this site the Article default display renders the field_ftv_known Field Token Value field with the field_token_value_text formatter. Inspect the live display configuration and state which wrapper (HTML tag) it is configured to use.",
+      "must_contain_any": ["blockquote"],
+      "must_not_contain": [],
+      "expected_output": "The formatter's wrapper setting is 'blockquote' (in core.entity_view_display.node.article.default -> content.field_ftv_known.settings.wrapper: blockquote).",
+      "setup": "agent-module-documentation/evaluation/verify/field_token_value-known-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/field_token_value-known-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "field_token_value-build-field",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, add a Field Token Value field named field_ftv_task to the Article content type whose value is built from the token string '[node:title]'. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/field_token_value-build-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/field_token_value-build-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/field_token_value-build-reset.sh",
+      "expected_output": "A FieldStorageConfig + FieldConfig field_ftv_task of type field_token_value exists on node.article, with settings.field_value containing the token string (e.g. '[node:title]')."
+    },
+    {
+      "id": "field_token_value-presave-populates",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "layman",
+      "prompt": "This site already has an Article field that automatically fills itself from the article's title (field field_ftv_auto, token 'FTV:[node:title]'). Create a new Article whose title is exactly 'FTVNODE-alpha', so the automatic field gets populated. Save it on the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/field_token_value-presave-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/field_token_value-presave-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/field_token_value-presave-reset.sh",
+      "expected_output": "After saving an Article titled 'FTVNODE-alpha', the field_token_value presave populates field_ftv_auto with 'FTV:FTVNODE-alpha' (the token [node:title] resolved against the new node)."
+    }
+  ]
+}

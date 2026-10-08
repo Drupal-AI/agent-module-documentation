@@ -1,0 +1,80 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "jwt",
+  "version": "2.4.x",
+  "note": "Base JWT module: signs/verifies with a single site-wide Key entity (key module) of type jwt_hs (HS256/384/512) or jwt_rs (RS256). The chosen key is stored as jwt.config->key_id, and jwt.config does NOT exist until the config form (route jwt.jwt_config_form, /admin/config/system/jwt, permission 'administer jwt') is saved. The signing algorithm lives on the Key's key_type_settings.algorithm, not on jwt.config. Encoding/decoding is the jwt.transcoder service; extension is via the JwtAuthEvents GENERATE/VALIDATE/VALID events. All medium/hard cases are grounded in that real config (jwt.config + key.key.* entities) and are verifiable without any external client or token round-trip. Baseline = no jwt.config, no eval keys; cleanup/reset restore that.",
+  "evals": [
+    {
+      "id": "jwt-algorithms",
+      "mode": "recipe",
+      "prompt": "In the Drupal JWT module, which signing algorithms can the site-wide key use, and which two Key module key types back them?",
+      "must_contain_any": ["HS256", "RS256", "jwt_hs", "jwt_rs"],
+      "must_not_contain": [],
+      "expected_output": "JwtTranscoder::getAlgorithmOptions() offers HS256, HS384, HS512 (HMAC, backed by the jwt_hs key type) and RS256 (RSA, backed by the jwt_rs key type). getAlgorithmType() maps HS* -> jwt_hs and RS256 -> jwt_rs.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "jwt-config-object",
+      "mode": "recipe",
+      "prompt": "On a Drupal site with the JWT module enabled, where do I choose which key JWT signs with, and in what config object is that choice stored?",
+      "must_contain_any": ["jwt.config", "key_id", "/admin/config/system/jwt", "jwt.jwt_config_form"],
+      "must_not_contain": [],
+      "expected_output": "Go to /admin/config/system/jwt (route jwt.jwt_config_form, permission 'administer jwt') and pick a JWT HMAC/RSA Key. The selection is saved as jwt.config -> key_id. jwt.config does not exist until you save the form once.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "jwt-encode-service",
+      "mode": "recipe",
+      "prompt": "Which Drupal service encodes and decodes JSON Web Tokens in the JWT module, and how would a custom module add a claim to every token the module issues?",
+      "must_contain_any": ["jwt.transcoder", "JwtAuthEvents", "jwt.generate", "GENERATE"],
+      "must_not_contain": [],
+      "expected_output": "The jwt.transcoder service (JwtTranscoder) has encode()/decode(). To add claims, subscribe to the JwtAuthEvents::GENERATE ('jwt.generate') event and call $event->getToken()->setClaim(...). JwtAuth::generateToken() dispatches GENERATE then encodes.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "jwt-configured-key",
+      "mode": "introspection",
+      "prompt": "This Drupal site has the JWT module configured to sign tokens with a specific key. Inspect the live configuration and give the machine name of the key JWT is set to use.",
+      "must_contain_any": ["jwt_eval_hmac"],
+      "must_not_contain": [],
+      "expected_output": "jwt.config key_id is jwt_eval_hmac (a jwt_hs / HS256 Key entity). Read it with `drush cget jwt.config key_id`.",
+      "setup": "agent-module-documentation/evaluation/verify/jwt-configured-key-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/jwt-configured-key-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "jwt-configured-algorithm",
+      "mode": "introspection",
+      "prompt": "JWT on this site is configured to sign with the key 'jwt_eval_alg'. Which JWT signing algorithm will tokens actually use? Inspect the live configuration to determine it.",
+      "must_contain_any": ["HS512"],
+      "must_not_contain": [],
+      "expected_output": "HS512. The algorithm is stored on the Key, not jwt.config: key.key.jwt_eval_alg -> key_type_settings.algorithm is HS512 (a jwt_hs key). Read it with `drush cget key.key.jwt_eval_alg key_type_settings`.",
+      "setup": "agent-module-documentation/evaluation/verify/jwt-configured-algorithm-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/jwt-configured-algorithm-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "jwt-set-hmac-key",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site the JWT module is enabled but no signing key is configured, so it cannot mint tokens. Create a JWT HMAC key named 'jwt_task_hmac' (HS256) and configure the JWT module to sign with it. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/jwt-set-hmac-key-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/jwt-set-hmac-key-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/jwt-set-hmac-key-cleanup.sh",
+      "expected_output": "Create a key.key.jwt_task_hmac Key entity of type jwt_hs (algorithm HS256) with a >=32-byte value, then set jwt.config key_id to jwt_task_hmac. Verify passes when jwt.config->key_id names an existing jwt_hs key."
+    },
+    {
+      "id": "jwt-switch-algorithm",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "JWT on this site currently signs tokens with the key 'jwt_task_alg', which uses HS256. Reconfigure the site so JWTs are signed with HS512 instead. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/jwt-switch-algorithm-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/jwt-switch-algorithm-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/jwt-switch-algorithm-cleanup.sh",
+      "expected_output": "Because the algorithm is a property of the Key (key_type_settings.algorithm), not jwt.config, either set jwt_task_alg's algorithm to HS512 (requires a >=64-byte value) or create a new jwt_hs/HS512 key and point jwt.config->key_id at it. Verify passes when the Key referenced by jwt.config is jwt_hs with algorithm HS512."
+    }
+  ]
+}

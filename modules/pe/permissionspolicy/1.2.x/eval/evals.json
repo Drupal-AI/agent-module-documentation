@@ -1,0 +1,84 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "permissionspolicy",
+  "version": "1.2.x",
+  "note": "Permissions Policy sends a Permissions-Policy header built by ResponseSubscriber from config permissionspolicy.settings. Structure: enforce.enable (bool) + enforce.features.<feature> => {base: 'self'|'none'|'any'|'', sources: [...]}. self->(self), none->(), any->*. Baseline (config/install) is enforce.enable=true, features={} (no header). Medium cases set a known feature base and read it back; hard cases require setting geolocation to 'none' and camera to 'self'. Verify reads config enforce.features.<feature>.base directly (no cache rebuild needed). Reset/cleanup restore features={}.",
+  "evals": [
+    {
+      "id": "permissionspolicy-which-header",
+      "mode": "recipe",
+      "prompt": "What HTTP response header does the Drupal permissionspolicy module add, and which config object and admin page control it?",
+      "must_contain_any": ["Permissions-Policy", "permissionspolicy.settings", "/admin/config/system/permissionspolicy"],
+      "must_not_contain": [],
+      "expected_output": "It sends the Permissions-Policy header. It is configured at /admin/config/system/permissionspolicy (permission 'administer permissions policy configuration') and stored in the config object permissionspolicy.settings under the `enforce` policy.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "permissionspolicy-feature-structure",
+      "mode": "recipe",
+      "prompt": "In the permissionspolicy module, how is a single browser feature like geolocation configured, and what does setting its base to 'self' versus 'none' produce in the header?",
+      "must_contain_any": ["base", "self", "none", "features"],
+      "must_not_contain": [],
+      "expected_output": "Under permissionspolicy.settings, enforce.features.<feature> holds {base: 'self'|'none'|'any'|'', sources: [...]}. base 'self' emits feature=(self) (your origin only), 'none' emits feature=() (nobody), 'any' emits feature=* (everyone). Extra origins go in `sources`.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "permissionspolicy-base-keywords",
+      "mode": "recipe",
+      "prompt": "What are the allowed 'base' keyword values for a feature in the permissionspolicy module and what origin does each represent?",
+      "must_contain_any": ["self", "none", "any"],
+      "must_not_contain": [],
+      "expected_output": "self = your own origin only (renders (self)); none = no origin, feature disabled (renders ()); any = every origin (renders *); empty '' = no base keyword, rely on the listed sources. Constants: ORIGIN_SELF='self', ORIGIN_NONE='none', ORIGIN_ANY='*'.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "permissionspolicy-geolocation-configured",
+      "mode": "introspection",
+      "prompt": "This site has the Permissions Policy module configured with one feature. Inspect the live permissionspolicy configuration and tell me how the geolocation feature is set (i.e. which origins are allowed to use geolocation).",
+      "must_contain_any": ["none"],
+      "must_not_contain": [],
+      "expected_output": "geolocation is set to base 'none' — enforce.features.geolocation.base === 'none' — meaning no origin may use geolocation (header fragment geolocation=()).",
+      "setup": "agent-module-documentation/evaluation/verify/permissionspolicy-geolocation-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/permissionspolicy-baseline.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "permissionspolicy-camera-configured",
+      "mode": "introspection",
+      "prompt": "Inspect this site's Permissions Policy configuration and report the base value configured for the camera feature.",
+      "must_contain_any": ["self"],
+      "must_not_contain": [],
+      "expected_output": "camera is configured with base 'self' — enforce.features.camera.base === 'self' — restricting camera access to the site's own origin (header fragment camera=(self)).",
+      "setup": "agent-module-documentation/evaluation/verify/permissionspolicy-camera-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/permissionspolicy-baseline.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "permissionspolicy-disable-geolocation",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-layman",
+      "prompt": "I don't want any page on my site (or anything embedded in it) to be able to ask visitors for their location. Use the Permissions Policy module to switch geolocation off for everyone, and apply it to the site.",
+      "reset": "agent-module-documentation/evaluation/verify/permissionspolicy-baseline.sh",
+      "verify": "agent-module-documentation/evaluation/verify/permissionspolicy-geolocation-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/permissionspolicy-baseline.sh",
+      "expected_output": "Set enforce.features.geolocation.base to 'none' in permissionspolicy.settings (with enforce.enable true), so the emitted header contains geolocation=().",
+      "must_contain_any": [],
+      "must_not_contain": []
+    },
+    {
+      "id": "permissionspolicy-camera-self",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "Using the permissionspolicy module, restrict the browser 'camera' feature so only the site's own origin may use it (base self), and apply the change to the live configuration.",
+      "reset": "agent-module-documentation/evaluation/verify/permissionspolicy-baseline.sh",
+      "verify": "agent-module-documentation/evaluation/verify/permissionspolicy-camera-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/permissionspolicy-baseline.sh",
+      "expected_output": "Set enforce.features.camera.base to 'self' in permissionspolicy.settings (enforce.enable true), producing the header fragment camera=(self).",
+      "must_contain_any": [],
+      "must_not_contain": []
+    }
+  ]
+}

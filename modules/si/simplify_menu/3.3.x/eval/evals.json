@@ -1,0 +1,88 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "simplify_menu",
+  "version": "3.3.x",
+  "note": "Simplify Menu is a pure Twig+service helper: one service (simplify_menu.menu_items) whose getMenuTree($menuId) flattens a Drupal menu into a normalized array under a 'menu_tree' key ({text,url,active,active_trail,submenu}), plus a Twig function simplify_menu('menu_id') that wraps it. There is NO admin UI, NO settings/config object, NO permissions, NO routes, and NO Drush; 3.x also dropped the JSON REST route that 1.x/2.x had, so decoupled output is produced by json_encode-ing the service result. Easy cases are response-graded (no site changes). Medium cases stage a KNOWN menu link on the live site (in 'main' or 'footer') and ask the agent to introspect what simplify_menu's service returns; cleanup removes it. Hard cases have the agent build live menu state (a main-menu link, a footer-menu link, a nested parent/child) verified by invoking the module's real service (simplify_menu.menu_items::getMenuTree) against the site (exit 0 = pass). Verify scripts rebuild menu links and clear the menu cache before reading, because Drupal's menu tree is persistently cached after a link is created.",
+  "evals": [
+    {
+      "id": "simplify_menu-twig-function",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "On a Drupal 11 site with the Simplify Menu module, I want to render the main menu with my own markup inside a Twig template. What Twig function does the module add, how do I call it for the 'main' menu, and what key holds the list of links I loop over?",
+      "must_contain_any": ["simplify_menu(", "simplify_menu('main')", "menu_tree"],
+      "must_not_contain": [],
+      "expected_output": "Call {% set items = simplify_menu('main') %} then loop items.menu_tree; each item has text, url, active, active_trail, and a submenu array when it has children."
+    },
+    {
+      "id": "simplify_menu-service-method",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "In PHP on a Drupal 11 site with Simplify Menu, which service and method return a Drupal menu as a plain normalized array? Give the service id, the method name and its argument, and the top-level key in the returned array.",
+      "must_contain_any": ["simplify_menu.menu_items", "getMenuTree"],
+      "must_not_contain": [],
+      "expected_output": "Service simplify_menu.menu_items (class Drupal\\simplify_menu\\MenuItems), method getMenuTree(string $menuId = 'main'); it returns ['menu_tree' => [ ...items... ]] where each item is {text, url, active, active_trail, submenu?}."
+    },
+    {
+      "id": "simplify_menu-decoupled-json",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "I'm building a decoupled/headless front end and want a Drupal menu as JSON using Simplify Menu 3.x. Does the module expose a ready-made REST/JSON endpoint, and if not, how do I produce the JSON?",
+      "must_contain_any": ["getMenuTree", "json_encode", "JsonResponse", "simplify_menu.menu_items"],
+      "must_not_contain": ["/simplify-menu/", "provides a REST endpoint out of the box"],
+      "expected_output": "3.x has no built-in JSON route (unlike old 1.x/2.x). Call the service simplify_menu.menu_items::getMenuTree($menu) and return it as JSON yourself, e.g. new JsonResponse($service->getMenuTree('main')) from your own controller/route, since the returned array is already plain data."
+    },
+    {
+      "id": "simplify_menu-known-main-link",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "This Drupal 11 site has Simplify Menu installed and something has been added to the site's main menu. Using Simplify Menu's own service (not raw menu APIs), what is the exact text/title of that added link, and what URL does the service report for it in the 'main' menu tree?",
+      "setup": "agent-module-documentation/evaluation/verify/simplify_menu-known-main-link-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/simplify_menu-known-main-link-cleanup.sh",
+      "must_contain_any": ["SM Eval Portal"],
+      "must_not_contain": [],
+      "expected_output": "Calling simplify_menu.menu_items::getMenuTree('main') returns an item with text 'SM Eval Portal' and url /node."
+    },
+    {
+      "id": "simplify_menu-known-footer-link",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "On this live Drupal 11 site with Simplify Menu, a link has been added to the FOOTER menu (machine name 'footer'), not the main menu. Using Simplify Menu's service, report the title of that footer link and the URL the service returns for it. It should not appear in the main menu.",
+      "setup": "agent-module-documentation/evaluation/verify/simplify_menu-known-footer-link-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/simplify_menu-known-footer-link-cleanup.sh",
+      "must_contain_any": ["SM Eval Support"],
+      "must_not_contain": [],
+      "expected_output": "Calling simplify_menu.menu_items::getMenuTree('footer') returns an item with text 'SM Eval Support' and url /node; it is absent from getMenuTree('main')."
+    },
+    {
+      "id": "simplify_menu-build-main-link",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal 11 site with Simplify Menu, add a menu link titled 'Docs Home' pointing at the site front page ('/') to the main menu, so that Simplify Menu's service getMenuTree('main') returns an item with text 'Docs Home'. Do not change anything else.",
+      "reset": "agent-module-documentation/evaluation/verify/simplify_menu-main-link-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/simplify_menu-main-link-verify.sh",
+      "expected_output": "A menu_link_content link 'Docs Home' -> front page exists in the 'main' menu; simplify_menu.menu_items::getMenuTree('main') returns an item with text 'Docs Home' and url '/'."
+    },
+    {
+      "id": "simplify_menu-build-footer-link",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal 11 site with Simplify Menu, add a link titled 'Contact Us' (point it at an accessible content path such as /node) to the FOOTER menu (machine name 'footer') — specifically the footer menu, not the main menu — so that Simplify Menu's getMenuTree('footer') returns it while getMenuTree('main') does not.",
+      "reset": "agent-module-documentation/evaluation/verify/simplify_menu-footer-link-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/simplify_menu-footer-link-verify.sh",
+      "expected_output": "A menu_link_content link 'Contact Us' exists in the 'footer' menu; simplify_menu.menu_items::getMenuTree('footer') returns an item text 'Contact Us' and getMenuTree('main') does not contain it. (Use a publicly accessible URL; Simplify Menu drops access-denied links.)"
+    },
+    {
+      "id": "simplify_menu-build-submenu",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal 11 site with Simplify Menu, build a nested main-menu structure: a parent link titled 'Products' with one child link titled 'Widgets' beneath it (point both at an accessible content path such as /node). The goal is that Simplify Menu's getMenuTree('main') returns a top-level 'Products' item whose 'submenu' array contains a 'Widgets' item.",
+      "reset": "agent-module-documentation/evaluation/verify/simplify_menu-submenu-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/simplify_menu-submenu-verify.sh",
+      "expected_output": "Two menu_link_content links exist in 'main': parent 'Products' and child 'Widgets' whose parent is 'Products'; simplify_menu.menu_items::getMenuTree('main') returns a 'Products' item with a 'submenu' array containing a 'Widgets' item."
+    }
+  ]
+}

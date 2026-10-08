@@ -1,0 +1,65 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "ludwig",
+  "version": "2.0.x",
+  "note": "Ludwig is a non-Composer library manager: modules declare libraries in ludwig.json, a Packages report downloads them, and a service provider autoloads PSR-4/PSR-0 namespaces. Cases are `recipe` (response-graded) probing documented facts an agent would otherwise read source to answer; no site mutation.",
+  "evals": [
+    {
+      "id": "ludwig-purpose-vs-composer",
+      "mode": "recipe",
+      "prompt": "On a Drupal 11 site that deliberately does not use Composer, a contrib module needs a third-party PHP library. How can Ludwig install that library, and when would I use it instead of Composer?",
+      "must_contain_any": ["ludwig.json", "without Composer", "non-Composer", "manual alternative"],
+      "must_not_contain": [],
+      "expected_output": "Ludwig is a manual alternative to Composer: the module declares the library in a ludwig.json file and Ludwig downloads it into the module's lib/ directory. Use Ludwig on sites that avoid Composer-managed workflows; use Composer otherwise."
+    },
+    {
+      "id": "ludwig-declare-library",
+      "mode": "recipe",
+      "prompt": "How does a module tell Ludwig which external PHP library it needs? Show the file and its format.",
+      "must_contain_any": ["ludwig.json", "\"require\"", "\"url\"", "\"version\""],
+      "must_not_contain": [],
+      "expected_output": "The module ships a ludwig.json in its root with a `require` object keyed by vendor/name, each having a `version` and an archive `url` (a .zip)."
+    },
+    {
+      "id": "ludwig-download-mechanism",
+      "mode": "recipe",
+      "prompt": "I enabled a Ludwig-managed module and its libraries show as Missing. How do I download them on a Drupal 11 site running Ludwig 2.0.x?",
+      "must_contain_any": ["/admin/reports/packages", "Packages report", "Reports", "ludwig.packages"],
+      "must_not_contain": ["drush ludwig-download"],
+      "expected_output": "Visit the Packages report at Admin > Reports > Packages (/admin/reports/packages); loading it downloads all Missing packages and flushes caches. There is no Drush command in 2.0.x."
+    },
+    {
+      "id": "ludwig-report-route",
+      "mode": "recipe",
+      "prompt": "Where does Ludwig install a downloaded library, and which route lets me view the package report WITHOUT triggering a download?",
+      "must_contain_any": ["lib/", "packages_skip", "/admin/reports/packages_skip"],
+      "must_not_contain": [],
+      "expected_output": "Libraries are copied into the requiring module's lib/<vendor>-<name>/<version>/ directory. Use /admin/reports/packages_skip (ludwig.packages_skip) to view the report without downloading."
+    },
+    {
+      "id": "ludwig-autoloading",
+      "mode": "recipe",
+      "prompt": "After Ludwig downloads a PSR-4 library, what makes its classes autoloadable in Drupal? Which class handles it?",
+      "must_contain_any": ["LudwigServiceProvider", "container.namespaces", "service provider"],
+      "must_not_contain": [],
+      "expected_output": "LudwigServiceProvider::register() reads each installed library's composer.json autoload section and merges its PSR-4/PSR-0 namespaces into the container.namespaces parameter at container build time, so no package-data cache is needed."
+    },
+    {
+      "id": "ludwig-classmap-files",
+      "mode": "recipe",
+      "prompt": "A library I declared uses composer `files`/`classmap` autoloading and Ludwig shows it as 'Not installed'. How do I make it load?",
+      "must_contain_any": ["ludwig.require_once", "requireOnce"],
+      "must_not_contain": [],
+      "expected_output": "classmap/files libraries are not autoloaded automatically; call the ludwig.require_once service (RequireOnce::requireOnce($package_name, $file, __DIR__)) from the module's .module/.install file to require the file. That flips its status to Installed."
+    },
+    {
+      "id": "ludwig-duplicate-versions",
+      "mode": "recipe",
+      "prompt": "Two modules require the same library at different versions via Ludwig. What does Ludwig do, and what status appears in the report?",
+      "must_contain_any": ["highest version", "Overridden"],
+      "must_not_contain": [],
+      "expected_output": "Ludwig keeps the highest required version and marks the lower ones 'Overridden' in the Packages report."
+    }
+  ]
+}

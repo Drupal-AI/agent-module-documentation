@@ -1,0 +1,80 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "contentimport",
+  "version": "10.0.x",
+  "note": "Content Import bulk-creates/updates nodes from an uploaded CSV via the admin form at /admin/config/content/contentimport (route contentimport.admin_settings, core 'administer site configuration' permission). CSV first row = destination field machine names; every CSV needs title + langcode (langcode defaults to en); Update mode (importtype 2) also needs a nodeid column; Create is importtype 1. A batch runs contentimport_import_node($file,$content_type,$import_type). Field values are parsed by field type (image from public://<ct>/images/, entity_reference to taxonomy/user/node, text=full_html, datetime, boolean On/Yes=1, geolocation/geofield, list_string). Log at sites/default/files/contentimportlog.txt. No Drush, no plugins, no real config. Medium cases inspect the live content types/fields (what a CSV must contain); hard cases verify imported Article nodes exist on the live site.",
+  "evals": [
+    {
+      "id": "contentimport-mandatory-columns",
+      "mode": "recipe",
+      "prompt": "To import nodes from a CSV with the contentimport module, which two columns must every CSV contain, and where in the admin UI do you run the import?",
+      "must_contain_any": ["title", "langcode", "/admin/config/content/contentimport"],
+      "must_not_contain": [],
+      "expected_output": "Every CSV must have a title and a langcode column (langcode defaults to en if blank). You run it at Configuration > Content authoring > Content Import (/admin/config/content/contentimport).",
+      "difficulty": "easy"
+    },
+    {
+      "id": "contentimport-update-mode",
+      "mode": "recipe",
+      "prompt": "The contentimport module can create new nodes or update existing ones from a CSV. What extra CSV column is required when you choose 'Update existing content'?",
+      "must_contain_any": ["nodeid"],
+      "must_not_contain": [],
+      "expected_output": "Update mode (import type 2) additionally requires a nodeid column to locate the existing node to update (title and langcode are still required); Create mode (import type 1) needs only title and langcode.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "contentimport-taxonomy-format",
+      "mode": "recipe",
+      "prompt": "In a contentimport CSV, how do you provide a value for a taxonomy-term entity-reference field, and what happens if the vocabulary or term does not exist yet?",
+      "must_contain_any": ["Vocabulary: term", "vocabulary:term", "auto", "created", "comma"],
+      "must_not_contain": [],
+      "expected_output": "Use 'Vocabulary: term1, term2' (or for a field targeting a single vocabulary, just 'term1, term2'; for multiple target vocabularies use 'vocabulary:term'). Missing vocabularies and terms are created automatically during import.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "contentimport-article-field",
+      "mode": "introspection",
+      "prompt": "You want to import Article nodes on this site with the contentimport module. Inspect the Article content type and, besides the mandatory title and langcode columns, name a field machine name the CSV header would include for Article.",
+      "must_contain_any": ["body"],
+      "must_not_contain": [],
+      "expected_output": "The Article content type has a body field (text_with_summary), so the CSV header would include 'body' alongside the mandatory title and langcode columns.",
+      "setup": "agent-module-documentation/evaluation/verify/contentimport-known-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/contentimport-known-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "contentimport-target-types",
+      "mode": "introspection",
+      "prompt": "Inspect this Drupal site and name a content type that the contentimport module could import CSV rows into.",
+      "must_contain_any": ["article", "page", "blog_post"],
+      "must_not_contain": [],
+      "expected_output": "contentimport lists all node types as targets; this site has article, page, blog_post (among others), so e.g. 'article' is a valid target.",
+      "setup": "agent-module-documentation/evaluation/verify/contentimport-known-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/contentimport-known-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "contentimport-import-articles",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, use the contentimport module's CSV import to create two Article nodes, one titled 'CI Import Alpha' and one titled 'CI Import Beta', both with langcode en. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/contentimport-import-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/contentimport-import-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/contentimport-import-cleanup.sh",
+      "expected_output": "Two published/unpublished Article nodes exist with titles 'CI Import Alpha' and 'CI Import Beta' - e.g. by running contentimport_import_node() over a CSV whose header is 'title,langcode' with those two rows, or otherwise creating the two Article nodes."
+    },
+    {
+      "id": "contentimport-import-articles-layman",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "site-owner",
+      "prompt": "I have a little spreadsheet with two blog article titles, 'CI Import Alpha' and 'CI Import Beta'. Import them into my site as Article pages using the Content Import tool.",
+      "reset": "agent-module-documentation/evaluation/verify/contentimport-import-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/contentimport-import-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/contentimport-import-cleanup.sh",
+      "expected_output": "Same verified end state as contentimport-import-articles: Article nodes titled 'CI Import Alpha' and 'CI Import Beta' exist on the live site."
+    }
+  ]
+}

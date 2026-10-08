@@ -1,0 +1,80 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "depcalc",
+  "version": "1.23.x",
+  "note": "Depcalc is a developer API: service entity.dependency.calculator (DependencyCalculator::calculateDependencies(DependentEntityWrapper $wrapper, DependencyStack $stack)) recursively computes an entity's dependency set (keyed by UUID) plus a 'module' list, driven by 'calculate_dependencies' event subscribers (*DependencyCollector). Results are cached in the tag-aware cache.depcalc bin (table cache_depcalc), which survives a normal drush cr; clear it with drush depcalc:clear-cache (alias dep-cc) / deleteAllPermanent(). No config/permissions/routes. NOTE: on THIS shared site, calculating dependencies of content entities that use Layout Builder displays can hit an unrelated fatal, so medium/hard cases use a config entity (image style 'thumbnail') as a clean, deterministic target. Cache-row counts via SELECT COUNT(*) FROM cache_depcalc.",
+  "evals": [
+    {
+      "id": "depcalc-service-call",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "In the Drupal depcalc module, which service and method do I call to compute all recursive dependencies of an entity, and what two objects do I pass?",
+      "must_contain_any": ["entity.dependency.calculator", "calculateDependencies", "DependentEntityWrapper", "DependencyStack"],
+      "must_not_contain": [],
+      "expected_output": "Call the service entity.dependency.calculator (DependencyCalculator) method calculateDependencies($wrapper, $stack), passing a DependentEntityWrapper wrapping your entity and a DependencyStack. It returns an array keyed by dependency UUID plus a 'module' key."
+    },
+    {
+      "id": "depcalc-clear-cache-cmd",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "depcalc caches calculated dependencies in its own cache bin that a normal cache rebuild does not clear. What Drush command clears the depcalc cache, and what is its alias / the cache service name?",
+      "must_contain_any": ["depcalc:clear-cache", "dep-cc", "cache.depcalc"],
+      "must_not_contain": [],
+      "expected_output": "Run drush depcalc:clear-cache (alias dep-cc), which calls deleteAllPermanent() on the cache.depcalc bin (table cache_depcalc). A regular drush cr does NOT clear it by design."
+    },
+    {
+      "id": "depcalc-extend-event",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "How do you extend what depcalc treats as a dependency for a custom field or entity? Name the event you subscribe to.",
+      "must_contain_any": ["calculate_dependencies", "CALCULATE_DEPENDENCIES", "CalculateEntityDependenciesEvent", "event subscriber"],
+      "must_not_contain": [],
+      "expected_output": "Add an event_subscriber to the 'calculate_dependencies' event (DependencyCalculatorEvents::CALCULATE_DEPENDENCIES, event object CalculateEntityDependenciesEvent) and call $event->addDependency(new DependentEntityWrapper($referenced)) / setModuleDependencies(); the built-in *DependencyCollector classes are examples."
+    },
+    {
+      "id": "depcalc-thumbnail-dep",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "Using depcalc on this live Drupal site, calculate the dependencies of the image style whose machine name is 'thumbnail'. What entity does the result contain?",
+      "must_contain_any": ["image_style", "thumbnail"],
+      "must_not_contain": [],
+      "expected_output": "Running the calculator on ImageStyle 'thumbnail' returns the image_style:thumbnail entity itself (a config entity) in the dependency set (keyed by its UUID), plus a 'module' list.",
+      "setup": "agent-module-documentation/evaluation/verify/depcalc-thumbnail-dep-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/depcalc-cache-clear-cleanup.sh"
+    },
+    {
+      "id": "depcalc-cache-state",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "Inspect the depcalc cache bin on this live site right now: does it currently hold any cached dependency data, or is it empty? Report what you find.",
+      "must_contain_any": ["not empty", "non-empty", "populated", "contains", "1", "one", "has entries"],
+      "must_not_contain": [],
+      "expected_output": "The depcalc cache bin (table cache_depcalc) currently holds cached entries (it was populated), so it is not empty (about 1 row).",
+      "setup": "agent-module-documentation/evaluation/verify/depcalc-cache-state-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/depcalc-cache-clear-cleanup.sh"
+    },
+    {
+      "id": "depcalc-clear-cache",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "The depcalc cache on this site currently contains data. Clear the depcalc cache so its bin is empty, and apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/depcalc-clear-cache-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/depcalc-clear-cache-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/depcalc-cache-clear-cleanup.sh",
+      "expected_output": "Empty the depcalc bin: drush depcalc:clear-cache (or \\Drupal::service('cache.depcalc')->deleteAllPermanent()). Afterwards cache_depcalc has 0 rows."
+    },
+    {
+      "id": "depcalc-populate-cache",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "Using the depcalc calculator, compute and cache the dependencies of the image style 'thumbnail' on this live site (the depcalc cache is currently empty).",
+      "reset": "agent-module-documentation/evaluation/verify/depcalc-populate-cache-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/depcalc-populate-cache-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/depcalc-cache-clear-cleanup.sh",
+      "expected_output": "Run the calculator, e.g. calculateDependencies(new DependentEntityWrapper(ImageStyle::load('thumbnail')), new DependencyStack()); this populates cache.depcalc so cache_depcalc has >= 1 row."
+    }
+  ]
+}

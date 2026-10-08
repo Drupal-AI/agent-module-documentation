@@ -1,0 +1,99 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "type_tray",
+  "version": "1.3.x",
+  "note": "Type Tray keeps state in exactly two places: the config object type_tray.settings (categories sequence of key: Label, fallback_label, text_format) edited at /admin/config/content/type-tray/settings behind the 'administer type tray' permission, and per-content-type third-party settings under node.type.<type>:third_party_settings.type_tray (type_category, type_thumbnail, type_icon, type_description, existing_nodes_link_text, type_weight). It replaces core's node.add_page controller via a route subscriber. All medium/hard cases are grounded in that real config using a namespaced content type tt_demo. Scripts create tt_demo inside a try/catch because unrelated modules on this shared site can throw in their node-type insert hooks after the type itself is saved; the shipped config/install baseline is fallback_label: Uncategorized with no categories key at all, which is what cleanup restores.",
+  "evals": [
+    {
+      "id": "type_tray-categories-config",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "Where do you define the groups that the Drupal type_tray module uses on the 'Add content' page, what format does the input take, and which config object stores them?",
+      "must_contain_any": [
+        "type_tray.settings",
+        "key|label",
+        "/admin/config/content/type-tray/settings"
+      ],
+      "must_not_contain": [],
+      "expected_output": "On the Type Tray Settings form at /admin/config/content/type-tray/settings (route type_tray.settings.form, permission 'administer type tray'). The Categories textarea takes one key|label pair per line, and they are stored in the config object type_tray.settings under the 'categories' sequence, alongside fallback_label and text_format."
+    },
+    {
+      "id": "type_tray-per-type-settings",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "Using the Drupal type_tray module, how is a content type's category, icon and weight stored in configuration? Give the exact config location and key names.",
+      "must_contain_any": [
+        "third_party_settings",
+        "type_category",
+        "type_weight",
+        "type_icon"
+      ],
+      "must_not_contain": [],
+      "expected_output": "They are third-party settings on the node_type config entity: node.type.<type> -> third_party_settings.type_tray with the keys type_category, type_thumbnail, type_icon, type_description, existing_nodes_link_text and type_weight (schema key node.type.*.third_party.type_tray). The form is the 'Type Tray' vertical tab on the content type edit form."
+    },
+    {
+      "id": "type_tray-node-add-takeover",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "How does the Drupal type_tray module get its layout onto /node/add, and how does a user switch between the grid and list presentation?",
+      "must_contain_any": [
+        "node.add_page",
+        "route subscriber",
+        "RouteSubscriber",
+        "layout="
+      ],
+      "must_not_contain": [],
+      "expected_output": "TypeTrayRouteSubscriber (RoutingEvents::ALTER priority 95) rewrites core's node.add_page route to use TypeTrayController::addPage, so the path stays /node/add. The presentation comes from the ?layout= query parameter, defaulting to 'grid'; ?layout=list renders the thumbnail and the extended description instead of the icon and short description."
+    },
+    {
+      "id": "type_tray-known-category",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "This Drupal site uses the type_tray module and has a content type with the machine name tt_demo. Inspect the live configuration and tell me which Type Tray category that content type is grouped under - give both the category key and the label shown to editors.",
+      "must_contain_any": [
+        "tt_marketing",
+        "Marketing"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Key tt_marketing, label 'Marketing'. node.type.tt_demo -> third_party_settings.type_tray.type_category is tt_marketing (with type_weight 5), and type_tray.settings:categories maps tt_marketing to 'Marketing'.",
+      "setup": "agent-module-documentation/evaluation/verify/type_tray-known-category-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/type_tray-known-category-cleanup.sh"
+    },
+    {
+      "id": "type_tray-fallback-label",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "On this Drupal site, inspect the live Type Tray configuration and tell me what label content types that have not been given a category will appear under on the Add content page, and which text format extended descriptions are written in.",
+      "must_contain_any": [
+        "Other content"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Uncategorised types appear under 'Other content' (type_tray.settings:fallback_label, used for the reserved category key _none) and extended descriptions use the basic_html text format (type_tray.settings:text_format).",
+      "setup": "agent-module-documentation/evaluation/verify/type_tray-fallback-label-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/type_tray-fallback-label-cleanup.sh"
+    },
+    {
+      "id": "type_tray-configure-categories",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, configure the type_tray module with exactly two categories: tt_news labelled 'News' and tt_promo labelled 'Promotions'. Then put the tt_demo content type into the tt_promo category and give it a Type Tray weight of 3. Apply the changes to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/type_tray-configure-categories-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/type_tray-configure-categories-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/type_tray-configure-categories-cleanup.sh",
+      "expected_output": "type_tray.settings:categories is {tt_news: News, tt_promo: Promotions} and node.type.tt_demo -> third_party_settings.type_tray has type_category: tt_promo and type_weight: 3 (set on /admin/config/content/type-tray/settings and the content type's Type Tray tab, or with the config factory + NodeType::setThirdPartySetting())."
+    },
+    {
+      "id": "type_tray-existing-link",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "site-owner",
+      "prompt": "On the Add content page of this Drupal site, the 'TT Demo' tile has no picture and no shortcut to the content that already exists. Using Type Tray, give that content type the icon at /modules/contrib/type_tray/assets/icons/file-text.svg and make its tile show a link labelled 'View existing TT Demo content'. Apply the changes to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/type_tray-existing-link-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/type_tray-existing-link-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/type_tray-existing-link-cleanup.sh",
+      "expected_output": "node.type.tt_demo -> third_party_settings.type_tray now has type_icon: '/modules/contrib/type_tray/assets/icons/file-text.svg' and existing_nodes_link_text: 'View existing TT Demo content' (the link goes to /admin/content?type=tt_demo; an empty link text means no link is rendered)."
+    }
+  ]
+}

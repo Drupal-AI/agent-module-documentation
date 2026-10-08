@@ -1,0 +1,58 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "tome_base",
+  "version": "1.16.x",
+  "note": "Tome Base is a dependency-only glue sub-module: shared services/traits (CommandBase, ProcessTrait, ExecutableFinderTrait, PathTrait) plus one Drush cli.workaround service. It has no config, routes, permissions, plugins, or admin UI, so there is no per-module setting to read or write. Easy cases test knowledge of its role. The medium case introspects that it is enabled and depended-on. The hard case exercises the layer it actually provides: every tome:* Drush command extends its CommandBase, so exporting an existing entity with tome:export-content proves the CommandBase/Process layer works. It uses existing node:1 (uuid 5528817f-2211-4569-91a2-af6f5da9da25); no fixtures are created and no page is rendered.",
+  "evals": [
+    {
+      "id": "tome_base-what-it-provides",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "In the Tome project, what is the tome_base sub-module for? Name the base class that Tome's Drush commands (like tome:static and tome:export) extend.",
+      "must_contain_any": ["CommandBase", "shared", "traits"],
+      "must_not_contain": [],
+      "expected_output": "tome_base holds shared services and traits used by both Tome Static and Tome Sync. Every tome:* Drush command extends Drupal\\tome_base\\CommandBase, which provides --uri handling and the concurrent-process helpers (ProcessTrait, ExecutableFinderTrait, PathTrait)."
+    },
+    {
+      "id": "tome_base-no-config",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "Does the tome_base module have a settings form, a configure route, or permissions of its own?",
+      "must_contain_any": ["no", "none", "dependency"],
+      "must_not_contain": [],
+      "expected_output": "No. tome_base is a dependency-only module: no config object, no configure route, no permissions, no plugins, and no admin UI. It only provides shared code (and one Drush cli.workaround service)."
+    },
+    {
+      "id": "tome_base-php-cli-workaround",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "tome_base registers a single Drush command service called cli.workaround. What problem does it solve?",
+      "must_contain_any": ["php", "drush php", "pre-command", "console command"],
+      "must_not_contain": [],
+      "expected_output": "CliWorkaroundCommands hooks pre-command php:cli and re-registers Tome's Symfony console commands as AnnotatedCommands so that 'drush php' works even though Tome adds non-annotated console commands. It is an @internal workaround for a Drush bug."
+    },
+    {
+      "id": "tome_base-enabled",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "Inspect this running site: is tome_base enabled, and which other Tome sub-modules declare it as a dependency?",
+      "must_contain_any": ["tome_base"],
+      "must_not_contain": [],
+      "setup": "agent-module-documentation/evaluation/verify/tome_base-enabled-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/tome_base-enabled-cleanup.sh",
+      "expected_output": "tome_base is enabled. tome_static and tome_sync both list tome:tome_base as a dependency in their info.yml (verifiable via 'drush pm:list' and the sub-modules' info files)."
+    },
+    {
+      "id": "tome_base-cmdbase-export",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "Tome's Drush commands are all built on tome_base's CommandBase. Use one of those commands to export the content entity 'node 1' to Tome's on-disk JSON store, and apply it to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/tome_base-cmdbase-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/tome_base-cmdbase-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/tome_base-cmdbase-cleanup.sh",
+      "expected_output": "Run 'drush tome:export-content node:1' (its command class extends Drupal\\tome_base\\CommandBase). Tome writes content/node.<uuid>.json (uuid 5528817f-2211-4569-91a2-af6f5da9da25) as valid JSON."
+    }
+  ]
+}

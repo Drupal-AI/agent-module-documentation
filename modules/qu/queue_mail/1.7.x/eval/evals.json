@@ -1,0 +1,84 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "queue_mail",
+  "version": "1.7.x",
+  "note": "Queue Mail defers outgoing mail (for the mail IDs listed in queue_mail.settings:queue_mail_keys, matched with path.matcher so '*' and 'user_*' work) to the reliable 'queue_mail' queue, processed on cron by SendMailQueueWorker; failed sends retry up to 'threshold' (default 50) after 'requeue_interval' (default 10800s). Config keys: queue_mail_keys (default ''), queue_mail_queue_time (15), threshold (50), requeue_interval (10800), queue_mail_queue_wait_time (0). Configure route queue_mail.admin_settings. Medium/hard cases are grounded in the real queue_mail.settings config (config-based; not on flaky live mail delivery). Shipped default queue_mail_keys is '' (nothing queued) and threshold 50; restored explicitly.",
+  "evals": [
+    {
+      "id": "queue_mail-enable-queuing",
+      "mode": "recipe",
+      "prompt": "I installed Queue Mail but no emails are being queued. How do I actually tell it which emails to queue, and how do I queue every email the site sends?",
+      "must_contain_any": ["queue_mail_keys", "Mail IDs to queue", "*", "user_", "/admin/config/system/queue_mail"],
+      "must_not_contain": [],
+      "expected_output": "Queue Mail queues nothing until you list mail IDs at /admin/config/system/queue_mail (config queue_mail.settings:queue_mail_keys, one per line). Wildcards are supported: use '*' to queue all mail, or e.g. user_* for all User module mail.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "queue_mail-how-sent",
+      "mode": "recipe",
+      "prompt": "Once Queue Mail has put emails in its queue, how and when do they actually get sent, and what Drush command processes them?",
+      "must_contain_any": ["cron", "queue:run", "queue-run", "queue_mail"],
+      "must_not_contain": [],
+      "expected_output": "Queued mail is sent on cron by the SendMailQueueWorker (queue id 'queue_mail'). You can process it on demand with `drush queue:run queue_mail --time-limit=15` (the time limit matters because failed items are re-queued).",
+      "difficulty": "easy"
+    },
+    {
+      "id": "queue_mail-alter-hook",
+      "mode": "recipe",
+      "prompt": "Which hook does Queue Mail provide to alter or cancel an email right before it is actually sent from the queue?",
+      "must_contain_any": ["hook_queue_mail_send_alter", "queue_mail_send"],
+      "must_not_contain": [],
+      "expected_output": "hook_queue_mail_send_alter(array &$message) — invoked when a queued mail is dequeued and about to be sent. Set $message['send'] = FALSE to cancel it. It is like hook_mail_alter() but fires at send time.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "queue_mail-qm-keys",
+      "mode": "introspection",
+      "prompt": "On this Drupal site, Queue Mail has been configured to queue some emails. Inspect the live configuration and state which mail IDs are being queued.",
+      "must_contain_any": ["user_*", "user_", "user"],
+      "must_not_contain": [],
+      "expected_output": "queue_mail_keys is 'user_*' (all User module mail) in queue_mail.settings (read via `drush config:get queue_mail.settings queue_mail_keys`).",
+      "setup": "agent-module-documentation/evaluation/verify/queue_mail-qm-keys-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/queue_mail-qm-keys-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "queue_mail-qm-threshold",
+      "mode": "introspection",
+      "prompt": "On this Drupal site, Queue Mail's retry behavior has been customized. Inspect the live configuration and state how many times it will retry sending a failed email before giving up (the retry threshold).",
+      "must_contain_any": ["10"],
+      "must_not_contain": [],
+      "expected_output": "The retry threshold is 10 (queue_mail.settings:threshold).",
+      "setup": "agent-module-documentation/evaluation/verify/queue_mail-qm-threshold-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/queue_mail-qm-threshold-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "queue_mail-qm-all",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, configure Queue Mail so that ALL emails the site sends are queued and delivered via cron rather than sent inline. Apply the change to the live configuration.",
+      "reset": "agent-module-documentation/evaluation/verify/queue_mail-qm-all-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/queue_mail-qm-all-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/queue_mail-qm-all-cleanup.sh",
+      "expected_output": "queue_mail.settings:queue_mail_keys is '*' (e.g. `drush config:set queue_mail.settings queue_mail_keys '*' -y`).",
+      "must_contain_any": [],
+      "must_not_contain": []
+    },
+    {
+      "id": "queue_mail-qm-pwreset",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, configure Queue Mail so that ONLY the user password-reset email (mail id user_password_reset) is queued, without queuing every email. Apply the change to the live configuration.",
+      "reset": "agent-module-documentation/evaluation/verify/queue_mail-qm-pwreset-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/queue_mail-qm-pwreset-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/queue_mail-qm-pwreset-cleanup.sh",
+      "expected_output": "queue_mail.settings:queue_mail_keys contains user_password_reset (or a wildcard such as user_* that matches it) and is not '*'.",
+      "must_contain_any": [],
+      "must_not_contain": []
+    }
+  ]
+}

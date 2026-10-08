@@ -1,0 +1,80 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "pluginformalter",
+  "version": "1.8.x",
+  "note": "Plugin Form Alter is a pure developer/plugin-type module: no config, UI, permissions, or Drush. It defines three plugin managers discovering classes under src/Plugin/FormAlter/: plugin.manager.form_alter (@FormAlter, keys form_id[]/base_form_id[]/weight), plugin.manager.form_alter.paragraphs (@ParagraphsFormAlter, paragraph_type[]), plugin.manager.form_alter.ief (@InlineEntityFormAlter, type/entity_type/bundle...). A FormAlter plugin extends Drupal\\pluginformalter\\Plugin\\FormAlterBase and implements formAlter(&$form,$form_state,$form_id). Following the repo hook/plugin-module pattern (cf. block_form_alter), medium cases install a fixed probe module with a FormAlter plugin for user_login_form (introspected live via plugin.manager.form_alter->getInstance) and hard cases have the agent write a small custom module whose FormAlter plugin alters user_login_form, verified by fetching plugins for form_id user_login_form and invoking formAlter (marker present) while another form_id is left untouched. All fixtures are namespaced pluginformalter_* under web/modules/custom and are uninstalled (drush pm:uninstall) BEFORE their directory is removed, then caches cleared. NB: on Drupal >= 11.2 invoked plugins emit E_USER_DEPRECATED but still run.",
+  "evals": [
+    {
+      "id": "pluginformalter-replaces-hook",
+      "mode": "recipe",
+      "prompt": "What does the Drupal pluginformalter module let me use instead of hook_form_alter(), and what class/method must my plugin provide?",
+      "must_contain_any": ["FormAlter", "formAlter", "src/Plugin/FormAlter"],
+      "must_not_contain": [],
+      "expected_output": "It lets you write a @FormAlter plugin class under your module's src/Plugin/FormAlter/, extending Drupal\\pluginformalter\\Plugin\\FormAlterBase and implementing formAlter(array &$form, FormStateInterface $form_state, $form_id). The plugin is annotated with form_id and/or base_form_id (and optional weight).",
+      "difficulty": "easy"
+    },
+    {
+      "id": "pluginformalter-annotation-keys",
+      "mode": "recipe",
+      "prompt": "In a pluginformalter @FormAlter plugin annotation, which keys decide which form(s) it alters, and which key orders multiple plugins that alter the same form?",
+      "must_contain_any": ["form_id", "base_form_id", "weight"],
+      "must_not_contain": [],
+      "expected_output": "form_id (array of form ids) and/or base_form_id (array of base form ids) decide what it matches (both support * wildcards); weight (integer) orders plugins within a group. base_form_id plugins run before form_id plugins.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "pluginformalter-three-types",
+      "mode": "recipe",
+      "prompt": "Besides the main FormAlter plugin type, pluginformalter provides two more plugin types for altering nested subforms. What are they and what do they match on?",
+      "must_contain_any": ["ParagraphsFormAlter", "InlineEntityFormAlter", "paragraph_type"],
+      "must_not_contain": [],
+      "expected_output": "ParagraphsFormAlter (manager plugin.manager.form_alter.paragraphs) matches Paragraphs subforms by paragraph_type; InlineEntityFormAlter (manager plugin.manager.form_alter.ief) matches Inline Entity Form subforms by type (entity_form/reference_form/table_fields) plus entity_type/bundle/etc.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "pluginformalter-probe-marker",
+      "mode": "introspection",
+      "prompt": "On this site, an enabled module provides a pluginformalter @FormAlter plugin that alters the user login form (form id 'user_login_form') by adding a marker string to it. Inspect the running site and report the marker string it sets.",
+      "must_contain_any": ["pfa-probe-login-555"],
+      "must_not_contain": [],
+      "expected_output": "The FormAlter plugin sets $form['pfa_probe_marker']['#value'] = 'pfa-probe-login-555' for form_id user_login_form. Discoverable by getting plugins for form_id user_login_form from plugin.manager.form_alter and invoking formAlter, or by reading the pluginformalter_probe module.",
+      "setup": "agent-module-documentation/evaluation/verify/pluginformalter-probe-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/pluginformalter-probe-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "pluginformalter-probe-module",
+      "mode": "introspection",
+      "prompt": "This site has exactly one enabled module that provides a pluginformalter FormAlter plugin (a @FormAlter class) targeting the 'user_login_form'. Inspect the running site and name that module.",
+      "must_contain_any": ["pluginformalter_probe"],
+      "must_not_contain": [],
+      "expected_output": "The module is pluginformalter_probe. Find it via plugin.manager.form_alter definitions (the matching plugin's 'provider'), or by inspecting web/modules/custom.",
+      "setup": "agent-module-documentation/evaluation/verify/pluginformalter-probe-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/pluginformalter-probe-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "pluginformalter-impl-form-id",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site (pluginformalter is enabled), create and enable a small custom module named 'pluginformalter_eval' that provides a pluginformalter @FormAlter plugin for the user login form (form id 'user_login_form'). Its formAlter() must add a form element $form['pfa_marker'] with '#value' set to 'ok'. Other forms must be left untouched.",
+      "reset": "agent-module-documentation/evaluation/verify/pluginformalter-impl-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/pluginformalter-impl-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/pluginformalter-impl-cleanup.sh",
+      "expected_output": "A custom module pluginformalter_eval with src/Plugin/FormAlter/<Class>.php annotated @FormAlter(form_id={\"user_login_form\"}) extending FormAlterBase; its formAlter() sets $form['pfa_marker']['#value']='ok'. Verified by fetching plugins for form_id user_login_form from plugin.manager.form_alter, invoking formAlter (marker present) while another form_id is untouched."
+    },
+    {
+      "id": "pluginformalter-impl-base-form-id",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site (pluginformalter is enabled), create and enable a small custom module named 'pluginformalter_eval_base' whose pluginformalter @FormAlter plugin matches by BASE form id 'node_form' (so it applies to all node add/edit forms). Its formAlter() must set $form['pfa_base_marker']['#value'] to 'ok'.",
+      "reset": "agent-module-documentation/evaluation/verify/pluginformalter-base-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/pluginformalter-base-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/pluginformalter-base-cleanup.sh",
+      "expected_output": "A custom module pluginformalter_eval_base with a @FormAlter(base_form_id={\"node_form\"}) plugin whose formAlter() sets $form['pfa_base_marker']['#value']='ok'. Verified by fetching plugins for base_form_id node_form from plugin.manager.form_alter and invoking formAlter (marker present)."
+    }
+  ]
+}

@@ -1,0 +1,92 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "media_directories_ui",
+  "version": "3.0.x",
+  "note": "DEPRECATED submodule (lifecycle: deprecated in its .info.yml), superseded by media_directories_browser. Real surface: depends on contrib entity_browser; permission `access media directories ui browser` (distinct from the Vue browser's `access media directories browser`) gating ten AJAX routes under /admin/media_directories/…; config object media_directories_ui.settings with hide_media_library_media_tab, hide_media_library_files_tab, hide_admin_toolbar_links, enable_combined_upload and combined_upload_media_types; NO settings route of its own — the form is injected into the parent module's settings form by hook_form_media_directories_config_form_alter(); shipped config entity_browser.browser.media_directories_overview / media_directories_modal, views.view.media_directories_base and image.style.browser_thumbnail; an @EntityBrowserWidget with id media_directories_browser_widget (class DirectoryBrowser — same id string as the Vue module's FieldWidget but a different plugin type); a TargetBundles widget validator; a StringContainsArgument views argument; and a hooks class implementing menu_local_tasks_alter / menu_links_discovered_alter that actually removes core's Media and Files tabs. Medium cases read the live config and role grants; hard cases write real config, and one asserts the hook genuinely strips the tabs.",
+  "evals": [
+    {
+      "id": "media_directories_ui-deprecated",
+      "mode": "recipe",
+      "prompt": "What is the status of the media_directories_ui submodule in Media Directories 3.0.x, which contrib module does it require, and what should a new Drupal 11 site use instead?",
+      "must_contain_any": [
+        "deprecated",
+        "entity_browser"
+      ],
+      "must_not_contain": [],
+      "expected_output": "media_directories_ui.info.yml declares `lifecycle: deprecated` with lifecycle_link pointing at the project page. It is the legacy jsTree + contrib entity_browser UI (it depends on media_directories and entity_browser, and needs the vakata/jstree library from the project's composer.libraries.json). New sites should use the media_directories_browser submodule, the Vue.js browser at /admin/content/media-browser.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "media_directories_ui-permission-name",
+      "mode": "recipe",
+      "prompt": "Media Directories ships two browser submodules. What permission does the deprecated media_directories_ui submodule define, how does it differ from the one media_directories_browser defines, and what does it gate?",
+      "must_contain_any": [
+        "access media directories ui browser"
+      ],
+      "must_not_contain": [],
+      "expected_output": "media_directories_ui defines `access media directories ui browser` ('Access to Media Directories browser'), while media_directories_browser defines the similarly named but different `access media directories browser`. They are not interchangeable. The UI submodule's permission gates all ten of its AJAX routes under /admin/media_directories/… (directory tree/content/add/rename/delete/move and media add/edit/move/delete).",
+      "difficulty": "easy"
+    },
+    {
+      "id": "media_directories_ui-settings-location",
+      "mode": "recipe",
+      "prompt": "Where do I configure the media_directories_ui submodule on a Drupal site — does it have its own settings page? Name its configuration object and its keys.",
+      "must_contain_any": [
+        "media_directories_ui.settings",
+        "form_media_directories_config_form_alter"
+      ],
+      "must_not_contain": [],
+      "expected_output": "It has no route or settings form of its own. MediaDirectoriesUiHooks::formMediaDirectoriesConfigFormAlter() (hook_form_media_directories_config_form_alter) injects a 'Media browser UI' details element into the parent module's form at /admin/config/media/media_directories. The config object is media_directories_ui.settings with keys hide_media_library_media_tab, hide_media_library_files_tab, hide_admin_toolbar_links, enable_combined_upload and combined_upload_media_types.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "media_directories_ui-known-settings",
+      "mode": "introspection",
+      "prompt": "The deprecated media_directories_ui submodule is configured on this Drupal site. Inspect the live configuration and tell me which core /admin/content tabs it is currently hiding, and which media types it includes in its combined upload form.",
+      "must_contain_any": [
+        "document"
+      ],
+      "must_not_contain": [],
+      "expected_output": "media_directories_ui.settings has hide_media_library_media_tab: true and hide_media_library_files_tab: true, so both core's Media tab (entity.media.collection) and the Files tab (views_view:view.files.page_1) are removed from /admin/content, and hide_admin_toolbar_links: true also strips the admin_toolbar_tools media links. enable_combined_upload is true with combined_upload_media_types: [image, document]. Read it with `drush cget media_directories_ui.settings`.",
+      "setup": "agent-module-documentation/evaluation/verify/media_directories_ui-known-settings-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/media_directories_ui-known-settings-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "media_directories_ui-known-role",
+      "mode": "introspection",
+      "prompt": "This Drupal site has both Media Directories browser submodules installed. One non-administrator role has been granted access to the OLD, deprecated entity-browser UI only. Inspect the live site and tell me that role's machine name and the exact permission it holds.",
+      "must_contain_any": [
+        "mdu_eval_legacy"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The role is mdu_eval_legacy ('MDU eval legacy') and it holds `access media directories ui browser`, the permission defined by the deprecated media_directories_ui submodule — not `access media directories browser`, which is the Vue.js media_directories_browser permission. Iterate Role::loadMultiple() and call hasPermission() for each of the two permission names to tell them apart.",
+      "setup": "agent-module-documentation/evaluation/verify/media_directories_ui-known-role-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/media_directories_ui-known-role-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "media_directories_ui-hide-tabs",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, use the media_directories_ui submodule's own settings to make editors see only the Media Directories browser: remove core's Media tab and Files tab from /admin/content, and remove the admin toolbar's media links. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/media_directories_ui-hide-tabs-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/media_directories_ui-hide-tabs-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/media_directories_ui-hide-tabs-cleanup.sh",
+      "expected_output": "Set media_directories_ui.settings hide_media_library_media_tab: true, hide_media_library_files_tab: true and hide_admin_toolbar_links: true (via the 'Media browser UI' details element on /admin/config/media/media_directories, or drush cset). MediaDirectoriesUiHooks::menuLocalTasksAlter() then unsets $data['tabs'][0]['entity.media.collection'] and ['views_view:view.files.page_1'], and menuLinksDiscoveredAlter() strips the admin_toolbar_tools media links."
+    },
+    {
+      "id": "media_directories_ui-combined-upload",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "Configure the deprecated media_directories_ui submodule on this Drupal site so its browser offers a single combined upload control covering exactly two media types: Image and Document. Apply it to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/media_directories_ui-combined-upload-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/media_directories_ui-combined-upload-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/media_directories_ui-combined-upload-cleanup.sh",
+      "expected_output": "Set media_directories_ui.settings enable_combined_upload: true and combined_upload_media_types: ['image', 'document'] (exactly those two media type ids). combined_upload_media_types is a sequence, so drush cset cannot write it — use the settings form or \\Drupal::configFactory()->getEditable('media_directories_ui.settings')->set(...)->save()."
+    }
+  ]
+}

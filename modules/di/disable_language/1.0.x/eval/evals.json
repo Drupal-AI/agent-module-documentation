@@ -1,0 +1,78 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "disable_language",
+  "version": "1.0.x",
+  "note": "Disable Language marks a language as disabled for the front end by writing a THIRD-PARTY SETTING onto the language's configurable_language config entity: config name language.entity.<langcode>, key third_party_settings.disable_language.disable = true (optionally redirect_language = <langcode>). There is NO separate list-of-disabled-languages config object. Disabling removes the language from the language switcher, strips its hreflang head links, and drops its URLs from Simple XML Sitemap; front-end requests in a disabled language are redirected (default: front page, or the per-language redirect_language) except for redirect_override_routes (defaults user.reset.login, entity.user.edit_form). Two permissions relax filtering: 'view disabled languages' (still see it in the switcher) and 'create content in disabled language' (keep it in content-form language selects). The service disable_language.disable_language_manager (::getDisabledLanguages) reads the flag. No Drush commands, no plugin types. Config UI route disable_language.disable_language_settings at /admin/config/regional/language/disable_language edits the disable_language.settings object. Installed release is a release candidate (8.x-1.0-rc2). Easy cases are response-graded (no site changes). Medium cases stage a KNOWN disabled language ('de') via its third-party setting and ask the agent to introspect which languages are disabled; cleanup deletes the eval language. Hard cases reset 'de'/'fr' to a present-but-enabled state, have the agent DISABLE 'de' by setting the third-party setting, and verify checks the configurable_language entity flag (and that the site default is not disabled). Only eval-added languages are touched; English/default is never disabled.",
+  "evals": [
+    {
+      "id": "disable_language-how-it-disables",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "On a Drupal 11 site with the Disable Language module, how does the module record that a particular language is disabled for the front end? Name the config entity it stores the flag on and the exact key path, and say what disabling a language removes (language switcher, hreflang, sitemap).",
+      "must_contain_any": ["third_party", "third-party", "disable_language"],
+      "must_not_contain": ["deletes the language", "uninstalls the language"],
+      "expected_output": "Disabling a language does NOT delete it. The module writes a third-party setting onto the language's configurable_language config entity (config language.entity.<langcode>): third_party_settings.disable_language.disable = true (optionally redirect_language). A disabled language is removed from the language switcher, its hreflang alternate head links are stripped, and its URLs are dropped from Simple XML Sitemap; front-end requests to it are redirected."
+    },
+    {
+      "id": "disable_language-permission",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "On a Drupal 11 site with Disable Language, which permission lets certain users still SEE a disabled language in the language switcher, and which permission lets them still create content in a disabled language? Give the exact permission machine names.",
+      "must_contain_any": ["view disabled languages"],
+      "must_not_contain": [],
+      "expected_output": "'view disabled languages' lets a user still see/use disabled languages in the language switcher; 'create content in disabled language' keeps disabled languages in the content-form language select widgets. Both are defined in disable_language.permissions.yml."
+    },
+    {
+      "id": "disable_language-admin-still-sees",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "On a Drupal 11 site with Disable Language, if I disable a language, will an administrator or translator who needs to keep working on it still be able to see and use it, or is it gone for everyone? Explain how to keep it visible to privileged users, and what happens to anonymous visitors who request a disabled-language URL.",
+      "must_contain_any": ["view disabled languages", "redirect"],
+      "must_not_contain": ["removed for everyone", "deleted for all users"],
+      "expected_output": "The language and its content stay intact; disabling is just a front-end flag. Users granted the 'view disabled languages' permission still see it in the language switcher (and 'create content in disabled language' keeps it in content-form selects). Anonymous visitors who hit a disabled-language URL are redirected to a fallback (the front page by default, or the per-language redirect_language), except for the redirect_override_routes allow-list."
+    },
+    {
+      "id": "disable_language-known-disabled",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "This Drupal 11 site has the Disable Language module installed. Some language may have been disabled. Inspect the running site's language configuration and tell me which language(s), if any, are currently marked disabled by Disable Language, and give the langcode. Do not change anything.",
+      "setup": "agent-module-documentation/evaluation/verify/disable_language-known-disabled-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/disable_language-known-disabled-cleanup.sh",
+      "must_contain_any": ["de", "German"],
+      "must_not_contain": [],
+      "expected_output": "The German language (langcode 'de') is disabled: its configurable_language config entity (language.entity.de) carries third_party_settings.disable_language.disable = true (redirect_language 'en'). It can be found via drush config:get language.entity.de or the disable_language.disable_language_manager::getDisabledLanguages() service."
+    },
+    {
+      "id": "disable_language-known-disabled-redirect",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "On this live Drupal 11 site with Disable Language, a language has been disabled. Besides telling me which langcode is disabled, tell me which language visitors of that disabled language are redirected to (the configured redirect_language). Read it from the live configuration; do not modify anything.",
+      "setup": "agent-module-documentation/evaluation/verify/disable_language-known-disabled-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/disable_language-known-disabled-cleanup.sh",
+      "must_contain_any": ["en", "English"],
+      "must_not_contain": [],
+      "expected_output": "German ('de') is the disabled language; its third-party setting third_party_settings.disable_language.redirect_language is 'en', so disabled-language requests redirect to English. Readable via drush config:get language.entity.de third_party_settings."
+    },
+    {
+      "id": "disable_language-disable-de-expert",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal 11 site with the Disable Language module, disable the German language (langcode 'de') for the front end using Disable Language's mechanism — set the disable_language 'disable' third-party setting to TRUE on the 'de' configurable_language config entity (redirect it to English). Do not disable any other language, and do not touch the site default. Clear caches when done.",
+      "reset": "agent-module-documentation/evaluation/verify/disable_language-disable-de-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/disable_language-disable-de-verify.sh",
+      "expected_output": "The configurable_language entity 'de' (config language.entity.de) has third_party_settings.disable_language.disable = true (redirect_language 'en'); disable_language.disable_language_manager::getDisabledLanguages() returns 'de'; the site default / English is NOT disabled."
+    },
+    {
+      "id": "disable_language-disable-de-layman",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "site-owner",
+      "prompt": "My Drupal site has English, German, and French. The German translation isn't ready for the public yet — please hide the German version from visitors for now (send anyone who lands on a German page back to the English site) without deleting the German content. Leave English and French alone.",
+      "reset": "agent-module-documentation/evaluation/verify/disable_language-disable-de-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/disable_language-disable-de-verify.sh",
+      "expected_output": "Using Disable Language, the agent marks German ('de') disabled: third_party_settings.disable_language.disable = true on language.entity.de with redirect_language 'en'. German content is preserved (only flagged); the manager reports 'de' disabled; English (default) and French stay enabled."
+    }
+  ]
+}

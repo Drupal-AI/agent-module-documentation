@@ -1,0 +1,109 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "views_argument_token",
+  "version": "2.0.x",
+  "note": "Views Argument Token adds a single Views argument_default plugin (id 'token', class TokenArgument) that fills a contextual filter's default value from a Drupal token resolved against the current user / route entity. No admin UI, configure=null, no permissions, no Drush. Its only persistent state is the plugin's options inside a view config entity: display.<d>.display_options.arguments.<arg>.default_argument_type='token' plus default_argument_options {argument, process, and_or, all_option, debug} (schema views.argument_default.token). All medium/hard cases are grounded in real view config: introspection reads the configured token string / options back from a view; execution switches an existing contextual filter to the token plugin and is verified against the live view config.",
+  "evals": [
+    {
+      "id": "views_argument_token-how-to-use",
+      "mode": "recipe",
+      "prompt": "On a Drupal 11 site I want a Views contextual filter to default its value from a Drupal token like [current-user:uid] or [node:field_tags] instead of the URL. The views_argument_token module is installed. How do I set that up, and what kind of Views plugin does the module provide?",
+      "must_contain_any": [
+        "default value",
+        "Provide default value",
+        "default_argument_type",
+        "argument_default",
+        "token",
+        "contextual filter"
+      ],
+      "must_not_contain": [],
+      "expected_output": "views_argument_token registers a Views argument_default (default value) plugin with id 'token'. On the contextual filter, under 'When the filter value is not available', choose 'Provide default value', set Type to 'Token', and enter a token string such as [current-user:uid] or [node:field_tags]. It is resolved at render time against the current user / route entity.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "views_argument_token-raw-values",
+      "mode": "recipe",
+      "prompt": "In the views_argument_token 'Token' contextual-filter default, what does the 'Get fields raw values' option do, and when a field has multiple values how are they combined for the argument?",
+      "must_contain_any": [
+        "raw",
+        "process",
+        "ID",
+        "target_id",
+        "and_or",
+        "+",
+        ","
+      ],
+      "must_not_contain": [],
+      "expected_output": "'Get fields raw values' (option key 'process') replaces field tokens with the field's stored raw value (e.g. an entity-reference field's target ID) instead of the token module's rendered value. Multiple field values are joined by the 'and_or' option: '+' means OR, ',' means AND, so the argument can drive a multi-value contextual filter.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "views_argument_token-empty-value",
+      "mode": "recipe",
+      "prompt": "With views_argument_token, what happens when the configured token resolves to an empty value? Is there an option to still show all results?",
+      "must_contain_any": [
+        "all",
+        "all_option",
+        "Send \"all\"",
+        "empty"
+      ],
+      "must_not_contain": [],
+      "expected_output": "If the token resolves empty and the 'Send \"all\" if no value' option (all_option) is enabled, the plugin returns the literal argument 'all' (you must also enable the filter's 'all' exception argument) so the view shows everything; otherwise it returns an empty string. Any unresolved [type:name] token blanks the argument.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "views_argument_token-inspect-user-token",
+      "mode": "introspection",
+      "prompt": "This site has a view with machine name 'vat_user'. Its contextual filter uses the views_argument_token 'token' default-value plugin. Inspect the live view configuration and state the exact token string configured as the default argument.",
+      "must_contain_any": [
+        "[current-user:uid]",
+        "current-user:uid"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The token string is [current-user:uid]: in views.view.vat_user the 'uid' contextual filter has default_argument_type: token and default_argument_options.argument: '[current-user:uid]'.",
+      "setup": "agent-module-documentation/evaluation/verify/views_argument_token-user-view-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/views_argument_token-user-view-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "views_argument_token-inspect-raw-options",
+      "mode": "introspection",
+      "prompt": "This site has a view 'vat_raw' whose contextual filter uses the views_argument_token 'token' default. Inspect the live configuration: is 'Get fields raw values' enabled, and are multiple values combined with OR or AND?",
+      "must_contain_any": [
+        "AND",
+        "and_or",
+        "\",\"",
+        "raw values enabled",
+        "process"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Raw values are enabled (process: 1) and multiple values are combined with AND (and_or: ','). In views.view.vat_raw the token argument options are argument: '[node:field_tags]', process: 1, and_or: ','.",
+      "setup": "agent-module-documentation/evaluation/verify/views_argument_token-raw-view-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/views_argument_token-raw-view-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "views_argument_token-configure-current-user",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "The view 'vat_task' on this site has a contextual filter on the user id (uid) that currently uses a fixed default value. Using the views_argument_token module, change that contextual filter's default value so it is provided by a token equal to the current user's id, [current-user:uid]. Apply the change to the live view configuration.",
+      "reset": "agent-module-documentation/evaluation/verify/views_argument_token-configure-user-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/views_argument_token-configure-user-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/views_argument_token-configure-user-cleanup.sh",
+      "expected_output": "In views.view.vat_task the 'uid' contextual filter has default_argument_type: token and default_argument_options.argument containing [current-user:uid] (set default_action to 'default' with the token plugin)."
+    },
+    {
+      "id": "views_argument_token-configure-raw-node",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "The node view 'vat_rawtask' has a contextual filter on the node id (nid) using a fixed default. Using views_argument_token, make its default value come from the token [node:field_tags] with 'Get fields raw values' turned on (so field values are used as raw IDs). Apply it to the live view configuration.",
+      "reset": "agent-module-documentation/evaluation/verify/views_argument_token-configure-raw-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/views_argument_token-configure-raw-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/views_argument_token-configure-raw-cleanup.sh",
+      "expected_output": "In views.view.vat_rawtask the 'nid' contextual filter has default_argument_type: token with default_argument_options.argument containing [node:field_tags] and process: 1 (Get fields raw values on)."
+    }
+  ]
+}

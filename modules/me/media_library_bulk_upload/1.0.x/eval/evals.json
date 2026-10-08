@@ -1,0 +1,80 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "media_library_bulk_upload",
+  "version": "1.0.x",
+  "note": "Media Library Bulk Upload adds a bulk-upload screen to the core Media Library. Its only configurable surface is (a) the config object media_library_bulk_upload.settings key `media_types` (which types are offered; empty = all) and (b) dynamic per-type permissions `use media {type} bulk upload form` (plus `administer media`). It defines no plugin types and no Drush commands, so execution tiers exercise config + permissions rather than plugin code. Cases span three tiers: `recipe` (easy, response-graded facts about routes, the config key, and permissions), `introspection` (medium — a known media-type restriction is set on the live site and the agent reads it back via drush), and `execution` (hard — the agent actually sets the restriction / grants a permission, verified against live site state).",
+  "evals": [
+    {
+      "id": "mlbu-config-key",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "On a Drupal 11 site using the Media Library Bulk Upload module, which config object and key limit which media types are offered on the bulk-upload screen, and what happens if that key is left empty?",
+      "must_contain_any": ["media_types", "media_library_bulk_upload.settings"],
+      "must_not_contain": [],
+      "expected_output": "The config object media_library_bulk_upload.settings holds a `media_types` sequence of media-type ids. If it is empty (the install default), all media types are offered for bulk upload; otherwise only the listed types are."
+    },
+    {
+      "id": "mlbu-permission-pattern",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "In the Media Library Bulk Upload module, what is the machine-name pattern of the dynamic permission that lets a role bulk-upload a given media type, and which single core permission grants access to everything the module exposes?",
+      "must_contain_any": ["use media", "bulk upload form"],
+      "must_not_contain": [],
+      "expected_output": "Per media type the module defines `use media {media_type_id} bulk upload form` (e.g. `use media image bulk upload form`). The core `administer media` permission is a super-permission that grants the bulk-upload landing page and the settings form outright."
+    },
+    {
+      "id": "mlbu-routes",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "What are the paths of the Media Library Bulk Upload landing page and its per-media-type upload form on a Drupal site?",
+      "must_contain_any": ["/admin/content/media/bulk-upload", "media_library.bulk_upload.upload_form"],
+      "must_not_contain": [],
+      "expected_output": "The landing page listing bulk-uploadable types is at /admin/content/media/bulk-upload (route media_library.bulk_upload.list); a single type's upload form is at /admin/content/media/bulk-upload/{media_type} (route media_library.bulk_upload.upload_form)."
+    },
+    {
+      "id": "mlbu-inspect-restricted-types",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "persona": "drupal-expert",
+      "prompt": "This Drupal site (drush available) has the Media Library Bulk Upload module configured to restrict which media types can be bulk-uploaded. Inspect the live site and tell me which media types are currently enabled for bulk upload.",
+      "setup": "agent-module-documentation/evaluation/verify/media_library_bulk_upload-intro-restricted-types-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/media_library_bulk_upload-intro-restricted-types-cleanup.sh",
+      "must_contain_any": ["image", "document"],
+      "must_not_contain": [],
+      "expected_output": "The media_library_bulk_upload.settings:media_types config restricts bulk upload to the Image and Document media types (values image, document); no other types are enabled."
+    },
+    {
+      "id": "mlbu-inspect-config-value",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site (drush available), read the Media Library Bulk Upload configuration and tell me the exact config object name and the current value of the key that controls which media types are offered.",
+      "setup": "agent-module-documentation/evaluation/verify/media_library_bulk_upload-intro-restricted-types-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/media_library_bulk_upload-intro-restricted-types-cleanup.sh",
+      "must_contain_any": ["media_types", "media_library_bulk_upload.settings"],
+      "must_not_contain": [],
+      "expected_output": "Config object media_library_bulk_upload.settings, key media_types, currently set to {image: image, document: document} — i.e. bulk upload is limited to Image and Document."
+    },
+    {
+      "id": "mlbu-restrict-types",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site (drush available), configure the Media Library Bulk Upload module so that only the Image and Document media types can be bulk-uploaded (Audio, Video and Remote video must NOT be offered). Apply it to the live site so the restriction really takes effect; don't just describe it. One-line summary.",
+      "reset": "agent-module-documentation/evaluation/verify/media_library_bulk_upload-restrict-types-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/media_library_bulk_upload-restrict-types-verify.sh",
+      "expected_output": "The config object media_library_bulk_upload.settings key media_types is set so Image and Document are enabled (truthy values image, document) and Audio, Video, Remote video are not, applied to the live site. Verified against live site state."
+    },
+    {
+      "id": "mlbu-grant-permission",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site (drush available), give the `content_editor` role the ability to use the Media Library Bulk Upload form for the Image media type, using the module's dynamic per-type permission. Apply it to the live site; don't just describe it. One-line summary.",
+      "reset": "agent-module-documentation/evaluation/verify/media_library_bulk_upload-grant-permission-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/media_library_bulk_upload-grant-permission-verify.sh",
+      "expected_output": "The content_editor role is granted the permission `use media image bulk upload form`, applied to the live site so members can bulk-upload Image media. Verified against live site state."
+    }
+  ]
+}

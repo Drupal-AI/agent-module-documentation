@@ -1,0 +1,93 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "media_directories_file_link",
+  "version": "3.0.x",
+  "note": "Two plugins, nothing else. CKEditor 5 plugin media_directories_file_link_button (class MediaFileLinkButton) contributes the toolbar item mediaFileLinkButton labelled 'Insert file link', declares <drupal-media-file-link data-entity-uuid data-entity-type data-file-type>, is conditioned on the media_directories_file_link filter, and passes allowedBundles from MediaTypeService::getFileBasedBundles(). Filter media_directories_file_link ('Media file link', TYPE_TRANSFORM_REVERSIBLE, weight 95) has two settings — template (default '<a href=\"@file_url\">@text</a>') and icon (default TRUE) — and renders each tag through the template with tokens @file_url, @text, @name, @mime, @size, @uuid, @file_type, always wrapped in <span class=\"media-file-link\"> plus data-file-type=\"<category>\" when icon is on. Categories come from the public static getFileTypeForMimeType(): file/text/image/audio/video/archive/spreadsheet/code. Missing or inaccessible media degrade to plain text. No settings page, no permissions, no services, no config object. Medium cases read live filter settings and run the real filter over real media; hard cases assert live format/editor config plus real rendered markup. Artifacts are namespaced mfl_* / public://mfl* and removed by cleanup.",
+  "evals": [
+    {
+      "id": "media_directories_file_link-tag-and-tokens",
+      "mode": "recipe",
+      "prompt": "In the Drupal module media_directories_file_link, what HTML tag does the CKEditor 5 'Insert file link' button store in the body text, and which tokens can I use in the filter's link template?",
+      "must_contain_any": [
+        "drupal-media-file-link",
+        "@file_url"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The button stores <drupal-media-file-link data-entity-uuid=\"…\" data-entity-type=\"media\" data-file-type=\"…\">link text</drupal-media-file-link>. The media_directories_file_link filter renders it through the configurable `template` setting (default <a href=\"@file_url\">@text</a>) using the tokens @file_url, @text, @name, @mime, @size, @uuid and @file_type. Text tokens are HTML-escaped and @file_url is passed through UrlHelper::stripDangerousProtocols(); the output is always wrapped in <span class=\"media-file-link\">.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "media_directories_file_link-icon-setting",
+      "mode": "recipe",
+      "prompt": "What does the 'Show file icon' setting of the media_directories_file_link filter actually change in the rendered HTML, and which file-type categories can it produce?",
+      "must_contain_any": [
+        "data-file-type"
+      ],
+      "must_not_contain": [],
+      "expected_output": "When `icon` is TRUE the <span class=\"media-file-link\"> wrapper also gets a data-file-type=\"<category>\" attribute, which the module's CSS turns into a ::before pseudo-element icon; when FALSE the attribute is omitted. The category comes from MediaFileLinkFilter::getFileTypeForMimeType() and is one of: file, text, image, audio, video, archive, spreadsheet, code (e.g. application/zip → archive, text/csv → spreadsheet).",
+      "difficulty": "easy"
+    },
+    {
+      "id": "media_directories_file_link-toolbar-item",
+      "mode": "recipe",
+      "prompt": "Which CKEditor 5 toolbar item does media_directories_file_link contribute, what is the CKEditor 5 plugin id, and what condition must a text format satisfy before the button can be added?",
+      "must_contain_any": [
+        "mediaFileLinkButton"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The toolbar item is mediaFileLinkButton, labelled 'Insert file link'; the CKEditor 5 plugin id is media_directories_file_link_button (class MediaFileLinkButton, JS mediaFileLinkButton.MediaFileLinkButton). Its `conditions` require the media_directories_file_link filter to be enabled on the text format; the plugin declares <drupal-media-file-link data-entity-uuid data-entity-type data-file-type> as its allowed element and restricts the browser modal to MediaTypeService::getFileBasedBundles().",
+      "difficulty": "easy"
+    },
+    {
+      "id": "media_directories_file_link-known-template",
+      "mode": "introspection",
+      "prompt": "A text format on this Drupal site has the media_directories_file_link 'Media file link' filter enabled with a customised link template. Inspect the live configuration and tell me the exact template string that is configured, and whether the file-type icon is switched on there.",
+      "must_contain_any": [
+        "@file_url",
+        "@size",
+        "@file_type"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The format is mfl_eval_format and the template is <a href=\"@file_url\" download>@name — @size (@file_type)</a> with icon: false, so no data-file-type attribute is emitted on the wrapper. Both live in filter.format.mfl_eval_format → filters.media_directories_file_link.settings (drush cget filter.format.mfl_eval_format filters.media_directories_file_link).",
+      "setup": "agent-module-documentation/evaluation/verify/media_directories_file_link-known-template-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/media_directories_file_link-known-template-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "media_directories_file_link-icon-type",
+      "mode": "introspection",
+      "prompt": "This Drupal site has a text format mfl_icon_format with the media_directories_file_link filter enabled and file icons switched on, plus a document media item named 'MFL zip media'. Run that filter on the live site over a <drupal-media-file-link> tag for that media item and tell me the exact value of the data-file-type attribute the wrapper gets.",
+      "must_contain_any": [
+        "archive"
+      ],
+      "must_not_contain": [],
+      "expected_output": "data-file-type=\"archive\". The media's file is bundle.zip with MIME type application/zip, and MediaFileLinkFilter::getFileTypeForMimeType() maps the 'zip' subtype (via ARCHIVE_SUBTYPES) to the 'archive' category. The rendered markup is <span class=\"media-file-link\" data-file-type=\"archive\"><a href=\"…/mfl-icon/bundle.zip\">Bundle</a></span>.",
+      "setup": "agent-module-documentation/evaluation/verify/media_directories_file_link-icon-type-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/media_directories_file_link-icon-type-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "media_directories_file_link-enable-button",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "This Drupal site has a CKEditor 5 text format with the machine name mfl_task_format. Using media_directories_file_link, give editors of that format a toolbar button for inserting file download links picked from the Media Directories browser, and make sure the inserted tags actually render as links on the front end. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/media_directories_file_link-enable-button-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/media_directories_file_link-enable-button-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/media_directories_file_link-enable-button-cleanup.sh",
+      "expected_output": "Enable filters.media_directories_file_link on filter.format.mfl_task_format (the CKEditor plugin is conditioned on it) and add 'mediaFileLinkButton' to settings.toolbar.items on editor.editor.mfl_task_format. Processing <drupal-media-file-link data-entity-uuid=\"…\">Handbook</drupal-media-file-link> then produces <span class=\"media-file-link\" …><a href=\"…/mfl-task/handbook.txt\">Handbook</a></span>."
+    },
+    {
+      "id": "media_directories_file_link-template",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, the text format mfl_tpl_format already renders media file links with media_directories_file_link at its default settings. Change it so every rendered file link shows the media's name followed by the file's human-readable size, and so no file-type icon attribute is emitted. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/media_directories_file_link-template-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/media_directories_file_link-template-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/media_directories_file_link-template-cleanup.sh",
+      "expected_output": "On filter.format.mfl_tpl_format set filters.media_directories_file_link.settings.template to something using the @name and @size tokens, e.g. <a href=\"@file_url\" download>@name (@size)</a>, and settings.icon to false. The filter then renders <span class=\"media-file-link\"><a href=\"…\" download>MFL template media (20 bytes)</a></span> with no data-file-type attribute."
+    }
+  ]
+}

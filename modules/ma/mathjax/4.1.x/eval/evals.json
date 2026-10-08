@@ -1,0 +1,98 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "mathjax",
+  "version": "4.1.x",
+  "note": "MathJax is a settings form plus one text-format filter. Its config object mathjax.settings has use_cdn, cdn_url, config_type, default_config_string, config_string and enable_for_admin; the configure route is mathjax.settings at /admin/config/content/mathjax behind the single permission 'administer mathjax' (restrict access). config_type 0 = Text Format mode, where nothing attaches globally and the filter plugin filter_mathjax wraps the text in <div class=\"tex2jax_process\"> and attaches mathjax/config + mathjax/source + mathjax/setup; config_type 1 = Custom mode, where hook_page_attachments() attaches them on every page (skipping admin routes unless enable_for_admin). hook_library_info_build() builds mathjax/source from use_cdn/cdn_url or /libraries/MathJax/MathJax.js, and hook_requirements() errors when a local copy is selected but missing. Medium cases read the live mathjax.settings and live filter configuration; hard cases change that real config on the running site.",
+  "evals": [
+    {
+      "id": "mathjax-filter-setup",
+      "mode": "recipe",
+      "prompt": "I installed the Drupal mathjax module and typed $2+2=4$ into an article body, but nothing is typeset. Using the module's recommended 'Text Format' configuration mode, what do I still have to do, and where in the text format must it go?",
+      "must_contain_any": [
+        "filter",
+        "text format",
+        "filter_mathjax",
+        "processing order"
+      ],
+      "must_not_contain": [],
+      "expected_output": "In Text Format mode (config_type 0) the module attaches nothing globally - you must add the MathJax filter (plugin id filter_mathjax) to the text format used by the body field, at /admin/config/content/formats, and move it to the BOTTOM of the 'Filter processing order' so later filters cannot mangle the delimiters or the tex2jax_process wrapper div it adds.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "mathjax-config-keys",
+      "mode": "recipe",
+      "prompt": "What are the configuration keys in Drupal's mathjax.settings, what does config_type control, and what is the difference in how the JavaScript gets attached between its two values?",
+      "must_contain_any": [
+        "config_type",
+        "use_cdn",
+        "enable_for_admin"
+      ],
+      "must_not_contain": [],
+      "expected_output": "mathjax.settings holds use_cdn, cdn_url, config_type, default_config_string, config_string and enable_for_admin. config_type 0 is 'Text Format': the libraries and drupalSettings.mathjax (built from default_config_string) are attached only by the filter_mathjax filter, and js/setup.js adds tex2jax_ignore to the body so only filtered text is typeset. config_type 1 is 'Custom': mathjax_page_attachments() attaches mathjax/config, mathjax/source and mathjax/setup on every page using config_string, returning early on admin routes unless enable_for_admin is set.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "mathjax-local-vs-cdn",
+      "mode": "recipe",
+      "prompt": "How do I make the Drupal mathjax module load MathJax from a local copy instead of the CDN, where exactly must the files live, and how will Drupal tell me if they are not there?",
+      "must_contain_any": [
+        "libraries/MathJax",
+        "use_cdn",
+        "status report"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Untick 'Use MathJax Content Delivery Network (CDN)' on /admin/config/content/mathjax (set use_cdn to 0). hook_library_info_build() then points the mathjax/source library at /libraries/MathJax/MathJax.js?config=TeX-AMS-MML_HTMLorMML, so the unpacked MathJax must sit at /libraries/MathJax/MathJax.js. mathjax_requirements() adds a runtime requirement 'mathjax_local_libraries' with REQUIREMENT_ERROR ('Missing JavaScript libraries') on /admin/reports/status when that file is absent. Remember to rebuild caches, because the library definition is cached.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "mathjax-known-settings",
+      "mode": "introspection",
+      "prompt": "Inspect the live configuration of the mathjax module on this Drupal site and tell me which configuration mode it is in, whether MathJax runs on admin pages, and the exact CDN URL it is set to load.",
+      "must_contain_any": [
+        "jsdelivr",
+        "mathjax@2.7.9"
+      ],
+      "must_not_contain": [],
+      "expected_output": "mathjax.settings currently has config_type: 1 (Custom mode), enable_for_admin: 1 (MathJax is attached on admin routes too) and cdn_url: https://cdn.jsdelivr.net/npm/mathjax@2.7.9/MathJax.js?config=TeX-MML-AM_CHTML with use_cdn: 1. Its config_string is {\"tex2jax\":{\"inlineMath\":[[\"@@\",\"@@\"]]},\"messageStyle\":\"none\"}.",
+      "setup": "agent-module-documentation/evaluation/verify/mathjax-known-settings-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/mathjax-known-settings-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "mathjax-known-format",
+      "mode": "introspection",
+      "prompt": "This Drupal site has two text formats whose machine names begin with mathjax_eval_. Inspect the running site and tell me which one of them will actually have its LaTeX typeset by the mathjax module, and name the filter plugin that decides it.",
+      "must_contain_any": [
+        "mathjax_eval_on"
+      ],
+      "must_not_contain": [],
+      "expected_output": "mathjax_eval_on. Its filter.format.mathjax_eval_on config has filters.filter_mathjax.status: true (weight 100, i.e. last in the processing order); mathjax_eval_off has the same filter present but with status: false. The plugin is filter_mathjax, provided by the mathjax module.",
+      "setup": "agent-module-documentation/evaluation/verify/mathjax-known-format-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/mathjax-known-format-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "mathjax-local-library",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "This Drupal site must not load third-party scripts from a CDN. Reconfigure the mathjax module on the live site so it loads MathJax from the local /libraries/MathJax copy instead of the CDN, and also make MathJax render on admin pages.",
+      "reset": "agent-module-documentation/evaluation/verify/mathjax-local-library-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/mathjax-local-library-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/mathjax-local-library-cleanup.sh",
+      "expected_output": "mathjax.settings must end up with use_cdn: 0 and enable_for_admin: 1 (set on /admin/config/content/mathjax or with drush cset mathjax.settings, followed by a cache rebuild because hook_library_info_build() bakes these into the mathjax/source library)."
+    },
+    {
+      "id": "mathjax-enable-filter",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "site-owner-layman",
+      "prompt": "On this Drupal site there is a text format called 'MathJax Task Format' (machine name mathjax_task_format). Content written with it should show proper mathematical formulas when authors type LaTeX between dollar signs. Please make that work on the live site, and make sure the maths handling happens after everything else that processes the text.",
+      "reset": "agent-module-documentation/evaluation/verify/mathjax-enable-filter-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/mathjax-enable-filter-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/mathjax-enable-filter-cleanup.sh",
+      "expected_output": "filter.format.mathjax_task_format must have filters.filter_mathjax.status: true with a weight greater than or equal to every other enabled filter on that format, i.e. the MathJax filter enabled and placed last in the filter processing order."
+    }
+  ]
+}

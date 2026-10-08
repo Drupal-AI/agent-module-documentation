@@ -1,0 +1,102 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "admin_user_language",
+  "version": "1.2.x",
+  "note": "Admin User Language forces a user's preferred_admin_langcode via hook_entity_presave(). Config admin_user_language.settings has two keys: default_language_to_assign (a langcode, or -1 = no preference, or preferred_langcode = mirror the user's own site language) and prevent_user_override (bool). Shipped defaults: -1 / false. With prevent_user_override FALSE the language is applied only to new users (isNew); with TRUE it is re-applied on every save AND the admin-language field is disabled on the user form. Settings form: admin_user_language.basic_form (/admin/config/admin_user_language/settings); permission 'administer admin interface language'. Medium cases set a known config (assign en / prevent override; and the preferred_langcode option) and read it back. Hard cases: (1) config-only force English + prevent override; (2) a runtime test that adds Dutch (nl), the agent forces nl + prevents override, and verify creates a throwaway user and confirms the presave hook set preferred_admin_langcode to nl, then removes the user and nl.",
+  "evals": [
+    {
+      "id": "admin_user_language-config-keys",
+      "mode": "recipe",
+      "prompt": "On a multilingual Drupal site using the admin_user_language module, which configuration keys control the forced administration-pages language, and where is the settings form?",
+      "must_contain_any": [
+        "default_language_to_assign",
+        "prevent_user_override",
+        "admin_user_language.settings",
+        "/admin/config/admin_user_language/settings"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The admin_user_language.settings config has default_language_to_assign (the langcode to assign, or -1 for no preference, or preferred_langcode to mirror the user's site language) and prevent_user_override (bool). The settings form is at /admin/config/admin_user_language/settings (route admin_user_language.basic_form).",
+      "difficulty": "easy"
+    },
+    {
+      "id": "admin_user_language-force-behavior",
+      "mode": "recipe",
+      "prompt": "In the admin_user_language module, what is the difference in behavior when 'Force language' (prevent_user_override) is off versus on?",
+      "must_contain_any": [
+        "new",
+        "every save",
+        "isNew",
+        "disabled"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Off (FALSE): the language is applied only when the user is new (isNew) - a soft default existing users can change. On (TRUE): it is re-applied on every user save and the administration-pages-language field is disabled on the user form so users cannot change it.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "admin_user_language-field-and-hook",
+      "mode": "recipe",
+      "prompt": "Which user field does the admin_user_language module set, and through which hook does it do so?",
+      "must_contain_any": [
+        "preferred_admin_langcode",
+        "hook_entity_presave",
+        "entity_presave"
+      ],
+      "must_not_contain": [],
+      "expected_output": "It sets the user entity's preferred_admin_langcode field, via hook_entity_presave() (admin_user_language_entity_presave), on user create/update.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "admin_user_language-known-config",
+      "mode": "introspection",
+      "prompt": "This Drupal site has the admin_user_language module configured with a specific policy. Inspect the live configuration and state which administration language is assigned to users and whether users are prevented from overriding it.",
+      "must_contain_any": [
+        "en",
+        "prevent_user_override",
+        "true"
+      ],
+      "must_not_contain": [],
+      "expected_output": "admin_user_language.settings has default_language_to_assign = en and prevent_user_override = true (users are forced to English and cannot override it). Read via drush cget admin_user_language.settings.",
+      "setup": "agent-module-documentation/evaluation/verify/admin_user_language-known-config-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/admin_user_language-known-config-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "admin_user_language-mirror-config",
+      "mode": "introspection",
+      "prompt": "Inspect this site's admin_user_language configuration: what is default_language_to_assign set to, and what does that particular value mean for a user's administration language?",
+      "must_contain_any": [
+        "preferred_langcode",
+        "site language",
+        "user's"
+      ],
+      "must_not_contain": [],
+      "expected_output": "default_language_to_assign is set to the special value 'preferred_langcode', which means each user's administration-pages language mirrors their own site (preferred) language rather than a fixed one. prevent_user_override is false.",
+      "setup": "agent-module-documentation/evaluation/verify/admin_user_language-mirror-config-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/admin_user_language-mirror-config-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "admin_user_language-force-english",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, configure the admin_user_language module so that every user's administration-pages language is forced to English (en) and users are not allowed to override it. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/admin_user_language-force-lang-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/admin_user_language-force-lang-verify.sh",
+      "expected_output": "Set admin_user_language.settings default_language_to_assign = 'en' and prevent_user_override = true (via the settings form or drush cset).",
+      "cleanup": "agent-module-documentation/evaluation/verify/admin_user_language-force-lang-cleanup.sh"
+    },
+    {
+      "id": "admin_user_language-runtime-dutch",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "This site has Dutch (nl) available as a language. Configure the admin_user_language module so that whenever a user is created or saved, their administration-pages language is forced to Dutch and they cannot override it. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/admin_user_language-runtime-nl-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/admin_user_language-runtime-nl-verify.sh",
+      "expected_output": "Set admin_user_language.settings default_language_to_assign = 'nl' and prevent_user_override = true. Verified by creating a new user and confirming hook_entity_presave set its preferred_admin_langcode to 'nl'.",
+      "cleanup": "agent-module-documentation/evaluation/verify/admin_user_language-runtime-nl-cleanup.sh"
+    }
+  ]
+}

@@ -1,0 +1,95 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "event_log_track_taxonomy",
+  "version": "5.0.x",
+  "note": "event_log_track_taxonomy is a submodule of Events Log Track that logs taxonomy events under handler type 'taxonomy' (operations vocabulary insert, vocabulary update, vocabulary delete, term insert, term update, term delete) via entity hooks calling event_log_track.manager->insert(). Medium cases insert a known sentinel row (ref_char ELT_TAX_MED) into the event_log_track table and read it back; hard cases require writing a 'taxonomy' row (ref_char ELT_TAX_HA/ELT_TAX_HB) to the live table, grounded in this submodule's real type/operation vocabulary and the base logging API. ",
+  "evals": [
+    {
+      "id": "event_log_track_taxonomy-what",
+      "mode": "recipe",
+      "prompt": "On a Drupal site, what does the event_log_track_taxonomy submodule of Events Log Track log, and what handler type and operations does it register?",
+      "must_contain_any": [
+        "taxonomy",
+        "vocabulary insert",
+        "vocabulary update"
+      ],
+      "must_not_contain": [],
+      "expected_output": "It logs taxonomy events, registering the handler type 'taxonomy' with operations [vocabulary insert, vocabulary update, vocabulary delete, term insert] via hook_event_log_track_handlers(); rows are written to the event_log_track table.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "event_log_track_taxonomy-how",
+      "mode": "recipe",
+      "prompt": "How does event_log_track_taxonomy hook into Drupal to capture taxonomy events, and what does it depend on?",
+      "must_contain_any": [
+        "taxonomy",
+        "event_log_track",
+        "taxonomy"
+      ],
+      "must_not_contain": [],
+      "expected_output": "`taxonomy_vocabulary_*` and `taxonomy_term_*` hooks log vocabulary and term CUD via the manager. It depends on the base event_log_track module and taxonomy, calling event_log_track.manager->insert() with type 'taxonomy'.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "event_log_track_taxonomy-refs",
+      "mode": "recipe",
+      "prompt": "For a 'taxonomy' event logged by event_log_track_taxonomy, what is stored in the ref_numeric and ref_char columns of the event_log_track table?",
+      "must_contain_any": [
+        "ref_numeric",
+        "ref_char"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Terms: `ref_numeric` = tid, `ref_char` = vocabulary id. Vocabularies: `ref_char` = vid.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "event_log_track_taxonomy-known-op",
+      "mode": "introspection",
+      "prompt": "This site's Events Log Track log contains one 'taxonomy' row with the distinctive ref_char 'ELT_TAX_MED'. Inspect the event_log_track table and report the operation recorded on that row.",
+      "must_contain_any": [
+        "term insert"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The row with ref_char='ELT_TAX_MED' has operation='term insert' (SELECT operation FROM event_log_track WHERE ref_char='ELT_TAX_MED').",
+      "setup": "agent-module-documentation/evaluation/verify/event_log_track_taxonomy-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/event_log_track_taxonomy-clear.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "event_log_track_taxonomy-known-desc",
+      "mode": "introspection",
+      "prompt": "In this site's event_log_track log there is a 'taxonomy' row whose ref_char is 'ELT_TAX_MED'. Report the exact description text stored on that row.",
+      "must_contain_any": [
+        "ELT_TAX_DESC"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The description of the ref_char='ELT_TAX_MED' row is 'ELT_TAX_DESC'.",
+      "setup": "agent-module-documentation/evaluation/verify/event_log_track_taxonomy-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/event_log_track_taxonomy-clear.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "event_log_track_taxonomy-log-a",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "Record a 'taxonomy' event (operation 'term insert') in the Events Log Track log on this site, using ref_char 'ELT_TAX_HA'. Use the module's logging service (event_log_track.manager->insert(); if you run it from the CLI, first enable the log_cli setting) or otherwise persist the row. Apply it to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/event_log_track_taxonomy-clear.sh",
+      "verify": "agent-module-documentation/evaluation/verify/event_log_track_taxonomy-verifya.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/event_log_track_taxonomy-clear.sh",
+      "expected_output": "A row exists in event_log_track with type='taxonomy' and ref_char='ELT_TAX_HA' (e.g. via event_log_track.manager->insert(['type'=>'taxonomy','operation'=>'term insert','description'=>'...','ref_char'=>'ELT_TAX_HA']))."
+    },
+    {
+      "id": "event_log_track_taxonomy-log-b",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "Record a 'taxonomy' event for the 'term delete' operation in Events Log Track using ref_char 'ELT_TAX_HB'. Apply it to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/event_log_track_taxonomy-clear.sh",
+      "verify": "agent-module-documentation/evaluation/verify/event_log_track_taxonomy-verifyb.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/event_log_track_taxonomy-clear.sh",
+      "expected_output": "A row exists in event_log_track with type='taxonomy', operation='term delete' and ref_char='ELT_TAX_HB'."
+    }
+  ]
+}

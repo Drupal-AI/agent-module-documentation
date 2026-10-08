@@ -1,0 +1,84 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "coi",
+  "version": "4.0.x",
+  "note": "Config Override Inspector (COI) reads the #config['key'] hints added by config_override_core_fields, splits config.object:key, and calls Config::hasOverrides(). All behavior comes from one config object coi.settings: override_behavior (disable|noaccess|''), message.enabled/template, overridden_value.enabled/element/secrets, styling.selectors/default. Shipped defaults: override_behavior=disable, message.enabled=true, message.template='This field is overridden by environment specific configuration.', overridden_value.enabled=true, element=true, secrets=false, styling.selectors=true, default=true. Configure route coi.settings (/admin/config/user-interface/coi); permission 'administer config override inspector'. Medium cases read a seeded coi.settings value; hard cases change coi.settings and verify on the live config. coi.settings is owned by this module, so cases mutate and restore only its own config.",
+  "evals": [
+    {
+      "id": "coi-behavior-options",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "In Config Override Inspector (COI), the override_behavior setting controls what happens to a config form field whose value is overridden. What are its possible values and what does each one do?",
+      "must_contain_any": [
+        "disable",
+        "noaccess",
+        "override_behavior"
+      ],
+      "must_not_contain": [],
+      "expected_output": "override_behavior in coi.settings is 'disable' (default; disable the element and optionally show the overridden value as its default), 'noaccess' (hide the element via #access=FALSE), or '' (none; only add CSS classes / a message, don't disable or hide)."
+    },
+    {
+      "id": "coi-detection",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "How does COI decide that a configuration form field is overridden, what does it rely on to know which config each field edits, and what does it do to an overridden field by default?",
+      "must_contain_any": [
+        "hasOverrides",
+        "#config",
+        "config_override_core_fields",
+        "disable"
+      ],
+      "must_not_contain": [],
+      "expected_output": "COI reads the #config['key'] (or #config_data_store['key']) hint added by config_override_core_fields, splits config.object:key, and calls Config::hasOverrides(key). When true, by default (override_behavior=disable) it disables the field and can inject the overridden value, plus adds config--overridden classes and an override message."
+    },
+    {
+      "id": "coi-known-behavior",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "Inspect the live COI configuration on this site and state the current value of the override_behavior setting.",
+      "must_contain_any": [
+        "noaccess"
+      ],
+      "must_not_contain": [],
+      "expected_output": "coi.settings override_behavior is currently 'noaccess' (drush config:get coi.settings override_behavior).",
+      "setup": "agent-module-documentation/evaluation/verify/coi-known-behavior-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/coi-known-behavior-cleanup.sh"
+    },
+    {
+      "id": "coi-known-message",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "COI shows a message next to overridden config fields. Inspect the live coi.settings configuration and report the exact override message template currently configured.",
+      "must_contain_any": [
+        "COI known override message"
+      ],
+      "must_not_contain": [],
+      "expected_output": "coi.settings message.template is currently 'COI known override message' (from coi.settings; message.enabled controls whether it is shown).",
+      "setup": "agent-module-documentation/evaluation/verify/coi-message-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/coi-message-cleanup.sh"
+    },
+    {
+      "id": "coi-set-noaccess",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, configure Config Override Inspector so that overridden config form fields are HIDDEN (no access) rather than merely disabled. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/coi-set-noaccess-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/coi-set-noaccess-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/coi-set-noaccess-cleanup.sh",
+      "expected_output": "coi.settings override_behavior is set to 'noaccess' (e.g. drush config:set coi.settings override_behavior noaccess), which makes overridden fields get #access=FALSE."
+    },
+    {
+      "id": "coi-expose-secrets",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "Configure Config Override Inspector so that overridden values on fields marked as secret are exposed (shown) rather than masked. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/coi-secrets-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/coi-secrets-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/coi-secrets-cleanup.sh",
+      "expected_output": "coi.settings overridden_value.secrets is set to true (e.g. drush config:set coi.settings overridden_value.secrets 1), so COI shows overridden values even for secret-marked elements."
+    }
+  ]
+}

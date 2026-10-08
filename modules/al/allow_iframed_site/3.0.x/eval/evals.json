@@ -1,0 +1,80 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "allow_iframed_site",
+  "version": "3.0.x",
+  "note": "Allow site to be iframed removes the X-Frame-Options response header on selected paths so those pages can be embedded in an <iframe>. A response event subscriber (RemoveXFrameOptionsSubscriber, priority -10 on KernelEvents::RESPONSE) evaluates core's request_path condition and removes the header on matching responses. Configuration lives in allow_iframed_site.settings under the request_path key: pages (newline path list) and negate (0/1). The settings form is /admin/config/system/allow_iframed_site (permission administer site configuration); saving it flushes all caches. If pages is empty and negate is 0 the header is kept (no-op). The module ships no config/install and no config schema - the config is created on first save. It manages only X-Frame-Options, not CSP frame-ancestors. Medium cases read the live request_path config; hard cases set it (allow a path; negate to allow-everywhere-except), verified live. Baseline is restored by deleting allow_iframed_site.settings.",
+  "evals": [
+    {
+      "id": "allow_iframed_site-which-header",
+      "mode": "recipe",
+      "prompt": "What does the Drupal allow_iframed_site module do to let a page be embedded in an iframe? Name the specific HTTP response header involved.",
+      "must_contain_any": ["X-Frame-Options"],
+      "must_not_contain": [],
+      "expected_output": "It removes the X-Frame-Options response header on the paths you select (via a response event subscriber), so those pages are no longer blocked from being framed by other origins.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "allow_iframed_site-where-configured",
+      "mode": "recipe",
+      "prompt": "Using allow_iframed_site, how do I choose which paths are allowed to be iframed, and where is that stored?",
+      "must_contain_any": ["request_path", "pages", "/admin/config/system/allow_iframed_site", "settings form", "Request path"],
+      "must_not_contain": [],
+      "expected_output": "On the settings form at /admin/config/system/allow_iframed_site (permission 'administer site configuration') you enter paths using core's Request path condition (a Pages list plus a Negate toggle). It is stored in allow_iframed_site.settings under the request_path key (pages + negate).",
+      "difficulty": "easy"
+    },
+    {
+      "id": "allow_iframed_site-caveat",
+      "mode": "recipe",
+      "prompt": "What is the security risk of using allow_iframed_site to remove X-Frame-Options, and what does the negate option do?",
+      "must_contain_any": ["clickjacking", "negate", "except"],
+      "must_not_contain": [],
+      "expected_output": "Removing X-Frame-Options re-exposes those pages to clickjacking (the module warns 'Watch out for clickjacking!'), so scope the paths tightly. The Negate option inverts the match: with negate on, the header is stripped everywhere EXCEPT the listed pages.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "allow_iframed_site-read-pages",
+      "mode": "introspection",
+      "prompt": "On this Drupal site, allow_iframed_site is configured so that certain paths can be embedded in an iframe. Inspect the live configuration and list the path(s) that are allowed to be framed.",
+      "must_contain_any": ["/aisframe-demo"],
+      "must_not_contain": [],
+      "expected_output": "The framable paths are /aisframe-demo and /aisframe-demo/*: allow_iframed_site.settings.request_path.pages = \"/aisframe-demo\\n/aisframe-demo/*\" with negate off.",
+      "setup": "agent-module-documentation/evaluation/verify/allow_iframed_site-read-pages-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/allow_iframed_site-read-pages-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "allow_iframed_site-read-negate",
+      "mode": "introspection",
+      "prompt": "On this Drupal site, inspect the allow_iframed_site configuration. Is framing allowed only on the listed path, or everywhere except it? Explain what the current request_path setting means.",
+      "must_contain_any": ["negate", "except", "/np-except"],
+      "must_not_contain": [],
+      "expected_output": "Negate is on: allow_iframed_site.settings.request_path has negate = true and pages = /np-except, so X-Frame-Options is removed (framing allowed) everywhere EXCEPT /np-except.",
+      "setup": "agent-module-documentation/evaluation/verify/allow_iframed_site-read-negate-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/allow_iframed_site-read-negate-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "allow_iframed_site-allow-embed",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, use the allow_iframed_site module to allow the path /embed-ok to be embedded in an iframe (remove X-Frame-Options for that path only, without negating). Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/allow_iframed_site-allow-embed-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/allow_iframed_site-allow-embed-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/allow_iframed_site-allow-embed-cleanup.sh",
+      "expected_output": "Set allow_iframed_site.settings.request_path.pages to include /embed-ok with negate off (via the Request path condition on /admin/config/system/allow_iframed_site, or by saving the request_path config). The response subscriber then removes X-Frame-Options on /embed-ok."
+    },
+    {
+      "id": "allow_iframed_site-except-admin",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "site-owner",
+      "prompt": "I want my site's pages to be embeddable in iframes everywhere, except I do NOT want the /admin area to be framable. Using the 'Allow site to be iframed' module, set that up and make it live.",
+      "reset": "agent-module-documentation/evaluation/verify/allow_iframed_site-except-admin-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/allow_iframed_site-except-admin-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/allow_iframed_site-except-admin-cleanup.sh",
+      "expected_output": "Configure allow_iframed_site.settings.request_path with pages listing /admin and negate = true, so X-Frame-Options is removed everywhere except /admin (set via the Pages list + Negate checkbox on the settings form, or by saving the request_path config)."
+    }
+  ]
+}

@@ -1,0 +1,2 @@
+<!-- SPDX-License-Identifier: GPL-2.0-or-later -->
+Commerce Stripe iDEAL (v2.2.x): offsite Stripe gateway src/Plugin/Commerce/PaymentGateway/StripeIdeal.php using stripe/stripe-php PaymentIntents. onNotify() verifies the Stripe-Signature header via Webhook::constructEvent (configurable signing secret) and catches SignatureVerificationException; onReturn() re-retrieves the PaymentIntent. SOUND -- signed-webhook + authoritative API status. Depends on commerce_payment; requires stripe/stripe-php.

@@ -1,0 +1,80 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "commerce_cart_api",
+  "version": "1.9.x",
+  "note": "Commerce Cart API exposes Drupal Commerce carts as REST resources. It ships eight resource plugins (commerce_cart_collection GET /cart, commerce_cart_canonical GET /cart/{commerce_order}, commerce_cart_add POST /cart/add, commerce_cart_clear DELETE /cart/{commerce_order}/items, commerce_cart_remove_item DELETE .../items/{commerce_order_item}, commerce_cart_update_item PATCH same, commerce_cart_update_items PATCH .../items, commerce_cart_coupons GET/PATCH/DELETE .../coupons). Each is inactive until a rest.resource.<id> config entity activates it (default formats [json], authentication [cookie]). No admin UI (configure=null), no permissions of its own; access via REST auth + the _cart_api session-cart check. Optional cart-token mode is a service parameter commerce_cart_api.use_cart_token_session; clients then carry the cart via the Commerce-Cart-Token header or cartToken query param. Medium/hard cases are grounded in the rest.resource config entities: inspect an enabled resource's method/path, and enable a resource by creating its rest.resource config, verified via RestResourceConfig (no live HTTP, avoiding the module's serializer). Fixtures are the commerce_cart_* rest.resource entities, created/removed by the scripts.",
+  "evals": [
+    {
+      "id": "commerce_cart_api-endpoints",
+      "mode": "recipe",
+      "prompt": "Using the Commerce Cart API module, what is the HTTP method and URL to add a product to the cart, and what URL returns the current cart(s) as JSON?",
+      "must_contain_any": ["/cart/add", "POST /cart/add", "/cart"],
+      "must_not_contain": [],
+      "expected_output": "Add to cart is POST /cart/add (the commerce_cart_add resource); the current session's carts are returned by GET /cart (commerce_cart_collection), and a single cart by GET /cart/{commerce_order} (commerce_cart_canonical). All use ?_format=json.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "commerce_cart_api-cart-token",
+      "mode": "recipe",
+      "prompt": "With the Commerce Cart API, how can a decoupled/anonymous JavaScript client keep track of its cart without relying on the Drupal session cookie? Name the setting to enable and the request header used.",
+      "must_contain_any": ["Commerce-Cart-Token", "use_cart_token_session", "cartToken"],
+      "must_not_contain": [],
+      "expected_output": "Enable the cart token mode by setting the service parameter commerce_cart_api.use_cart_token_session to TRUE (a services.yml override), then the client carries the cart with the 'Commerce-Cart-Token' request header (or the ?cartToken= query parameter).",
+      "difficulty": "easy"
+    },
+    {
+      "id": "commerce_cart_api-enable-how",
+      "mode": "recipe",
+      "prompt": "In Commerce Cart API, the cart endpoints are REST resource plugins. How do you actually turn one of them on, and what are the default format and authentication?",
+      "must_contain_any": ["rest.resource", "RestResourceConfig", "rest:enable", "cookie", "json"],
+      "must_not_contain": [],
+      "expected_output": "Each resource plugin (e.g. commerce_cart_add) is activated by creating a rest.resource.<id> config entity (like any core REST resource) — e.g. drush rest:enable commerce_cart_add, or a RestResourceConfig with granularity 'resource'. Defaults are formats: [json] and authentication: [cookie].",
+      "difficulty": "easy"
+    },
+    {
+      "id": "commerce_cart_api-known-add",
+      "mode": "introspection",
+      "prompt": "On this Drupal site, the Commerce Cart API 'add to cart' REST resource is enabled. Inspect the live REST configuration and state which HTTP method it uses and the URL path it is served at.",
+      "must_contain_any": ["POST", "/cart/add"],
+      "must_not_contain": [],
+      "expected_output": "It uses POST at /cart/add. The rest.resource.commerce_cart_add config (plugin commerce_cart_add) has configuration.methods [POST]; the commerce_cart_add resource plugin's canonical/create path is /cart/add.",
+      "setup": "agent-module-documentation/evaluation/verify/commerce_cart_api-known-add-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/commerce_cart_api-known-add-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "commerce_cart_api-known-canonical",
+      "mode": "introspection",
+      "prompt": "One Commerce Cart API REST resource is enabled on this site that returns a single specific cart by its order id. Inspect the live REST configuration and give the resource's plugin id and its URL path.",
+      "must_contain_any": ["commerce_cart_canonical", "/cart/{commerce_order}"],
+      "must_not_contain": [],
+      "expected_output": "The commerce_cart_canonical resource, served (GET) at /cart/{commerce_order}. Its rest.resource.commerce_cart_canonical config is enabled with methods [GET].",
+      "setup": "agent-module-documentation/evaluation/verify/commerce_cart_api-known-canonical-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/commerce_cart_api-known-canonical-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "commerce_cart_api-enable-add",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal Commerce site, enable the Commerce Cart API 'add to cart' REST resource (commerce_cart_add) so a client can POST to /cart/add with JSON over cookie authentication. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/commerce_cart_api-enable-add-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/commerce_cart_api-enable-add-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/commerce_cart_api-enable-add-cleanup.sh",
+      "expected_output": "Create the rest.resource.commerce_cart_add config entity (plugin_id commerce_cart_add, granularity resource, methods [POST], formats [json], authentication [cookie]) — e.g. drush rest:enable commerce_cart_add, or RestResourceConfig::create([...])->save(). It must be enabled (status true)."
+    },
+    {
+      "id": "commerce_cart_api-enable-collection",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "site-owner",
+      "prompt": "I'm building a headless storefront on my Drupal Commerce site and I need the endpoint that returns the shopper's current cart(s) as JSON at /cart. Using the Commerce Cart API module, turn that endpoint on for the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/commerce_cart_api-enable-collection-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/commerce_cart_api-enable-collection-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/commerce_cart_api-enable-collection-cleanup.sh",
+      "expected_output": "Enable the commerce_cart_collection resource (GET /cart) by creating its rest.resource.commerce_cart_collection config entity (plugin_id commerce_cart_collection, granularity resource, methods [GET], formats [json], authentication [cookie]) — e.g. drush rest:enable commerce_cart_collection. It must be enabled (status true)."
+    }
+  ]
+}

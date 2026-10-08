@@ -1,0 +1,65 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "entity_reference_revisions",
+  "version": "1.14.x",
+  "note": "ERR is an API/field-infrastructure module (foundation for Paragraphs) with no config UI, so all cases are `recipe` (response-graded), not `execution` (live-state). Cases probe the field type's dual storage columns, how it differs from core entity_reference, the needs-save interface, and the orphan-purge surface.",
+  "evals": [
+    {
+      "id": "err-field-type-columns",
+      "mode": "recipe",
+      "prompt": "On a Drupal 11 site, which field type does the Entity Reference Revisions module provide, and what does a single field item store beyond a plain entity reference? Name the field type id and the stored properties.",
+      "must_contain_any": ["target_revision_id"],
+      "must_not_contain": [],
+      "expected_output": "The `entity_reference_revisions` field type. Each item stores both `target_id` (the referenced entity ID) and `target_revision_id` (the specific pinned revision), plus a computed `entity` property that loads that revision."
+    },
+    {
+      "id": "err-vs-core-entity-reference",
+      "mode": "recipe",
+      "prompt": "How does an entity_reference_revisions field differ from a core entity_reference field on a Drupal site? Explain in terms of what each one resolves to.",
+      "must_contain_any": ["target_revision_id", "specific revision", "pins"],
+      "must_not_contain": [],
+      "expected_output": "Core entity_reference stores only target_id and always resolves to the target's default/current revision. ERR additionally stores target_revision_id, so a host revision pins the exact child revision that existed when the host was saved — enabling revisionable composite children like Paragraphs."
+    },
+    {
+      "id": "err-widget-formatters",
+      "mode": "recipe",
+      "prompt": "For an entity_reference_revisions field in Drupal, which widget attaches an existing referenced entity via autocomplete, and which formatter renders the referenced revision in a chosen view mode? Name the plugin ids.",
+      "must_contain_any": ["entity_reference_revisions_autocomplete", "entity_reference_revisions_entity_view"],
+      "must_not_contain": [],
+      "expected_output": "Widget: `entity_reference_revisions_autocomplete`. Formatter: `entity_reference_revisions_entity_view` (renders in a view mode); the `entity_reference_revisions_label` formatter shows just the label, optionally linked."
+    },
+    {
+      "id": "err-needs-save",
+      "mode": "recipe",
+      "prompt": "In a custom Drupal module I have a child content entity that should get a new revision saved automatically whenever its parent host entity is saved through an entity_reference_revisions field. What interface/trait from the ERR module should the child entity use, and what methods does it provide?",
+      "must_contain_any": ["EntityNeedsSaveInterface", "EntityNeedsSaveTrait", "needsSave"],
+      "must_not_contain": [],
+      "expected_output": "Implement `EntityNeedsSaveInterface` and use `EntityNeedsSaveTrait`, which provide `needsSave()` / `setNeedsSave(bool)`. On host save, ERR creates a new revision of any referenced entity whose needsSave() is TRUE and updates its target_revision_id."
+    },
+    {
+      "id": "err-read-item-api",
+      "mode": "recipe",
+      "prompt": "In PHP on a Drupal site, given a host entity `$host` with an entity_reference_revisions field `field_children`, how do I read the pinned revision ID and the loaded child entity of the first item? Show the code.",
+      "must_contain_any": ["target_revision_id", "->entity"],
+      "must_not_contain": [],
+      "expected_output": "$item = $host->get('field_children')->get(0); then $item->target_id, $item->target_revision_id (the pinned revision), and $item->entity (the loaded target revision)."
+    },
+    {
+      "id": "err-orphan-purge-drush",
+      "mode": "recipe",
+      "prompt": "Composite child entities (e.g. paragraphs) whose parent no longer references them have piled up as orphan revisions on a Drupal site. Which drush command does the Entity Reference Revisions module provide to purge them for the `paragraph` entity type?",
+      "must_contain_any": ["err:purge", "errp"],
+      "must_not_contain": [],
+      "expected_output": "drush err:purge paragraph (alias: errp). The <types> argument is a comma-delimited list of composite entity type ids; running err:purge with no argument prompts interactively."
+    },
+    {
+      "id": "err-orphan-purger-service",
+      "mode": "recipe",
+      "prompt": "Programmatically on a Drupal site, which ERR service finds and deletes orphaned composite revisions, and what permission gates the admin orphan-deletion form? Name the service id and the permission.",
+      "must_contain_any": ["entity_reference_revisions.orphan_purger", "delete orphan revisions"],
+      "must_not_contain": [],
+      "expected_output": "Service `entity_reference_revisions.orphan_purger` (EntityReferenceRevisionsOrphanPurger) with getCompositeEntityTypes() and setBatch($types). The admin delete form is gated by the `delete orphan revisions` permission; a queue worker processes purge jobs on cron."
+    }
+  ]
+}

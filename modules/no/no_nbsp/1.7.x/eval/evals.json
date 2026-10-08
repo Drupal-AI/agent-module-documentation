@@ -1,0 +1,80 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "no_nbsp",
+  "version": "1.7.x",
+  "note": "No Non-breaking Space Filter removes &nbsp; / U+00A0 and collapses leftover spaces via _no_nbsp_eraser(). Two plugin instances: a text-format filter filter_no_nbsp (TYPE_TRANSFORM_IRREVERSIBLE, one setting preserve_placeholders default false) and a field formatter no_nbsp (for text/text_long/text_with_summary). No configure route of its own, no permissions, no Drush, no new plugin type. The filter's config lives in the text format at filter.format.<id>.filters.filter_no_nbsp (schema filter_settings.filter_no_nbsp). Medium/hard scripts create throwaway namespaced text formats (no_nbsp_med / no_nbsp_hard), enable/read the filter, and delete the format on cleanup.",
+  "evals": [
+    {
+      "id": "no_nbsp-what-it-does",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "What does the Drupal no_nbsp module do to content, and what happens to the leftover spaces?",
+      "must_contain_any": ["non-breaking space", "nbsp", "U+00A0", "00A0"],
+      "must_not_contain": [],
+      "expected_output": "It deletes all non-breaking spaces (both the &nbsp; HTML entity and the raw U+00A0 character), replacing them with normal spaces and collapsing multiple contiguous spaces into a single space."
+    },
+    {
+      "id": "no_nbsp-two-ways",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "What are the two ways the no_nbsp module lets me strip non-breaking spaces from content in Drupal?",
+      "must_contain_any": ["filter", "formatter", "text format"],
+      "must_not_contain": [],
+      "expected_output": "A text-format filter plugin (filter_no_nbsp) enabled on a text format so all content using that format is cleaned; and a field formatter (no_nbsp) for text/text_long/text_with_summary fields that cleans a single field's output at display time without changing its text format."
+    },
+    {
+      "id": "no_nbsp-preserve-placeholders",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "The no_nbsp text filter has a 'Preserve placeholders' setting. What does turning it on do?",
+      "must_contain_any": ["preserve_placeholders", "placeholder", "empty tag", "<p>&nbsp;</p>", "surrounded"],
+      "must_not_contain": [],
+      "expected_output": "When Preserve placeholders (preserve_placeholders) is on, a non-breaking space that sits directly inside an otherwise-empty tag (e.g. <p>&nbsp;</p>) is kept as a spacing placeholder instead of being stripped; when off (the default) all non-breaking spaces are removed."
+    },
+    {
+      "id": "no_nbsp-format-state",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "On this Drupal site there is a text format named 'No Nbsp Med' (machine name no_nbsp_med). Inspect the live configuration: is the No Non-breaking Space filter enabled on it, and is 'Preserve placeholders' turned on?",
+      "must_contain_any": ["preserve_placeholders", "preserve placeholders", "placeholder"],
+      "must_not_contain": [],
+      "expected_output": "Yes, filter_no_nbsp is enabled on filter.format.no_nbsp_med, and its preserve_placeholders setting is true.",
+      "setup": "agent-module-documentation/evaluation/verify/no_nbsp-format-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/no_nbsp-format-cleanup.sh"
+    },
+    {
+      "id": "no_nbsp-which-filter-id",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "Which no_nbsp filter plugin is active on the 'no_nbsp_med' text format on this site? Inspect the live text-format configuration and give the filter's plugin id.",
+      "must_contain_any": ["filter_no_nbsp"],
+      "must_not_contain": [],
+      "expected_output": "The plugin id is filter_no_nbsp (enabled under filter.format.no_nbsp_med.filters).",
+      "setup": "agent-module-documentation/evaluation/verify/no_nbsp-format-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/no_nbsp-format-cleanup.sh"
+    },
+    {
+      "id": "no_nbsp-enable-on-format",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site there is a text format with machine name 'no_nbsp_hard'. Using the no_nbsp module, enable its No Non-breaking Space filter on that text format so content rendered through it has non-breaking spaces stripped. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/no_nbsp-enable-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/no_nbsp-enable-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/no_nbsp-enable-cleanup.sh",
+      "expected_output": "Enable the filter_no_nbsp filter on filter.format.no_nbsp_hard (status true), e.g. $f = FilterFormat::load('no_nbsp_hard'); $f->setFilterConfig('filter_no_nbsp', ['status' => TRUE, 'settings' => ['preserve_placeholders' => FALSE]]); $f->save();"
+    },
+    {
+      "id": "no_nbsp-enable-preserve",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this site there is a text format with machine name 'no_nbsp_pp'. Using the no_nbsp module, enable its No Non-breaking Space filter on that format, but configure it so that a non-breaking space inside an otherwise-empty tag (like <p>&nbsp;</p>) is preserved. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/no_nbsp-preserve-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/no_nbsp-preserve-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/no_nbsp-preserve-cleanup.sh",
+      "expected_output": "Enable filter_no_nbsp on filter.format.no_nbsp_pp with status true and settings.preserve_placeholders = TRUE, e.g. $f->setFilterConfig('filter_no_nbsp', ['status' => TRUE, 'settings' => ['preserve_placeholders' => TRUE]]); $f->save();"
+    }
+  ]
+}

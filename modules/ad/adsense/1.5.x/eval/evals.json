@@ -1,0 +1,80 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "adsense",
+  "version": "1.5.x",
+  "note": "AdSense integrates the third-party Google AdSense service, so ALL evals are grounded in LOCAL Drupal config and blocks only - never a live ad call. Global state is the adsense.settings config object: adsense_basic_id (publisher ID, read by PublisherId::get()), adsense_disable, adsense_test_mode, adsense_placeholder (default true -> renders a local placeholder box instead of a real ad), adsense_placeholder_text, adsense_managed_page_level_ads_enabled (auto ads). Ads are surfaced as blocks (adsense_managed_ad_block, adsense_cse_ad_block), the [adsense:...] input filter (filter_adsense), or auto ads. Medium cases set a known adsense.settings value and read it back; hard cases set the publisher ID and place a managed ad block, both verified against live local config (placeholder/disable settings keep it dev-safe).",
+  "evals": [
+    {
+      "id": "adsense-publisher-id-key",
+      "mode": "recipe",
+      "prompt": "In the Drupal AdSense module, which configuration key stores the site's Google AdSense publisher ID (ca-pub-...), and which class/method reads it?",
+      "must_contain_any": ["adsense_basic_id", "PublisherId"],
+      "must_not_contain": [],
+      "expected_output": "The publisher ID is stored in adsense.settings under adsense_basic_id and read via Drupal\\adsense\\PublisherId::get().",
+      "difficulty": "easy"
+    },
+    {
+      "id": "adsense-dev-placeholder",
+      "mode": "recipe",
+      "prompt": "I'm developing locally with the Drupal AdSense module and do not want it to make real Google ad requests. Which settings let AdSense render a placeholder box (or nothing) instead of calling Google?",
+      "must_contain_any": ["adsense_placeholder", "adsense_disable", "adsense_test_mode"],
+      "must_not_contain": [],
+      "expected_output": "Keep adsense_placeholder on (default true) so ad units render a local placeholder box (adsense_placeholder_text); adsense_disable turns all ads off, and adsense_test_mode flags requests as tests. All are in adsense.settings.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "adsense-placement-methods",
+      "mode": "recipe",
+      "prompt": "What are the ways the Drupal AdSense module lets you place an ad unit on a page?",
+      "must_contain_any": ["block", "filter", "[adsense:", "auto ads", "page-level"],
+      "must_not_contain": [],
+      "expected_output": "Three ways: place a block (e.g. adsense_managed_ad_block or adsense_cse_ad_block), use the AdSense input filter (filter_adsense) with [adsense:format:slot] / [adsense:block:machine_name] tags in body text, or enable auto/page-level ads (adsense_managed_page_level_ads_enabled).",
+      "difficulty": "easy"
+    },
+    {
+      "id": "adsense-known-pubid",
+      "mode": "introspection",
+      "prompt": "On this Drupal site the AdSense publisher ID has been configured. Inspect the live AdSense configuration and report the exact publisher ID value.",
+      "must_contain_any": ["ca-pub-1234567890123456"],
+      "must_not_contain": [],
+      "expected_output": "adsense.settings:adsense_basic_id is 'ca-pub-1234567890123456'.",
+      "setup": "agent-module-documentation/evaluation/verify/adsense-known-pubid-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/adsense-known-pubid-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "adsense-known-placeholder-text",
+      "mode": "introspection",
+      "prompt": "This site shows a custom placeholder text where AdSense ads would appear. Inspect the live AdSense configuration and give the exact placeholder text.",
+      "must_contain_any": ["ADSENSE EVAL SLOT"],
+      "must_not_contain": [],
+      "expected_output": "adsense.settings:adsense_placeholder_text is 'ADSENSE EVAL SLOT'.",
+      "setup": "agent-module-documentation/evaluation/verify/adsense-known-placeholder-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/adsense-known-placeholder-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "adsense-set-pubid",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, configure the AdSense module with the publisher ID 'ca-pub-0000000000000000'. Apply the change to the live configuration. (Do not make any live Google request.)",
+      "reset": "agent-module-documentation/evaluation/verify/adsense-set-pubid-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/adsense-set-pubid-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/adsense-set-pubid-cleanup.sh",
+      "expected_output": "Set adsense.settings:adsense_basic_id to 'ca-pub-0000000000000000' (e.g. drush cset adsense.settings adsense_basic_id 'ca-pub-0000000000000000' -y, or on the AdSense settings form at /admin/config/services/adsense)."
+    },
+    {
+      "id": "adsense-place-block",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, place a managed AdSense ad block: create a block named 'adsense_eval_ad' using the AdSense managed ad block plugin, with its ad slot (Ad ID) set to 1234567890, in the content region of the default theme. Apply it to the live site. (Placeholder mode keeps it dev-safe; do not make a live ad request.)",
+      "reset": "agent-module-documentation/evaluation/verify/adsense-place-block-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/adsense-place-block-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/adsense-place-block-cleanup.sh",
+      "expected_output": "Create a block config entity id 'adsense_eval_ad' with plugin 'adsense_managed_ad_block' and settings.ad_slot '1234567890' in the default theme's content region, e.g. Drupal\\block\\Entity\\Block::create(['id'=>'adsense_eval_ad','plugin'=>'adsense_managed_ad_block','theme'=>\\Drupal::config('system.theme')->get('default'),'region'=>'content','settings'=>['id'=>'adsense_managed_ad_block','label'=>'Ad','label_display'=>0,'ad_slot'=>'1234567890','ad_format'=>'responsive']])->save();"
+    }
+  ]
+}

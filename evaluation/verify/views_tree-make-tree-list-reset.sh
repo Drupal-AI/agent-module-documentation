@@ -1,0 +1,33 @@
+#!/usr/bin/env bash
+# Execution RESET: (re)create view "views_tree_task" with a plain default (unformatted list)
+# style and NO tree configuration, so verify FAILS until the agent switches it to the Views
+# Tree "tree" style with main_field/parent_field. Idempotent. Exit 0.
+set -uo pipefail
+cd /var/www/html
+drush php:eval '
+  use Drupal\views\Entity\View;
+  if ($v = View::load("views_tree_task")) { $v->delete(); }
+  View::create([
+    "id" => "views_tree_task",
+    "label" => "Views Tree Task",
+    "base_table" => "node_field_data",
+    "base_field" => "nid",
+    "display" => [
+      "default" => [
+        "display_plugin" => "default",
+        "id" => "default",
+        "display_title" => "Default",
+        "position" => 0,
+        "display_options" => [
+          "style" => ["type" => "default", "options" => []],
+          "fields" => [
+            "nid" => ["id"=>"nid","table"=>"node_field_data","field"=>"nid","plugin_id"=>"field"],
+            "title" => ["id"=>"title","table"=>"node_field_data","field"=>"title","plugin_id"=>"field"],
+          ],
+        ],
+      ],
+    ],
+  ])->save();
+' >/dev/null 2>&1
+drush cr >/dev/null 2>&1
+echo "reset: views.view.views_tree_task style=default (no tree config)"

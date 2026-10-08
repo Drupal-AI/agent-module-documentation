@@ -1,0 +1,80 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "entity_reference_validators",
+  "version": "2.0.x",
+  "note": "Entity Reference validators has no config UI page and no configure route (configure=null). It adds two opt-in validation constraints (CircularReference, DuplicateReference) to entity_reference fields via per-field third-party settings stored on the FieldConfig: field.field.<entity>.<bundle>.<field> -> third_party_settings.entity_reference_validators.{circular_reference,circular_reference_deep,duplicate_reference}. hook_entity_bundle_field_info_alter() reads those booleans and calls $field->addConstraint('CircularReference', ['deep'=>...]) / addConstraint('DuplicateReference'). The circular checkboxes only show when the field's target entity type equals the host entity type. All medium/hard cases are grounded in that real third-party setting on entity_reference fields created on the Article content type (targeting nodes).",
+  "evals": [
+    {
+      "id": "erv-prevent-circular",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "On a Drupal 11 site I have an entity reference field where a node can reference other nodes, and I want to stop a node from referencing itself. The entity_reference_validators module is enabled. How do I turn that on, and what constraint enforces it?",
+      "must_contain_any": ["circular_reference", "CircularReference", "circular reference", "third_party", "Prevent circular references"],
+      "must_not_contain": [],
+      "expected_output": "Edit the entity reference field (Manage fields -> the field -> Edit). In the 'Reference validators' fieldset tick 'Prevent circular references'. That stores third_party_settings.entity_reference_validators.circular_reference = true on the FieldConfig, and hook_entity_bundle_field_info_alter() adds the 'CircularReference' constraint. The checkbox only appears when the field's target entity type equals the host entity type."
+    },
+    {
+      "id": "erv-prevent-duplicates",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "Using the entity_reference_validators module, how do I stop a multi-value entity reference field from letting an editor reference the same target entity twice? Name the setting and the constraint.",
+      "must_contain_any": ["duplicate_reference", "DuplicateReference", "Prevent entity from referencing duplicates", "duplicate"],
+      "must_not_contain": [],
+      "expected_output": "Tick 'Prevent entity from referencing duplicates' on the field's edit form, which sets third_party_settings.entity_reference_validators.duplicate_reference = true; hook_entity_bundle_field_info_alter() then adds the 'DuplicateReference' constraint, which rejects a value list where the same target_id appears more than once."
+    },
+    {
+      "id": "erv-deep-check",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "The entity_reference_validators module has a 'Recursively check circular references' option. What third-party setting key controls it, what does it change about the circular-reference check, and when is the option available?",
+      "must_contain_any": ["circular_reference_deep", "deep", "recursively", "recursive"],
+      "must_not_contain": [],
+      "expected_output": "The key is circular_reference_deep. With deep on, the CircularReference constraint walks the whole reference tree via the same field (catching indirect loops like A->B->A), not just a direct self-reference. It is only usable when 'Prevent circular references' is on, and (like the circular checkbox) only when the field's target entity type equals the host entity type."
+    },
+    {
+      "id": "erv-known-circular",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "On this Drupal site, the Article content type has an entity reference field configured with entity_reference_validators to prevent circular references. Inspect the live field configuration and give the machine name of that field.",
+      "must_contain_any": ["field_erv_known"],
+      "must_not_contain": [],
+      "expected_output": "field_erv_known: config field.field.node.article.field_erv_known has third_party_settings.entity_reference_validators.circular_reference = true.",
+      "setup": "agent-module-documentation/evaluation/verify/entity_reference_validators-known-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/entity_reference_validators-known-cleanup.sh"
+    },
+    {
+      "id": "erv-dup-vs-nodup",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "The Article content type on this site has two entity reference fields, field_erv_dup and field_erv_nodup. Exactly one of them uses entity_reference_validators to prevent duplicate references. Inspect the live field configuration and state which field prevents duplicates.",
+      "must_contain_any": ["field_erv_dup"],
+      "must_not_contain": [],
+      "expected_output": "field_erv_dup: its FieldConfig has third_party_settings.entity_reference_validators.duplicate_reference = true, whereas field_erv_nodup has no such setting.",
+      "setup": "agent-module-documentation/evaluation/verify/entity_reference_validators-dup-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/entity_reference_validators-dup-cleanup.sh"
+    },
+    {
+      "id": "erv-enable-circular",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, the Article content type has an entity reference field field_erv_task that targets nodes. Using the entity_reference_validators module, configure this field so it prevents circular (self) references, and apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/entity_reference_validators-circular-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/entity_reference_validators-circular-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/entity_reference_validators-circular-cleanup.sh",
+      "expected_output": "Set third_party_settings.entity_reference_validators.circular_reference = true on the field_erv_task FieldConfig (via the field edit form's 'Prevent circular references' checkbox, or $field->setThirdPartySetting('entity_reference_validators','circular_reference',TRUE)->save())."
+    },
+    {
+      "id": "erv-enable-duplicate",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, the Article content type has a multi-value entity reference field field_erv_multi. Use the entity_reference_validators module to make this field reject referencing the same entity more than once, and apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/entity_reference_validators-duplicate-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/entity_reference_validators-duplicate-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/entity_reference_validators-duplicate-cleanup.sh",
+      "expected_output": "Set third_party_settings.entity_reference_validators.duplicate_reference = true on the field_erv_multi FieldConfig (the 'Prevent entity from referencing duplicates' checkbox, or setThirdPartySetting('entity_reference_validators','duplicate_reference',TRUE)->save())."
+    }
+  ]
+}

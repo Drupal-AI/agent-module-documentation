@@ -1,0 +1,80 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "layout_builder_operation_link",
+  "version": "2.2.x",
+  "note": "This module has a deliberately tiny surface: three hook implementations, no config UI, no settings, no permissions, no schema, no plugins, no Drush. Its only observable behavior is that it adds one `layout` entity-operation link to entities whose bundle has Layout Builder overrides enabled. The tiers therefore ground medium/hard in the two things it actually touches: (1) Layout Builder override config on a view display, and (2) the operation-link the module's hook produces. `easy` (recipe) checks documented facts (link title/weight/route, visibility conditions, dependency, 'no config'). `medium` (introspection) installs a known LB-override config live and asks the agent to read back which bundle is enabled. `hard` (execution) has the agent enable overrides on a bundle and verifies live that the module's hook then emits the Layout link (functional check, not just config flags). Buildable surface is thin, so both hard cases exercise the same real behavior on different content types (article, page).",
+  "evals": [
+    {
+      "id": "lbol-link-facts",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "The Layout Builder Operation Link Drupal module adds one operation link to entities. What is the link's title (label), its weight, and which route does it link to?",
+      "must_contain_any": ["layout_builder.overrides", "overrides.<entity", "/layout"],
+      "must_not_contain": [],
+      "expected_output": "It adds a single operation with key `layout`, title \"Layout\", weight 50, linking to route layout_builder.overrides.<entity_type>.view (e.g. /node/123/layout). Added via hook_entity_operation()."
+    },
+    {
+      "id": "lbol-visibility-conditions",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "When does the Layout Builder Operation Link module actually show its 'Layout' operation link on an entity, and does the module itself have any settings form or configuration to control this?",
+      "must_contain_any": ["overrides", "allow_custom", "no config", "no configuration", "no settings"],
+      "must_not_contain": [],
+      "expected_output": "The link shows only when the entity's bundle has Layout Builder enabled with per-entity overrides AND the current user has access to that entity's layout override route (permission to configure the layout). The module has no configuration/settings form of its own (configure route is null); the only setup is enabling Layout Builder overrides on a bundle."
+    },
+    {
+      "id": "lbol-dependency-hook",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "Which Drupal core module does Layout Builder Operation Link depend on, and which hook does it implement to add the link across many entity types (nodes, taxonomy terms, users, media)?",
+      "must_contain_any": ["layout_builder", "hook_entity_operation"],
+      "must_not_contain": [],
+      "expected_output": "It depends on core's layout_builder module and implements hook_entity_operation(), which is why the Layout link can appear for any entity type that renders an operations dropbutton (nodes, taxonomy terms, users, media, ...)."
+    },
+    {
+      "id": "lbol-inspect-enabled-bundle",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site (drush available), exactly one content type has Layout Builder per-entity overrides enabled on its default view display, so its nodes will show the 'Layout' operations link. Inspect the live site and tell me which content type (machine name) it is.",
+      "setup": "agent-module-documentation/evaluation/verify/layout_builder_operation_link-overrides-blogpost-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/layout_builder_operation_link-overrides-blogpost-cleanup.sh",
+      "must_contain_any": ["blog_post"],
+      "must_not_contain": [],
+      "expected_output": "The blog_post content type: node.blog_post.default entity_view_display has third_party_settings.layout_builder.enabled = true and allow_custom = true, so Blog post nodes get the Layout operation link."
+    },
+    {
+      "id": "lbol-inspect-overrides-flag",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site (drush available), inspect the Blog post (blog_post) content type's default view display and tell me: is Layout Builder enabled on it, and are per-entity layout overrides (allow_custom) turned on? These are the two conditions Layout Builder Operation Link checks before showing its Layout link.",
+      "setup": "agent-module-documentation/evaluation/verify/layout_builder_operation_link-overrides-blogpost-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/layout_builder_operation_link-overrides-blogpost-cleanup.sh",
+      "must_contain_any": ["allow_custom", "overrides", "enabled"],
+      "must_not_contain": [],
+      "expected_output": "Yes to both: node.blog_post.default has third_party_settings.layout_builder.enabled = true and allow_custom = true (Layout Builder on, per-entity overrides allowed), which is exactly what the module requires to add the Layout link."
+    },
+    {
+      "id": "lbol-enable-article-link",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site (drush available), the Layout Builder Operation Link module is installed. Make the 'Layout' operations link appear for Article nodes on /admin/content. Do whatever configuration is needed so the module actually emits the link for Article nodes; apply it to the live site, don't just describe it. One-line summary.",
+      "reset": "agent-module-documentation/evaluation/verify/layout_builder_operation_link-article-link-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/layout_builder_operation_link-article-link-verify.sh",
+      "expected_output": "Layout Builder is enabled with per-entity overrides (allow_custom) on the node.article.default view display, so layout_builder_operation_link_entity_operation() returns a `layout` link (title \"Layout\", url .../layout) for Article nodes. Verified against live site state."
+    },
+    {
+      "id": "lbol-enable-page-link",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site (drush available), the Layout Builder Operation Link module is installed. Configure the Basic page (page) content type so that its nodes show the module's 'Layout' operations link, while leaving other content types (e.g. Article) without it. Apply the change to the live site; don't just describe it. One-line summary.",
+      "reset": "agent-module-documentation/evaluation/verify/layout_builder_operation_link-page-link-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/layout_builder_operation_link-page-link-verify.sh",
+      "expected_output": "Layout Builder is enabled with per-entity overrides on the node.page.default view display (and NOT on article), so the module emits a `layout` link for Basic page nodes but not for Article nodes. Verified against live site state."
+    }
+  ]
+}

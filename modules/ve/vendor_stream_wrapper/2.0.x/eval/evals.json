@@ -1,0 +1,80 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "vendor_stream_wrapper",
+  "version": "2.0.x",
+  "note": "Vendor Stream Wrapper registers a read-only vendor:// stream wrapper for files in Composer's vendor/ directory, rewrites vendor:// paths in *.libraries.yml (hook_library_info_alter), and serves whitelisted files at /vendor_files/{filepath} (route vendor_stream_wrapper.vendor_file_download, permission access content). Public access requires a safe-list: config vendor_stream_wrapper.settings key allowed_file_patterns (a sequence of glob strings, one per line, * wildcard). The module ships NO config/install, so by default that config object does not exist and nothing is downloadable (a hook_requirements warning shows). Helper vendor_stream_wrapper_create_url($uri, $include_base_url=TRUE) delegates to VendorStreamWrapperManager::createUrlFromUri(). Vendor dir resolves from $settings['vendor_file_path'] then ../vendor then ./vendor. Patterns are gathered via the COLLECT_SAFE_LIST_REGEX_PATTERNS event. Medium/hard cases are grounded in reading/writing allowed_file_patterns.",
+  "evals": [
+    {
+      "id": "vendor_stream_wrapper-scheme",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "What stream wrapper scheme does the Drupal vendor_stream_wrapper module add, and what is it used for? Show how you'd reference a CSS file from a Composer package in a *.libraries.yml file with it.",
+      "must_contain_any": ["vendor://", "vendor:"],
+      "must_not_contain": [],
+      "expected_output": "It registers the read-only vendor:// stream wrapper for files in Composer's vendor/ directory. In a libraries.yml you reference e.g. 'vendor://vendor-name/package/css/file.css: {}'; the module rewrites it to a real URL via hook_library_info_alter."
+    },
+    {
+      "id": "vendor_stream_wrapper-allow-download",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "I enabled vendor_stream_wrapper but files under vendor/ return access denied when requested through /vendor_files. How do I make specific files downloadable, and where is that configured?",
+      "must_contain_any": ["allowed_file_patterns", "pattern", "vendor-stream-wrapper", "safe list", "safe-list", "/admin/config/media"],
+      "must_not_contain": [],
+      "expected_output": "You must add safe-list glob patterns. Configure them at /admin/config/media/vendor-stream-wrapper (config vendor_stream_wrapper.settings, key allowed_file_patterns), one glob per line with a * wildcard, e.g. foo/bar/css/*.css. With no patterns nothing is downloadable."
+    },
+    {
+      "id": "vendor_stream_wrapper-helper-and-path",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "In vendor_stream_wrapper, which helper function resolves a vendor:// URI to a public URL in PHP, and how do I tell the module where my vendor directory is if it is in a non-standard location?",
+      "must_contain_any": ["vendor_stream_wrapper_create_url", "createUrlFromUri", "vendor_file_path"],
+      "must_not_contain": [],
+      "expected_output": "Use vendor_stream_wrapper_create_url($uri, $include_base_url = TRUE) (which calls VendorStreamWrapperManager::createUrlFromUri()). Set $settings['vendor_file_path'] in settings.php to point at a non-standard vendor directory; otherwise it looks at ../vendor then ./vendor."
+    },
+    {
+      "id": "vendor_stream_wrapper-known-pattern",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "On this Drupal site, vendor_stream_wrapper has a safe-list pattern configured that allows some vendor files to be downloaded. Inspect the live configuration and report the exact allowed file pattern(s) currently set.",
+      "must_contain_any": ["vswknown/dist/css/*.css", "vswknown"],
+      "must_not_contain": [],
+      "expected_output": "allowed_file_patterns is ['vswknown/dist/css/*.css'] in vendor_stream_wrapper.settings. Read with drush cget vendor_stream_wrapper.settings.",
+      "setup": "agent-module-documentation/evaluation/verify/vendor_stream_wrapper-known-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/vendor_stream_wrapper-known-cleanup.sh"
+    },
+    {
+      "id": "vendor_stream_wrapper-count-patterns",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "On this Drupal site, is vendor_stream_wrapper currently allowing any vendor files to be publicly downloaded? Inspect the live configuration and tell me whether a safe-list is set and what it contains.",
+      "must_contain_any": ["vswknown", "css", "yes", "one", "1"],
+      "must_not_contain": [],
+      "expected_output": "Yes - allowed_file_patterns is set to one pattern, 'vswknown/dist/css/*.css', in vendor_stream_wrapper.settings, so matching .css files under vswknown/dist/css are downloadable.",
+      "setup": "agent-module-documentation/evaluation/verify/vendor_stream_wrapper-known-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/vendor_stream_wrapper-known-cleanup.sh"
+    },
+    {
+      "id": "vendor_stream_wrapper-allow-css",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, configure vendor_stream_wrapper so that all CSS files in the vendor package path 'acmelib/build/css' are allowed to be downloaded through /vendor_files. Use the glob pattern 'acmelib/build/css/*.css' and apply the change to the live configuration.",
+      "reset": "agent-module-documentation/evaluation/verify/vendor_stream_wrapper-addcss-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/vendor_stream_wrapper-addcss-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/vendor_stream_wrapper-addcss-cleanup.sh",
+      "expected_output": "Add 'acmelib/build/css/*.css' to allowed_file_patterns in vendor_stream_wrapper.settings (via the form at /admin/config/media/vendor-stream-wrapper or drush/config)."
+    },
+    {
+      "id": "vendor_stream_wrapper-allow-file",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "site-owner",
+      "prompt": "On this Drupal site, I need exactly one file from a Composer package to be downloadable via vendor_stream_wrapper: 'widgetco/lib/js/widget.js'. Add it to the allowed downloads and apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/vendor_stream_wrapper-addfile-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/vendor_stream_wrapper-addfile-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/vendor_stream_wrapper-addfile-cleanup.sh",
+      "expected_output": "Add the exact pattern 'widgetco/lib/js/widget.js' to allowed_file_patterns in vendor_stream_wrapper.settings."
+    }
+  ]
+}

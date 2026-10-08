@@ -1,0 +1,95 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "entity_update",
+  "version": "3.0.x",
+  "note": "Entity Update applies pending entity-type/field-storage schema changes, including on entity types that hold data, by serialising rows into its own `entity_update` database table (hook_schema in entity_update.install), deleting them, applying the schema change through CustomEntityDefinitionUpdateManager, and recreating them. It exposes two Drush commands - entity:update (alias upe) and entity:check (alias upec) - a web UI under /admin/config/development/entity-update gated by core's 'administer software updates', and exactly one config object, entity_update.settings, whose `excludes` mapping lists entity type ids that must never be deleted and recreated (shipped default: user, user_role). Medium cases read back a known excludes list and a seeded backup table; hard cases require writing the excludes config and emptying the backup table (what `drush upe --clean` / EntityUpdate::cleanupEntityBackup() does).",
+  "evals": [
+    {
+      "id": "entity_update-show-pending",
+      "mode": "recipe",
+      "prompt": "On a Drupal 11 site with the entity_update contrib module installed, which Drush command shows me the pending entity schema updates without changing anything, and what is the command's alias?",
+      "must_contain_any": [
+        "upe --show",
+        "entity:update",
+        "upe"
+      ],
+      "must_not_contain": [],
+      "expected_output": "drush entity:update --show, alias drush upe --show. It calls EntityCheck::showEntityStatusCli() and just prints the change summary. The read-only companion command is entity:check (alias upec), e.g. `drush upec node` or `drush upec block --types`.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "entity_update-data-safe-option",
+      "mode": "recipe",
+      "prompt": "Using the Drupal entity_update module, my entity type already contains content and `drush upe --basic` fails because of it. Which option runs the data-preserving update instead, and which two options let me retry the restore and then clear the module's backup data afterwards?",
+      "must_contain_any": [
+        "--all",
+        "--rescue",
+        "--clean"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Use `drush upe --all` (EntityUpdate::safeUpdateMain()): it backs the entities up into the module's entity_update table, deletes them, applies the schema change, then recreates them. If the recreation fails, `drush upe --rescue` recreates the entities from that backup table, and `drush upe --clean` empties the backup table once everything is confirmed good. You can also target a single entity type with `drush upe ENTITY_TYPE_ID`.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "entity_update-excludes-config",
+      "mode": "recipe",
+      "prompt": "The Drupal entity_update module can delete and recreate entities in order to change their schema. How do I tell it that certain entity types must never be touched that way, where is that stored, and which entity types does the module protect out of the box?",
+      "must_contain_any": [
+        "entity_update.settings",
+        "excludes"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Tick them on the settings form at /admin/config/development/entity-update/settings ('Entity types to exclude'). It is saved in the single config object entity_update.settings under the `excludes` mapping. The shipped default (config/install/entity_update.settings.yml) protects `user` and `user_role`.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "entity_update-known-excludes",
+      "mode": "introspection",
+      "prompt": "On this Drupal site the entity_update module has been configured with a specific list of entity types that must be protected from being deleted and recreated during a schema update. Inspect the live configuration and list exactly which entity types are currently excluded.",
+      "must_contain_any": [
+        "taxonomy_term"
+      ],
+      "must_not_contain": [],
+      "expected_output": "user, user_role, taxonomy_term and menu_link_content - readable with `drush config:get entity_update.settings excludes`.",
+      "setup": "agent-module-documentation/evaluation/verify/entity_update-excludes-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/entity_update-excludes-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "entity_update-backup-table",
+      "mode": "introspection",
+      "prompt": "The entity_update module keeps its own database table for entities it has parked while changing a schema. On this Drupal site that table currently has rows in it. Inspect the running site and tell me the table name, how many rows it holds and which entity_type value they carry.",
+      "must_contain_any": [
+        "eu_probe"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The table is `entity_update` (created by entity_update_schema()). It holds 2 rows with entity_type 'eu_probe' (entity ids 4242 and 4343). Readable with `drush sql:query \"SELECT entity_type, entity_id FROM entity_update\"` or a db select in drush php:eval.",
+      "setup": "agent-module-documentation/evaluation/verify/entity_update-backup-table-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/entity_update-backup-table-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "entity_update-add-excludes",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, configure the entity_update module so that, in addition to the entity types it already protects, the entity types 'taxonomy_term' and 'taxonomy_vocabulary' are excluded from being deleted and recreated during an entity schema update. Keep the existing protections in place and apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/entity_update-add-excludes-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/entity_update-add-excludes-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/entity_update-add-excludes-cleanup.sh",
+      "expected_output": "entity_update.settings -> excludes must contain truthy entries for user, user_role, taxonomy_term and taxonomy_vocabulary (e.g. via the 'Entity types to exclude' checkboxes at /admin/config/development/entity-update/settings, or by editing the config object directly)."
+    },
+    {
+      "id": "entity_update-clean-backup",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "site-builder-layman",
+      "prompt": "A previous entity schema update on this Drupal site left leftover parked entity data behind in the entity_update module's own backup storage. The recreation has already been confirmed as successful, so that leftover data is no longer needed. Please clear it out on the live site using the module's own functionality.",
+      "reset": "agent-module-documentation/evaluation/verify/entity_update-clean-backup-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/entity_update-clean-backup-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/entity_update-clean-backup-cleanup.sh",
+      "expected_output": "Run `drush upe --clean` (or call \\Drupal\\entity_update\\EntityUpdate::cleanupEntityBackup()), which empties the module's `entity_update` backup table. Verify passes when that table has 0 rows."
+    }
+  ]
+}

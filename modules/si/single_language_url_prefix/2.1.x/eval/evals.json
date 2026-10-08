@@ -1,0 +1,80 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "single_language_url_prefix",
+  "version": "2.1.x",
+  "note": "Single Language URL Prefix keeps the language URL prefix (e.g. /en) on a site with only one enabled language, which core normally drops. It works via a path processor (single_language_url_prefix.path_processor / SingleLanguageNegotiationUrl) and only acts when exactly one language is enabled and core language negotiation URL source is path prefix with a prefix set. Its own persistent state is a single config value single_language_url_prefix.settings.excluded_paths (newline-separated paths/patterns, matched with core path.matcher) listing paths that keep working WITHOUT the prefix; the settings form is /admin/config/regional/language/single-language-url-prefix (permission administer languages). The module ships default config but no config schema, so excluded_paths is an untyped string. Medium cases read the live excluded_paths value; hard cases set excluded_paths, verified live. Baselines are restored explicitly (excluded_paths => '') since State is unreliable on this site.",
+  "evals": [
+    {
+      "id": "single_language_url_prefix-what",
+      "mode": "recipe",
+      "prompt": "What problem does the Drupal single_language_url_prefix module solve, and when would I need it?",
+      "must_contain_any": ["single language", "one language", "monolingual", "prefix"],
+      "must_not_contain": [],
+      "expected_output": "Core only adds the language URL prefix (e.g. /en) when more than one language is enabled; on a single-language (monolingual) site it drops the prefix. This module re-adds the prefix for the single-language case via a path processor, so URLs keep their language segment.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "single_language_url_prefix-exclude",
+      "mode": "recipe",
+      "prompt": "Using single_language_url_prefix, how do I stop certain paths (like /admin) from getting the language prefix, and where is that list stored?",
+      "must_contain_any": ["excluded_paths", "excluded", "/admin/config/regional/language/single-language-url-prefix", "pattern"],
+      "must_not_contain": [],
+      "expected_output": "Add them to the Excluded Paths list on the settings form at /admin/config/regional/language/single-language-url-prefix (one path per line, wildcards allowed, matched with core's path.matcher). It is stored in single_language_url_prefix.settings.excluded_paths.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "single_language_url_prefix-requirement",
+      "mode": "recipe",
+      "prompt": "For single_language_url_prefix to actually add the prefix to URLs, how must Drupal's core language negotiation be configured?",
+      "must_contain_any": ["path prefix", "path_prefix", "URL", "negotiation", "prefix"],
+      "must_not_contain": [],
+      "expected_output": "Core URL language negotiation must be enabled with source = path prefix and a prefix configured for the single language (language.negotiation url: source path_prefix, prefixes: {<langcode>: '<prefix>'}). It also only acts when exactly one language is enabled; with two or more the module is a no-op.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "single_language_url_prefix-read-excluded",
+      "mode": "introspection",
+      "prompt": "On this Drupal site, single_language_url_prefix has some paths configured to be excluded from the language prefix. Inspect the live configuration and list the excluded path(s).",
+      "must_contain_any": ["/slup-secret"],
+      "must_not_contain": [],
+      "expected_output": "The excluded paths are /slup-secret and /slup-secret/*: single_language_url_prefix.settings.excluded_paths = \"/slup-secret\\n/slup-secret/*\".",
+      "setup": "agent-module-documentation/evaluation/verify/single_language_url_prefix-excluded-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/single_language_url_prefix-excluded-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "single_language_url_prefix-read-wildcard",
+      "mode": "introspection",
+      "prompt": "On this Drupal site, which path pattern is currently excluded from the single_language_url_prefix language prefix? Inspect the live configuration and state the pattern.",
+      "must_contain_any": ["/reports/*", "/reports"],
+      "must_not_contain": [],
+      "expected_output": "The excluded pattern is /reports/*: single_language_url_prefix.settings.excluded_paths = '/reports/*'.",
+      "setup": "agent-module-documentation/evaluation/verify/single_language_url_prefix-excluded-wild-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/single_language_url_prefix-excluded-wild-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "single_language_url_prefix-exclude-admin",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, configure single_language_url_prefix so that the admin area is excluded from the language URL prefix: exclude both the path /admin and the pattern /admin/*. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/single_language_url_prefix-set-admin-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/single_language_url_prefix-set-admin-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/single_language_url_prefix-set-admin-cleanup.sh",
+      "expected_output": "Set single_language_url_prefix.settings.excluded_paths to include a line '/admin' and a line '/admin/*' (via the Excluded Paths textarea on /admin/config/regional/language/single-language-url-prefix, or by saving the config)."
+    },
+    {
+      "id": "single_language_url_prefix-exclude-api",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "site-owner",
+      "prompt": "My one-language site adds a /en to the front of every URL, but my API endpoints under /api/ are called by other systems and must not get that language bit. Please make everything under /api/ skip the language prefix, and save it on the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/single_language_url_prefix-set-api-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/single_language_url_prefix-set-api-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/single_language_url_prefix-set-api-cleanup.sh",
+      "expected_output": "Add the pattern /api/* to single_language_url_prefix.settings.excluded_paths (via the Excluded Paths textarea on the module's settings form, or by saving the config) so paths under /api are served without the language prefix."
+    }
+  ]
+}

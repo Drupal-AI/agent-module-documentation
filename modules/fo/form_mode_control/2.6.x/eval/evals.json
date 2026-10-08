@@ -1,0 +1,80 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "form_mode_control",
+  "version": "2.6.x",
+  "note": "Form Mode Control chooses which entity_form_display (form mode) core loads, per entity_type/bundle/operation(create|update)/role, plus a ?display=<form_mode_id> URL switch gated by dynamic permissions. Its entire persistent state is the config object form_mode_control.settings key 'defaults' (a tree entity_type.bundle.operation.role = form_mode_id). Medium cases seed a known value in that tree and read it back; hard cases seed a real entity_form_mode + enabled form display (node.fmc_task) and require the agent to write the correct defaults entry, verified against the live config object. There is no field type/widget/entity of its own.",
+  "evals": [
+    {
+      "id": "fmc-url-switch",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "With the Drupal contrib module Form Mode Control enabled, how does a user open an entity's add/edit form using a specific alternate form mode instead of the default one, without any code? Give the exact mechanism.",
+      "must_contain_any": ["?display=", "display=", "display query", "query parameter"],
+      "must_not_contain": [],
+      "expected_output": "Append a ?display=<form_mode_id> query parameter to the add/edit URL, e.g. /node/add/article?display=compact. It is honoured only if the target form display is enabled and the user has the matching per-form-mode permission (or access_all_form_modes)."
+    },
+    {
+      "id": "fmc-defaults-config",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "In Form Mode Control, where are the per-role default form modes stored, and what is the structure of that data? Name the config object and the key path.",
+      "must_contain_any": ["form_mode_control.settings", "defaults"],
+      "must_not_contain": [],
+      "expected_output": "In the config object form_mode_control.settings under the 'defaults' key, structured as defaults.<entity_type>.<bundle>.<operation>.<role_id> = <form_mode_id>, where operation is 'create' or 'update'."
+    },
+    {
+      "id": "fmc-master-permission",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "Form Mode Control generates a permission per activated form mode, but there is also one master permission that lets a role use ANY form mode via the ?display switch. What is its machine name?",
+      "must_contain_any": ["access_all_form_modes", "Use all form modes"],
+      "must_not_contain": [],
+      "expected_output": "access_all_form_modes (label 'Use all form modes'). A role with it may switch to any form mode by URL regardless of the individual per-form-mode permissions."
+    },
+    {
+      "id": "fmc-known-create-default",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "On this Drupal site, Form Mode Control has a default form mode configured for the Anonymous role when CREATING an Article node. Inspect the live configuration and give the machine name of that form mode.",
+      "must_contain_any": ["fmc_compact"],
+      "must_not_contain": [],
+      "expected_output": "fmc_compact — in form_mode_control.settings, defaults.node.article.create.anonymous = fmc_compact.",
+      "setup": "agent-module-documentation/evaluation/verify/form_mode_control-known-create-default-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/form_mode_control-known-create-default-cleanup.sh"
+    },
+    {
+      "id": "fmc-known-edit-default",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "This site uses Form Mode Control. For the Anonymous role EDITING a Basic page (node bundle 'page'), a non-default form mode is set as the default. Inspect the running configuration and state which form mode machine name applies.",
+      "must_contain_any": ["fmc_editor"],
+      "must_not_contain": [],
+      "expected_output": "fmc_editor — in form_mode_control.settings, defaults.node.page.update.anonymous = fmc_editor.",
+      "setup": "agent-module-documentation/evaluation/verify/form_mode_control-known-edit-default-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/form_mode_control-known-edit-default-cleanup.sh"
+    },
+    {
+      "id": "fmc-set-create-default",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this site an enabled form mode 'fmc_task' exists for the Article content type (form display node.article.fmc_task). Using Form Mode Control, configure it so that when a user in the Administrator role CREATES an Article, the fmc_task form mode is used by default. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/form_mode_control-set-default-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/form_mode_control-set-create-default-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/form_mode_control-set-default-cleanup.sh",
+      "expected_output": "In form_mode_control.settings set defaults.node.article.create.administrator = fmc_task (e.g. `drush config:set form_mode_control.settings defaults.node.article.create.administrator fmc_task -y`, or via the /admin/structure/display-modes/form/config-form-modes form)."
+    },
+    {
+      "id": "fmc-set-edit-default",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "site-owner-layman",
+      "prompt": "My site has an alternate 'fmc_task' article form. I want anonymous visitors who edit an article to land on that alternate form by default instead of the normal one. Make that happen on the live site using the Form Mode Control module.",
+      "reset": "agent-module-documentation/evaluation/verify/form_mode_control-set-default-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/form_mode_control-set-edit-default-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/form_mode_control-set-default-cleanup.sh",
+      "expected_output": "In form_mode_control.settings set defaults.node.article.update.anonymous = fmc_task (operation for editing is 'update'). E.g. `drush config:set form_mode_control.settings defaults.node.article.update.anonymous fmc_task -y`."
+    }
+  ]
+}

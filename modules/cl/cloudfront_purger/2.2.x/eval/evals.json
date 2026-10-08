@@ -1,0 +1,102 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "cloudfront_purger",
+  "version": "2.2.x",
+  "note": "CloudFront Purge provides a Purge purger plugin id 'cloudfront' (types path/wildcardpath/everything) that calls AWS CloudFront CreateInvalidation. Config object cloudfront_purger.settings: distribution_id, aws_key, aws_secret, disabled (bool; default all empty, disabled=true). disabled=true black-holes invalidations (marks SUCCEEDED without any AWS call). No admin route (configure=null); the purger is managed via Purge (drush p:purger-add cloudfront, stored in purge.plugins.purgers as {instance_id, plugin_id, order_index}). Cache-tag invalidation is in the cloudfront_purger_tags submodule. ALL eval fixtures keep disabled=true and never run an actual purge, so NO live AWS calls occur — cases are grounded purely in cloudfront_purger.settings config and Purge's purger registration. Baseline restored explicitly in cleanup (distribution_id='', disabled=true, no purgers).",
+  "evals": [
+    {
+      "id": "cloudfront_purger-plugin-types",
+      "mode": "recipe",
+      "prompt": "What is the Purge purger plugin id provided by CloudFront Purge, and which invalidation types does it support?",
+      "must_contain_any": [
+        "cloudfront",
+        "path",
+        "wildcardpath",
+        "everything"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The purger plugin id is 'cloudfront'. It supports the invalidation types path, wildcardpath, and everything (an 'everything' invalidation maps to '/*'). Cache-tag invalidation is not in the base module (it's in the cloudfront_purger_tags submodule).",
+      "difficulty": "easy"
+    },
+    {
+      "id": "cloudfront_purger-distribution-and-auth",
+      "mode": "recipe",
+      "prompt": "How do I tell CloudFront Purge which distribution to invalidate, and how does it authenticate to AWS if I don't put a key/secret in Drupal config?",
+      "must_contain_any": [
+        "distribution_id",
+        "cloudfront_purger.settings",
+        "IAM",
+        "environment",
+        "credentials"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Set distribution_id in cloudfront_purger.settings (via settings.php or drush config-set). If aws_key/aws_secret are not set in config, the AWS SDK default credential chain is used: IAM roles, environment variables, then ~/.aws/credentials. The IAM identity needs cloudfront:CreateInvalidation.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "cloudfront_purger-disabled-flag",
+      "mode": "recipe",
+      "prompt": "In CloudFront Purge, what does the 'disabled' setting do when true, and why is that useful on a staging site?",
+      "must_contain_any": [
+        "disabled",
+        "black hole",
+        "black-hole",
+        "SUCCEEDED",
+        "without",
+        "no AWS"
+      ],
+      "must_not_contain": [],
+      "expected_output": "When cloudfront_purger.settings:disabled is true, invalidate() marks every invalidation SUCCEEDED without calling the AWS API (a 'black hole'). On staging this lets the Purge pipeline run green without contacting or being billed by AWS. It is true by default.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "cloudfront_purger-known-distribution",
+      "mode": "introspection",
+      "prompt": "On this site, CloudFront Purge has been configured with a specific CloudFront Distribution ID. Inspect the live configuration and report the distribution id.",
+      "must_contain_any": [
+        "E1MYDISTABC123"
+      ],
+      "must_not_contain": [],
+      "expected_output": "cloudfront_purger.settings:distribution_id is 'E1MYDISTABC123' (read via drush cget cloudfront_purger.settings distribution_id).",
+      "setup": "agent-module-documentation/evaluation/verify/cloudfront_purger-known-distribution-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/cloudfront_purger-known-distribution-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "cloudfront_purger-configured-purger",
+      "mode": "introspection",
+      "prompt": "This site has a purger configured in the Purge module. Inspect Purge's live purger configuration and state the plugin id of the configured purger (the one this CloudFront module provides).",
+      "must_contain_any": [
+        "cloudfront"
+      ],
+      "must_not_contain": [],
+      "expected_output": "purge.plugins has a purger with plugin_id 'cloudfront' (drush p:purger-ls, or drush cget purge.plugins purgers).",
+      "setup": "agent-module-documentation/evaluation/verify/cloudfront_purger-configured-purger-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/cloudfront_purger-configured-purger-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "cloudfront_purger-set-distribution",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "Configure CloudFront Purge to invalidate the CloudFront distribution whose ID is exactly 'E2HARDDIST999'. Write it to the live configuration (leave the purger in its default disabled/black-hole state — do not trigger any real AWS calls).",
+      "reset": "agent-module-documentation/evaluation/verify/cloudfront_purger-set-distribution-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/cloudfront_purger-set-distribution-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/cloudfront_purger-set-distribution-cleanup.sh",
+      "expected_output": "cloudfront_purger.settings:distribution_id is set to 'E2HARDDIST999' (drush config-set cloudfront_purger.settings distribution_id E2HARDDIST999)."
+    },
+    {
+      "id": "cloudfront_purger-add-purger",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "Register CloudFront Purge's purger with the Purge module so CloudFront invalidations are part of the purge pipeline on this site. Apply it to the live configuration.",
+      "reset": "agent-module-documentation/evaluation/verify/cloudfront_purger-add-purger-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/cloudfront_purger-add-purger-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/cloudfront_purger-add-purger-cleanup.sh",
+      "expected_output": "purge.plugins purgers contains an instance with plugin_id 'cloudfront' (e.g. drush p:purger-add cloudfront)."
+    }
+  ]
+}

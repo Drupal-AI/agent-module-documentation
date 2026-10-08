@@ -1,0 +1,73 @@
+{
+  "name": "Anthropic Provider",
+  "data_name": "ai_provider_anthropic",
+  "module": "ai_provider_anthropic",
+  "version": "1.2.x",
+  "note": "ai_provider_anthropic registers the 'anthropic' AiProvider plugin for the AI (AI Core) module and implements the single 'chat' operation type. It defines no plugin types, no permissions, no drush. Cases are `recipe` (response-graded) since they probe documented facts an agent would otherwise read source to answer; no site mutation.",
+  "evals": [
+    {
+      "id": "aipanthropic-what-it-is",
+      "mode": "recipe",
+      "prompt": "On a Drupal 11 site running the AI (AI Core) module, what does the ai_provider_anthropic module add, and what plugin does it register?",
+      "must_contain_any": ["AiProvider", "anthropic", "Claude", "provider"],
+      "must_not_contain": [],
+      "expected_output": "It registers the 'anthropic' AiProvider plugin (AnthropicProvider) for AI Core, adapting Anthropic's Claude API (api.anthropic.com/v1) to AI Core's operation-type interfaces. It depends on the ai and key modules."
+    },
+    {
+      "id": "aipanthropic-operation-types",
+      "mode": "recipe",
+      "prompt": "Which AI Core operation types does the Anthropic provider (ai_provider_anthropic) support?",
+      "must_contain_any": ["chat", "chat only", "only chat"],
+      "must_not_contain": [],
+      "expected_output": "getSupportedOperationTypes() returns only 'chat' — Anthropic here is a chat-only provider (no embeddings, moderation, image, or speech operations)."
+    },
+    {
+      "id": "aipanthropic-api-key-via-key",
+      "mode": "recipe",
+      "prompt": "How do I configure the Anthropic API key for the ai_provider_anthropic module, and where is the settings form?",
+      "must_contain_any": ["key", "Key", "key_select", "/admin/config/ai/providers/anthropic", "ai_provider_anthropic.settings"],
+      "must_not_contain": [],
+      "expected_output": "Store the key as a Key entity (key module) and select it in the Anthropic Authentication form at /admin/config/ai/providers/anthropic (route ai_provider_anthropic.settings_form, permission 'administer ai providers'). Only the Key id is saved in ai_provider_anthropic.settings (api_key), never the raw key."
+    },
+    {
+      "id": "aipanthropic-moderation",
+      "mode": "recipe",
+      "prompt": "Does the Anthropic provider in Drupal do content moderation before a call? How is moderation handled?",
+      "must_contain_any": ["no native", "External Moderation", "ai_external_moderation", "OpenAI", "openai_moderation"],
+      "must_not_contain": [],
+      "expected_output": "Anthropic has no native moderation endpoint. The optional openai_moderation flag routes prompts through the AI External Moderation module using OpenAI's moderation (requires ai_provider_openai + ai_external_moderation enabled). If moderation is off, the form makes you acknowledge the ban risk."
+    },
+    {
+      "id": "aipanthropic-default-models",
+      "mode": "recipe",
+      "prompt": "When I save the Anthropic key, which default Claude models does ai_provider_anthropic seed for AI Core operation types?",
+      "must_contain_any": ["sonnet", "opus", "getSetupData", "defaultIfNone", "claude-sonnet-4-5", "claude-opus-4-5"],
+      "must_not_contain": [],
+      "expected_output": "getSetupData() seeds (via defaultIfNone, only if unset): chat and chat_with_image_vision -> a Claude Sonnet 4.5 model (fallback claude-sonnet-4-5-20250929); chat_with_complex_json, chat_with_tools, chat_with_structured_response -> a Claude Opus 4.5 model (fallback claude-opus-4-5-20251101)."
+    },
+    {
+      "id": "aipanthropic-model-discovery",
+      "mode": "recipe",
+      "prompt": "How does ai_provider_anthropic know which Claude models are available, and can I control caching?",
+      "must_contain_any": ["/v1/models", "fetchAvailableModels", "getConfiguredModels", "models_cache_ttl", "cache"],
+      "must_not_contain": [],
+      "expected_output": "It fetches models live from https://api.anthropic.com/v1/models (header anthropic-version: 2023-06-01) and caches them under ai_provider_anthropic:models for models_cache_ttl seconds (default 86400). getConfiguredModels() returns them; clearModelsCache() forces a refresh. On failure it returns an empty list."
+    },
+    {
+      "id": "aipanthropic-top-p",
+      "mode": "recipe",
+      "prompt": "Why does the Anthropic provider drop the top_p setting for newer Claude models?",
+      "must_contain_any": ["top_p", "temperature", "getModelSettings", "Claude 4"],
+      "must_not_contain": [],
+      "expected_output": "getModelSettings() unsets top_p for Claude 4.x+ model ids because Anthropic's API does not allow temperature and top_p to be specified together."
+    },
+    {
+      "id": "aipanthropic-call-from-code",
+      "mode": "recipe",
+      "prompt": "In PHP, how do I run a chat completion through Anthropic (Claude) on a Drupal AI Core site? Show the service and pattern.",
+      "must_contain_any": ["ai.provider", "createInstance", "AiProviderPluginManager", "getDefaultProviderForOperationType"],
+      "must_not_contain": [],
+      "expected_output": "Use the ai.provider service (AiProviderPluginManager): resolve getDefaultProviderForOperationType('chat') or createInstance('anthropic'), then call ->chat($input, $model_id, $tags). Never instantiate an Anthropic SDK directly."
+    }
+  ]
+}

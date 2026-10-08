@@ -1,0 +1,80 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "media_tableau",
+  "version": "2.2.x",
+  "note": "Media Tableau embeds Tableau visualizations via a single string-field formatter (id media_tableau, extends Media Remote's MediaRemoteFormatterBase) and an allowed-hosts settings form. Persistent state: (1) config object media_tableau.settings key allowed_hosts (sequence of https hosts, default ['https://public.tableau.com']); (2) the media_tableau formatter component in core.entity_view_display.<entity>.<bundle>.<mode> with settings api_version/width/height/toolbar. Permission 'administer media_tableau allowed hosts' guards route media_tableau.allowed_hosts_settings (/admin/config/media/tableau). When CSP module is present, media_tableau.host_subscriber appends allowed hosts to frame-src. Medium/hard cases are grounded in those two real config surfaces.",
+  "evals": [
+    {
+      "id": "media_tableau-hosts-config",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "In the Drupal media_tableau module, which config object and key hold the list of hosts a Tableau visualization is allowed to be embedded from, and what is the default value on a fresh install?",
+      "must_contain_any": ["allowed_hosts", "media_tableau.settings", "public.tableau.com"],
+      "must_not_contain": [],
+      "expected_output": "The config object media_tableau.settings has a sequence key allowed_hosts; on a fresh install it defaults to ['https://public.tableau.com']. The formatter's URL regex is built from this list, so only URLs on a whitelisted host embed."
+    },
+    {
+      "id": "media_tableau-formatter-fieldtype",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "What field type does the media_tableau field formatter apply to, and which display settings does it expose for a Tableau embed?",
+      "must_contain_any": ["string", "api_version", "toolbar", "width", "height"],
+      "must_not_contain": [],
+      "expected_output": "The media_tableau formatter (id 'media_tableau', 'Remote Media - Tableau') applies to string fields and exposes settings api_version (latest/3.6/3.5), width, height, and toolbar (show/hide the Tableau toolbar)."
+    },
+    {
+      "id": "media_tableau-csp",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "If the CSP (Content Security Policy) module is enabled on a site using media_tableau, what does media_tableau do automatically so Tableau embeds are not blocked?",
+      "must_contain_any": ["frame-src", "Content-Security-Policy", "csp.policy_alter"],
+      "must_not_contain": [],
+      "expected_output": "An event subscriber (media_tableau.host_subscriber) listens on csp.policy_alter and, on non-admin routes, appends every allowed host to the frame-src directive (setting it if absent), so the CSP does not block the Tableau iframe/web component."
+    },
+    {
+      "id": "media_tableau-known-hosts",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "On this Drupal site the media_tableau allowed-hosts list has been customized. Inspect the live media_tableau configuration and list every host that is currently allowed to embed a Tableau visualization.",
+      "must_contain_any": ["mtb-eval.example.com", "https://mtb-eval.example.com"],
+      "must_not_contain": [],
+      "expected_output": "media_tableau.settings:allowed_hosts contains https://public.tableau.com and https://mtb-eval.example.com (read with `drush cget media_tableau.settings allowed_hosts`).",
+      "setup": "agent-module-documentation/evaluation/verify/media_tableau-known-hosts-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/media_tableau-known-hosts-cleanup.sh"
+    },
+    {
+      "id": "media_tableau-known-display",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "The Article content type on this site has a string field field_mtb_known whose default view display uses the media_tableau (Tableau) formatter. Inspect the live view-display configuration and report the iframe height configured for that formatter.",
+      "must_contain_any": ["654px", "654"],
+      "must_not_contain": [],
+      "expected_output": "In core.entity_view_display.node.article.default the field_mtb_known component has type media_tableau with settings.height = 654px (and api_version 3.6).",
+      "setup": "agent-module-documentation/evaluation/verify/media_tableau-known-display-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/media_tableau-known-display-cleanup.sh"
+    },
+    {
+      "id": "media_tableau-add-host",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, whitelist the Tableau host https://mtb-task.example.com in the media_tableau module so visualizations served from it can be embedded, keeping the existing allowed hosts intact. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/media_tableau-add-host-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/media_tableau-add-host-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/media_tableau-add-host-cleanup.sh",
+      "expected_output": "media_tableau.settings:allowed_hosts now includes https://mtb-task.example.com (in addition to the default https://public.tableau.com). E.g. append it to the sequence and save the config, or add it on the Tableau settings form."
+    },
+    {
+      "id": "media_tableau-set-formatter",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, the Article content type has a string field field_mtb_task. Configure Article's default view display so this field is rendered with the media_tableau (Tableau) formatter, with the Tableau toolbar turned ON. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/media_tableau-set-formatter-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/media_tableau-set-formatter-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/media_tableau-set-formatter-cleanup.sh",
+      "expected_output": "In core.entity_view_display.node.article.default the field_mtb_task component has type media_tableau and settings.toolbar = 1 (true). Set the component via the entity_view_display storage or Manage display and save."
+    }
+  ]
+}

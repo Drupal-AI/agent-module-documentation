@@ -1,0 +1,97 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "content_synchronizer",
+  "version": "4.1.x",
+  "note": "Content Synchronizer exports content entities to a tar.gz and imports them into another site. Central service content_synchronizer.manager (ContentSynchronizerManagerInterface) with exportEntity(), launchExport(), createImportFromTarGzFilePath(), launchImport(). Two content entity types: export_entity (a named set of entities, members stored in table content_synchronizer_export_items; API $export->addEntity()/getEntitiesList()) and import_entity. Drush commands content:synchronizer-export-entity (cseex), -launch-export (cslex), -create-import (csci), -launch-import (cslim), -clean-temporary-files (csctf). Import publish strategies publication_publish|publication_unpublish|publication_revision and update strategies update_if_recent|update_systematic|update_no_update (constants on Processors\\ImportProcessor). Two plugin types: entity_processor (by entityType) and type_processor (by field item-list class). Medium cases create export_entity content entities with known names/members; hard cases produce a real tar.gz and build an Export entity, verified against live state.",
+  "evals": [
+    {
+      "id": "content_synchronizer-what-format",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "What does the Drupal content_synchronizer module let you do, and what file format does an export produce so you can move content to another environment?",
+      "must_contain_any": [
+        "tar.gz",
+        "archive",
+        "export"
+      ],
+      "must_not_contain": [],
+      "expected_output": "It exports content entities (nodes, terms, files, users, paragraphs...) into a tar.gz archive that you can then import into another Drupal environment, moving real content between prod/staging/dev."
+    },
+    {
+      "id": "content_synchronizer-drush-export",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "Using content_synchronizer's Drush commands, how do I export a single node (say node 12) to a tar.gz archive from the command line?",
+      "must_contain_any": [
+        "content:synchronizer-export-entity",
+        "cseex"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Use `drush content:synchronizer-export-entity node 12 [destination]` (alias cseex). It exports the given entity type + id to a tar.gz at the optional destination path."
+    },
+    {
+      "id": "content_synchronizer-import-strategies",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "When importing content with content_synchronizer, what options control (a) whether newly created content is published and (b) what happens to content that already exists on the target site?",
+      "must_contain_any": [
+        "publication_publish",
+        "publication_unpublish",
+        "update_if_recent",
+        "update_systematic",
+        "update_no_update"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The publish strategy is publication_publish (default) / publication_unpublish / publication_revision; the update strategy for existing entities is update_if_recent (default) / update_systematic / update_no_update. On the Drush import commands these are the --publish and --update options."
+    },
+    {
+      "id": "content_synchronizer-known-export-name",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "This Drupal site has a content_synchronizer Export entity already created. Inspect the site's export_entity entities and tell me the name of the export that exists.",
+      "must_contain_any": [
+        "CS Staging Bundle"
+      ],
+      "must_not_contain": [],
+      "expected_output": "An export_entity named 'CS Staging Bundle' exists (loadable via the export_entity storage / the Exports collection at /admin/structure/export_entity).",
+      "setup": "agent-module-documentation/evaluation/verify/content_synchronizer-known-export-name-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/content_synchronizer-known-export-name-cleanup.sh"
+    },
+    {
+      "id": "content_synchronizer-export-member",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "On this site there is a content_synchronizer Export entity named 'CS Node Set' that contains exactly one node. Inspect the live site to determine which node it holds, and give that node's title.",
+      "must_contain_any": [
+        "CS Payload Node"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The export 'CS Node Set' contains the node titled 'CS Payload Node' (its member list, stored in content_synchronizer_export_items and returned by ExportEntity::getEntitiesList(), references that node).",
+      "setup": "agent-module-documentation/evaluation/verify/content_synchronizer-export-member-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/content_synchronizer-export-member-cleanup.sh"
+    },
+    {
+      "id": "content_synchronizer-export-node-archive",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site there is a node whose title is 'CS Export Task Node'. Use the content_synchronizer module to export that node to a tar.gz archive written under the directory /tmp/cs_export_out. Apply it on the live site (e.g. via the Drush export command or the content_synchronizer.manager service).",
+      "reset": "agent-module-documentation/evaluation/verify/content_synchronizer-export-node-archive-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/content_synchronizer-export-node-archive-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/content_synchronizer-export-node-archive-cleanup.sh",
+      "expected_output": "A valid gzip'd tar archive of the 'CS Export Task Node' node is produced under /tmp/cs_export_out, e.g. `drush content:synchronizer-export-entity node <nid> /tmp/cs_export_out` (the manager writes the tar.gz relative to the destination path it is given)."
+    },
+    {
+      "id": "content_synchronizer-build-export-entity",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "Using content_synchronizer, create a new Export entity named 'CS Deploy Set' and add the node titled 'CS Deploy Node' to it, so the export's entity list contains that node. Save it on the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/content_synchronizer-build-export-entity-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/content_synchronizer-build-export-entity-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/content_synchronizer-build-export-entity-cleanup.sh",
+      "expected_output": "An export_entity named 'CS Deploy Set' exists and its getEntitiesList() (content_synchronizer_export_items) includes the 'CS Deploy Node' node — e.g. created via the Exports UI or $export->addEntity($node)."
+    }
+  ]
+}

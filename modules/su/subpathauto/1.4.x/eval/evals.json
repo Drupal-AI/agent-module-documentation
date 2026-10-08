@@ -1,0 +1,102 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "subpathauto",
+  "version": "1.4.x",
+  "note": "Sub-pathauto's entire state is the config object subpathauto.settings with two keys, depth (integer) and redirect_support (boolean), edited at /admin/config/search/subpathauto (route subpathauto.admin_settings, permission 'administer url aliases'). Behaviour comes from one service, path_processor_subpathauto, tagged path_processor_inbound and path_processor_outbound at priority 50. A quirk worth testing: depth 0 means UNLIMITED in code (the form labels it 'Disabled'), while a missing/NULL depth disables processing entirely - which is what the alias-subpath reset exploits so the execution case genuinely fails on empty state. The hard alias case verifies real runtime behaviour by running the live path_processor_manager over /subpathauto-eval/edit rather than just reading config back.",
+  "evals": [
+    {
+      "id": "subpathauto-what-it-does",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "A Drupal 11 site has node/1 aliased to /about-us, but /about-us/edit returns a 404. The subpathauto contrib module is installed. What does subpathauto do about this, and by what mechanism does it hook into Drupal?",
+      "must_contain_any": [
+        "path processor",
+        "path_processor",
+        "PathProcessor",
+        "processInbound",
+        "path_processor_inbound"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Sub-pathauto registers the service path_processor_subpathauto (Drupal\\subpathauto\\PathProcessor) tagged path_processor_inbound and path_processor_outbound at priority 50. Inbound it strips trailing segments, asks core's path_alias.path_processor whether the shortened parent is an alias, and rebuilds /node/1/edit; outbound it does the reverse so links render as /about-us/edit."
+    },
+    {
+      "id": "subpathauto-config-keys",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "Which configuration object does the Drupal subpathauto module use, what keys does it contain, and at which admin path is it edited?",
+      "must_contain_any": [
+        "subpathauto.settings",
+        "depth",
+        "redirect_support",
+        "/admin/config/search/subpathauto"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Config object subpathauto.settings with two keys: depth (integer, maximum number of trailing sub-path segments to try) and redirect_support (boolean, use the Redirect module when resolving). It is edited at /admin/config/search/subpathauto (route subpathauto.admin_settings), which requires the core permission 'administer url aliases'."
+    },
+    {
+      "id": "subpathauto-depth-zero",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "In the Drupal subpathauto module, the 'Maximum depth of sub-paths to alias' select offers 0 labelled 'Disabled'. What does the value 0 actually do inside PathProcessor, and what happens if the depth value is missing entirely?",
+      "must_contain_any": [
+        "unlimited",
+        "no limit",
+        "not limited",
+        "infinite",
+        "all levels",
+        "every level"
+      ],
+      "must_not_contain": [],
+      "expected_output": "getMaxDepth() returns the raw config value and the loop condition is ($max_depth === 0 || $i < $max_depth), so 0 means no limit at all - every sub-path level is tried, despite the form calling it 'Disabled'. If depth is NULL/absent the strict === 0 check fails and $i < NULL is false, so the loop never runs and no sub-path is ever resolved: that is the real off state."
+    },
+    {
+      "id": "subpathauto-known-depth",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "On this Drupal site the subpathauto module is installed and configured. Inspect the running site and tell me the configured maximum sub-path depth, and whether redirect support is switched on.",
+      "must_contain_any": [
+        "4"
+      ],
+      "must_not_contain": [],
+      "expected_output": "depth is 4 and redirect_support is FALSE - `drush cget subpathauto.settings` shows depth: 4 / redirect_support: false.",
+      "setup": "agent-module-documentation/evaluation/verify/subpathauto-known-depth-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/subpathauto-known-depth-cleanup.sh"
+    },
+    {
+      "id": "subpathauto-redirect-support",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "Look at the live subpathauto configuration on this Drupal site. Is its redirect integration currently enabled or disabled, and what is the configured sub-path depth?",
+      "must_contain_any": [
+        "2"
+      ],
+      "must_not_contain": [],
+      "expected_output": "redirect_support is TRUE (enabled) and depth is 2. `drush cget subpathauto.settings` -> depth: 2, redirect_support: true. The redirect integration only actually engages when the drupal/redirect module is also installed.",
+      "setup": "agent-module-documentation/evaluation/verify/subpathauto-redirect-support-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/subpathauto-redirect-support-cleanup.sh"
+    },
+    {
+      "id": "subpathauto-set-depth",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, configure the subpathauto module so that it scans a maximum of 3 trailing sub-path segments when resolving an alias, and so that redirects are taken into account when resolving sub aliases. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/subpathauto-set-depth-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/subpathauto-set-depth-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/subpathauto-set-depth-cleanup.sh",
+      "expected_output": "subpathauto.settings has depth: 3 and redirect_support: true (set on /admin/config/search/subpathauto, with `drush cset subpathauto.settings depth 3 -y` + `drush cset subpathauto.settings redirect_support 1 -y`, or via the config factory)."
+    },
+    {
+      "id": "subpathauto-alias-subpath",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "site-owner",
+      "prompt": "On this Drupal site there is a basic page titled 'Subpathauto Eval Page' whose URL alias is /subpathauto-eval. Right now /subpathauto-eval/edit does not work - it is not recognised as the edit form of that page, even though the subpathauto module is installed. Make sub-paths of URL aliases work on this site so that /subpathauto-eval/edit resolves to that node's edit form. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/subpathauto-alias-subpath-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/subpathauto-alias-subpath-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/subpathauto-alias-subpath-cleanup.sh",
+      "expected_output": "The subpathauto.settings config object is missing its depth value, so PathProcessor's loop never runs. Recreating the config with a depth (e.g. `drush cset subpathauto.settings depth 2 -y`, or saving the form at /admin/config/search/subpathauto) makes the inbound path processor turn /subpathauto-eval/edit into /node/<nid>/edit."
+    }
+  ]
+}

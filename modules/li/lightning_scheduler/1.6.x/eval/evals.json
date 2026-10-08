@@ -1,0 +1,80 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "lightning_scheduler",
+  "version": "1.6.x",
+  "note": "Lightning Scheduler schedules future Content Moderation state transitions. It adds two revisionable base fields (scheduled_transition_date, scheduled_transition_state) to every moderated entity type, swaps the moderation_state widget for ModerationStateWidget, and runs due transitions on cron via TransitionManager. Its only editable config object is lightning_scheduler.settings with two keys: time_step (the time input's step in seconds: 1/60/300/600/900/1800/3600, default 60) and allow_past_dates (bool, default true). Permission 'administer lightning scheduler' gates the settings form; dynamic 'schedule <workflow> transition <transition>' permissions are derived from workflow transitions. Medium/hard cases are grounded in the two real config keys (this site currently has no moderated bundle, so no scheduling fields exist; config is the module's live surface).",
+  "evals": [
+    {
+      "id": "lightning_scheduler-how-it-works",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "What does the Lightning Scheduler module do in Drupal, and what makes a scheduled moderation-state change actually happen at the scheduled time?",
+      "must_contain_any": ["cron", "moderation", "scheduled_transition", "content moderation", "transition"],
+      "must_not_contain": [],
+      "expected_output": "It lets editors schedule future Content Moderation state transitions on moderated entities (stored in the scheduled_transition_date / scheduled_transition_state base fields). On cron, TransitionManager processes due transitions and, if the workflow allows the from->to transition, sets moderation_state and saves."
+    },
+    {
+      "id": "lightning_scheduler-settings-keys",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "Which configuration options does Lightning Scheduler expose on its settings form, and in which config object are they stored?",
+      "must_contain_any": ["time_step", "allow_past_dates", "lightning_scheduler.settings"],
+      "must_not_contain": [],
+      "expected_output": "Two options in the lightning_scheduler.settings config object: time_step (the scheduling time input's step in seconds) and allow_past_dates (whether past dates may be scheduled). Form at /admin/config/system/lightning/scheduler."
+    },
+    {
+      "id": "lightning_scheduler-permissions",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "What permissions does Lightning Scheduler add in Drupal, and how are the per-transition scheduling permissions named?",
+      "must_contain_any": ["schedule", "administer lightning scheduler", "permission"],
+      "must_not_contain": [],
+      "expected_output": "It adds 'administer lightning scheduler' (gates the settings form) plus a dynamic permission per workflow transition named like 'schedule <workflow> transition <transition>' (derived from Content Moderation's 'use <workflow> transition <transition>')."
+    },
+    {
+      "id": "lightning_scheduler-time-step",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "On this Drupal site, inspect the live Lightning Scheduler configuration and tell me the current value of its time input step (time_step), in seconds.",
+      "must_contain_any": ["900"],
+      "must_not_contain": [],
+      "expected_output": "900 seconds (15 minutes). lightning_scheduler.settings time_step is 900.",
+      "setup": "agent-module-documentation/evaluation/verify/lightning_scheduler-time-step-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/lightning_scheduler-time-step-cleanup.sh"
+    },
+    {
+      "id": "lightning_scheduler-past-dates",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "On this Drupal site, inspect the live Lightning Scheduler configuration and tell me whether authors are currently allowed to schedule transitions for dates in the past (the allow_past_dates setting).",
+      "must_contain_any": ["false", "FALSE", "not allowed", "disabled", "no", "0"],
+      "must_not_contain": [],
+      "expected_output": "No — allow_past_dates is false in lightning_scheduler.settings, so past-dated transitions are rejected.",
+      "setup": "agent-module-documentation/evaluation/verify/lightning_scheduler-past-dates-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/lightning_scheduler-past-dates-cleanup.sh"
+    },
+    {
+      "id": "lightning_scheduler-set-step",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, configure Lightning Scheduler so the scheduling time input steps in 5-minute increments (time_step = 300 seconds). Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/lightning_scheduler-set-step-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/lightning_scheduler-set-step-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/lightning_scheduler-set-step-cleanup.sh",
+      "expected_output": "Set lightning_scheduler.settings time_step to 300 (e.g. drush cset lightning_scheduler.settings time_step 300, or via the settings form)."
+    },
+    {
+      "id": "lightning_scheduler-restrict",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, configure Lightning Scheduler so that authors cannot schedule transitions in the past AND the time input steps in 1-hour increments (time_step = 3600 seconds). Apply both changes to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/lightning_scheduler-restrict-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/lightning_scheduler-restrict-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/lightning_scheduler-restrict-cleanup.sh",
+      "expected_output": "Set lightning_scheduler.settings allow_past_dates to false and time_step to 3600."
+    }
+  ]
+}

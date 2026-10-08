@@ -1,0 +1,108 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "http_cache_control",
+  "version": "2.9.x",
+  "note": "HTTP Cache Control adds Cache-Control / Surrogate-Control / targeted CDN cache headers on top of Drupal core's page-cache max-age. It has no admin page of its own: it alters the core Performance form (route system.performance_settings, /admin/config/development/performance) and stores everything in one config object, http_cache_control.settings, which a KernelEvents::RESPONSE subscriber reads. All tiers are grounded in that config object. Note on execution grading: the module only writes headers onto responses Drupal already deems cacheable (anonymous page-cache hits), so functional header emission is environment-dependent; therefore hard-tier verify scripts assert the live config values that the CacheControlEventSubscriber consumes (legitimate live state) rather than curl'd headers. The module defines no permissions, services (beyond the subscriber), plugins or Drush commands, so there is no plugin/hook/drush tier to cover.",
+  "evals": [
+    {
+      "id": "http_cache_control-config-location",
+      "difficulty": "easy",
+      "mode": "recipe",
+      "prompt": "On a Drupal 11 site, where do I configure the HTTP Cache Control module? It has no menu link of its own. Give the admin path, the route, and the config object that stores the settings.",
+      "must_contain_any": ["system.performance_settings", "/admin/config/development/performance"],
+      "must_not_contain": [],
+      "expected_output": "The module has no configure route; it alters Drupal core's Performance form at /admin/config/development/performance (route system.performance_settings). All values are stored in the http_cache_control.settings config object."
+    },
+    {
+      "id": "http_cache_control-smaxage-key",
+      "difficulty": "easy",
+      "mode": "recipe",
+      "prompt": "Which config key and Cache-Control directive does this module use to give reverse proxies / CDNs a longer cache lifetime than browsers?",
+      "must_contain_any": ["s_maxage", "s-maxage"],
+      "must_not_contain": [],
+      "expected_output": "cache.http.s_maxage (an integer number of seconds) in http_cache_control.settings, emitted as the Cache-Control: s-maxage=N directive, which shared caches use while browsers use the separate core max-age."
+    },
+    {
+      "id": "http_cache_control-mechanism",
+      "difficulty": "easy",
+      "mode": "recipe",
+      "prompt": "How does this module actually add the extra Cache-Control directives to responses, and which stale-revalidation directives can it emit?",
+      "must_contain_any": ["stale-while-revalidate", "stale-if-error", "EventSubscriber", "CacheControlEventSubscriber", "KernelEvents::RESPONSE"],
+      "must_not_contain": [],
+      "expected_output": "A response event subscriber (CacheControlEventSubscriber on KernelEvents::RESPONSE, priority -10) reads http_cache_control.settings and, for cacheable responses, adds directives including stale-while-revalidate=N (cache.http.stale_while_revalidate) and stale-if-error=N (cache.http.stale_if_error), plus must-revalidate, no-cache, no-store and Surrogate-Control."
+    },
+    {
+      "id": "http_cache_control-targeted-header",
+      "difficulty": "easy",
+      "mode": "recipe",
+      "prompt": "Can this module emit a CDN-only cache header that doesn't affect browsers, like CDN-Cache-Control or Akamai-Cache-Control? Where is that stored?",
+      "must_contain_any": ["cache.targeted.items", "CDN-Cache-Control", "targeted"],
+      "must_not_contain": [],
+      "expected_output": "Yes. The 'Targeted Cache-Control' section stores a list under cache.targeted.items; each item's target prefix produces a {target}-Cache-Control header (CDN-Cache-Control, Akamai-Cache-Control, Cloudflare-CDN-Cache-Control or a custom prefix) with its own directives (visibility, max-age, no-cache, must-revalidate, no-store, no-transform, proxy-revalidate)."
+    },
+    {
+      "id": "http_cache_control-current-smaxage",
+      "difficulty": "medium",
+      "mode": "introspection",
+      "prompt": "This site already has HTTP Cache Control configured. What shared-cache max age (s-maxage), in seconds, is currently set for normal (200) responses? Inspect the live configuration to answer.",
+      "must_contain_any": ["86400"],
+      "must_not_contain": [],
+      "setup": "agent-module-documentation/evaluation/verify/http_cache_control-smaxage-value-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/http_cache_control-smaxage-value-cleanup.sh",
+      "expected_output": "cache.http.s_maxage is 86400 seconds (one day). Readable with `drush config:get http_cache_control.settings cache.http.s_maxage`."
+    },
+    {
+      "id": "http_cache_control-current-cdn",
+      "difficulty": "medium",
+      "mode": "introspection",
+      "prompt": "Which targeted Cache-Control header is this site currently configured to emit, and with what visibility and max-age? Inspect the live configuration.",
+      "must_contain_any": ["CDN-Cache-Control", "CDN"],
+      "must_not_contain": [],
+      "setup": "agent-module-documentation/evaluation/verify/http_cache_control-cdn-item-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/http_cache_control-cdn-item-cleanup.sh",
+      "expected_output": "One targeted item in cache.targeted.items with target CDN, so it emits CDN-Cache-Control: public, max-age=3600 (visibility public, max_age 3600)."
+    },
+    {
+      "id": "http_cache_control-current-vary",
+      "difficulty": "medium",
+      "mode": "introspection",
+      "prompt": "What request header has this site been configured to add to the Vary response header via HTTP Cache Control? Inspect the live configuration.",
+      "must_contain_any": ["Accept-Language"],
+      "must_not_contain": [],
+      "setup": "agent-module-documentation/evaluation/verify/http_cache_control-vary-header-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/http_cache_control-vary-header-cleanup.sh",
+      "expected_output": "cache.http.vary is 'Accept-Language' (the module also appends 'Cookie' automatically unless omit_vary_cookie is set)."
+    },
+    {
+      "id": "http_cache_control-set-proxy-cache",
+      "difficulty": "hard",
+      "mode": "execution",
+      "persona": "drupal-expert",
+      "prompt": "Configure the HTTP Cache Control module so shared caches (reverse proxies / CDNs) keep pages for one day and serve stale content briefly while revalidating: set cache.http.s_maxage to 86400 and cache.http.stale_while_revalidate to 30 in http_cache_control.settings. Clear caches when done.",
+      "reset": "agent-module-documentation/evaluation/verify/http_cache_control-proxy-cache-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/http_cache_control-proxy-cache-verify.sh",
+      "expected_output": "http_cache_control.settings has cache.http.s_maxage = 86400 and cache.http.stale_while_revalidate = 30."
+    },
+    {
+      "id": "http_cache_control-set-cdn-header",
+      "difficulty": "hard",
+      "mode": "execution",
+      "persona": "drupal-expert",
+      "prompt": "Using the HTTP Cache Control module, configure a targeted CDN-Cache-Control header that is public with max-age 86400 (one day). Add it to cache.targeted.items in http_cache_control.settings (target 'CDN', visibility 'public', max_age 86400) and clear caches.",
+      "reset": "agent-module-documentation/evaluation/verify/http_cache_control-cdn-header-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/http_cache_control-cdn-header-verify.sh",
+      "expected_output": "cache.targeted.items contains an entry with target CDN, visibility public and max_age 86400, so the subscriber emits 'CDN-Cache-Control: public, max-age=86400'."
+    },
+    {
+      "id": "http_cache_control-set-404-cache",
+      "difficulty": "hard",
+      "mode": "execution",
+      "persona": "drupal-expert",
+      "prompt": "Configure the HTTP Cache Control module so that 404 Not Found responses are cached by shared proxies for 15 minutes: set cache.http.404_max_age to 900 in http_cache_control.settings, then clear caches.",
+      "reset": "agent-module-documentation/evaluation/verify/http_cache_control-404-cache-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/http_cache_control-404-cache-verify.sh",
+      "expected_output": "http_cache_control.settings has cache.http.404_max_age = 900, so 404 responses receive Cache-Control: s-maxage=900."
+    }
+  ]
+}

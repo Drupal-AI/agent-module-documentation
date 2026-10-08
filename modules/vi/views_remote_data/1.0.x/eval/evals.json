@@ -1,0 +1,80 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "views_remote_data",
+  "version": "1.0.x",
+  "note": "Views Remote Data is an API-only module (no UI) that lets a View be driven by remote data. Its surface is the Views query plugin views_remote_data_query, the Property field/filter/argument/sort handlers (plugin id views_remote_data_property, configured with a property_path), two cache plugins (views_remote_data_time, views_remote_data_tag), a wizard, and two events (RemoteDataQueryEvent, RemoteDataLoadEntitiesEvent). There is no live remote data source on this site, so medium/hard cases are grounded in VIEW CONFIG that uses this module's real plugin ids (the view config saves fine even without a live base table; verification reads config, it does not execute the view). Medium cases create a known view and read its property_path / cache plugin; hard cases require the agent to author a view that uses the remote-data query plugin + property field, or to switch a view's cache plugin to the remote-data time cache.",
+  "evals": [
+    {
+      "id": "views_remote_data-query-plugin",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "How do I make a Drupal View pull from a remote API using the views_remote_data module? What tells Views to route a base table through the remote query, and which events do I answer?",
+      "must_contain_any": ["views_remote_data_query", "query_id", "RemoteDataQueryEvent", "hook_views_data"],
+      "must_not_contain": [],
+      "expected_output": "Declare a Views base table (hook_views_data) whose base sets query_id: views_remote_data_query, then subscribe to RemoteDataQueryEvent (add ResultRow results, using the conditions/sorts/limit/offset) and optionally RemoteDataLoadEntitiesEvent (attach $row->_entity)."
+    },
+    {
+      "id": "views_remote_data-property-handler",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "In a views_remote_data View, how do I map a nested key from each remote record to a Views field? What is the handler/plugin id and the setting used?",
+      "must_contain_any": ["views_remote_data_property", "property_path"],
+      "must_not_contain": [],
+      "expected_output": "Use the Property handler (plugin id views_remote_data_property) as the field/filter/argument/sort, configured with a property_path (a dot path into the result row, e.g. name or foo.bar)."
+    },
+    {
+      "id": "views_remote_data-cache-plugins",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "What caching plugins does views_remote_data provide for a remote-data View, and what does each do?",
+      "must_contain_any": ["views_remote_data_time", "views_remote_data_tag"],
+      "must_not_contain": [],
+      "expected_output": "views_remote_data_time (time-based caching of raw results and rendered output, with configurable lifespans) and views_remote_data_tag (tag-based caching invalidated by the cache tags your event bubbles)."
+    },
+    {
+      "id": "views_remote_data-known-field",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "This site has a View that uses the views_remote_data module. Inspect the live view configuration for the view with id 'vrd_intro' and tell me the property_path configured on its Property field.",
+      "must_contain_any": ["card.title"],
+      "must_not_contain": [],
+      "expected_output": "The Property field on vrd_intro has property_path 'card.title' (plugin_id views_remote_data_property).",
+      "setup": "agent-module-documentation/evaluation/verify/views_remote_data-known-field-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/views_remote_data-known-field-cleanup.sh"
+    },
+    {
+      "id": "views_remote_data-known-cache",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "On this site there is a remote-data View with id 'vrd_cacheview'. Inspect its live configuration and tell me which caching plugin its default display uses.",
+      "must_contain_any": ["views_remote_data_time"],
+      "must_not_contain": [],
+      "expected_output": "vrd_cacheview uses the views_remote_data_time cache plugin (time-based remote-data caching).",
+      "setup": "agent-module-documentation/evaluation/verify/views_remote_data-known-cache-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/views_remote_data-known-cache-cleanup.sh"
+    },
+    {
+      "id": "views_remote_data-build-view",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, create a View with the id 'vrd_build' that is driven by the views_remote_data module: its default display must use the views_remote_data query plugin, and it must have a Property field whose property_path is 'title'. Apply the change to the live site (there is no UI/base table, so author it as view config).",
+      "reset": "agent-module-documentation/evaluation/verify/views_remote_data-build-view-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/views_remote_data-build-view-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/views_remote_data-build-view-cleanup.sh",
+      "expected_output": "Create views.view.vrd_build whose display.default.display_options.query.type = views_remote_data_query and which has a field with plugin_id views_remote_data_property and property_path 'title'."
+    },
+    {
+      "id": "views_remote_data-cache-plugin",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this site there is a remote-data View with id 'vrd_cache' whose caching is currently 'none'. Because its data comes from a slow API, switch its default display to use the views_remote_data time-based cache plugin. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/views_remote_data-cache-plugin-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/views_remote_data-cache-plugin-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/views_remote_data-cache-plugin-cleanup.sh",
+      "expected_output": "Set views.view.vrd_cache display.default.display_options.cache.type to views_remote_data_time (the Time-based caching (Remote data) plugin)."
+    }
+  ]
+}

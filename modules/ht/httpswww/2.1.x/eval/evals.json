@@ -1,0 +1,98 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "httpswww",
+  "version": "2.1.x",
+  "note": "HTTPS and WWW Redirect is a single-config, single-form module: one config object httpswww.settings with keys enabled (bool), prefix (mixed/no/yes), scheme (mixed/https), and exclude_subdomains (array, only consulted when prefix=yes). Configure route/path is httpswww.settings at /admin/config/system/httpswww, gated by the administer httpswww permission; bypass httpswww redirect exempts a user from the redirect the event subscriber (HttpsWwwRedirectSubscriber, on kernel.request) would otherwise issue. The module ships NO config/install and NO config/schema, so the shipped baseline is that httpswww.settings does not exist at all -- every eval case restores that baseline by running `drush config:delete httpswww.settings` rather than resetting individual keys. All medium/hard cases read and write this real config object directly via drush php:eval / drush config:get, matching how the module's own settings form persists values.",
+  "evals": [
+    {
+      "id": "httpswww-config-keys",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "The Drupal contrib module httpswww (HTTPS and WWW Redirect) stores its settings in a single config object. What is that config object's name, what are its main keys, and what values does each key accept?",
+      "must_contain_any": [
+        "httpswww.settings",
+        "enabled",
+        "prefix",
+        "scheme"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The config object is httpswww.settings. Keys: enabled (bool, master on/off), prefix (string: mixed = no redirect, no = remove the www prefix, yes = add the www prefix), scheme (string: mixed = no redirect, https = redirect to HTTPS), and exclude_subdomains (array of subdomain strings that keep their bare host even when prefix=yes)."
+    },
+    {
+      "id": "httpswww-permissions",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "What permissions does the Drupal httpswww module define, and specifically what does the 'bypass httpswww redirect' permission do for a user who has it?",
+      "must_contain_any": [
+        "bypass httpswww redirect",
+        "administer httpswww"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Two permissions: 'administer httpswww' (access to the settings form at /admin/config/system/httpswww) and 'bypass httpswww redirect'. A user with 'bypass httpswww redirect' is exempted from the redirect entirely -- the event subscriber checks this permission first and, if present, returns without issuing any 301, regardless of the configured enabled/prefix/scheme values."
+    },
+    {
+      "id": "httpswww-force-https-add-www-howto",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "Using the httpswww module, how would I force my Drupal site to be served only over HTTPS and also make sure every request gets the www. prefix? Which config keys/values do I need to set, and where is the settings page?",
+      "must_contain_any": [
+        "scheme",
+        "https",
+        "prefix",
+        "yes"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Set httpswww.settings: enabled=true, scheme='https' (forces HTTPS), and prefix='yes' (adds the www prefix, redirecting example.com to www.example.com). This can be done on the settings form at /admin/config/system/httpswww (Configuration > System > HTTPS and WWW Redirect settings, requires 'administer httpswww'), or programmatically via \\Drupal::configFactory()->getEditable('httpswww.settings')->set(...)->save() / drush config:set."
+    },
+    {
+      "id": "httpswww-known-config-introspection",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "On this Drupal site, the httpswww module already has a configuration saved. Inspect the live httpswww.settings config and tell me: is HTTPS being enforced, is the www prefix being added or removed, and which subdomains (if any) are excluded from that www treatment?",
+      "must_contain_any": [
+        "api"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Yes, HTTPS is enforced (scheme=https). The www prefix is being ADDED (prefix=yes), not removed. The 'api' subdomain is excluded from getting the www prefix (exclude_subdomains contains 'api').",
+      "setup": "agent-module-documentation/evaluation/verify/httpswww-known-setup-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/httpswww-known-setup-cleanup.sh"
+    },
+    {
+      "id": "httpswww-exclude-config-introspection",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "On this Drupal site, httpswww is already configured. Inspect the live httpswww.settings config and tell me: is the www prefix being added or removed, is HTTPS being forced, and which subdomains are listed as excluded?",
+      "must_contain_any": [
+        "forum",
+        "support"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The www prefix is being REMOVED (prefix=no), not added. HTTPS is NOT being forced (scheme=mixed, no redirect). The excluded subdomains listed are 'forum' and 'support' (though exclude_subdomains only has an effect when prefix=yes, so they are currently inert given prefix=no).",
+      "setup": "agent-module-documentation/evaluation/verify/httpswww-exclude-setup-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/httpswww-exclude-setup-cleanup.sh"
+    },
+    {
+      "id": "httpswww-force-https-www-execution",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, configure the httpswww module so that the entire site is forced to HTTPS and every request also gets the www. prefix added to its host. Apply the change to the live site's httpswww.settings configuration.",
+      "reset": "agent-module-documentation/evaluation/verify/httpswww-force-https-www-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/httpswww-force-https-www-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/httpswww-force-https-www-cleanup.sh",
+      "expected_output": "httpswww.settings has enabled=true, scheme='https', and prefix='yes' (e.g. via \\Drupal::configFactory()->getEditable('httpswww.settings')->set('enabled', TRUE)->set('scheme', 'https')->set('prefix', 'yes')->save(), or the settings form at /admin/config/system/httpswww)."
+    },
+    {
+      "id": "httpswww-remove-www-https-execution",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, configure the httpswww module so that any www. prefix is stripped from the host (redirecting www.example.com to example.com) and the site is also forced to HTTPS. Apply the change to the live site's httpswww.settings configuration.",
+      "reset": "agent-module-documentation/evaluation/verify/httpswww-remove-www-https-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/httpswww-remove-www-https-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/httpswww-remove-www-https-cleanup.sh",
+      "expected_output": "httpswww.settings has prefix='no' (removes the www prefix) and scheme='https' (forces HTTPS), e.g. via \\Drupal::configFactory()->getEditable('httpswww.settings')->set('enabled', TRUE)->set('prefix', 'no')->set('scheme', 'https')->save(), or the settings form at /admin/config/system/httpswww."
+    }
+  ]
+}

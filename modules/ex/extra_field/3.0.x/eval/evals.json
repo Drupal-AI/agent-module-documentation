@@ -1,0 +1,95 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "extra_field",
+  "version": "3.0.x",
+  "note": "Extra Field defines two plugin types - ExtraFieldDisplay (src/Plugin/ExtraField/Display, manager plugin.manager.extra_field_display) and ExtraFieldForm (src/Plugin/ExtraField/Form, manager plugin.manager.extra_field_form) - exposed to Drupal through hook_entity_extra_field_info() as pseudo-fields named extra_field_<plugin_id>. It has no settings form, no configure route, no permissions and no config schema; the only persistent state is a component named extra_field_<id> on core.entity_view_display.* / core.entity_form_display.*. Medium cases therefore read the live displays after the bundled extra_field_example submodule is enabled; hard cases require actually coding a plugin module and placing its pseudo-field, verified by plugin discovery plus real rendering / real form building.",
+  "evals": [
+    {
+      "id": "extra_field-plugin-location",
+      "mode": "recipe",
+      "prompt": "Using the Drupal contrib module extra_field, I want to add a display-only field to my Article nodes from my own module. In which directory must the plugin class live, which base class should it extend, and what machine name will the resulting pseudo-field have on the Manage display page?",
+      "must_contain_any": [
+        "Plugin/ExtraField/Display",
+        "extra_field_",
+        "ExtraFieldDisplayBase"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The class goes in my_module/src/Plugin/ExtraField/Display/ and extends ExtraFieldDisplayBase (raw output) or ExtraFieldDisplayFormattedBase (wrapped in field templates). With an @ExtraFieldDisplay / #[ExtraFieldDisplay] definition of id = \"my_id\", the pseudo-field is named extra_field_my_id (EXTRA_FIELD_PREFIX 'extra_field_'), and it is placed on Manage display. Clear caches after adding the class.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "extra_field-bundles-wildcard",
+      "mode": "recipe",
+      "prompt": "In an extra_field plugin definition, what does the `bundles` key accept? Show how to target one bundle, every bundle of an entity type, and every content entity type on the site.",
+      "must_contain_any": [
+        "node.*",
+        "*.*",
+        "entity_type.*"
+      ],
+      "must_not_contain": [],
+      "expected_output": "`bundles` is an array of \"entity_type.bundle\" strings: \"node.article\" for one bundle, \"node.*\" for every bundle of the node entity type, and \"*.*\" for every content entity type and all of its bundles. ExtraFieldManagerBase expands the wildcards using the entity type manager (only ContentEntityTypeInterface types for the '*' entity wildcard).",
+      "difficulty": "easy"
+    },
+    {
+      "id": "extra_field-formatted-base",
+      "mode": "recipe",
+      "prompt": "The extra_field module offers more than one base class for display plugins. Which one wraps the plugin output in Drupal's normal field markup (so field.html.twig, the label and the label display setting apply), and which method do you implement when you use it?",
+      "must_contain_any": [
+        "ExtraFieldDisplayFormattedBase",
+        "viewElements"
+      ],
+      "must_not_contain": [],
+      "expected_output": "ExtraFieldDisplayFormattedBase. With it you implement viewElements() rather than view(); the base class builds a '#theme' => 'field' render array and lets you override getLabel(), getLabelDisplay(), getFieldType(), isTranslatable(), getLangcode() and set $this->isEmpty to suppress the wrapper. ExtraFieldDisplayBase in contrast returns your render array verbatim with no wrappers.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "extra_field-placed-display",
+      "mode": "introspection",
+      "prompt": "This Drupal site uses the extra_field module and exactly one extra_field-provided pseudo-field is enabled on the Article content type's default view display. Inspect the running site and report its machine name and its weight.",
+      "must_contain_any": [
+        "extra_field_formatted_field"
+      ],
+      "must_not_contain": [],
+      "expected_output": "extra_field_formatted_field (the 'formatted_field' ExtraFieldDisplay plugin from extra_field_example, labelled 'Data formatted as field with label') is placed on core.entity_view_display.node.article.default with weight 42; the module's other display plugins are in the hidden list.",
+      "setup": "agent-module-documentation/evaluation/verify/extra_field-placed-display-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/extra_field-placed-display-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "extra_field-form-component",
+      "mode": "introspection",
+      "prompt": "On this Drupal site an extra_field ExtraFieldForm plugin has been enabled on the Article content type's default form display. Inspect the live site and give the exact machine name of that form component and its weight.",
+      "must_contain_any": [
+        "extra_field_example_custom_submit"
+      ],
+      "must_not_contain": [],
+      "expected_output": "extra_field_example_custom_submit at weight 37 in core.entity_form_display.node.article.default. It comes from the ExtraFieldForm plugin id example_custom_submit; extra_field prefixes every plugin id with 'extra_field_' to build the pseudo-field name.",
+      "setup": "agent-module-documentation/evaluation/verify/extra_field-form-component-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/extra_field-form-component-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "extra_field-display-plugin",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, use the extra_field module to add a display-only pseudo-field to Article nodes. Create a custom module at web/modules/custom/extra_field_eval_display providing an ExtraFieldDisplay plugin with id `efeval_greeting`, available on node.article, whose output contains exactly the marker text EFEVAL-OK. Enable the module and place the resulting pseudo-field on the Article default view display so it actually renders when an Article is viewed.",
+      "reset": "agent-module-documentation/evaluation/verify/extra_field-display-plugin-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/extra_field-display-plugin-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/extra_field-display-plugin-cleanup.sh",
+      "expected_output": "plugin.manager.extra_field_display has the definition efeval_greeting; core.entity_view_display.node.article.default contains the component extra_field_efeval_greeting; and rendering an Article in the default view mode outputs the string EFEVAL-OK."
+    },
+    {
+      "id": "extra_field-form-plugin",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, use the extra_field module to add a non-storing form element to the Article node form. Create a custom module at web/modules/custom/extra_field_eval_form providing an ExtraFieldForm plugin with id `efeval_note` for node.article that renders a textfield. Enable the module and place the resulting pseudo-field on the Article default form display so it appears when the node form is built.",
+      "reset": "agent-module-documentation/evaluation/verify/extra_field-form-plugin-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/extra_field-form-plugin-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/extra_field-form-plugin-cleanup.sh",
+      "expected_output": "plugin.manager.extra_field_form has the definition efeval_note; core.entity_form_display.node.article.default contains the component extra_field_efeval_note; and building an Article node form yields the element $form['extra_field_efeval_note']."
+    }
+  ]
+}

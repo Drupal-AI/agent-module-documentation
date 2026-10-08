@@ -1,0 +1,98 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "workbench_moderation_actions",
+  "version": "2.1.x",
+  "note": "WBM actions replaces core's node publish/unpublish bulk actions with one bulk action per Workbench Moderation state. It defines a single core Action plugin id 'state_change' with StateChangeDeriver, whose derivatives are keyed <entity_type>__<state_id> (e.g. node__archived, block_content__draft). hook_install creates one 'action' config entity per derivative (id state_change__<type>__<state>, plugin state_change:<type>__<state>, type = entity type id). Its persistent, verifiable state is therefore these 'action' config entities. Medium/hard cases create/read/delete those Action config entities (router-safe, no serialization). Requires Workbench Moderation (contrib), NOT core Content Moderation. NOTE: on this shared site the actions were not auto-created at install time, and creating bundles/roles or serializing entities fatals, so evals stick to Action config entities.",
+  "evals": [
+    {
+      "id": "wma-what-it-does",
+      "mode": "recipe",
+      "prompt": "What does the workbench_moderation_actions (WBM actions) module do to the bulk Action dropdown on /admin/content, and which core actions does it replace?",
+      "must_contain_any": [
+        "state_change",
+        "moderation state",
+        "publish",
+        "Set"
+      ],
+      "must_not_contain": [],
+      "expected_output": "On install it deletes core's node_publish_action and node_unpublish_action and creates one bulk action per Workbench Moderation state (the state_change action plugin, derived per entity type x state), so editors can 'Set <Entity> as <State>' for many nodes at once.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "wma-deriver-ids",
+      "mode": "recipe",
+      "prompt": "In workbench_moderation_actions, what is the Action plugin id and how are its derivatives named for, say, setting nodes to the 'archived' state?",
+      "must_contain_any": [
+        "state_change:node__archived",
+        "state_change",
+        "node__archived"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The Action plugin id is 'state_change' with StateChangeDeriver; derivatives are keyed <entity_type_id>__<state_id>, so the node->archived derivative is state_change:node__archived (its action config entity id is state_change__node__archived).",
+      "difficulty": "easy"
+    },
+    {
+      "id": "wma-requires-workbench",
+      "mode": "recipe",
+      "prompt": "Which moderation system does workbench_moderation_actions require, and what happens to the core publish/unpublish actions if I later uninstall it?",
+      "must_contain_any": [
+        "workbench_moderation",
+        "Workbench Moderation"
+      ],
+      "must_not_contain": [],
+      "expected_output": "It requires the contrib Workbench Moderation module (not core Content Moderation). hook_uninstall restores node_publish_action and node_unpublish_action from the node module's default config.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "wma-known-archived",
+      "mode": "introspection",
+      "prompt": "On this Drupal site there is a workbench_moderation_actions bulk action config entity with id state_change__node__archived. Inspect the live action and state which moderation state it sets content to.",
+      "must_contain_any": [
+        "archived",
+        "Archived"
+      ],
+      "must_not_contain": [],
+      "expected_output": "It sets nodes to the 'archived' moderation state - the action's plugin is state_change:node__archived (the derivative key <entity_type>__<state> encodes node + archived).",
+      "setup": "agent-module-documentation/evaluation/verify/workbench_moderation_actions-known-archived-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/workbench_moderation_actions-known-archived-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "wma-known-block",
+      "mode": "introspection",
+      "prompt": "A workbench_moderation_actions state_change action exists on this site whose id is state_change__block_content__draft. Inspect it and state which entity type it applies to and which moderation state it sets.",
+      "must_contain_any": [
+        "block_content",
+        "draft"
+      ],
+      "must_not_contain": [],
+      "expected_output": "It applies to the block_content (custom block) entity type and sets the 'draft' moderation state: type = block_content, plugin = state_change:block_content__draft.",
+      "setup": "agent-module-documentation/evaluation/verify/workbench_moderation_actions-known-block-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/workbench_moderation_actions-known-block-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "wma-create-needsreview",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, create the workbench_moderation_actions bulk action that sets NODES to the 'needs_review' moderation state, so it appears in the Action dropdown on /admin/content. Apply it to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/workbench_moderation_actions-create-needsreview-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/workbench_moderation_actions-create-needsreview-verify.sh",
+      "expected_output": "Create an 'action' config entity: id state_change__node__needs_review, type node, plugin state_change:node__needs_review, empty configuration (e.g. Drupal\\system\\Entity\\Action::create([...])->save()). This mirrors what the module's hook_install does per derivative.",
+      "cleanup": "agent-module-documentation/evaluation/verify/workbench_moderation_actions-create-needsreview-reset.sh"
+    },
+    {
+      "id": "wma-create-published",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "Create the workbench_moderation_actions bulk action that sets nodes to the 'published' moderation state on this site's Action list. Apply it to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/workbench_moderation_actions-create-published-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/workbench_moderation_actions-create-published-verify.sh",
+      "expected_output": "Create an 'action' config entity: id state_change__node__published, type node, plugin state_change:node__published, empty configuration, then save.",
+      "cleanup": "agent-module-documentation/evaluation/verify/workbench_moderation_actions-create-published-reset.sh"
+    }
+  ]
+}

@@ -1,0 +1,87 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "google_cse",
+  "version": "5.0.x",
+  "note": "Google Programmable Search (google_cse) embeds Google's hosted Programmable Search Engine (CSE) into Drupal via a core Search page plugin 'google_cse_search' and a 'google_cse' block. IMPORTANT: there is NO google_cse.settings config object — the plugin's settings (cx, results_display, custom_results_display, query_key, watermark, prefix/suffix, width, custom_css, data_attributes) are stored INSIDE a search.page.<id> config entity under configuration.* (schema search.plugin.google_cse_search), created via core's Search pages UI (/admin/config/search/pages); the module has no configure route of its own. LIMITATION: returning live results requires a real Google Programmable Search Engine (a valid cx) and the visitor's browser running Google's script, which this environment does not have — so medium/hard cases are grounded in CONFIG ONLY (create/read the search.page entity's configuration.* keys), never in live search results. Easy cases are response-graded (no site changes). Medium cases stage a known google_cse search page and ask the agent to read its config back (cleanup deletes it). Hard cases have the agent create + configure a google_cse search page with a dummy cx and on-site options, verified against live config (exit 0 = pass).",
+  "evals": [
+    {
+      "id": "google_cse-search-plugin",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "On a Drupal 11 site with the Google Programmable Search (google_cse) module, how do you expose a Google-powered search? Name the core search plugin it provides and where in the admin UI you create an instance of it.",
+      "must_contain_any": ["google_cse_search", "/admin/config/search/pages", "search pages"],
+      "must_not_contain": [],
+      "expected_output": "It provides a core Search page plugin with id google_cse_search ('Google Programmable Search'). Create an instance at /admin/config/search/pages ('Add search page', choose the Google Programmable Search plugin) — it becomes a search.page config entity. No Search API/Solr backend is involved; Google hosts the index."
+    },
+    {
+      "id": "google_cse-cx-key",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "Where is the Google Search Engine ID (the 'cx') stored for a google_cse search page, and what config key holds it? Is there a google_cse.settings object?",
+      "must_contain_any": ["cx", "configuration.cx", "search.page"],
+      "must_not_contain": [],
+      "expected_output": "There is NO google_cse.settings object. The Search Engine ID is the configuration.cx key inside the search.page.<id> config entity whose plugin is google_cse_search (config schema search.plugin.google_cse_search). Read it with: drush cget search.page.<id> configuration."
+    },
+    {
+      "id": "google_cse-results-display",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "A google_cse search page has a 'results_display' option. What are its two possible values and what does each do?",
+      "must_contain_any": ["here", "google"],
+      "must_not_contain": [],
+      "expected_output": "results_display: 'here' renders the search results on this site via Google's embedded JavaScript element (default); 'google' redirects the search box to Google's hosted results page at https://cse.google.com/cse (the cx is sent as a hidden field). It is a configuration.* key on the search.page entity."
+    },
+    {
+      "id": "google_cse-permission",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "Which permission does google_cse define to control who can run Google Programmable Search, and which permission controls editing the search configuration?",
+      "must_contain_any": ["search Google CSE", "View Google Programmable Search"],
+      "must_not_contain": [],
+      "expected_output": "The module defines the 'search Google CSE' permission (label 'View Google Programmable Search') to gate running searches. Editing the search page configuration is gated by Drupal core's 'administer search' permission."
+    },
+    {
+      "id": "google_cse-known-cx",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "This Drupal 11 site has a Google Programmable Search page configured. Inspect the live configuration and report: what is its Google Search Engine ID (cx), and are its results shown on this site or redirected to Google?",
+      "setup": "agent-module-documentation/evaluation/verify/google_cse-known-cx-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/google_cse-known-cx-cleanup.sh",
+      "must_contain_any": ["eval-known-778899:sampleengine"],
+      "must_not_contain": [],
+      "expected_output": "The search.page.google_eval_known entity uses the google_cse_search plugin with configuration.cx = eval-known-778899:sampleengine and configuration.results_display = google (search box redirects to Google's hosted results page)."
+    },
+    {
+      "id": "google_cse-layout",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "On this live Drupal 11 site, a Google Programmable Search page is set up with non-default display options. Inspect its configuration and report: which results layout (custom_results_display) is selected, is the Google watermark shown, and which query-string key carries the search terms?",
+      "setup": "agent-module-documentation/evaluation/verify/google_cse-layout-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/google_cse-layout-cleanup.sh",
+      "must_contain_any": ["two-column"],
+      "must_not_contain": [],
+      "expected_output": "search.page.google_eval_layout: configuration.custom_results_display = two-column, configuration.watermark = true (watermark shown), configuration.query_key = q. Read via drush cget search.page.google_eval_layout configuration."
+    },
+    {
+      "id": "google_cse-create-page-layman",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "Set up Google-powered search on this site. Use my Google search engine id 'eval-demo-000111:dummyengine'. I want the search results to appear on our own site (not send visitors off to Google), using the plain results-only layout. (This is a test environment with no real Google engine, so I only need it configured correctly — it won't return live results yet.)",
+      "reset": "agent-module-documentation/evaluation/verify/google_cse-create-page-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/google_cse-create-page-verify.sh",
+      "expected_output": "A search.page config entity using the google_cse_search plugin exists with configuration.cx = eval-demo-000111:dummyengine, configuration.results_display = here, and configuration.custom_results_display = results-only."
+    },
+    {
+      "id": "google_cse-create-page-expert",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "Create a core Search page that uses the google_cse (Google Programmable Search) plugin. Set configuration.cx to 'eval-demo-000111:dummyengine', configuration.results_display to 'here', and configuration.custom_results_display to 'results-only'. It does not need to reach a real Google engine — the search.page config entity just needs to exist and be correctly configured.",
+      "reset": "agent-module-documentation/evaluation/verify/google_cse-create-page-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/google_cse-create-page-verify.sh",
+      "expected_output": "A search.page config entity with plugin google_cse_search exists whose configuration.cx == eval-demo-000111:dummyengine, results_display == here, custom_results_display == results-only."
+    }
+  ]
+}

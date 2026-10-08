@@ -1,0 +1,80 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "migrate_conditions",
+  "version": "2.2.x",
+  "note": "Migrate Conditions is a Migrate API framework: a plugin type migrate_conditions_condition (manager plugin.manager.migrate_conditions.condition) plus process plugins that evaluate conditions (evaluate_condition, skip_on_condition, stop_on_condition, if_condition, first_meeting_condition, filter_on_condition, switch_on_condition, and auto-generated :foreach variants). Conditions support a not: prefix, a parens shorthand (e.g. equals(bird)), a negate key, and a per-condition source override. It has no UI/config/permission/Drush of its own. Medium cases seed migrate_plus 'migration' config entities (mc_switch_test, mc_map_test) that reference migrate_conditions plugins and introspect them via the live config API — deliberately NOT via the migration plugin manager, which is unreliable on a site with pathauto enabled (its pathauto_pattern deriver throws 'must define the source_module property'), and NOT via the shipped tests/modules submodule, which is a test-only module that cannot be enabled with drush en on a live site. Hard cases exercise the real condition plugin manager API (plugin.manager.migrate_conditions.condition) from code and store the boolean result in Drupal State, verified against live state.",
+  "evals": [
+    {
+      "id": "migrate_conditions-process-plugins",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "In the Drupal Migrate Conditions module, which migrate process plugin do I use to skip a migration row when a condition is met, and what other condition-based process plugins does it provide?",
+      "must_contain_any": ["skip_on_condition", "evaluate_condition", "if_condition", "switch_on_condition", "filter_on_condition"],
+      "must_not_contain": [],
+      "expected_output": "Use skip_on_condition (with method: row or process). Other process plugins: evaluate_condition, stop_on_condition, if_condition, first_meeting_condition, filter_on_condition, switch_on_condition (plus auto-generated :foreach variants)."
+    },
+    {
+      "id": "migrate_conditions-shorthands",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "In Migrate Conditions, how do I negate a condition, and what is the parens shorthand for passing a value to a condition like 'equals'?",
+      "must_contain_any": ["not:", "negate", "parens", "equals(", "(bird)"],
+      "must_not_contain": [],
+      "expected_output": "Negate with the 'not:' id prefix (e.g. not:empty) or negate: true. The parens shorthand sets a condition's designated 'parens' config key from the string in parentheses, e.g. equals(bird) sets value=bird, greater_than(3) sets value=3."
+    },
+    {
+      "id": "migrate_conditions-foreach",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "In Migrate Conditions, how can I apply a condition to each element of an array value separately instead of to the whole array?",
+      "must_contain_any": ["foreach", ":foreach"],
+      "must_not_contain": [],
+      "expected_output": "Append :foreach to a process plugin id (e.g. evaluate_condition:foreach). Any process plugin declaring handle_multiples gets an auto-generated :foreach variant (via hook_migrate_process_info_alter) that evaluates the condition per array element, so [4,2] with greater_than(3) yields [TRUE, FALSE]."
+    },
+    {
+      "id": "migrate_conditions-switch-plugin",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "This Drupal site has a migration configuration entity named 'mc_switch_test' (a migrate_plus migration). Inspect its process pipeline and tell me which migrate_conditions process plugin is used by the step named 'category'.",
+      "must_contain_any": ["switch_on_condition"],
+      "must_not_contain": [],
+      "expected_output": "The 'category' step uses the switch_on_condition process plugin. Read it from the live config, e.g. `drush cget migrate_plus.migration.mc_switch_test process.category.plugin` (or \\Drupal::config('migrate_plus.migration.mc_switch_test')->get('process')), which returns switch_on_condition.",
+      "setup": "agent-module-documentation/evaluation/verify/migrate_conditions-switch-plugin-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/migrate_conditions-switch-plugin-cleanup.sh"
+    },
+    {
+      "id": "migrate_conditions-map-condition",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "This Drupal site has a migration configuration entity named 'mc_map_test' (a migrate_plus migration). Inspect its process pipeline and tell me which migrate_conditions condition plugin the 'found' step evaluates.",
+      "must_contain_any": ["in_migrate_map"],
+      "must_not_contain": [],
+      "expected_output": "The 'found' step runs the evaluate_condition process plugin against the in_migrate_map condition. Read it from the live config, e.g. `drush cget migrate_plus.migration.mc_map_test process.found.condition.plugin`, which returns in_migrate_map.",
+      "setup": "agent-module-documentation/evaluation/verify/migrate_conditions-map-condition-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/migrate_conditions-map-condition-cleanup.sh"
+    },
+    {
+      "id": "migrate_conditions-eval-greater",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, use the Migrate Conditions condition plugin manager to create the 'greater_than' condition configured with the value 3, evaluate it against the source value 5, and save the resulting boolean into Drupal State under the key 'migrate_conditions_task1'. Apply it to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/migrate_conditions-eval-greater-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/migrate_conditions-eval-greater-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/migrate_conditions-eval-greater-cleanup.sh",
+      "expected_output": "Via plugin.manager.migrate_conditions.condition, createInstance('greater_than', ['value' => 3]) (or 'greater_than(3)'), then $condition->evaluate(5, new \\Drupal\\migrate\\Row()) returns TRUE, and \\Drupal::state()->set('migrate_conditions_task1', TRUE)."
+    },
+    {
+      "id": "migrate_conditions-eval-and",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, use the Migrate Conditions condition plugin manager to build an 'and' condition that combines greater_than(4) and less_than(6), evaluate it against the source value 5, and save the resulting boolean into Drupal State under the key 'migrate_conditions_task2'. Apply it to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/migrate_conditions-eval-and-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/migrate_conditions-eval-and-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/migrate_conditions-eval-and-cleanup.sh",
+      "expected_output": "createInstance('and', ['conditions' => [['plugin' => 'greater_than', 'value' => 4], ['plugin' => 'less_than', 'value' => 6]]]), then evaluate(5, new Row()) returns TRUE, saved to State key migrate_conditions_task2."
+    }
+  ]
+}

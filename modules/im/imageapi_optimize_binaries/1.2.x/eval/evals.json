@@ -1,0 +1,80 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "imageapi_optimize_binaries",
+  "version": "1.2.x",
+  "note": "Image Optimize - Binaries provides nine ImageAPIOptimizeProcessor plugin instances (advdef, advpng, jfifremove, jpegoptim, jpegtran, optipng, pngcrush, pngout, pngquant) that shell out to local binaries; the ImageAPIOptimizeProcessor plugin TYPE and the pipeline config entity are defined by the parent imageapi_optimize module, so provides_plugin_types=[]. It has no configure route (configure=null). All state is grounded in imageapi_optimize_pipeline config entities (config name imageapi_optimize.pipeline.<name>) whose processors[] carry {id, weight, uuid, data}, plus the shared imageapi_optimize.settings:default_pipeline (ships null) and the shipped optional pipeline imageapi_optimize.pipeline.local_binaries. Medium cases read back a known processor setting from a namespaced pipeline; hard cases build a namespaced pipeline (and set the default) verified against live config. Binaries need not be installed for config to be created/verified.",
+  "evals": [
+    {
+      "id": "imageapi_optimize_binaries-png-processors",
+      "mode": "recipe",
+      "prompt": "The Drupal module imageapi_optimize_binaries adds Image Optimize processor plugins that call local command-line binaries. Name at least three of the processor plugin ids it ships for optimizing PNG images.",
+      "must_contain_any": ["pngquant", "optipng", "pngcrush", "pngout", "advpng", "advdef"],
+      "must_not_contain": [],
+      "expected_output": "For PNGs it ships optipng, pngquant, pngcrush, pngout, advpng and advdef (advdef/advpng recompress the deflate stream). For JPEGs it ships jpegoptim, jpegtran and jfifremove.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "imageapi_optimize_binaries-executable-path",
+      "mode": "recipe",
+      "prompt": "In imageapi_optimize_binaries, if a processor's binary (say jpegoptim) is not auto-detected on the server's PATH, how can an administrator tell it where the executable is, and which permission controls that?",
+      "must_contain_any": ["manual_executable_path", "configure imageapi_optimize_binary paths", "Manually set path"],
+      "must_not_contain": [],
+      "expected_output": "Each binary processor has a manual_executable_path setting (the 'Manually set path' textfield on the processor form). That field is only shown to users with the 'configure imageapi_optimize_binary paths' permission; getFullPathToBinary() returns manual_executable_path if set, otherwise the auto-detected path.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "imageapi_optimize_binaries-shipped-pipeline",
+      "mode": "recipe",
+      "prompt": "imageapi_optimize_binaries ships a ready-made Image Optimize pipeline containing all of its processors. What is that pipeline's machine name, and which configuration setting makes a pipeline the site-wide default used by image styles?",
+      "must_contain_any": ["local_binaries", "default_pipeline"],
+      "must_not_contain": [],
+      "expected_output": "The shipped optional pipeline is local_binaries (config imageapi_optimize.pipeline.local_binaries, label 'Local Binaries'). The site default is set in imageapi_optimize.settings:default_pipeline (ships as null); set it with e.g. `drush cset imageapi_optimize.settings default_pipeline local_binaries`.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "imageapi_optimize_binaries-known-quality",
+      "mode": "introspection",
+      "prompt": "This Drupal site has an Image Optimize pipeline with machine name imageapi_bin_evalq. Inspect the live configuration and state the JPEG quality value that its jpegoptim processor is configured with.",
+      "must_contain_any": ["77"],
+      "must_not_contain": [],
+      "expected_output": "77: in imageapi_optimize.pipeline.imageapi_bin_evalq the jpegoptim processor's data.quality is 77 (readable via `drush cget imageapi_optimize.pipeline.imageapi_bin_evalq processors`).",
+      "setup": "agent-module-documentation/evaluation/verify/imageapi_optimize_binaries-evalq-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/imageapi_optimize_binaries-evalq-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "imageapi_optimize_binaries-known-path",
+      "mode": "introspection",
+      "prompt": "The Image Optimize pipeline imageapi_bin_evalp on this site has a pngquant processor whose executable path has been set manually. Inspect the live configuration and give the exact binary path it is configured to use.",
+      "must_contain_any": ["/opt/custom/bin/pngquant"],
+      "must_not_contain": [],
+      "expected_output": "/opt/custom/bin/pngquant: in imageapi_optimize.pipeline.imageapi_bin_evalp the pngquant processor's data.manual_executable_path is /opt/custom/bin/pngquant.",
+      "setup": "agent-module-documentation/evaluation/verify/imageapi_optimize_binaries-evalp-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/imageapi_optimize_binaries-evalp-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "imageapi_optimize_binaries-build-pipeline",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "Using the imageapi_optimize_binaries module, create an Image Optimize pipeline with machine name imageapi_bin_eval that contains a single jpegoptim processor configured with a JPEG quality of 82. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/imageapi_optimize_binaries-build-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/imageapi_optimize_binaries-build-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/imageapi_optimize_binaries-build-cleanup.sh",
+      "expected_output": "Create the imageapi_optimize_pipeline config entity named imageapi_bin_eval and add a processor id=jpegoptim with data.quality=82 (e.g. $p=storage->create(['name'=>'imageapi_bin_eval','label'=>'...']); $p->addProcessor(['id'=>'jpegoptim','weight'=>1,'data'=>['manual_executable_path'=>'','quality'=>82,'progressive'=>'','size'=>'']]); $p->save();). Verified against imageapi_optimize.pipeline.imageapi_bin_eval."
+    },
+    {
+      "id": "imageapi_optimize_binaries-default-pipeline",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "Create an Image Optimize pipeline named imageapi_bin_evald that contains an optipng processor, and make it the site's default image optimization pipeline (imageapi_optimize.settings default_pipeline). Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/imageapi_optimize_binaries-default-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/imageapi_optimize_binaries-default-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/imageapi_optimize_binaries-default-cleanup.sh",
+      "expected_output": "Create pipeline imageapi_bin_evald with an optipng processor, then set imageapi_optimize.settings default_pipeline to imageapi_bin_evald (drush cset imageapi_optimize.settings default_pipeline imageapi_bin_evald). Verified: default_pipeline==imageapi_bin_evald and the pipeline contains an optipng processor."
+    }
+  ]
+}

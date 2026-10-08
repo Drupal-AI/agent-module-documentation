@@ -1,0 +1,101 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "sms_phone_number",
+  "version": "2.0.x",
+  "note": "SMS Phone Number extends phone_number with SMS verification + TFA. It defines an 'sms_phone_number' field type (subclass of PhoneNumberItem) adding field settings verify (none/optional/required) and message, and tracking a verified status. Global config object sms_phone_number.settings has tfa_field (user phone field for TFA) and verification_secret. Permission 'bypass phone number verification requirement'. SMS is sent via a callback (default SMS Framework sms_send), overridable with hook_sms_phone_number_send_sms_callback_alter. Actual SMS delivery needs an external gateway, so cases are grounded ONLY in local config: creating an sms_phone_number field with a verify setting, and the sms_phone_number.settings.tfa_field value; no case sends a real SMS. Fields are namespaced field_spn_* and each reset/cleanup deletes only its own field storage+instance. sms_phone_number.settings baseline: absent/empty (reset/cleanup restore that).",
+  "evals": [
+    {
+      "id": "sms-phone-number-what-it-adds",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "What does the sms_phone_number submodule add on top of the phone_number field, and which field setting controls whether a number must be verified?",
+      "must_contain_any": [
+        "verify",
+        "verification",
+        "required",
+        "sms_phone_number",
+        "two-factor",
+        "tfa"
+      ],
+      "must_not_contain": [],
+      "expected_output": "It adds an sms_phone_number field type (extending phone_number) with SMS verification and a verified status, plus SMS two-factor authentication (a TFA plugin). The field setting 'verify' controls verification and takes none / optional / required."
+    },
+    {
+      "id": "sms-phone-number-sms-sending",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "How does sms_phone_number actually send a verification code by SMS, and how can I make it use my own SMS provider?",
+      "must_contain_any": [
+        "callback",
+        "sms_send",
+        "hook_sms_phone_number_send_sms_callback_alter",
+        "SMS Framework",
+        "smsframework"
+      ],
+      "must_not_contain": [],
+      "expected_output": "It sends through an SMS callback that defaults to SMS Framework's sms_send when installed. You override it by implementing hook_sms_phone_number_send_sms_callback_alter(&$send_sms_callback) to point at your own callback (which receives the international number and message). Without a gateway, no code can be delivered (check isSmsEnabled())."
+    },
+    {
+      "id": "sms-phone-number-settings-and-permission",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "Where does sms_phone_number store its global settings for two-factor auth, and what permission lets someone save a number that hasn't been verified?",
+      "must_contain_any": [
+        "sms_phone_number.settings",
+        "tfa_field",
+        "bypass phone number verification requirement"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Global settings live in the config object sms_phone_number.settings (tfa_field = the user phone field used for TFA; verification_secret). The permission 'bypass phone number verification requirement' allows saving an unverified number even when verify is required."
+    },
+    {
+      "id": "sms-phone-number-field-verify-setting",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "The Article content type on this site has an sms_phone_number field named field_spn_known. Does it require the phone number to be SMS-verified? Inspect the live field configuration and give the value of the verify setting.",
+      "must_contain_any": [
+        "required"
+      ],
+      "must_not_contain": [],
+      "expected_output": "field_spn_known (type sms_phone_number) on node.article has field setting verify = 'required', so the number must be SMS-verified.",
+      "setup": "agent-module-documentation/evaluation/verify/sms_phone_number-field-verify-setting-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/sms_phone_number-field-verify-setting-cleanup.sh"
+    },
+    {
+      "id": "sms-phone-number-tfa-field",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "Which user phone field is sms_phone_number configured to use for SMS two-factor authentication on this site? Inspect the live configuration and give the value.",
+      "must_contain_any": [
+        "field_spn_tfa"
+      ],
+      "must_not_contain": [],
+      "expected_output": "sms_phone_number.settings:tfa_field is 'field_spn_tfa' on this site.",
+      "setup": "agent-module-documentation/evaluation/verify/sms_phone_number-tfa-field-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/sms_phone_number-tfa-field-cleanup.sh"
+    },
+    {
+      "id": "sms-phone-number-create-required-field",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this site, add an sms_phone_number field named field_spn_task to the Article content type, configured so the phone number MUST be SMS-verified (verify = required). Apply it to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/sms_phone_number-create-required-field-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/sms_phone_number-create-required-field-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/sms_phone_number-create-required-field-reset.sh",
+      "expected_output": "Create a FieldStorageConfig field_spn_task on node of type 'sms_phone_number' and a FieldConfig on article with settings verify = 'required'. Verified by node.article having field_spn_task of type sms_phone_number with verify == required."
+    },
+    {
+      "id": "sms-phone-number-set-tfa-field",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "site-owner",
+      "prompt": "I want SMS two-factor login to use the mobile phone field 'field_spn_mobile' on user accounts. Configure the sms_phone_number module to use that field for two-factor auth, on the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/sms_phone_number-set-tfa-field-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/sms_phone_number-set-tfa-field-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/sms_phone_number-set-tfa-field-reset.sh",
+      "expected_output": "Set sms_phone_number.settings:tfa_field to 'field_spn_mobile' (drush cset sms_phone_number.settings tfa_field field_spn_mobile, or via sms_phone_number.util->setTfaField('field_spn_mobile'))."
+    }
+  ]
+}

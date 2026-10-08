@@ -1,0 +1,96 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "show_node_aliases",
+  "version": "2.0.x",
+  "note": "Show Node Aliases lists every URL alias for a node on its edit form, with inline Edit/Delete links for users holding core's 'administer url aliases'. It has no config, no configure route, and no permissions of its own. It reads aliases from the core path_alias entity/table (path = /node/<nid>); it never creates or edits them (core path UI does). Introspection cases seed nodes with known aliases and read them back; execution cases add or delete a path_alias for a known node, verified against the live path_alias storage.",
+  "evals": [
+    {
+      "id": "show_node_aliases-what-and-where",
+      "mode": "recipe",
+      "prompt": "What does the Drupal show_node_aliases module add to the site, and where does a user see it?",
+      "must_contain_any": [
+        "node edit",
+        "edit form",
+        "Existing Aliases",
+        "aliases"
+      ],
+      "must_not_contain": [],
+      "expected_output": "It adds an 'Existing Aliases' details table to the node edit form (via a form alter on the core path widget) listing every URL alias pointing at that node, with each alias and its language. Core only shows one alias per node; this surfaces all of them.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "show_node_aliases-permission",
+      "mode": "recipe",
+      "prompt": "In show_node_aliases, what determines whether the Edit and Delete operation links appear next to each listed alias? Does the module define its own permission?",
+      "must_contain_any": [
+        "administer url aliases"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The module defines no permission of its own. The Operations column with Edit/Delete links only appears when the current user has core's 'administer url aliases' permission; the links deep-link to /admin/config/search/path/edit|delete/<id>. Users without it still see the alias list, just without operations.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "show_node_aliases-data-source",
+      "mode": "recipe",
+      "prompt": "Where does show_node_aliases get the list of aliases for a node from, and does it create or modify aliases itself?",
+      "must_contain_any": [
+        "path_alias",
+        "path alias"
+      ],
+      "must_not_contain": [],
+      "expected_output": "It reads from the core path_alias entity/table, selecting rows where path = /node/<nid>. It only reads and displays them; creation, editing and deletion all happen through core's path UI, not this module.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "show_node_aliases-known",
+      "mode": "introspection",
+      "prompt": "On this Drupal site there is an Article node titled 'sna_known_node'. Inspect the live site and report the URL alias assigned to that node.",
+      "must_contain_any": [
+        "/sna-known-alias",
+        "sna-known-alias"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The node sna_known_node has the alias /sna-known-alias (a path_alias whose path is /node/<nid> for that node).",
+      "setup": "agent-module-documentation/evaluation/verify/show_node_aliases-known-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/show_node_aliases-known-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "show_node_aliases-multi",
+      "mode": "introspection",
+      "prompt": "The Article node titled 'sna_multi_node' on this site has more than one URL alias. Inspect the live site and list all of its aliases.",
+      "must_contain_any": [
+        "/sna-multi-one",
+        "/sna-multi-two"
+      ],
+      "must_not_contain": [],
+      "expected_output": "sna_multi_node has two aliases: /sna-multi-one and /sna-multi-two (two path_alias entities pointing at /node/<nid>).",
+      "setup": "agent-module-documentation/evaluation/verify/show_node_aliases-multi-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/show_node_aliases-multi-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "show_node_aliases-add",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site there is an Article node titled 'sna_task_node' with no extra URL alias. Add the URL alias /sna-task-promo pointing to that node, and apply it to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/show_node_aliases-add-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/show_node_aliases-add-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/show_node_aliases-add-cleanup.sh",
+      "expected_output": "Create a path_alias whose path is /node/<nid of sna_task_node> and alias is /sna-task-promo (e.g. PathAlias::create(['path' => '/node/'.$nid, 'alias' => '/sna-task-promo', 'langcode' => 'en'])->save(), or via drush/the path UI)."
+    },
+    {
+      "id": "show_node_aliases-delete",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site the Article node titled 'sna_del_node' currently has the URL alias /sna-old-alias. Delete that alias (leave the node in place) and apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/show_node_aliases-delete-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/show_node_aliases-delete-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/show_node_aliases-delete-cleanup.sh",
+      "expected_output": "Delete the path_alias entity whose path is /node/<nid of sna_del_node> and alias is /sna-old-alias. Afterwards the node still exists but that alias is gone."
+    }
+  ]
+}

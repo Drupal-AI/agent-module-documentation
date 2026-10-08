@@ -1,0 +1,96 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "rate",
+  "version": "3.3.x",
+  "note": "Rate provides AJAX voting widgets stored via VotingAPI. Each widget is a rate_widget config entity (config prefix rate_widget -> rate.rate_widget.<id>; fields template, value_type, options[], entity_types[], comment_types[], voting{}, display{}, results{}); managed at /admin/structure/rate_widgets. Global bot-detection settings live in rate.settings (bot_minute_threshold, bot_hour_threshold, botscout_key, disable_log) at /admin/config/search/votingapi/rate. Voting permission is dynamic: cast rate vote on <entity_type> of <bundle>. Medium cases seed a known rate_widget and a distinctive bot threshold and read them back via drush; hard cases create a rate_widget attached to node.article and flip an existing widget's display.readonly, verified against the live config entities. No AI/network needed.",
+  "evals": [
+    {
+      "id": "rate-widget-entity",
+      "mode": "recipe",
+      "prompt": "In the Drupal Rate module (version 3.x), how is an individual voting widget stored and where do you manage them in the admin UI?",
+      "must_contain_any": [
+        "rate_widget",
+        "/admin/structure/rate_widgets",
+        "config entity"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Each widget is a rate_widget config entity (config prefix rate_widget, config names rate.rate_widget.<id>) managed at Structure -> Rate widgets (/admin/structure/rate_widgets). Add at /admin/structure/rate/add.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "rate-templates",
+      "mode": "recipe",
+      "prompt": "What widget styles (templates) does the Rate module ship with for its voting widgets?",
+      "must_contain_any": [
+        "fivestar",
+        "thumbs",
+        "yesno",
+        "emotion",
+        "numberupdown"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The template field selects a built-in style: custom, fivestar, numberupdown, emotion, thumbsup, thumbsupdown, yesno. New styles can be added with hook_rate_templates().",
+      "difficulty": "easy"
+    },
+    {
+      "id": "rate-vote-permission",
+      "mode": "recipe",
+      "prompt": "In the Rate module, which permission must a role have to actually cast a vote on a given content type, and how is that permission created?",
+      "must_contain_any": [
+        "cast rate vote"
+      ],
+      "must_not_contain": [],
+      "expected_output": "A dynamically generated permission 'cast rate vote on <entity_type> of <bundle>' (e.g. 'cast rate vote on node of article'), produced by RatePermissions::permissions for every bundle a widget is attached to. New widgets grant no voting rights until you assign it.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "rate-which-template",
+      "mode": "introspection",
+      "prompt": "On this Drupal site there is a Rate widget with the machine name 'rate_probe'. Inspect the live configuration and tell me which widget template it uses and which content bundle it is attached to.",
+      "must_contain_any": [
+        "fivestar"
+      ],
+      "must_not_contain": [],
+      "expected_output": "rate_probe uses the fivestar template and is attached to node.article: rate.rate_widget.rate_probe has template: fivestar and entity_types containing node.article. Discoverable via drush cget rate.rate_widget.rate_probe.",
+      "setup": "agent-module-documentation/evaluation/verify/rate-widget-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/rate-widget-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "rate-bot-threshold",
+      "mode": "introspection",
+      "prompt": "On this site the Rate module's bot-detection has been tuned. Inspect the live Rate settings and tell me the current per-minute vote threshold used to flag an IP as a bot.",
+      "must_contain_any": [
+        "7"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The per-minute bot threshold is 7: rate.settings bot_minute_threshold = '7'. Discoverable via drush cget rate.settings bot_minute_threshold.",
+      "setup": "agent-module-documentation/evaluation/verify/rate-threshold-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/rate-threshold-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "rate-create-widget",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, create a new Rate voting widget with the machine name 'rate_task' and attach it to the Article (node.article) content type. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/rate-create-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/rate-create-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/rate-create-cleanup.sh",
+      "expected_output": "A rate_widget config entity with id rate_task whose entity_types includes 'node.article'. Create via the Add rate widget form (/admin/structure/rate/add) or RateWidget::create([...])->save()."
+    },
+    {
+      "id": "rate-make-readonly",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this site there is a Rate widget 'rate_ro' attached to Article. Configure it to be read-only (show results but block voting) and apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/rate-readonly-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/rate-readonly-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/rate-readonly-cleanup.sh",
+      "expected_output": "The rate_ro widget's display.readonly is set to 1 (config rate.rate_widget.rate_ro display: readonly: 1). Set via the widget's Display settings ('Read only') on the edit form, or by editing the config entity."
+    }
+  ]
+}

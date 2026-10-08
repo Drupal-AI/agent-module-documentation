@@ -1,0 +1,98 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "cer",
+  "version": "5.0.x",
+  "note": "CER's only configuration surface is the config entity type 'corresponding_reference' (cer.corresponding_reference.<id>), called a preset, managed at /admin/config/content/cer (route entity.corresponding_reference.collection, permission 'administer cer'). Keys: id, label, enabled, first_field, second_field, add_direction (append|prepend), bundles (entity_type => [bundles] with '*' wildcard). Runtime is hook_entity_insert/update/delete in cer.module -> CorrespondingReferenceStorage::loadValid() (enabled presets only) -> CorrespondingReference::synchronizeCorrespondingFields(), which diffs against $entity->original, fires hook_cer_differences_alter(), and writes/saves the corresponding entity after checking target_type and handler_settings.target_bundles. There are no plugin types, no Drush commands and no config object. Known bug: CorrespondingReferenceSyncForm::submitForm() deletes the preset instead of syncing. Hard cases verify both the preset config AND a real two-way reference created by saving real nodes.",
+  "evals": [
+    {
+      "id": "cer-preset-basics",
+      "mode": "recipe",
+      "prompt": "On a Drupal 11 site with the cer (Corresponding Entity References) module, what do I have to create before it does anything, what is that thing called in configuration, and at which admin path do I manage it?",
+      "must_contain_any": [
+        "corresponding_reference",
+        "/admin/config/content/cer",
+        "preset"
+      ],
+      "must_not_contain": [],
+      "expected_output": "You must create at least one 'preset' - a corresponding_reference config entity (cer.corresponding_reference.<id>) - at /admin/config/content/cer (route entity.corresponding_reference.collection, permission 'administer cer'). It names first_field, second_field, add_direction (append|prepend), the bundles map keyed by entity type, and an enabled flag.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "cer-when-it-syncs",
+      "mode": "recipe",
+      "prompt": "How does the Drupal cer module decide when to write a back-reference? Which hooks does it implement, and if I add a new preset will existing content be updated automatically?",
+      "must_contain_any": [
+        "hook_entity_insert",
+        "hook_entity_update",
+        "hook_entity_delete",
+        "re-save",
+        "resave"
+      ],
+      "must_not_contain": [],
+      "expected_output": "cer.module implements hook_entity_insert(), hook_entity_update() and hook_entity_delete(); each calls cer_sync_corresponding_references(), which loads all enabled presets and calls synchronizeCorrespondingFields(). Existing content is NOT touched when you add a preset - syncing only happens when an entity is saved or deleted, so you must re-save the entities. (The preset's 'Synchronize' form does not do this; it actually deletes the preset.)",
+      "difficulty": "easy"
+    },
+    {
+      "id": "cer-alter-hook",
+      "mode": "recipe",
+      "prompt": "Which hook does the Drupal cer module invite me to implement if I want to stop it synchronizing references for unpublished nodes, and what arguments does it receive?",
+      "must_contain_any": [
+        "hook_cer_differences_alter",
+        "cer_differences"
+      ],
+      "must_not_contain": [],
+      "expected_output": "hook_cer_differences_alter(ContentEntityInterface $entity, array &$differences, $correspondingField), documented in cer.api.php. $differences is ['add' => [...], 'remove' => [...]]; setting it to empty arrays for unpublished entities suppresses the sync. It is invoked from CorrespondingReference::synchronizeCorrespondingFields() before anything is written.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "cer-known-preset",
+      "mode": "introspection",
+      "prompt": "This Drupal site has the cer module enabled with a preset already configured. Inspect the live configuration and tell me which two fields that preset keeps in sync and in which direction new references are added.",
+      "must_contain_any": [
+        "field_cer_known_a",
+        "field_cer_known_b"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The preset cer_known corresponds field_cer_known_a with field_cer_known_b for node:article, is enabled, and its add_direction is 'prepend' (new back-references are put at the top of the list). Read it with: drush cget cer.corresponding_reference.cer_known",
+      "setup": "agent-module-documentation/evaluation/verify/cer-known-preset-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/cer-known-preset-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "cer-enabled-preset",
+      "mode": "introspection",
+      "prompt": "This Drupal site has two Corresponding Entity References presets configured, cer_on and cer_off. Only one of them will actually synchronize references when content is saved. Inspect the running site and tell me which one, and why the other does not.",
+      "must_contain_any": [
+        "cer_on"
+      ],
+      "must_not_contain": [],
+      "expected_output": "cer_on is the active one: cer.corresponding_reference.cer_on has enabled: true, while cer_off has enabled: false. CorrespondingReferenceStorage::loadValid() only loads presets with enabled = 1, so cer_off is never evaluated.",
+      "setup": "agent-module-documentation/evaluation/verify/cer-enabled-preset-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/cer-enabled-preset-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "cer-two-way",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "This Drupal site has the cer module enabled and the Article content type has two entity-reference fields, field_cer_task_left and field_cer_task_right, both referencing Articles. Configure CER on the live site so the two fields are kept in sync: whenever an Article references another Article in field_cer_task_left, the referenced Article must automatically get a matching reference back in field_cer_task_right.",
+      "reset": "agent-module-documentation/evaluation/verify/cer-two-way-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/cer-two-way-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/cer-two-way-cleanup.sh",
+      "expected_output": "Create an enabled corresponding_reference preset, e.g. CorrespondingReference::create(['id' => 'cer_task', 'label' => 'CER Task', 'enabled' => TRUE, 'first_field' => 'field_cer_task_left', 'second_field' => 'field_cer_task_right', 'add_direction' => 'append', 'bundles' => ['node' => ['article']]])->save(); - or add it at /admin/config/content/cer. The verify script then creates two Articles and checks that saving one really writes the back-reference on the other."
+    },
+    {
+      "id": "cer-self-reference",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "site-owner",
+      "prompt": "On this Drupal site, Articles have a single 'CER Buddy' reference field (machine name field_cer_buddy) pointing at other Articles. Using the Corresponding Entity References module, make that relationship mutual: if one Article lists another as a buddy, the other one must automatically list it back in the very same field, and newly added buddies should appear at the top of the list rather than the bottom. Apply it to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/cer-self-reference-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/cer-self-reference-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/cer-self-reference-cleanup.sh",
+      "expected_output": "Create an enabled preset whose first_field AND second_field are both field_cer_buddy, add_direction 'prepend', bundles ['node' => ['article']] (the form's description says 'It may be the same field'). The verify script creates two Articles and checks the reference really is reciprocal."
+    }
+  ]
+}

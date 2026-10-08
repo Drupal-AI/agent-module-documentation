@@ -1,0 +1,92 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "mail_safety",
+  "version": "2.2.x",
+  "note": "Mail Safety intercepts outgoing mail via hook_mail_alter(). All persistent state is the config object mail_safety.settings (keys: enabled, send_mail_to_dashboard, send_mail_to_default_mail, default_mail_address, log_retention_period) plus rows in the mail_safety_dashboard DB table. No entities, no plugins, no Drush. Medium cases write a known value into mail_safety.settings and read it back; hard cases set the config so the site stops/captures/reroutes mail and verify the live config object. Baseline (shipped defaults): all booleans false, default_mail_address='', log_retention_period=''.",
+  "evals": [
+    {
+      "id": "mail_safety-stop-outgoing",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "On a Drupal 11 site with the Mail Safety module enabled, which configuration object and boolean key do I set to stop every outgoing email from actually being delivered?",
+      "must_contain_any": [
+        "mail_safety.settings",
+        "enabled"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Set mail_safety.settings:enabled to TRUE. Mail Safety's hook_mail_alter() then sets $message['send'] = FALSE on every mail, so nothing is delivered normally (route/UI: /admin/config/development/mail_safety/settings)."
+    },
+    {
+      "id": "mail_safety-where-stored",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "When Mail Safety captures outgoing emails to its dashboard, which database table stores the caught messages?",
+      "must_contain_any": [
+        "mail_safety_dashboard"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Caught mails are stored (PHP-serialized) as rows in the mail_safety_dashboard table (columns mail_id, sent, mail), written by MailSafetyController::insert() when send_mail_to_dashboard is on."
+    },
+    {
+      "id": "mail_safety-reroute-keys",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "I want Mail Safety to send every outgoing email to one single test inbox instead of the real recipients. Which two mail_safety.settings keys control that?",
+      "must_contain_any": [
+        "send_mail_to_default_mail",
+        "default_mail_address"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Turn on send_mail_to_default_mail and set default_mail_address to the single inbox. Mail Safety rewrites $message['to'] to that address (and unsets Cc/Bcc), then lets that copy send."
+    },
+    {
+      "id": "mail_safety-known-address",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "This Drupal site has Mail Safety configured to reroute all outgoing mail to a single address. Inspect the live configuration and report that address.",
+      "must_contain_any": [
+        "mailsafety_probe@qa.example"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The address is mailsafety_probe@qa.example: mail_safety.settings has send_mail_to_default_mail=true and default_mail_address='mailsafety_probe@qa.example' (drush cget mail_safety.settings default_mail_address).",
+      "setup": "agent-module-documentation/evaluation/verify/mail_safety-default-address-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/mail_safety-default-address-cleanup.sh"
+    },
+    {
+      "id": "mail_safety-known-retention",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "Mail Safety on this site is configured to automatically purge old dashboard entries on cron. Inspect the live configuration and report the log retention period, in seconds.",
+      "must_contain_any": [
+        "604800"
+      ],
+      "must_not_contain": [],
+      "expected_output": "log_retention_period is 604800 seconds (1 week) in mail_safety.settings; mail_safety_cron() deletes dashboard rows whose 'sent' timestamp is older than REQUEST_TIME - 604800.",
+      "setup": "agent-module-documentation/evaluation/verify/mail_safety-retention-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/mail_safety-retention-cleanup.sh"
+    },
+    {
+      "id": "mail_safety-stop-and-capture",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, configure the Mail Safety module so that it stops all outgoing emails from being delivered and instead captures every one of them to the Mail Safety dashboard. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/mail_safety-stop-and-capture-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/mail_safety-stop-and-capture-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/mail_safety-stop-and-capture-cleanup.sh",
+      "expected_output": "Set mail_safety.settings:enabled=TRUE and mail_safety.settings:send_mail_to_dashboard=TRUE (e.g. drush cset, or tick 'Stop outgoing mails' + 'Send mail to dashboard' on the settings form). Caught mail then lands in the mail_safety_dashboard table instead of being sent."
+    },
+    {
+      "id": "mail_safety-reroute",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "site-owner",
+      "prompt": "Our staging site keeps emailing real customers. Using the Mail Safety module, make it so every outgoing email on this site goes to the single address safety-inbox@example.test instead of the real recipients. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/mail_safety-reroute-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/mail_safety-reroute-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/mail_safety-reroute-cleanup.sh",
+      "expected_output": "In mail_safety.settings set send_mail_to_default_mail=TRUE and default_mail_address='safety-inbox@example.test' (enabling 'enabled' too so delivery is intercepted). Mail Safety rewrites every message's recipient to that address."
+    }
+  ]
+}

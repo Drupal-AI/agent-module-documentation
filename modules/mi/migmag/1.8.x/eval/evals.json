@@ -1,0 +1,97 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "migmag",
+  "version": "1.8.x",
+  "note": "Migrate Magician's base module has no config, UI, plugins, or services - it is static utility classes (MigMagArrayUtility, MigMagMigrationUtility, MigMagSourceUtility) + a trait, plus six submodules. On this Drupal 11 site the core migration plugin manager (plugin.manager.migration) cannot enumerate definitions (unrelated pathauto BadPluginDefinitionException), so evals are grounded ONLY in things that work: the process/destination plugin managers, the migmag_rollbackable DB tables, module-enable state, and services - never a live migration run. Baseline for these cases: migmag + migmag_process + migmag_rollbackable ENABLED; the replace/menu/callback submodules DISABLED. Introspection reads a known row from the migmag_rollbackable_data table and the class swapped in by migmag_rollbackable_replace; execution enables the replace submodules and verifies the resulting process/destination plugin class via the working plugin managers.",
+  "evals": [
+    {
+      "id": "migmag-what-provides",
+      "mode": "recipe",
+      "prompt": "In Drupal, what does the base 'migmag' (Migrate Magician) module itself provide, and does it have any admin configuration or settings form?",
+      "must_contain_any": [
+        "no configuration",
+        "no config",
+        "utility",
+        "utilities",
+        "no admin",
+        "no settings"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The base migmag module has no configuration, no admin UI, no plugins and no services. It is a library of static PHP utility helpers (MigMagArrayUtility, MigMagMigrationUtility, MigMagSourceUtility) plus the MigMagMigrationConfigurationTrait, consumed by its submodules and by custom migration code. All real features live in submodules (migmag_process, migmag_rollbackable, etc.).",
+      "difficulty": "easy"
+    },
+    {
+      "id": "migmag-array-util",
+      "mode": "recipe",
+      "prompt": "Using Migrate Magician's utility API, which class and method would you use to insert a new step immediately after an existing key in a migration's process pipeline array?",
+      "must_contain_any": [
+        "MigMagArrayUtility",
+        "insertAfterKey"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Drupal\\migmag\\Utility\\MigMagArrayUtility::insertAfterKey(&$array, $referenceKey, $newKey, $newValue) inserts a new key/value right after $referenceKey. Related helpers: insertInFrontOfKey, moveAfterKey, moveInFrontOfKey.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "migmag-submodules",
+      "mode": "recipe",
+      "prompt": "Which Migrate Magician submodule provides rollback-capable migration destination plugins, and which one provides extra migrate process plugins?",
+      "must_contain_any": [
+        "migmag_rollbackable",
+        "migmag_process"
+      ],
+      "must_not_contain": [],
+      "expected_output": "migmag_rollbackable provides rollback-capable destination plugins (ids prefixed migmag_rollbackable_); migmag_process provides extra process plugins (migmag_lookup, migmag_try, migmag_compare, ...). Other submodules: migmag_process_lookup_replace, migmag_rollbackable_replace, migmag_menu_link_migrate, migmag_callback_upgrade.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "migmag-rollback-table-probe",
+      "mode": "introspection",
+      "prompt": "On this Drupal site, Migrate Magician's rollback storage already contains a stored record. Inspect the database and report the migration_plugin_id value stored in the migmag_rollbackable_data table.",
+      "must_contain_any": [
+        "migmag_eval_probe"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The migmag_rollbackable_data table has a row with migration_plugin_id = 'migmag_eval_probe' (target_id system.site). Query e.g. 'drush sqlq \"SELECT migration_plugin_id, target_id FROM migmag_rollbackable_data\"'.",
+      "setup": "agent-module-documentation/evaluation/verify/migmag-rbdata-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/migmag-rbdata-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "migmag-config-dest-class",
+      "mode": "introspection",
+      "prompt": "On this Drupal site a Migrate Magician submodule has been enabled that changes the implementing class of core's 'config' migrate destination plugin. Inspect the destination plugin manager and report the class the 'config' destination now resolves to.",
+      "must_contain_any": [
+        "RollbackableConfig"
+      ],
+      "must_not_contain": [],
+      "expected_output": "migmag_rollbackable_replace is enabled, so core's 'config' destination plugin class is now Drupal\\migmag_rollbackable\\Plugin\\migrate\\destination\\RollbackableConfig (read via plugin.manager.migrate.destination getDefinition('config')['class']).",
+      "setup": "agent-module-documentation/evaluation/verify/migmag-rbreplace-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/migmag-rbreplace-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "migmag-enable-rollbackable-replace",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, using Migrate Magician, make core's 'config' migrate destination plugin rollback-capable WITHOUT editing any migration YAML. Apply the change to the live site so the 'config' destination resolves to Migrate Magician's rollbackable class.",
+      "reset": "agent-module-documentation/evaluation/verify/migmag-rbreplace-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/migmag-rbreplace-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/migmag-rbreplace-cleanup.sh",
+      "expected_output": "Enable the migmag_rollbackable_replace submodule (drush en migmag_rollbackable_replace -y). Its hook_migrate_destination_info_alter swaps the 'config' destination class to Drupal\\migmag_rollbackable\\Plugin\\migrate\\destination\\RollbackableConfig."
+    },
+    {
+      "id": "migmag-enable-lookup-replace",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, using Migrate Magician, force every migration's core 'migration_lookup' process plugin to use Migrate Magician's improved lookup implementation, without editing any migration definitions. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/migmag-lookupreplace-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/migmag-lookupreplace-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/migmag-lookupreplace-cleanup.sh",
+      "expected_output": "Enable the migmag_process_lookup_replace submodule (drush en migmag_process_lookup_replace -y). Its hook_migrate_process_info_alter sets the 'migration_lookup' process plugin class to Drupal\\migmag_process\\Plugin\\migrate\\process\\MigMagLookup."
+    }
+  ]
+}

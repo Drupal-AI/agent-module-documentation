@@ -1,0 +1,19 @@
+#!/usr/bin/env bash
+# Introspection CLEANUP: remove the fgl_known view mode, its display and the two namespaced
+# Article fields created by the matching setup. Restores baseline. Idempotent. Exit 0.
+set -uo pipefail
+cd /var/www/html
+drush php:eval '
+  use Drupal\Core\Entity\Entity\EntityViewMode;
+  use Drupal\field\Entity\FieldConfig;
+  use Drupal\field\Entity\FieldStorageConfig;
+  $s = \Drupal::entityTypeManager()->getStorage("entity_view_display");
+  if ($vd = $s->load("node.article.fgl_known")) { $vd->delete(); }
+  if ($m = EntityViewMode::load("node.fgl_known")) { $m->delete(); }
+  foreach (["field_fgl_dest", "field_fgl_blurb"] as $fn) {
+    if ($fc = FieldConfig::loadByName("node", "article", $fn)) { $fc->delete(); }
+    if ($fs = FieldStorageConfig::loadByName("node", $fn)) { $fs->delete(); }
+  }
+' >/dev/null 2>&1
+drush cr >/dev/null 2>&1
+echo "cleanup: node.article.fgl_known view mode/display and field_fgl_dest, field_fgl_blurb removed"

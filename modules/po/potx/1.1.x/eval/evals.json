@@ -1,0 +1,80 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "potx",
+  "version": "1.1.x",
+  "note": "potx (Translation template extractor) extracts translatable strings from Drupal source into Gettext .pot templates. Surfaces: (1) Drush command `drush potx [single|multiple|core]` with options --modules/--files/--folder/--api/--language/--translations; it writes .pot files (general.pot, and installer.pot) to the Drupal DOCROOT (drush's cwd during a command is DRUPAL_ROOT, here /var/www/html/web), NOT to an arbitrary chdir. (2) Web form PotxExtractTranslationForm at route potx.extract_translation (/admin/config/regional/translate/extract), guarded by core permission 'translate interface'; its Template-language options only appear when the site has >1 language. (3) Procedural API in potx.inc. No config, no config entities, no own permissions. Medium cases introspect real live state potx depends on (configured languages; which role holds 'translate interface'); hard cases actually run the extractor and check the generated .pot in the docroot.",
+  "evals": [
+    {
+      "id": "potx-drush-command",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "On a Drupal site with the potx (Translation template extractor) module, which Drush command extracts translatable strings from source code, and what are its output modes?",
+      "must_contain_any": ["potx", "single", "multiple", "core"],
+      "must_not_contain": [],
+      "expected_output": "`drush potx [MODE]` where MODE is single (default; all files into one template), multiple (per-module .pot files), or core (Drupal-core style, .info folded into general.pot). Options include --modules, --files, --folder, --api, --language, --translations."
+    },
+    {
+      "id": "potx-extract-ui",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "Where in the Drupal admin UI does potx let you download a translation template, and what permission does a user need to reach it?",
+      "must_contain_any": ["/admin/config/regional/translate/extract", "translate interface", "Extract"],
+      "must_not_contain": [],
+      "expected_output": "The Extract tab on the User interface translation page, route potx.extract_translation at /admin/config/regional/translate/extract, requires the core 'translate interface' permission. potx defines no permission of its own and has no settings page."
+    },
+    {
+      "id": "potx-output-format",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "What kind of file does potx generate, and what sorts of source does it scan for translatable strings?",
+      "must_contain_any": [".pot", "Gettext", "msgid", "template"],
+      "must_not_contain": [],
+      "expected_output": "It generates Gettext translation templates (.pot files, or .po when a language + translations are chosen), scanning PHP t()/format_plural()/TranslatableMarkup, JS Drupal.t, Twig {% trans %}/|t, plugin annotations, .info.yml, YAML, and config schema."
+    },
+    {
+      "id": "potx-configured-languages",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "potx can build a language-dependent template (with plural formulas) for any non-English language configured on the site. Inspect this Drupal site's configured languages and name the non-English language(s) potx could target here.",
+      "must_contain_any": ["de", "German"],
+      "must_not_contain": [],
+      "expected_output": "The site has German (langcode de) configured in addition to English, so potx's Extract form would offer a German language-dependent template. Discoverable via `drush language:info` or config language.entity.de.",
+      "setup": "agent-module-documentation/evaluation/verify/potx-configured-languages-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/potx-configured-languages-cleanup.sh"
+    },
+    {
+      "id": "potx-translator-role",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "The potx Extract page is gated by the 'translate interface' permission. Inspect the live roles on this Drupal site and name the custom role (other than admin) that has been granted that permission and could therefore use potx extraction.",
+      "must_contain_any": ["potx_translator"],
+      "must_not_contain": [],
+      "expected_output": "The role potx_translator has been granted 'translate interface' (check with `drush role:list` / user.role.potx_translator config), so it can reach potx's Extract page.",
+      "setup": "agent-module-documentation/evaluation/verify/potx-translator-role-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/potx-translator-role-cleanup.sh"
+    },
+    {
+      "id": "potx-extract-potx",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, use the potx module's Drush command to generate a Gettext .pot translation template for the potx module itself (extract its translatable strings). Run it so the template file is actually generated. Note: the potx drush command writes its output into the Drupal docroot (its working directory).",
+      "reset": "agent-module-documentation/evaluation/verify/potx-extract-potx-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/potx-extract-potx-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/potx-extract-potx-cleanup.sh",
+      "expected_output": "Running `drush potx single --modules=potx` (from the docroot) writes general.pot into the Drupal docroot; it contains potx's own translatable strings such as 'Template language'."
+    },
+    {
+      "id": "potx-extract-locale",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, use potx's Drush command to generate a Gettext .pot translation template for core's 'locale' module (extract its translatable strings). Actually run the extraction so the .pot file is produced in the Drupal docroot.",
+      "reset": "agent-module-documentation/evaluation/verify/potx-extract-locale-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/potx-extract-locale-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/potx-extract-locale-cleanup.sh",
+      "expected_output": "Running `drush potx single --modules=locale` writes a non-empty general.pot (containing at least one msgid entry) into the Drupal docroot."
+    }
+  ]
+}

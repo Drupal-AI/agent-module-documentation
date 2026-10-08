@@ -1,0 +1,73 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "monolog",
+  "version": "3.0.x",
+  "note": "Monolog has no UI and no config entities: it overrides logger.factory and is configured entirely via a services YAML file (channel_handlers, handlers, formatters, processors). Cases are `recipe` (response-graded) probing documented facts an agent would otherwise read source to answer; no site mutation.",
+  "evals": [
+    {
+      "id": "monolog-replaces-logger-factory",
+      "mode": "recipe",
+      "prompt": "How does the Monolog module hook into Drupal's logging system, and where do I configure it given it has no admin UI?",
+      "must_contain_any": ["logger.factory", "MonologServiceProvider", "MonologLoggerChannelFactory"],
+      "must_not_contain": [],
+      "expected_output": "MonologServiceProvider overrides the core logger.factory service with MonologLoggerChannelFactory; there is no UI, so configuration is done in a services YAML file (e.g. sites/default/monolog.services.yml registered via $settings['container_yamls'])."
+    },
+    {
+      "id": "monolog-rotating-file-handler",
+      "mode": "recipe",
+      "prompt": "On a Drupal 11 site with the Monolog module, show the services.yml to send every log message to a daily rotating file in the private filesystem.",
+      "must_contain_any": ["monolog.channel_handlers", "RotatingFileHandler", "monolog.handler."],
+      "must_not_contain": [],
+      "expected_output": "Set monolog.channel_handlers default to a handler name, and define a monolog.handler.<name> service with class Monolog\\Handler\\RotatingFileHandler and arguments like ['private://logs/debug.log', 10, 'DEBUG']."
+    },
+    {
+      "id": "monolog-channel-mapping",
+      "mode": "recipe",
+      "prompt": "In the Monolog module, which parameter maps a specific log channel (like php) to a set of handlers, and what key is the required fallback?",
+      "must_contain_any": ["monolog.channel_handlers", "default"],
+      "must_not_contain": [],
+      "expected_output": "The monolog.channel_handlers parameter maps each channel to one or more handler names; the `default` key is the required fallback mapping."
+    },
+    {
+      "id": "monolog-library-dependency",
+      "mode": "recipe",
+      "prompt": "What external PHP library does the Drupal Monolog module require, and what happens at install if it is missing?",
+      "must_contain_any": ["monolog/monolog", "Monolog\\Logger"],
+      "must_not_contain": [],
+      "expected_output": "It requires the monolog/monolog library (^3.2) via Composer; monolog_requirements() fails install with an error if the \\Monolog\\Logger class is not found."
+    },
+    {
+      "id": "monolog-log-to-dblog",
+      "mode": "recipe",
+      "prompt": "With the Monolog module installed, how do I keep writing log messages to Drupal's Watchdog (dblog) database table?",
+      "must_contain_any": ["drupal.dblog", "DrupalHandler"],
+      "must_not_contain": [],
+      "expected_output": "Monolog auto-registers a DrupalHandler wrapper for every logger-tagged service; add the `drupal.dblog` handler to monolog.channel_handlers (typically without the message_placeholder processor) to log to the Watchdog table."
+    },
+    {
+      "id": "monolog-per-handler-formatter-processors",
+      "mode": "recipe",
+      "prompt": "Using the Monolog module, how do I send one channel to two handlers where each handler uses a different formatter and processor set?",
+      "must_contain_any": ["handlers", "formatter", "processors"],
+      "must_not_contain": [],
+      "expected_output": "Use the nested syntax under monolog.channel_handlers: a `handlers` list where each entry has `name`, `formatter`, and `processors`, so each handler gets its own formatter (e.g. json vs line) and processor list."
+    },
+    {
+      "id": "monolog-processors-list",
+      "mode": "recipe",
+      "prompt": "Name some processors the Drupal Monolog module provides to enrich log records, and how do I enable them globally?",
+      "must_contain_any": ["message_placeholder", "current_user", "monolog.processors"],
+      "must_not_contain": [],
+      "expected_output": "Provided processors include message_placeholder, current_user, request_uri, ip, referer, filter_backtrace, introspection; set them in the monolog.processors parameter (or per-handler / monolog.logger.processors)."
+    },
+    {
+      "id": "monolog-conditional-cli",
+      "mode": "recipe",
+      "prompt": "With the Monolog module, how can I use one handler/formatter for web requests and another for CLI/Drush runs?",
+      "must_contain_any": ["ConditionalHandler", "ConditionalFormatter", "condition_resolver.cli"],
+      "must_not_contain": [],
+      "expected_output": "Use ConditionalHandler or ConditionalFormatter with two targets and the monolog.condition_resolver.cli resolver (true under CLI), e.g. the provided drush_or_json formatter, to switch behavior between web and CLI/Drush."
+    }
+  ]
+}

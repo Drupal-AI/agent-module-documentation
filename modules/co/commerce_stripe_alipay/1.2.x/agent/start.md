@@ -1,0 +1,2 @@
+<!-- SPDX-License-Identifier: GPL-2.0-or-later -->
+Commerce Stripe Alipay (v1.2.x): offsite Stripe gateway src/Plugin/Commerce/PaymentGateway/StripeAlipay.php using stripe/stripe-php PaymentIntents. No local webhook route: onReturn() calls PaymentIntent::retrieve() from Stripe (merchant secret key) and completes only on STATUS_SUCCEEDED, matching the payment by intent id + client_secret (findPayment). SOUND -- payment status comes from the authoritative Stripe API, not request data. Depends on commerce_payment; requires stripe/stripe-php.

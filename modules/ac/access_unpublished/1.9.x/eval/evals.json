@@ -1,0 +1,65 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "access_unpublished",
+  "version": "1.9.x",
+  "note": "Access Unpublished exposes an access_token content entity, a token manager service, a settings config object, dynamic per-type permissions, and a token-based entity access check. Cases are `recipe` (response-graded): they probe documented facts an agent would otherwise read source to answer; no site mutation.",
+  "evals": [
+    {
+      "id": "au-share-draft-flow",
+      "mode": "recipe",
+      "prompt": "On a Drupal 11 site an editor wants to let an external proofreader (no account) preview a single unpublished article via a URL. How do they generate that link in the UI, and what does the URL look like?",
+      "must_contain_any": ["Generate token", "auHash", "Temporary unpublished access"],
+      "must_not_contain": [],
+      "expected_output": "On the unpublished node's edit form, open the 'Temporary unpublished access' section, pick a Lifetime, click 'Generate token'; the shareable URL is the node's canonical URL plus the token query param, e.g. /node/12?auHash=<value>."
+    },
+    {
+      "id": "au-access-token-entity",
+      "mode": "recipe",
+      "prompt": "Which entity does Access Unpublished create to represent a shareable preview link, and is it a content or config entity? Name the key fields.",
+      "must_contain_any": ["access_token", "content entity"],
+      "must_not_contain": [],
+      "expected_output": "The access_token content entity (base table access_token). Key fields: value (secret hash), label, expire, entity_type, entity_id, user_id."
+    },
+    {
+      "id": "au-hash-param-access-check",
+      "mode": "recipe",
+      "prompt": "How does Access Unpublished decide to show an unpublished node to a visitor who opens a token URL? Which query parameter carries the token and what mechanism grants view access?",
+      "must_contain_any": ["auHash", "hash_key", "hook_entity_access", "access_unpublished_entity_access"],
+      "must_not_contain": [],
+      "expected_output": "A TokenGetter request subscriber reads the token from the hash_key query parameter (default auHash); access_unpublished_entity_access() (hook_entity_access) grants view when a non-expired access_token matches the entity and the user holds the access_unpublished <type>[ <bundle>] permission."
+    },
+    {
+      "id": "au-token-lifetime",
+      "mode": "recipe",
+      "prompt": "What controls how long a generated access token stays valid on a Drupal site, what is the default, and how do I make a token never expire?",
+      "must_contain_any": ["duration", "172800"],
+      "must_not_contain": [],
+      "expected_output": "The duration setting on access_unpublished.settings sets the default lifetime in seconds (default 172800 = 2 days); choosing Unlimited stores expire = -1 so the token never expires."
+    },
+    {
+      "id": "au-anonymous-permission",
+      "mode": "recipe",
+      "prompt": "I want anonymous visitors with a valid token URL to be able to view unpublished articles. Which permission must the anonymous role hold, and what naming pattern does it follow?",
+      "must_contain_any": ["access_unpublished node article", "access_unpublished node"],
+      "must_not_contain": [],
+      "expected_output": "Grant anonymous the dynamic per-type/bundle permission access_unpublished <entity_type> <bundle>, e.g. 'access_unpublished node article'. It grants view-only access via a valid token."
+    },
+    {
+      "id": "au-token-admin",
+      "mode": "recipe",
+      "prompt": "Where can an admin review all issued access tokens on a Drupal site, and which permission gates that page? How do you revoke a shared link?",
+      "must_contain_any": ["/admin/content/access_token", "access tokens overview"],
+      "must_not_contain": [],
+      "expected_output": "The overview at /admin/content/access_token (route access_unpublished.access_token.list), gated by the 'access tokens overview' permission; delete a token there to instantly revoke its URL (renew re-extends it)."
+    },
+    {
+      "id": "au-create-token-in-code",
+      "mode": "recipe",
+      "prompt": "In PHP on Drupal 11, programmatically create an access token that grants preview of node 5 for 2 days, then get its shareable URL. Which entity/service do I use?",
+      "must_contain_any": ["access_token", "access_unpublished.access_token_manager", "getAccessTokenUrl"],
+      "must_not_contain": [],
+      "expected_output": "Create an access_token entity via the entity storage with entity_type, entity_id and expire, save it; then use the access_unpublished.access_token_manager service (AccessTokenManager::getAccessTokenUrl or getActiveAccessToken) to build the shareable URL."
+    }
+  ]
+}

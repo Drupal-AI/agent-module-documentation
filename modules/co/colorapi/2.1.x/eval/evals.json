@@ -1,0 +1,104 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "colorapi",
+  "version": "2.1.x",
+  "note": "Color API is configured via colorapi.settings with two switches: enable_color_field (default true) and enable_color_entity (default false), at /admin/config/color/settings (route colorapi.admin_config, permission 'administer colors'). It provides the colorapi_color_field field type (columns name varchar255 + color varchar7; formatters colorapi_color_display[default]/colorapi_text_display/colorapi_raw_hex_display/colorapi_raw_rgb_display; widget colorapi_color_widget), the colorapi.service (hexToRgb, isValidHexadecimalColorString, regex /^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/), Typed Data types colorapi_color/hexadecimal_color/rgb_color, and (when enabled) a colorapi_color config entity (config name colorapi.colorapi_color.<id>, keys id/label/color). Medium/hard cases are grounded in that live config: reading enable_color_entity, finding a colorapi_color_field field, creating a Color field, and creating a named Color entity. Site artifacts are namespaced field_cai_* and cai_* ids; scripts restore baseline (enable_color_entity=false, no cai_* config/fields).",
+  "evals": [
+    {
+      "id": "colorapi-settings-switches",
+      "mode": "recipe",
+      "prompt": "The colorapi (Color API) module is enabled on a Drupal 11 site. What are its two configuration switches, what do they turn on, and where is the settings page?",
+      "must_contain_any": [
+        "enable_color_field",
+        "enable_color_entity",
+        "/admin/config/color",
+        "colorapi.settings"
+      ],
+      "must_not_contain": [],
+      "expected_output": "colorapi.settings has enable_color_field (default true; enables the colorapi_color_field field type) and enable_color_entity (default false; enables the colorapi_color config entity). Configure at /admin/config/color/settings (permission 'administer colors').",
+      "difficulty": "easy"
+    },
+    {
+      "id": "colorapi-field-formatters",
+      "mode": "recipe",
+      "prompt": "With Color API, what is the machine name of the color field type it provides, and which display formatters can I use to render it?",
+      "must_contain_any": [
+        "colorapi_color_field",
+        "colorapi_color_display",
+        "colorapi_raw_hex_display",
+        "colorapi_text_display",
+        "colorapi_raw_rgb_display"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Field type colorapi_color_field. Formatters: colorapi_color_display (colored block, default), colorapi_text_display, colorapi_raw_hex_display, colorapi_raw_rgb_display (with display_name / show_hash settings).",
+      "difficulty": "easy"
+    },
+    {
+      "id": "colorapi-service-hextorgb",
+      "mode": "recipe",
+      "prompt": "How can I convert a hexadecimal color like #3366cc into its red/green/blue components using Color API's service, and how does it validate that a string is a hex color?",
+      "must_contain_any": [
+        "colorapi.service",
+        "hexToRgb",
+        "isValidHexadecimalColorString",
+        "#([A-Fa-f0-9]",
+        "regex"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Call \\Drupal::service('colorapi.service')->hexToRgb($hex, 'red'|'green'|'blue') for each component; isValidHexadecimalColorString() validates against /^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "colorapi-entity-enabled-known",
+      "mode": "introspection",
+      "prompt": "On this Drupal site, inspect the Color API configuration and state whether the optional Color configuration entity type is enabled, and which colorapi.settings key controls that.",
+      "must_contain_any": [
+        "enable_color_entity",
+        "true",
+        "enabled",
+        "yes"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The Color entity is enabled: colorapi.settings.enable_color_entity is true (1) — the switch that registers the colorapi_color config entity type.",
+      "setup": "agent-module-documentation/evaluation/verify/colorapi-entity-enabled-known-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/colorapi-entity-enabled-known-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "colorapi-known-color-field",
+      "mode": "introspection",
+      "prompt": "The Article content type on this site has a Color API color field attached. Inspect the live field configuration and give the machine name of the field whose type is colorapi_color_field.",
+      "must_contain_any": [
+        "field_cai_swatch"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The field is field_cai_swatch: its field storage type is colorapi_color_field on node.article.",
+      "setup": "agent-module-documentation/evaluation/verify/colorapi-known-color-field-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/colorapi-known-color-field-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "colorapi-add-color-field",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, add a Color API color field named field_cai_color (type colorapi_color_field) to the Article content type. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/colorapi-add-color-field-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/colorapi-add-color-field-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/colorapi-add-color-field-cleanup.sh",
+      "expected_output": "A field storage node.field_cai_color of type colorapi_color_field exists and is attached to the Article bundle (field.field.node.article.field_cai_color)."
+    },
+    {
+      "id": "colorapi-create-color-entity",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, use Color API to create a reusable named Color: enable the Color configuration entity type if needed, then create a Color entity with id cai_red, label 'CAI Red' and color #FF0000. Apply it to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/colorapi-create-color-entity-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/colorapi-create-color-entity-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/colorapi-create-color-entity-cleanup.sh",
+      "expected_output": "Config colorapi.colorapi_color.cai_red exists with color '#FF0000' (label 'CAI Red'). This requires enable_color_entity=true so the colorapi_color entity type is registered, then Color::create(['id'=>'cai_red','label'=>'CAI Red','color'=>'#FF0000'])->save()."
+    }
+  ]
+}

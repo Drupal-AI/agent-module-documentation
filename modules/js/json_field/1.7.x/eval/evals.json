@@ -1,0 +1,95 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "json_field",
+  "version": "1.7.x",
+  "note": "JSON Field ships three field types (json, json_native, json_native_binary), one widget (json_textarea), two formatters (json with an attach_library setting, and pretty), a valid_json constraint, two render elements (json_text, json_pretty), the services json_field.views / json_field.requirements / serializer.normalizer.json_item.native, and Views data that adds a <field>_json_value column handled by the json_data Views field plugin. It has NO settings form and NO configure route, so every medium/hard case is grounded in real field + display configuration: field.storage.node.<field> (type, settings.size) and core.entity_form_display / core.entity_view_display components.",
+  "evals": [
+    {
+      "id": "json_field-field-types",
+      "mode": "recipe",
+      "prompt": "The Drupal contrib module json_field provides more than one JSON field type. Name the machine ids of the field types it registers and explain what database column each one uses on MySQL and on PostgreSQL.",
+      "must_contain_any": [
+        "json_native_binary",
+        "json_native",
+        "jsonb"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Three field types: `json` (JSON (text)) stores in a varchar/text column sized by the `size` storage setting; `json_native` (JSON (raw)) uses a native json column on MySQL and PostgreSQL (LONGTEXT on MariaDB, text on SQLite); `json_native_binary` (JSONB/JSON (raw)) uses jsonb on PostgreSQL and a json column on MySQL. All three live in the `json_data` field-type category and default to the json_textarea widget and json formatter.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "json_field-size-setting",
+      "mode": "recipe",
+      "prompt": "On a Drupal 11 site using the json_field module, I created a field of type 'JSON (text)'. Which storage setting controls how big the database column is, what values can it take, and what is the default?",
+      "must_contain_any": [
+        "size",
+        "4294967296",
+        "65535"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The `size` storage setting on the `json` field type (JsonItem::defaultStorageSettings()). Allowed values are 255 (varchar 255), 65535 (text 'normal', 16 KB), 16777216 (text 'medium', 4 MB) and 4294967296 (text 'big', 1 GB, the default). A Length constraint is derived from it: max = size for 255, otherwise floor(size / 4) because of utf8mb4. json_native and json_native_binary have no storage settings.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "json_field-validation",
+      "mode": "recipe",
+      "prompt": "With the json_field module installed on Drupal 11, what stops an editor from saving broken JSON into a JSON field? Name the validation constraint plugin id and say when it does and does not run.",
+      "must_contain_any": [
+        "valid_json",
+        "ValidJsonConstraint"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The `valid_json` constraint (Drupal\\json_field\\Plugin\\Validation\\Constraint\\ValidJsonConstraint) is declared on all three field types. Its validator skips empty values and otherwise decodes the string with the `serializer` service, adding the violation 'The supplied text is not valid JSON data (@error).' on failure. It runs wherever entity validation runs (entity forms, $entity->validate(), REST/JSON:API writes) but is bypassed by a bare $entity->save() in PHP.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "json_field-known-size",
+      "mode": "introspection",
+      "prompt": "This Drupal site has a json_field field called field_jf_known on the Article content type. Inspect the running site and report the field type machine name and the exact value of its `size` storage setting.",
+      "must_contain_any": [
+        "65535"
+      ],
+      "must_not_contain": [],
+      "expected_output": "field_jf_known is of type `json` (JSON (text)) and its storage setting is size: 65535 - i.e. a `text` column of size 'normal' (16 KB). Readable with `drush cget field.storage.node.field_jf_known`.",
+      "setup": "agent-module-documentation/evaluation/verify/json_field-known-size-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/json_field-known-size-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "json_field-formatter-pretty",
+      "mode": "introspection",
+      "prompt": "The Article content type on this Drupal site has two json_field fields, field_jf_plain and field_jf_fancy. One of them is rendered with json_field's 'Pretty' formatter on the default view display. Inspect the live configuration and say which field that is, and which formatter the other one uses.",
+      "must_contain_any": [
+        "field_jf_fancy"
+      ],
+      "must_not_contain": [],
+      "expected_output": "field_jf_fancy uses the `pretty` formatter; field_jf_plain uses the `json` (Plain text) formatter with attach_library set to false. Both are in core.entity_view_display.node.article.default under content.<field>.type.",
+      "setup": "agent-module-documentation/evaluation/verify/json_field-formatter-pretty-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/json_field-formatter-pretty-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "json_field-native-field",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, add a field named field_jf_task to the Article content type using json_field's 'JSON (raw)' field type (the one that stores data in a native JSON database column, not the text-column variant). Give it the label 'Task Payload' and place it on the Article default form display using json_field's plain textarea widget. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/json_field-native-field-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/json_field-native-field-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/json_field-native-field-cleanup.sh",
+      "expected_output": "field.storage.node.field_jf_task has type json_native, field.field.node.article.field_jf_task exists, and core.entity_form_display.node.article.default has content.field_jf_task with type json_textarea."
+    },
+    {
+      "id": "json_field-pretty-display",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "site-owner-layman",
+      "prompt": "On this Drupal site the Article content type has a JSON field called field_jf_out. Right now it prints the raw JSON text in a code block. I want it rendered as a readable nested list instead, using json_field's own display option - no extra JavaScript library involved. Change the Article's default display so it does that, and save the change on the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/json_field-pretty-display-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/json_field-pretty-display-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/json_field-pretty-display-cleanup.sh",
+      "expected_output": "In core.entity_view_display.node.article.default the field_jf_out component uses formatter type `pretty` (json_field's PrettyFormatter, which renders nested <ul>/<dl> markup via the json_pretty render element and attaches only the json_field/json_field.pretty CSS)."
+    }
+  ]
+}

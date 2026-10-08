@@ -1,0 +1,80 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "scss_compiler",
+  "version": "1.3.x",
+  "note": "SCSS/Less Compiler compiles .scss/.less declared in *.libraries.yml into CSS via the bundled scssphp library, driven by the scss_compiler.settings config object (keys: output_format compressed|expanded|nested|compact|crunched, sourcemaps, cache, check_modify_time, flush_cache_type default|system, node_modules_path, and plugins = an extension->compiler-id map, default {scss: scss_compiler_scssphp}). It defines a plugin type 'scss_compiler' (manager plugin.manager.scss_compiler; shipped compilers scss_compiler_scssphp, scss_compiler_lessphp, scss_compiler_libsass) and a Drush command compiler:cr (alias ccr) that flushes/recompiles. Settings are exposed on the core Performance form (configure: system.performance_settings). Recompile route /admin/flush/scss_compiler. Medium/hard cases are grounded in real config and the real service: introspection reads output_format and the plugins map; execution sets output_format+plugins.less and actually compiles a .scss file to .css via \\Drupal::service('scss_compiler')->compile(). scssphp is installed under vendor/. Shipped baseline: output_format compressed, plugins {scss: scss_compiler_scssphp}.",
+  "evals": [
+    {
+      "id": "scssc-output-format-values",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "In the scss_compiler module, which scss_compiler.settings key controls the compiled CSS output style, and what are its valid values?",
+      "must_contain_any": ["output_format", "compressed", "expanded", "nested", "compact", "crunched"],
+      "must_not_contain": [],
+      "expected_output": "The 'output_format' key of scss_compiler.settings. Valid values are compressed (default), expanded, nested, compact and crunched; each maps to a scssphp formatter class, and an unrecognised value falls back to compressed."
+    },
+    {
+      "id": "scssc-recompile-command",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "How do I force the scss_compiler module to recompile all SCSS sources from the command line, and is there an admin route to do the same?",
+      "must_contain_any": ["compiler:cr", "ccr", "flushCache", "/admin/flush/scss_compiler"],
+      "must_not_contain": [],
+      "expected_output": "Run drush compiler:cr (alias drush ccr), which calls the service flushCache() to delete public://scss_compiler and recompile everything. The admin route /admin/flush/scss_compiler (scss_compiler.flush) does the same and redirects back; a normal drush cr also triggers a flush."
+    },
+    {
+      "id": "scssc-how-files-compiled",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "How does the scss_compiler module know which files to compile, and which plugin compiles .scss by default? How would I also compile .less?",
+      "must_contain_any": ["libraries.yml", "plugins", "scss_compiler_scssphp", "scss_compiler_lessphp"],
+      "must_not_contain": [],
+      "expected_output": "Declare the .scss/.less file in a *.libraries.yml css section; hook_library_info_alter/hook_css_alter then compile any file whose extension is a key in scss_compiler.settings:plugins. The default map is {scss: scss_compiler_scssphp}. To compile .less, add less: scss_compiler_lessphp to the plugins map."
+    },
+    {
+      "id": "scssc-current-output-format",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "On this Drupal site, inspect the live scss_compiler configuration and tell me what CSS output style (output format) the compiler is currently set to produce.",
+      "must_contain_any": ["expanded"],
+      "must_not_contain": [],
+      "expected_output": "It is set to 'expanded' (scss_compiler.settings:output_format = expanded), i.e. human-readable multi-line CSS rather than the default compressed output.",
+      "setup": "agent-module-documentation/evaluation/verify/scss_compiler-output-format-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/scss_compiler-output-format-cleanup.sh"
+    },
+    {
+      "id": "scssc-which-less-compiler",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "On this Drupal site the scss_compiler module has been configured to compile .less files. Inspect the live configuration and tell me which compiler plugin handles the .less extension.",
+      "must_contain_any": ["scss_compiler_lessphp"],
+      "must_not_contain": [],
+      "expected_output": "The .less extension is mapped to the scss_compiler_lessphp (LessPHP) compiler in scss_compiler.settings:plugins (plugins.less = scss_compiler_lessphp).",
+      "setup": "agent-module-documentation/evaluation/verify/scss_compiler-less-plugin-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/scss_compiler-less-plugin-cleanup.sh"
+    },
+    {
+      "id": "scssc-configure-expanded-less",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, configure the scss_compiler module so that (1) compiled CSS is human-readable 'expanded' output, and (2) .less files are compiled using the LessPHP plugin. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/scss_compiler-configure-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/scss_compiler-configure-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/scss_compiler-configure-cleanup.sh",
+      "expected_output": "Set scss_compiler.settings:output_format to 'expanded' and add plugins.less = 'scss_compiler_lessphp' (e.g. drush cset scss_compiler.settings output_format expanded; drush cset scss_compiler.settings plugins.less scss_compiler_lessphp)."
+    },
+    {
+      "id": "scssc-compile-file",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site there is a SCSS source file at /tmp/scss_compiler-eval/style.scss. Using the scss_compiler module's service (\\Drupal::service('scss_compiler')), compile it into CSS at /tmp/scss_compiler-eval/style.css on the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/scss_compiler-compile-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/scss_compiler-compile-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/scss_compiler-compile-cleanup.sh",
+      "expected_output": "Call \\Drupal::service('scss_compiler')->compile(['source_path' => '/tmp/scss_compiler-eval/style.scss', 'css_path' => '/tmp/scss_compiler-eval/style.css', 'namespace' => 'olivero', 'name' => 'style', 'assets_path' => ''], TRUE); The written CSS contains the compiled nested rule '.box .title{color:#123456}'."
+    }
+  ]
+}

@@ -1,0 +1,80 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "media_alias_display_field_override",
+  "version": "3.0.x",
+  "note": "This submodule adds a single boolean field field_override_mad_module (label 'Override Media Alias Display') to every existing media type on install, with a boolean_checkbox widget. When a media entity has that field truthy, the parent media_alias_display DisplayController renders the media normally instead of streaming its file. No config, routes, permissions, services or Drush. Medium cases create document media with the override on/off and read the flag back. Hard cases create a document media with the override OFF and require the agent to set field_override_mad_module = TRUE on it, verified against the live entity; reset recreates the media with the flag off so verify fails on empty state. (Media are created without a source file — save() does not run the field-required form constraint — which is enough to carry the override boolean.)",
+  "evals": [
+    {
+      "id": "madfo-what-field",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "The Media Alias Display Field Override submodule adds a field to media. What is the field's machine name and type, and which media bundles get it?",
+      "must_contain_any": ["field_override_mad_module", "boolean", "Override Media Alias Display"],
+      "must_not_contain": [],
+      "expected_output": "It installs a boolean field field_override_mad_module (label 'Override Media Alias Display') on every existing media type (bundle), with a boolean_checkbox widget."
+    },
+    {
+      "id": "madfo-what-happens",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "What happens to a media entity when its 'Override Media Alias Display' (field_override_mad_module) checkbox is ticked?",
+      "must_contain_any": ["normal", "normally", "not stream", "does not stream", "opt out", "opts out", "excluded", "media page", "skip"],
+      "must_not_contain": [],
+      "expected_output": "That media entity is excluded from the file-streaming behavior: the parent module's DisplayController renders it as a normal media page instead of serving the raw file. Other media of the same bundle are unaffected."
+    },
+    {
+      "id": "madfo-new-bundles",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "If I create a new media type after enabling Media Alias Display Field Override, will it automatically have the override field?",
+      "must_contain_any": ["no", "not automatically", "existing", "install", "manually", "won't", "will not"],
+      "must_not_contain": [],
+      "expected_output": "No. The field is added to media types that exist at install time (in hook_install); media types created afterward do not get field_override_mad_module automatically — you must add it yourself."
+    },
+    {
+      "id": "madfo-find-override",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "This site has two document media items: 'MAD Eval Override' and 'MAD Eval Normal'. Inspect the site and tell me which one is set to override Media Alias Display (i.e. has the override field enabled).",
+      "must_contain_any": ["MAD Eval Override"],
+      "must_not_contain": [],
+      "setup": "agent-module-documentation/evaluation/verify/madfo-find-override-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/madfo-find-override-cleanup.sh",
+      "expected_output": "'MAD Eval Override' has field_override_mad_module = 1 (true); 'MAD Eval Normal' has it 0/false. Found e.g. via an entity query on media with field_override_mad_module = 1."
+    },
+    {
+      "id": "madfo-excluded-check",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "There is a document media item named 'MAD Eval Excluded' on this site. By inspecting its fields, determine whether it is currently excluded from the Media Alias Display file-serving behavior.",
+      "must_contain_any": ["yes", "excluded", "override", "true", "1", "enabled"],
+      "must_not_contain": [],
+      "setup": "agent-module-documentation/evaluation/verify/madfo-excluded-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/madfo-excluded-cleanup.sh",
+      "expected_output": "Yes — it is excluded: media 'MAD Eval Excluded' has field_override_mad_module = 1 (true), so the parent module renders it normally instead of streaming the file."
+    },
+    {
+      "id": "madfo-set-override",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this site there is a document media item named 'MAD Override Task'. Using the Media Alias Display Field Override submodule's field, configure that media entity so it overrides (opts out of) the Media Alias Display file-serving behavior. Save the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/madfo-set-override-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/madfo-set-override-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/madfo-set-override-cleanup.sh",
+      "expected_output": "The media entity 'MAD Override Task' has field_override_mad_module set truthy (1). e.g. $m->set('field_override_mad_module', TRUE)->save(); (or tick 'Override Media Alias Display' on the media edit form)."
+    },
+    {
+      "id": "madfo-keep-page",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "site-owner",
+      "prompt": "I have a document in my media library called 'MAD Keep Page'. Right now clicking its link opens the raw file, but I want that one item to show its normal media page instead. Make it so, and save it on the site.",
+      "reset": "agent-module-documentation/evaluation/verify/madfo-keep-page-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/madfo-keep-page-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/madfo-keep-page-cleanup.sh",
+      "expected_output": "The media entity 'MAD Keep Page' has field_override_mad_module set truthy (1), so the parent module renders its media page instead of streaming the file. Set via the 'Override Media Alias Display' checkbox on the media edit form, or $m->set('field_override_mad_module', TRUE)->save()."
+    }
+  ]
+}

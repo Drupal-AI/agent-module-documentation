@@ -1,0 +1,111 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "scanner",
+  "version": "2.0.x",
+  "note": "Search and Replace Scanner (installed release 2.0.0-beta3, BETA) performs admin-driven find-and-replace across chosen entity text/string/link fields, backed by the plugin.manager.scanner service. Cases span three tiers: `easy`/recipe (response-graded facts from 2.0.x/agent/), `medium`/introspection (a setup script writes a KNOWN scanner.admin_settings value to the live site, the agent inspects the running site via drush to answer, a cleanup script restores install defaults), and `hard`/execution (a reset script creates a known Article with searchable text + restores settings, the agent performs a search-and-replace on the node's Body field via the scanner service/plugin, a verify script checks the field content changed — reset -> model -> verify, exit 0 = pass).",
+  "evals": [
+    {
+      "id": "scanner-body-replace",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site (drush available) the Search and Replace Scanner module (`scanner`) is installed. There is a published Article titled `Eval Scanner Node` whose Body mentions `Acme Corporation`. Using the module's scanner service/plugin (`plugin.manager.scanner`), perform a search-and-replace that changes every `Acme Corporation` to `Globex Inc` in that Article's Body. Apply it to the live site; don't just describe it. One-line summary.",
+      "reset": "agent-module-documentation/evaluation/verify/scanner-body-replace-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/scanner-body-replace-verify.sh",
+      "expected_output": "The Article `Eval Scanner Node` Body now reads `Please contact Globex Inc for support.` — it contains `Globex Inc` and no longer contains `Acme Corporation`. Done via the scanner_node plugin from plugin.manager.scanner (search('node:article:body', $values) then replace()). Verified against live site state."
+    },
+    {
+      "id": "scanner-email-replace",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site (drush available) with the Search and Replace Scanner module, an Article titled `Eval Scanner Email` has a Body containing two addresses on the domain `oldcorp.example`. Using the scanner service/plugin, replace every occurrence of `oldcorp.example` with `newcorp.example` in that Article's Body so both addresses are updated. Apply it to the live site; don't just describe it. One-line summary.",
+      "reset": "agent-module-documentation/evaluation/verify/scanner-email-replace-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/scanner-email-replace-verify.sh",
+      "expected_output": "The Article `Eval Scanner Email` Body now contains info@newcorp.example and sales@newcorp.example and no longer contains oldcorp.example (both occurrences replaced in one pass). Done via the scanner_node plugin. Verified against live site state."
+    },
+    {
+      "id": "scanner-wholeword-replace",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site (drush available) with the Search and Replace Scanner module, an Article titled `Eval Scanner Wholeword` has the Body `The cat sat by a category of cats.`. Using the scanner service/plugin, replace the WHOLE WORD `cat` with `dog` so that only the standalone word changes — `category` and `cats` must be left untouched (use the module's whole-word match option). Apply it to the live site; don't just describe it. One-line summary.",
+      "reset": "agent-module-documentation/evaluation/verify/scanner-wholeword-replace-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/scanner-wholeword-replace-verify.sh",
+      "expected_output": "The Article `Eval Scanner Wholeword` Body now reads `The dog sat by a category of cats.` — only the whole word `cat` became `dog`; `category` and `cats` are unchanged. Done via the scanner_node plugin with wholeword=TRUE in $values. Verified against live site state."
+    },
+    {
+      "id": "scanner-introspect-fields",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "persona": "drupal-expert",
+      "prompt": "Inspect this running Drupal site (drush available). On the Search and Replace Scanner configuration, which entity field(s) are currently enabled as scannable (available to search and replace)? Answer from the site's actual configuration.",
+      "setup": "agent-module-documentation/evaluation/verify/scanner-introspect-fields-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/scanner-introspect-fields-cleanup.sh",
+      "must_contain_any": ["body"],
+      "must_not_contain": [],
+      "expected_output": "Only the Article Body field is enabled: fields_of_selected_content_type contains `node:article:body` (and enabled_content_types contains `node:article`) in the scanner.admin_settings config."
+    },
+    {
+      "id": "scanner-introspect-word-boundaries",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "persona": "drupal-expert",
+      "prompt": "Inspect this running Drupal site (drush available). What is the Search and Replace Scanner 'regex word boundaries' mode currently set to (auto, spencer, or icu)? Answer from the site's actual configuration.",
+      "setup": "agent-module-documentation/evaluation/verify/scanner-introspect-word-boundaries-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/scanner-introspect-word-boundaries-cleanup.sh",
+      "must_contain_any": ["icu"],
+      "must_not_contain": [],
+      "expected_output": "word_boundaries is set to `icu` (the MySQL 8.0.4+ \\b mode) in scanner.admin_settings — not the install default of `auto`."
+    },
+    {
+      "id": "scanner-introspect-regex-default",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "persona": "drupal-expert",
+      "prompt": "Inspect this running Drupal site (drush available). On the Search and Replace Scanner settings, is the search term interpreted as a regular expression by default? Answer yes or no from the site's actual configuration and name the setting.",
+      "setup": "agent-module-documentation/evaluation/verify/scanner-introspect-regex-default-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/scanner-introspect-regex-default-cleanup.sh",
+      "must_contain_any": ["yes"],
+      "must_not_contain": [],
+      "expected_output": "Yes — scanner_regex is set to TRUE in scanner.admin_settings, so the search box defaults to regular-expression mode (this overrides the module's install default of FALSE)."
+    },
+    {
+      "id": "scanner-config-object",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "On a Drupal 11 site using the Search and Replace Scanner module (`scanner`), which config object stores its settings, and which key lists the specific entity fields that are allowed to be searched and replaced?",
+      "must_contain_any": ["fields_of_selected_content_type"],
+      "must_not_contain": [],
+      "expected_output": "Settings live in the `scanner.admin_settings` config object; the scannable fields are listed under `fields_of_selected_content_type` (keys like `node:article:body`), with entity types under `enabled_content_types`."
+    },
+    {
+      "id": "scanner-service-id",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "In custom PHP on a Drupal 11 Search and Replace Scanner site, which service and plugin do I use to run a search-and-replace on node fields programmatically, and what plugin id handles nodes?",
+      "must_contain_any": ["plugin.manager.scanner"],
+      "must_not_contain": [],
+      "expected_output": "Load the `plugin.manager.scanner` service and create the `scanner_node` plugin (createInstance('scanner_node')), then call search('node:article:body', $values) and replace($results, $values, []). There is no Drush command."
+    },
+    {
+      "id": "scanner-replace-permission",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "Which permission does the Scanner module require for a user to actually perform replacements (not just search), and what other permission limits a user to searching only? Give the exact permission names.",
+      "must_contain_any": ["perform search and replace"],
+      "must_not_contain": [],
+      "expected_output": "`perform search and replace` allows both search and replace (and bypasses normal entity edit access); `perform search only` limits a user to searching; `administer scanner settings` gates the settings form."
+    },
+    {
+      "id": "scanner-new-entity-plugin",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "I want the Scanner module to be able to search-and-replace fields on a custom entity type. What kind of plugin do I write, which annotation and namespace does it use, and which base class should it extend?",
+      "must_contain_any": ["@Scanner", "Plugin/Scanner", "ScannerPluginBase"],
+      "must_not_contain": [],
+      "expected_output": "Write a Scanner plugin in the Plugin/Scanner namespace using the @Scanner annotation (required id and type properties), extending \\Drupal\\scanner\\Plugin\\Scanner\\Entity (which itself extends ScannerPluginBase); id convention scanner_<type>."
+    }
+  ]
+}

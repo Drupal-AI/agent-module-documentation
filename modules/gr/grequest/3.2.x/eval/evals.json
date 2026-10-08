@@ -1,0 +1,84 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "grequest",
+  "version": "3.2.x",
+  "note": "Group Membership Request extends drupal/group (^3) + state_machine. Code-grounded facts: it adds a Group relation plugin 'group_membership_request' installed per group type (like 'group_membership'); each request is a group_relationship with a state field 'grequest_status' (states new->pending->approved|rejected, transitions create/approve/reject); group permissions are 'request group membership', 'administer membership requests', 'view any/own membership requests'; the service 'grequest.membership_request_manager' exposes create($group,$user), approve($rel,$roles), reject($rel), getMembershipRequest($user,$group); approving adds the user as a real member. No global settings form (configure=null). Medium cases install known live state (a group type with the relation; a pending request) discoverable via drush. Hard cases build real state: installing the relation on a group type, and approving a pending request so the user becomes a member. All fixtures namespaced grequest_*.",
+  "evals": [
+    {
+      "id": "grequest-code-approve",
+      "mode": "recipe",
+      "prompt": "On a Drupal site using the Group module and the Group Membership Request (grequest) module, which service and method should custom code call to create a membership request for a user, and which method approves it so the user becomes a group member?",
+      "must_contain_any": ["grequest.membership_request_manager", "MembershipRequestManager", "->create(", "->approve("],
+      "must_not_contain": [],
+      "expected_output": "Use the grequest.membership_request_manager service (MembershipRequestManager). Call $mgr->create($group, $user) then ->save() the returned group_relationship to create a pending request, and $mgr->approve($relationship, $group_roles) to approve it (which also adds the user as a member via $group->addMember()). ->reject() rejects it.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "grequest-permissions",
+      "mode": "recipe",
+      "prompt": "With the grequest (Group Membership Request) module, which permission lets an outsider request to join a group, and which permission lets someone approve or reject those requests? Are these site-wide permissions?",
+      "must_contain_any": ["request group membership", "administer membership requests"],
+      "must_not_contain": [],
+      "expected_output": "The 'request group membership' permission (default target: outsider role) lets a non-member request membership; 'administer membership requests' lets a user approve/reject requests and reach /group/{group}/members-pending. These are Group permissions granted per group type on its permissions page, not site-wide permissions.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "grequest-states",
+      "mode": "recipe",
+      "prompt": "In the grequest module, a membership request tracks its status through a workflow. Which field holds the status and what are the possible states/transitions?",
+      "must_contain_any": ["grequest_status", "pending", "approved", "rejected", "state_machine"],
+      "must_not_contain": [],
+      "expected_output": "The status is stored on the group_relationship in the state_machine field 'grequest_status'. States are new, pending, approved, rejected; transitions are create (new->pending), approve (pending->approved) and reject (pending->rejected).",
+      "difficulty": "easy"
+    },
+    {
+      "id": "grequest-which-type",
+      "mode": "introspection",
+      "prompt": "On this Drupal site, exactly one Group type has the Group Membership Request relation ('group_membership_request') installed so outsiders can request to join. Inspect the live configuration and give the machine name (id) of that group type.",
+      "must_contain_any": ["grequest_mtype"],
+      "must_not_contain": [],
+      "expected_output": "The group type grequest_mtype has the group_membership_request relation installed (a group_relationship_type config entity exists for it).",
+      "setup": "agent-module-documentation/evaluation/verify/grequest-installed-type-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/grequest-installed-type-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "grequest-who-pending",
+      "mode": "introspection",
+      "prompt": "On this Drupal site there is a group of type grequest_ptype with an outstanding (pending) membership request. Inspect the live site and give the username of the user who has requested to join.",
+      "must_contain_any": ["grequest_pending_user"],
+      "must_not_contain": [],
+      "expected_output": "The user 'grequest_pending_user' has a group_relationship of type group_membership_request with grequest_status = pending in the grequest_ptype group.",
+      "setup": "agent-module-documentation/evaluation/verify/grequest-pending-request-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/grequest-pending-request-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "grequest-install-relation",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site there is a Group type with machine name grequest_htype that does not yet allow membership requests. Using the Group Membership Request module, install the 'group_membership_request' relation on this group type so outsiders can request to join. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/grequest-install-relation-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/grequest-install-relation-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/grequest-install-relation-cleanup.sh",
+      "expected_output": "The grequest_htype group type has the group_membership_request relation installed (e.g. via $storage->createFromPlugin($group_type,'group_membership_request')->save(), or the group type's Set up content UI). $gt->hasPlugin('group_membership_request') returns TRUE.",
+      "must_contain_any": [],
+      "must_not_contain": []
+    },
+    {
+      "id": "grequest-approve-request",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, the user 'grequest_approve_user' has submitted a pending membership request to a group of type grequest_atype but is not yet a member. Using the Group Membership Request module, approve that request so the user becomes a member of the group. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/grequest-approve-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/grequest-approve-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/grequest-approve-cleanup.sh",
+      "expected_output": "Approve the pending request via the grequest.membership_request_manager service (get the request with getMembershipRequest($user,$group), then approve($request)), or via the approve-membership route/UI. Afterwards $group->getMember($user) is truthy - the user is a member.",
+      "must_contain_any": [],
+      "must_not_contain": []
+    }
+  ]
+}

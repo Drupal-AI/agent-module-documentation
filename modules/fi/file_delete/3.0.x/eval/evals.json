@@ -1,0 +1,65 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "file_delete",
+  "version": "3.0.x",
+  "note": "File Delete has no settings UI and no Drush commands; it overrides core's file delete form and ships two bulk action plugins plus two permissions. Cases are `recipe` (response-graded) probing documented facts an agent would otherwise read source to answer; no site mutation.",
+  "evals": [
+    {
+      "id": "file-delete-override-core-form",
+      "mode": "recipe",
+      "prompt": "How does the File Delete module take over file deletion on a Drupal 11 site — which hook and which form class does it use, and does it add its own route?",
+      "must_contain_any": ["entity_type_build", "setFormClass", "FileDeleteForm"],
+      "must_not_contain": [],
+      "expected_output": "It implements hook_entity_type_build() in FileDeleteHooks to call $entity_types['file']->setFormClass('delete', FileDeleteForm::class), reusing core's file delete route (entity.file.delete_form) — it adds no routing.yml."
+    },
+    {
+      "id": "file-delete-default-behavior",
+      "mode": "recipe",
+      "prompt": "On a Drupal site with File Delete, what actually happens to a file when I delete it through the default form — is it removed from disk immediately?",
+      "must_contain_any": ["setTemporary", "Temporary", "file_cron"],
+      "must_not_contain": [],
+      "expected_output": "By default it flips the file from Permanent to Temporary (setTemporary() + save()); Drupal's file_cron() deletes temporary files on a later cron run (core default ~6 hours). It is not removed immediately unless immediate delete is used."
+    },
+    {
+      "id": "file-delete-permissions",
+      "mode": "recipe",
+      "prompt": "What permission machine names does the File Delete module define, and what does each unlock?",
+      "must_contain_any": ["delete files immediately", "delete files override usage"],
+      "must_not_contain": [],
+      "expected_output": "'delete files immediately' (delete now, skipping the temporary/cron step) and 'delete files override usage' (delete even when the file has usage records). Both are restrict-access permissions."
+    },
+    {
+      "id": "file-delete-usage-safeguard",
+      "mode": "recipe",
+      "prompt": "Why does File Delete sometimes refuse to delete a file, and which service does it consult to decide?",
+      "must_contain_any": ["file.usage", "listUsage", "FileUsage"],
+      "must_not_contain": [],
+      "expected_output": "It calls the file.usage service (FileUsageInterface::listUsage()); if the file is registered as in use it refuses and links to the usages view, unless the user forces the delete with 'delete files override usage'."
+    },
+    {
+      "id": "file-delete-bulk-actions",
+      "mode": "recipe",
+      "prompt": "Which bulk action plugin IDs does File Delete provide for deleting files from a Files view?",
+      "must_contain_any": ["file_delete_mark_temporary", "file_delete_immediately"],
+      "must_not_contain": [],
+      "expected_output": "Two file-type actions: file_delete_mark_temporary (Mark file for deletion, sets temporary) and file_delete_immediately (Immediately delete with usage checks)."
+    },
+    {
+      "id": "file-delete-immediate-record-removal",
+      "mode": "recipe",
+      "prompt": "How does File Delete's 'Immediately delete' action remove a managed file from both the filesystem and the database?",
+      "must_contain_any": ["file_managed", "FileSystem", "getFileUri"],
+      "must_not_contain": [],
+      "expected_output": "ImmediateDeleteWithUsageChecks deletes the file from disk via file_system->delete($file->getFileUri()) and then deletes the row from the file_managed table by fid."
+    },
+    {
+      "id": "file-delete-dependencies-and-drush",
+      "mode": "recipe",
+      "prompt": "What modules does File Delete depend on, and does it provide any Drush commands?",
+      "must_contain_any": ["drupal:file", "file"],
+      "must_not_contain": [],
+      "expected_output": "It depends only on core file (drupal:file) and provides no Drush commands (no drush.services.yml / src/Drush)."
+    }
+  ]
+}

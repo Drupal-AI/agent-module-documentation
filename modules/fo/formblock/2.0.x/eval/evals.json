@@ -1,0 +1,101 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "formblock",
+  "version": "2.0.x",
+  "note": "Form block ships four @Block plugins in Drupal\\formblock\\Plugin\\Block (formblock_node, formblock_user_register, formblock_contact, formblock_user_password), all in the 'Forms' block category, plus one hook_entity_type_alter() that copies the default node/user entity form class onto every form mode lacking one. It has no routes, no services, no permissions file, no config schema, no settings form (configure is null) and no Drush commands. All configuration is per block instance in block.block.<id>.settings, and the stored keys (type, form_mode, show_help, contact_form) differ from the form element names (formblock_node_type, formblock_node_form_mode, formblock_show_help, formblock_contact_form, formblock_user_form_mode). Recipe cases probe the plugin ids and the stored keys; introspection cases read real placed block instances; execution cases place real blocks verified against live block config entities.",
+  "evals": [
+    {
+      "id": "formblock-which-blocks",
+      "mode": "recipe",
+      "prompt": "I installed the Drupal contrib module formblock on a Drupal 11 site. Which blocks does it add, what are their plugin IDs, and under which category do they show up in the Place block dialog?",
+      "must_contain_any": [
+        "formblock_node",
+        "formblock_contact",
+        "formblock_user_register",
+        "formblock_user_password"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Four block plugins, all in the 'Forms' category: formblock_node (Content form), formblock_user_register (User registration form), formblock_contact (Site-wide contact form) and formblock_user_password (Request new password form).",
+      "difficulty": "easy"
+    },
+    {
+      "id": "formblock-node-settings-keys",
+      "mode": "recipe",
+      "prompt": "I want to create a formblock 'Content form' block config entity by hand in a Drupal 11 config YAML file instead of clicking through the UI. Which keys go under the block's settings for the formblock_node plugin, and what do they mean?",
+      "must_contain_any": [
+        "show_help",
+        "form_mode",
+        "\"type\"",
+        "type:"
+      ],
+      "must_not_contain": [],
+      "expected_output": "block.block.<id>.settings needs id: formblock_node, plus type (the node type machine name), form_mode ('default' or a node form mode id) and show_help (boolean, prepends the node type's submission guidelines). Note the block configure form's element names are formblock_node_type / formblock_node_form_mode / formblock_show_help, but the stored keys are type / form_mode / show_help.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "formblock-registration-access",
+      "mode": "recipe",
+      "prompt": "On a Drupal 11 site using the formblock module, I placed the 'User registration form' block but it does not appear for anonymous visitors. Which core setting decides that, and how does the block's own access logic use it?",
+      "must_contain_any": [
+        "user.settings",
+        "Account settings",
+        "Who can register",
+        "administrators only",
+        "REGISTER_ADMINISTRATORS_ONLY",
+        "admin_only"
+      ],
+      "must_not_contain": [],
+      "expected_output": "UserRegisterBlock::blockAccess() denies access for anybody without the 'administrator' role when user.settings:register is UserInterface::REGISTER_ADMINISTRATORS_ONLY (Account settings -> Who can register accounts -> Administrators only). It adds the user.roles cache context and the user.settings cache tags.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "formblock-known-block",
+      "mode": "introspection",
+      "prompt": "This Drupal site has a placed block whose label is 'FB Known Form'. Inspect the live block configuration and tell me which formblock plugin it uses, which content type's creation form it renders, and whether the content type's submission guidelines are displayed above the form.",
+      "must_contain_any": [
+        "blog_post"
+      ],
+      "must_not_contain": [],
+      "expected_output": "block.block.formblock_fb_known uses the formblock_node plugin with settings type: blog_post, form_mode: default and show_help: true, so it renders the Blog post creation form with the submission guidelines shown.",
+      "setup": "agent-module-documentation/evaluation/verify/formblock-known-block-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/formblock-known-block-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "formblock-which-plugin",
+      "mode": "introspection",
+      "prompt": "A block labelled 'FB Mystery Form' has been placed on this Drupal site. Look at the live configuration and tell me which formblock block plugin it uses and, if that plugin targets a configuration entity, which one it is pointed at.",
+      "must_contain_any": [
+        "formblock_contact"
+      ],
+      "must_not_contain": [],
+      "expected_output": "block.block.formblock_fb_mystery uses the formblock_contact plugin (Site-wide contact form) and its settings.contact_form is formblock_support, i.e. the 'FB Support' contact form entity.",
+      "setup": "agent-module-documentation/evaluation/verify/formblock-which-plugin-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/formblock-which-plugin-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "formblock-place-node-form",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, use the formblock module to place a 'Content form' block in the content region of the Olivero theme. It must render the Article content type's creation form using the default form mode, and it must display the Article content type's submission guidelines above the form. Apply the change to the live site so the block is enabled.",
+      "reset": "agent-module-documentation/evaluation/verify/formblock-place-node-form-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/formblock-place-node-form-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/formblock-place-node-form-cleanup.sh",
+      "expected_output": "An enabled block config entity with plugin formblock_node, theme olivero, region content, and settings type: article plus show_help: true (the 'Show submission guidelines' checkbox)."
+    },
+    {
+      "id": "formblock-place-password-form-layman",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "site-owner",
+      "prompt": "People keep emailing me because they cannot get back into their accounts. On my Drupal site (the public theme is Olivero) I want a little box in the right-hand sidebar where visitors can type their email address and get a password reset link. Please add it, and make sure the box has the visible heading 'Forgot your password?'.",
+      "reset": "agent-module-documentation/evaluation/verify/formblock-place-password-form-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/formblock-place-password-form-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/formblock-place-password-form-cleanup.sh",
+      "expected_output": "An enabled block config entity with plugin formblock_user_password (formblock's 'Request new password form'), theme olivero, region sidebar, settings.label 'Forgot your password?' and label_display: visible."
+    }
+  ]
+}

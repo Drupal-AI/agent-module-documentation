@@ -1,0 +1,113 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "double_field",
+  "version": "5.0.x",
+  "note": "Double field defines a single field type, double_field, whose item has two properties, 'first' and 'second'; mainPropertyName() is NULL so there is no ->value. Each subfield independently picks one of ten storage types from DoubleField::subfieldTypes() (boolean, string, text, integer, float, numeric, email, telephone, datetime_iso8601, uri) under settings.storage.<subfield>.type, locked once the field has data. Instance settings add per-subfield label, required, list + allowed_values (list-capable types only - not boolean and not text), min/max for numerics and on_label/off_label for booleans; these become real Symfony constraints via DoubleField::getConstraints(). It ships one widget (double_field) whose per-subfield sub-widget is constrained by getSubWidgets(), and four formatters: double_field_unformatted_list (the default), double_field_html_list (list_type ul/ol/dl), double_field_details (open) and double_field_table (number_column, first/second_column_label). There is no settings form and no configure route (configure=null), no permissions, no ordinary services and no Drush commands, so all state is field/form-display/view-display config. Note the config-vs-runtime shape difference: allowed_values is exported as a sequence of {value, label} mappings but set in PHP as a flat key => label array. Every medium and hard case below is grounded in those real config keys and plugin ids.",
+  "evals": [
+    {
+      "id": "double_field-subfield-types",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "I am using the Drupal contrib module double_field on Drupal 11. What are the two value properties of a double_field item called, and where in the field configuration do I choose what data type each of them stores?",
+      "must_contain_any": [
+        "first",
+        "second",
+        "storage"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The two properties are 'first' and 'second' (mainPropertyName() returns NULL, so there is no ->value - you use $entity->field_x->first and ->second). Each one's data type is a field STORAGE setting: settings.storage.first.type and settings.storage.second.type in field.storage.<entity>.<field>, chosen from boolean, string, text, integer, float, numeric, email, telephone, datetime_iso8601 and uri. Related keys maxlength (string/telephone), precision and scale (numeric) and datetime_type (datetime_iso8601) apply per type, and all of them are disabled once the field holds data."
+    },
+    {
+      "id": "double_field-formatters",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "Which field formatter plugins does the Drupal double_field module provide, and which one would I pick to render each field item as an HTML definition list with the first subfield as the term and the second as the description?",
+      "must_contain_any": [
+        "double_field_html_list",
+        "double_field_table",
+        "double_field_details",
+        "double_field_unformatted_list"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Four formatters: double_field_unformatted_list (Unformatted List, the field type's default_formatter), double_field_html_list (HTML List), double_field_details (Details) and double_field_table (Table). For a definition list, pick double_field_html_list and set its list_type setting to 'dl' - that switches it to the double_field_definition_list theme hook, which emits <dt>{{ item.first }}</dt><dd>{{ item.second }}</dd>. The other list_type options are 'ul' (default) and 'ol'."
+    },
+    {
+      "id": "double_field-allowed-values-types",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "In the Drupal double_field module I want to restrict one subfield to a fixed list of allowed values, like a select list. Which setting turns that on, and are there subfield storage types where that option is not offered?",
+      "must_contain_any": [
+        "list",
+        "allowed_values",
+        "isListAllowed"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Tick 'Limit allowed values' on that subfield in the field (instance) settings - the boolean setting is settings.<first|second>.list, and the values go in settings.<first|second>.allowed_values. DoubleField::isListAllowed() only offers it for string, integer, float, numeric, email, telephone, uri and datetime_iso8601, so it is NOT available for boolean or text subfields. Turning it on adds an AllowedValues constraint and makes the 'select' and 'radios' sub-widgets available for that subfield. In exported config allowed_values is a sequence of {value, label} mappings, though in PHP you set it as a flat key => label array."
+    },
+    {
+      "id": "double_field-known-storage",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "This Drupal site has a Double Field called field_df_specs on the Article content type. Inspect the live site and tell me what data type its SECOND subfield stores, together with the precision and scale configured for it.",
+      "must_contain_any": [
+        "numeric"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The second subfield stores type 'numeric' (labelled Decimal in the UI) with precision 14 and scale 3. This is in field.storage.node.field_df_specs under settings.storage.second. The first subfield is type 'string' with maxlength 64.",
+      "setup": "agent-module-documentation/evaluation/verify/double_field-known-storage-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/double_field-known-storage-cleanup.sh"
+    },
+    {
+      "id": "double_field-allowed-values",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "On this Drupal site, the Article content type has a Double Field field_df_rating whose first subfield is restricted to a fixed list of values. Inspect the running site and list the allowed value keys an editor may choose from.",
+      "must_contain_any": [
+        "gold",
+        "silver",
+        "bronze"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The keys are gold, silver and bronze (labels Gold, Silver, Bronze). In field.field.node.article.field_df_rating the first subfield has list: true and allowed_values as a sequence of {value, label} mappings. The second subfield is a free integer bounded by min 0 and max 10.",
+      "setup": "agent-module-documentation/evaluation/verify/double_field-allowed-values-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/double_field-allowed-values-cleanup.sh"
+    },
+    {
+      "id": "double_field-table-formatter",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "The Article content type on this Drupal site has a Double Field field_df_hours that is rendered as a table in the default view mode. Inspect the live display configuration and tell me the two column header labels that have been configured for it.",
+      "must_contain_any": [
+        "Weekday",
+        "Hours"
+      ],
+      "must_not_contain": [],
+      "expected_output": "'Weekday' and 'Hours'. In core.entity_view_display.node.article.default the field_df_hours component uses the double_field_table formatter with settings.first_column_label: Weekday and settings.second_column_label: Hours; number_column is also on with number_column_label '#'.",
+      "setup": "agent-module-documentation/evaluation/verify/double_field-table-formatter-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/double_field-table-formatter-cleanup.sh"
+    },
+    {
+      "id": "double_field-create-field",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, add a Double Field to the Article content type using the double_field contrib module. The field machine name must be field_df_task. Its first subfield must store text limited to 64 characters, its second subfield must store an integer, both subfields must be required, and the field must use the module's own double_field widget on the default form display. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/double_field-create-field-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/double_field-create-field-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/double_field-create-field-cleanup.sh",
+      "expected_output": "A FieldStorageConfig node.field_df_task of type double_field whose settings.storage.first is {type: string, maxlength: 64} and settings.storage.second is {type: integer}; a FieldConfig on node.article with settings.first.required and settings.second.required both TRUE; and a component in core.entity_form_display.node.article.default with type: double_field."
+    },
+    {
+      "id": "double_field-definition-list-layman",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "site-owner",
+      "prompt": "My Drupal Articles have an FAQ field (field_df_faq) where each entry is a question and its answer. Right now they all run together in a plain list. I want them shown properly as a glossary-style list where each question is the heading term and its answer sits underneath it as the description. Please change the default display on the live site so it renders that way.",
+      "reset": "agent-module-documentation/evaluation/verify/double_field-definition-list-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/double_field-definition-list-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/double_field-definition-list-cleanup.sh",
+      "expected_output": "In core.entity_view_display.node.article.default the field_df_faq component must switch from double_field_unformatted_list to the double_field_html_list formatter with settings.list_type: 'dl'. That routes rendering through the double_field_definition_list theme hook, emitting <dl> with the first subfield in <dt> and the second in <dd>."
+    }
+  ]
+}

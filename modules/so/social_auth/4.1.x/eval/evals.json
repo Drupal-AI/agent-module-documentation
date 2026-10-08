@@ -1,0 +1,80 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "social_auth",
+  "version": "4.1.x",
+  "note": "Social Auth is a BASE framework (on social_api) for OAuth2 social login; it is not a provider itself. Fully exercising a real login requires a provider implementer module (social_auth_*) AND an OAuth app registered with the external provider (client_id/secret) -- an external dependency that cannot be tested on this site. Therefore all medium/hard cases are grounded in LOCAL, verifiable state: the site-behavior config object social_auth.settings (post_login default /user; user_allowed register|login; redirect_user_form bool; disable_admin_login bool default TRUE; disabled_roles array; auth), the disabled_roles policy against a namespaced role, and the shipped 'Social Auth Login' block plugin (social_auth_login). Configure route social_auth.integrations -> /admin/config/social-api/social-auth (permission administer social api authentication, from social_api). Per-provider client creds live in each provider's own <network>.settings, written by SocialAuthSettingsForm at /admin/config/social-api/social-auth/{network}. Introspection reads social_auth.settings values / disabled role; execution sets the login policy config and places the login block, both verified from live state. Site defaults are restored by cleanup/reset (post_login=/user, user_allowed=register).",
+  "evals": [
+    {
+      "id": "socialauth-what-is-it",
+      "mode": "recipe",
+      "prompt": "I installed the Drupal social_auth module but I don't see any 'Sign in with Google' option. What is social_auth, and what else do I need for an actual provider like Google to work?",
+      "must_contain_any": ["social_api", "provider", "implementer", "Network", "social_auth_", "OAuth"],
+      "must_not_contain": [],
+      "expected_output": "social_auth is a base framework built on social_api; it provides the shared login/registration flow but no provider itself. You also need a provider implementer module (e.g. drupal/social_auth_google, a Social API Network plugin) and an OAuth app registered with that provider supplying client_id/client_secret.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "socialauth-settings-keys",
+      "mode": "recipe",
+      "prompt": "Which config object and settings does social_auth use to control login behavior, e.g. blocking social login for the admin user or only allowing login (no new registrations)?",
+      "must_contain_any": ["social_auth.settings", "disable_admin_login", "user_allowed", "post_login", "disabled_roles"],
+      "must_not_contain": [],
+      "expected_output": "The social_auth.settings config object holds: user_allowed (register|login), disable_admin_login (bool, default TRUE, blocks user 1), disabled_roles (roles blocked from social login), post_login (redirect path after login), and redirect_user_form.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "socialauth-login-ui",
+      "mode": "recipe",
+      "prompt": "How does social_auth expose the provider login links on a Drupal site, and what are the OAuth redirect/callback route paths?",
+      "must_contain_any": ["social_auth_login", "user/login/", "login_with", "block"],
+      "must_not_contain": [],
+      "expected_output": "It ships a 'Social Auth Login' block (plugin social_auth_login) that renders the login_with theme hook with a link per installed provider. The OAuth routes are user/login/{network} (redirect) and user/login/{network}/callback.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "socialauth-known-postlogin",
+      "mode": "introspection",
+      "prompt": "On this site, social_auth has been configured with a custom post-login redirect and a restricted registration policy. Inspect the live social_auth configuration and report the path users are redirected to after login, and whether new users can register or login only.",
+      "must_contain_any": ["/user/welcome-back", "welcome-back"],
+      "must_not_contain": [],
+      "expected_output": "post_login is /user/welcome-back and user_allowed is 'login' (login only, no new registrations) in social_auth.settings.",
+      "setup": "agent-module-documentation/evaluation/verify/social_auth-postlogin-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/social_auth-postlogin-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "socialauth-disabled-role",
+      "mode": "introspection",
+      "prompt": "This site has social_auth configured to prevent social login for one particular user role. Inspect the live configuration and state which role has social login disabled.",
+      "must_contain_any": ["socialauth_blocked"],
+      "must_not_contain": [],
+      "expected_output": "The role 'socialauth_blocked' has social login disabled (it is listed in social_auth.settings disabled_roles).",
+      "setup": "agent-module-documentation/evaluation/verify/social_auth-disabledrole-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/social_auth-disabledrole-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "socialauth-set-policy",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this site, configure social_auth so that social authentication is login-only (existing users may log in, but no new accounts may be created), and so that users are redirected to /dashboard after a successful social login. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/social_auth-policy-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/social_auth-policy-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/social_auth-policy-cleanup.sh",
+      "expected_output": "social_auth.settings user_allowed is set to 'login' and post_login is set to '/dashboard' (e.g. via the Social Auth settings on the network settings form, or drush config:set social_auth.settings user_allowed login / post_login /dashboard)."
+    },
+    {
+      "id": "socialauth-place-block",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "This site has social_auth enabled but the social login buttons are not shown anywhere. Place the 'Social Auth Login' block into a visible region of the site's front-end theme so the provider login links appear. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/social_auth-block-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/social_auth-block-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/social_auth-block-cleanup.sh",
+      "expected_output": "An enabled block with plugin social_auth_login is placed in a region of a theme (e.g. Olivero content/sidebar). Create it via /admin/structure/block ('Place block' -> Social Auth Login) or Block::create([...'plugin'=>'social_auth_login'...])->save()."
+    }
+  ]
+}

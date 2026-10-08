@@ -1,0 +1,80 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "login_history",
+  "version": "2.0.x",
+  "note": "Login History records one row per successful login into a dedicated login_history base table (uid, login timestamp, hostname/IP, user_agent, one_time flag) via hook_user_login(). Retention is bounded by the single config value login_history.settings:keep_user (default 50; 0 = keep all), pruned at login time and on cron. Data is surfaced via a Views base table (login_history joined to users_field_data), two report routes (/admin/reports/login-history for perm 'view all login histories'; /user/{user}/login-history for 'view own login history'), and the last_login_block block plugin. Introspection cases read live config (keep_user) and the live login_history table; execution cases set the retention config and place the last_login_block, both verified against live state.",
+  "evals": [
+    {
+      "id": "login_history-where-stored",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "On a Drupal site with the login_history module, where is each user login recorded, and which hook writes that record? Name the storage and the hook.",
+      "must_contain_any": ["login_history", "hook_user_login", "user_login"],
+      "must_not_contain": [],
+      "expected_output": "Each successful login is inserted as a row into the module's own login_history database table by hook_user_login() (login_history_user_login), capturing uid, login timestamp, hostname (IP), user_agent, and a one_time flag."
+    },
+    {
+      "id": "login_history-retention",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "How do I limit how many login records login_history keeps per user, and what is the default? What config key controls it?",
+      "must_contain_any": ["keep_user", "login_history.settings", "50"],
+      "must_not_contain": [],
+      "expected_output": "The config object login_history.settings has a single key keep_user (default 50). It caps rows per user; 0 keeps all. Pruning to the limit happens at login time and on cron (hook_cron). Set it at /admin/config/people/login-history or with drush cset login_history.settings keep_user <n>."
+    },
+    {
+      "id": "login_history-reports-perms",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "Which pages does login_history provide to view login history, and which permissions gate them?",
+      "must_contain_any": ["/admin/reports/login-history", "view all login histories", "view own login history", "/user/"],
+      "must_not_contain": [],
+      "expected_output": "Site-wide report at /admin/reports/login-history (permission 'view all login histories', route login_history.report, backed by the login_history View), and a per-user report at /user/{user}/login-history (permission 'view own login history', route login_history.user_report). A 'Last login' block (last_login_block) is also provided."
+    },
+    {
+      "id": "login_history-keep-user-current",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "On this Drupal site, login_history has been configured with a specific per-user retention limit. Inspect the live configuration and state the current value of keep_user.",
+      "must_contain_any": ["13"],
+      "must_not_contain": [],
+      "expected_output": "keep_user is 13 in login_history.settings (drush cget login_history.settings keep_user).",
+      "setup": "agent-module-documentation/evaluation/verify/login_history-keepuser-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/login_history-keepuser-cleanup.sh"
+    },
+    {
+      "id": "login_history-last-ip",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "This site's login_history table has a recorded login for user 1. Inspect the live login_history table and report the IP address (hostname) stored for that user's most recent recorded login.",
+      "must_contain_any": ["198.51.100.42"],
+      "must_not_contain": [],
+      "expected_output": "The hostname is 198.51.100.42 (SELECT hostname FROM login_history WHERE uid=1 ORDER BY login DESC LIMIT 1).",
+      "setup": "agent-module-documentation/evaluation/verify/login_history-lastrow-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/login_history-lastrow-cleanup.sh"
+    },
+    {
+      "id": "login_history-set-keep-user",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, configure login_history to keep at most 10 login records per user, and apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/login_history-keepuser-set-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/login_history-keepuser-set-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/login_history-keepuser-set-cleanup.sh",
+      "expected_output": "login_history.settings:keep_user is set to 10 (drush cset login_history.settings keep_user 10 -y, or via /admin/config/people/login-history)."
+    },
+    {
+      "id": "login_history-place-block",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "Place login_history's 'Last login' block into a region of the site's default theme, so authenticated users see when they last logged in. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/login_history-block-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/login_history-block-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/login_history-block-cleanup.sh",
+      "expected_output": "An enabled block config entity using plugin last_login_block is created in the default theme (e.g. Block::create(['id'=>'...','theme'=><default>,'region'=>'content','plugin'=>'last_login_block', ...])->save(), or via /admin/structure/block)."
+    }
+  ]
+}

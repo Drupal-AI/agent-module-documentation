@@ -1,0 +1,108 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "reverse_proxy_header",
+  "version": "1.1.x",
+  "note": "Reverse Proxy Header has NO UI, config entity, permissions, Drush or plugins. It is configured ONLY through $settings in settings.php: $settings['reverse_proxy_header'] (the $_SERVER header key holding the real client IP) and $settings['reverse_proxy_header_trusted_addresses_ignore'] (bool). A KernelEvents::REQUEST subscriber at priority 350 reads that header, takes the first FILTER_VALIDATE_IP value and writes REMOTE_ADDR. Settings are read fresh on every Drupal bootstrap, so `drush ev \"print Settings::get('reverse_proxy_header');\"` reflects settings.php. Medium/hard cases write a marker-guarded block (// >>> rph-eval >>> ... // <<< rph-eval <<<) into web/sites/default/settings.php and read it back via Settings::get; cleanup/reset strip that block and any reverse_proxy_header assignment so the site is left clean. Header names are namespaced HTTP_X_RPH_*.",
+  "evals": [
+    {
+      "id": "reverse_proxy_header-configure-where",
+      "mode": "recipe",
+      "prompt": "The real client IP reaches my Drupal 11 site in a custom header named HTTP_X_REAL_CLIENT_IP that I cannot rename on the proxy. Using the reverse_proxy_header module, how and where do I tell Drupal to use that header for the client IP? Is there an admin settings page?",
+      "must_contain_any": [
+        "settings.php",
+        "$settings",
+        "reverse_proxy_header",
+        "no admin",
+        "no UI",
+        "no settings page"
+      ],
+      "must_not_contain": [],
+      "expected_output": "There is no admin UI/config. In settings.php set $settings['reverse_proxy_header'] = 'HTTP_X_REAL_CLIENT_IP'; the module's request subscriber then reads that header and restores the client IP into REMOTE_ADDR.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "reverse_proxy_header-trust-flag",
+      "mode": "recipe",
+      "prompt": "With the reverse_proxy_header module, how do I control whether the custom client-IP header is trusted only from configured trusted proxies versus always trusted? Which setting relaxes that, and what is the security trade-off?",
+      "must_contain_any": [
+        "reverse_proxy_header_trusted_addresses_ignore",
+        "trusted",
+        "spoof",
+        "reverse_proxy_addresses",
+        "reverse_proxy"
+      ],
+      "must_not_contain": [],
+      "expected_output": "By default (flag FALSE) with core $settings['reverse_proxy'] + $settings['reverse_proxy_addresses'] set, the header is trusted only from trusted proxies. Setting $settings['reverse_proxy_header_trusted_addresses_ignore'] = TRUE makes it always use the header value, which risks IP spoofing.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "reverse_proxy_header-how-picks-ip",
+      "mode": "recipe",
+      "prompt": "How does the reverse_proxy_header module choose the client IP from the configured header, and how early does it run in the request so authentication and flood control see the corrected IP?",
+      "must_contain_any": [
+        "REMOTE_ADDR",
+        "FILTER_VALIDATE_IP",
+        "first",
+        "350",
+        "KernelEvents",
+        "priority"
+      ],
+      "must_not_contain": [],
+      "expected_output": "It splits the header on commas and uses the first value passing FILTER_VALIDATE_IP, writing it to REMOTE_ADDR (and calling overrideGlobals). The subscriber runs on KernelEvents::REQUEST at priority 350, before RouterListener/AuthenticationSubscriber.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "reverse_proxy_header-known-header",
+      "mode": "introspection",
+      "prompt": "On this Drupal site, reverse_proxy_header is configured to read the real client IP from a specific HTTP header. Inspect the live site's settings and state the exact header name it is configured to use.",
+      "must_contain_any": [
+        "HTTP_X_RPH_KNOWN_HEADER"
+      ],
+      "must_not_contain": [],
+      "expected_output": "$settings['reverse_proxy_header'] is 'HTTP_X_RPH_KNOWN_HEADER' — readable with drush ev \"print \\Drupal\\Core\\Site\\Settings::get('reverse_proxy_header');\".",
+      "setup": "agent-module-documentation/evaluation/verify/reverse_proxy_header-known-header-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/reverse_proxy_header-known-header-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "reverse_proxy_header-ignore-flag",
+      "mode": "introspection",
+      "prompt": "On this site reverse_proxy_header is configured. Inspect the live settings and say whether the site is set to trust the custom client-IP header even when the request does not come from a trusted proxy, and which setting determines that.",
+      "must_contain_any": [
+        "reverse_proxy_header_trusted_addresses_ignore",
+        "TRUE",
+        "true",
+        "yes",
+        "always"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Yes — $settings['reverse_proxy_header_trusted_addresses_ignore'] is TRUE, so the header is always trusted regardless of trusted-proxy checks (the header itself is HTTP_X_RPH_IGNORE_HEADER).",
+      "setup": "agent-module-documentation/evaluation/verify/reverse_proxy_header-ignore-flag-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/reverse_proxy_header-ignore-flag-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "reverse_proxy_header-set-header",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, configure the reverse_proxy_header module so Drupal reads the real client IP from the HTTP header HTTP_X_RPH_TASK_HEADER. Apply the change so it is live (readable via Settings).",
+      "reset": "agent-module-documentation/evaluation/verify/reverse_proxy_header-set-header-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/reverse_proxy_header-set-header-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/reverse_proxy_header-set-header-cleanup.sh",
+      "expected_output": "settings.php now sets $settings['reverse_proxy_header'] = 'HTTP_X_RPH_TASK_HEADER'; so \\Drupal\\Core\\Site\\Settings::get('reverse_proxy_header') returns that value."
+    },
+    {
+      "id": "reverse_proxy_header-always-trust",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, configure reverse_proxy_header so the real client IP is read from the header HTTP_X_RPH_TASK2 AND the header value is always trusted even when the request is not from a trusted proxy. Apply both required settings to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/reverse_proxy_header-always-trust-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/reverse_proxy_header-always-trust-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/reverse_proxy_header-always-trust-cleanup.sh",
+      "expected_output": "settings.php sets $settings['reverse_proxy_header'] = 'HTTP_X_RPH_TASK2'; and $settings['reverse_proxy_header_trusted_addresses_ignore'] = TRUE; so Settings::get returns 'HTTP_X_RPH_TASK2' and the ignore flag is TRUE."
+    }
+  ]
+}

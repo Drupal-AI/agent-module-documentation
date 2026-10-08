@@ -1,0 +1,82 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "config_devel",
+  "version": "1.11.x",
+  "note": "Config Devel is a developer config tool. Its persistent state is the config_devel.settings object with two sequences: auto_import (list of {filename, hash}, paths relative to Drupal root) and auto_export (list of config object names). Baseline: both empty. It ships Drush commands config:devel-export (cde), config:devel-import (cdi), config:devel-import-one (cdi1); export/import operate on a module's config_devel: info.yml section (install/optional lists). No plugins, no own permissions (settings form uses the core 'import configuration' permission). Medium cases read back a distinctive value written into config_devel.settings; hard cases build real state in config_devel.settings (an auto_export config-object name; an auto_import {filename,hash} entry) verified against active config. NB: the config:devel-import-one command runs a full-site ConfigImporter validation, which fails on this shared site's pre-existing broken config dependencies, so it is deliberately not used as an execution case.",
+  "evals": [
+    {
+      "id": "config_devel-drush-commands",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "In the Drupal config_devel module, which Drush command writes a module's owned configuration objects out into that module's config/install directory (the Features-style export)? Give the command name or one of its aliases.",
+      "must_contain_any": ["config:devel-export", "config-devel-export", "cde", "cd-em"],
+      "must_not_contain": [],
+      "expected_output": "drush config:devel-export MODULE (alias cde / cd-em) writes the config objects listed in the module's config_devel: info.yml section into its config/install (and config/optional) directory."
+    },
+    {
+      "id": "config_devel-settings-keys",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "The config_devel module stores its configuration in the config_devel.settings object. What are its two top-level keys and what does each control?",
+      "must_contain_any": ["auto_import", "auto_export"],
+      "must_not_contain": [],
+      "expected_output": "auto_import is a list of files (path relative to the Drupal root plus a hash) that are automatically imported into active storage at the start of a request when they change; auto_export is a list of config object names that are written back to file when they are saved through the admin UI."
+    },
+    {
+      "id": "config_devel-info-section",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "To use config_devel's Drush export/import for a custom Drupal module, where do you list which configuration objects belong to that module, and under which subkeys?",
+      "must_contain_any": ["config_devel", "info.yml", "install", "optional"],
+      "must_not_contain": [],
+      "expected_output": "You add a config_devel: section to the module's .info.yml, listing config object names under install: (exported to config/install) and optionally optional: (exported to config/optional). drush cde/cdi then read that list."
+    },
+    {
+      "id": "config_devel-read-autoimport",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "On this Drupal site, config_devel is configured to automatically import one configuration file. Inspect the live config_devel.settings and give the filename (path) that is wired for auto-import.",
+      "must_contain_any": ["modules/custom/cfgdev_probe/config/install/system.only.cfgdev_probe.yml", "system.only.cfgdev_probe.yml", "cfgdev_probe"],
+      "must_not_contain": [],
+      "expected_output": "config_devel.settings auto_import contains a single entry whose filename is modules/custom/cfgdev_probe/config/install/system.only.cfgdev_probe.yml (readable via `drush cget config_devel.settings auto_import`).",
+      "setup": "agent-module-documentation/evaluation/verify/config_devel-autoimport-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/config_devel-autoimport-cleanup.sh"
+    },
+    {
+      "id": "config_devel-read-autoexport",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "On this Drupal site, config_devel is set to automatically export one configuration object whenever it changes in the admin UI. Inspect the live config_devel.settings and name that config object.",
+      "must_contain_any": ["views.view.cfgdev_probe", "cfgdev_probe"],
+      "must_not_contain": [],
+      "expected_output": "config_devel.settings auto_export lists views.view.cfgdev_probe (readable via `drush cget config_devel.settings auto_export`).",
+      "setup": "agent-module-documentation/evaluation/verify/config_devel-autoexport-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/config_devel-autoexport-cleanup.sh"
+    },
+    {
+      "id": "config_devel-add-autoexport",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, use the config_devel module to configure automatic export of the node.type.article configuration object, so that whenever it is saved in the admin UI its value is written back to file. Apply the change to the live site's config_devel.settings.",
+      "must_not_contain": [],
+      "expected_output": "config_devel.settings auto_export contains the string node.type.article, e.g. via the Config Devel settings form (/admin/config/development/config_devel) or by editing config_devel.settings auto_export directly.",
+      "reset": "agent-module-documentation/evaluation/verify/config_devel-set-autoexport-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/config_devel-set-autoexport-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/config_devel-set-autoexport-cleanup.sh"
+    },
+    {
+      "id": "config_devel-add-autoimport",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, use the config_devel module to set up automatic import of the configuration file at modules/custom/cfgdev_task/config/install/system.only.cfgdev_task.yml (a path relative to the Drupal root), so that when that file changes it is imported into active storage at the start of the next request. Apply the change to the live site's config_devel.settings.",
+      "must_not_contain": [],
+      "expected_output": "config_devel.settings auto_import contains an entry with filename modules/custom/cfgdev_task/config/install/system.only.cfgdev_task.yml (each auto_import entry is a mapping of {filename, hash}; hash may be empty). Set via the Config Devel settings form (/admin/config/development/config_devel) or by editing config_devel.settings auto_import directly.",
+      "reset": "agent-module-documentation/evaluation/verify/config_devel-set-autoimport-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/config_devel-set-autoimport-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/config_devel-set-autoimport-cleanup.sh"
+    }
+  ]
+}

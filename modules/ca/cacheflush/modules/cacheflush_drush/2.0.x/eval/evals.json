@@ -1,0 +1,77 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "cacheflush_drush",
+  "version": "2.0.x",
+  "note": "cacheflush_drush adds the Drush command `cacheflush` (alias `cf`): `drush cf <id>` clears the published preset with that id (cacheflush_load + status==1 check + CacheflushApi::clearPresetCache); `drush cf` lists published presets. IMPORTANT: on this site the module is UNINSTALLED because CacheflushDrushCommands redeclares an untyped $logger incompatible with the installed Drush base (typed ?Psr\\Log\\LoggerInterface), which makes every drush command fatal when the module is enabled. So the command cannot be executed here; the medium/hard cases are grounded in the cacheflush presets the command operates on (published presets), inspected/created via the cacheflush entity API and verified via SQL - they do NOT require enabling the broken module.",
+  "evals": [
+    {
+      "id": "cacheflush_drush-command",
+      "mode": "recipe",
+      "prompt": "What Drush command does cacheflush_drush provide to clear a CacheFlush preset by id, and what is its alias?",
+      "must_contain_any": [
+        "drush cacheflush",
+        "drush cf",
+        "cf",
+        "cacheflush"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The command is `drush cacheflush <id>` with alias `drush cf <id>`; it clears the published preset with that entity id.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "cacheflush_drush-list",
+      "mode": "recipe",
+      "prompt": "What does `drush cf` do when you run it without any argument?",
+      "must_contain_any": [
+        "list",
+        "presets",
+        "id",
+        "title"
+      ],
+      "must_not_contain": [],
+      "expected_output": "With no argument it lists all published presets as '[id] : title' (iterating cacheflush_load_multiple_by_properties(['status' => 1])), so you can find the id to pass to `drush cf <id>`.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "cacheflush_drush-published-only",
+      "mode": "recipe",
+      "prompt": "When you run `drush cf <id>` for a CacheFlush preset, what does the command check before clearing, and (as documented for this environment) is the command runnable here?",
+      "must_contain_any": [
+        "status",
+        "published",
+        "clearPresetCache",
+        "logger",
+        "fatal",
+        "incompatible"
+      ],
+      "must_not_contain": [],
+      "expected_output": "It loads the preset and only clears it if status == 1 (published); otherwise it reports the entity is missing or not published. Note: on this site the module is uninstalled because CacheflushDrushCommands' untyped $logger property is incompatible with the installed Drush base (?Psr\\Log\\LoggerInterface), which makes drush fatal when the module is enabled.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "cacheflush_drush-known",
+      "mode": "introspection",
+      "prompt": "On this site, which CacheFlush presets are published (the ones `drush cf` would list)? Inspect the cacheflush presets and give the title of the published preset that exists.",
+      "must_contain_any": [
+        "cfd_known"
+      ],
+      "must_not_contain": [],
+      "expected_output": "A published (status=1) `cacheflush` preset titled 'cfd_known' exists — the kind `drush cf` lists. Read via `drush sqlq \"SELECT id, title, status FROM cacheflush WHERE status=1\"` or cacheflush_load_multiple_by_properties(['status'=>1]).",
+      "setup": "agent-module-documentation/evaluation/verify/cacheflush_drush-known-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/cacheflush_drush-known-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "cacheflush_drush-make-clearable",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "Create a published CacheFlush preset named 'cfd_task' on this site so that it could be cleared from the command line by id via `drush cf <id>` (i.e. it must be published/enabled). Save it to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/cacheflush_drush-preset-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/cacheflush_drush-preset-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/cacheflush_drush-preset-cleanup.sh",
+      "expected_output": "A `cacheflush` preset titled 'cfd_task' saved with status=1 (published), which is the precondition for `drush cf <id>` to clear it. (The command itself is not runnable on this Drush version; only the published-preset precondition is verified.)"
+    }
+  ]
+}

@@ -1,0 +1,80 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "simple_styleguide",
+  "version": "2.0.x",
+  "note": "Simple Styleguide renders one page at /simple-styleguide (route simple_styleguide.controller, permission 'access style guide') showing selected built-in patterns, a colour palette, and custom patterns. Settings live in config object simple_styleguide.styleguidesettings (keys default_patterns = a checkboxes map over the 11 built-ins headings/text/lists/blockquote/rule/table/alerts/breadcrumbs/forms/buttons/pagination, and default_colors = array of '#hex|class|desc' strings). Custom patterns are styleguide_pattern config entities (config names simple_styleguide.styleguide_pattern.<id>; fields id,label,pattern(raw html),description,weight; admin_permission 'administer style guide') managed at /admin/config/styleguide/patterns. Two permissions: 'access style guide', 'administer style guide' (restrict access). Theme hooks simple_styleguide + simple_styleguide_pattern (per-id suggestion simple_styleguide_pattern__<id>); library simple_styleguide.default; page forced noindex,nofollow. No Drush, no plugin types. Medium cases read the live config entity + settings; hard cases create a custom pattern entity and toggle built-in patterns, verified against live config.",
+  "evals": [
+    {
+      "id": "simple_styleguide-page-and-entity",
+      "mode": "recipe",
+      "prompt": "In the simple_styleguide module, at what path is the styleguide page shown, what permission controls access to it, and what kind of entity stores a custom pattern I add?",
+      "must_contain_any": ["/simple-styleguide", "access style guide", "styleguide_pattern"],
+      "must_not_contain": [],
+      "expected_output": "The styleguide renders at /simple-styleguide (route simple_styleguide.controller), gated by the 'access style guide' permission. Custom patterns are 'styleguide_pattern' config entities (config names simple_styleguide.styleguide_pattern.<id>).",
+      "difficulty": "easy"
+    },
+    {
+      "id": "simple_styleguide-default-patterns-list",
+      "mode": "recipe",
+      "prompt": "Which built-in default patterns can I toggle on the simple_styleguide settings form, and in which config object is that selection stored?",
+      "must_contain_any": ["default_patterns", "simple_styleguide.styleguidesettings", "headings", "buttons"],
+      "must_not_contain": [],
+      "expected_output": "The 11 built-ins are headings, text, lists, blockquote, rule, table, alerts, breadcrumbs, forms, buttons, pagination. The selection is stored under key default_patterns in the config object simple_styleguide.styleguidesettings (colours are in default_colors as '#hex|class|desc' strings).",
+      "difficulty": "easy"
+    },
+    {
+      "id": "simple_styleguide-permissions",
+      "mode": "recipe",
+      "prompt": "What permissions does the simple_styleguide module define and what does each control?",
+      "must_contain_any": ["access style guide", "administer style guide"],
+      "must_not_contain": [],
+      "expected_output": "'access style guide' controls viewing the /simple-styleguide page; 'administer style guide' (restrict access) is the admin permission for managing custom styleguide_pattern entities. The settings form itself is gated by core 'administer site configuration'.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "simple_styleguide-live-custom-pattern",
+      "mode": "introspection",
+      "prompt": "This site has a custom Simple Styleguide pattern configured. Inspect the site's styleguide_pattern config entities and tell me the machine name (id) of the custom pattern.",
+      "must_contain_any": ["ssg_known"],
+      "must_not_contain": [],
+      "expected_output": "The custom pattern's id is ssg_known (config simple_styleguide.styleguide_pattern.ssg_known, label 'SSG Known Card'). Find it via the styleguide_pattern entity storage or drush config:get.",
+      "setup": "agent-module-documentation/evaluation/verify/simple_styleguide-known-pattern-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/simple_styleguide-known-pattern-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "simple_styleguide-live-default-patterns",
+      "mode": "introspection",
+      "prompt": "On this site, which built-in Simple Styleguide default patterns are currently enabled to appear on the styleguide page? Inspect the live configuration and name them.",
+      "must_contain_any": ["headings", "buttons"],
+      "must_not_contain": [],
+      "expected_output": "headings and buttons are enabled; all other built-ins are disabled (0). Read simple_styleguide.styleguidesettings.default_patterns, e.g. drush cget simple_styleguide.styleguidesettings default_patterns.",
+      "setup": "agent-module-documentation/evaluation/verify/simple_styleguide-default-patterns-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/simple_styleguide-default-patterns-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "simple_styleguide-create-pattern",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this site, use the simple_styleguide module to add a custom styleguide pattern with machine name 'ssg_task', label 'SSG Task Card', and raw HTML pattern '<div class=\"ssg-task\">Task</div>'. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/simple_styleguide-create-pattern-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/simple_styleguide-create-pattern-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/simple_styleguide-create-pattern-cleanup.sh",
+      "expected_output": "Create a styleguide_pattern config entity id=ssg_task, label='SSG Task Card', pattern='<div class=\"ssg-task\">Task</div>' (StyleguidePattern::create([...])->save() or the Add styleguide pattern form at /admin/config/styleguide/patterns/add). Stored as simple_styleguide.styleguide_pattern.ssg_task."
+    },
+    {
+      "id": "simple_styleguide-enable-defaults",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this site, configure the simple_styleguide module so that the built-in 'blockquote' and 'table' default patterns are shown on the styleguide page. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/simple_styleguide-enable-defaults-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/simple_styleguide-enable-defaults-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/simple_styleguide-enable-defaults-cleanup.sh",
+      "expected_output": "In simple_styleguide.styleguidesettings set default_patterns.blockquote and default_patterns.table to a truthy value (their own key), e.g. via the settings form at /admin/config/styleguide/settings or config edit."
+    }
+  ]
+}

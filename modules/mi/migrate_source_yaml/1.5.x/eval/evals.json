@@ -1,0 +1,80 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "migrate_source_yaml",
+  "version": "1.5.x",
+  "note": "Migrate Source YAML provides one Migrate API source plugin, id 'yaml' (class Drupal\\migrate_source_yaml\\Plugin\\migrate\\source\\Yaml, extends SourcePluginBase). Required source settings: file (path, parsed with Symfony Yaml::parse into an ArrayIterator) and ids (unique-key definition); optional fields. The YAML top level must be a list of row-maps. Missing file or ids throws MigrateException at construct time. No UI/config/permission/drush/schema. Site has migrate_plus + migrate_tools enabled, so cases use migrate_plus.migration.* config entities. Medium cases seed a real migration config using source yaml and read its source settings back; hard cases build real live state - a migration config, and a full YAML->node import verified by the created nodes.",
+  "evals": [
+    {
+      "id": "migrate_source_yaml-plugin-and-keys",
+      "mode": "recipe",
+      "prompt": "I want to use a YAML file as the source of a Drupal migration with the migrate_source_yaml module. What is the source plugin id, and which source settings are required?",
+      "must_contain_any": ["yaml", "file", "ids"],
+      "must_not_contain": [],
+      "expected_output": "Set source.plugin: yaml. The required source settings are 'file' (path to the YAML file) and 'ids' (the unique-key definition). 'fields' is optional (documentational).",
+      "difficulty": "easy"
+    },
+    {
+      "id": "migrate_source_yaml-file-shape",
+      "mode": "recipe",
+      "prompt": "How must the YAML file be structured for the migrate_source_yaml 'yaml' source plugin to read it as migration rows?",
+      "must_contain_any": ["list", "sequence", "array", "top level", "ArrayIterator", "each"],
+      "must_not_contain": [],
+      "expected_output": "The whole file is parsed with Yaml::parse() and wrapped in an ArrayIterator, so the top level must be a list/sequence where each item is a mapping of field name to value; each list item becomes one source row.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "migrate_source_yaml-missing-settings",
+      "mode": "recipe",
+      "prompt": "With the migrate_source_yaml 'yaml' source plugin, what happens if I forget to declare the file path or the ids in the source configuration?",
+      "must_contain_any": ["MigrateException", "file", "ids"],
+      "must_not_contain": [],
+      "expected_output": "The plugin's constructor throws a MigrateException if 'file' is empty ('You must declare the \"file\" ...') or if 'ids' is empty ('You must declare \"ids\" ...').",
+      "difficulty": "easy"
+    },
+    {
+      "id": "migrate_source_yaml-known-file",
+      "mode": "introspection",
+      "prompt": "This site has a migration configured that uses the migrate_source_yaml 'yaml' source. Inspect the live migration configuration and report the path of the YAML file it reads from.",
+      "must_contain_any": ["msy_known.yml"],
+      "must_not_contain": [],
+      "expected_output": "The migration migrate_plus.migration.msy_known has source.plugin: yaml and source.file: /var/www/html/msy_known.yml.",
+      "setup": "agent-module-documentation/evaluation/verify/migrate_source_yaml-known-file-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/migrate_source_yaml-known-file-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "migrate_source_yaml-known-idkey",
+      "mode": "introspection",
+      "prompt": "A migration on this site (machine id msy_idkey) uses the migrate_source_yaml 'yaml' source. Inspect its live source configuration and state which source field is declared as the unique id key.",
+      "must_contain_any": ["sku"],
+      "must_not_contain": [],
+      "expected_output": "In migrate_plus.migration.msy_idkey the source.ids has a single key 'sku', so 'sku' is the unique id field for each YAML source row.",
+      "setup": "agent-module-documentation/evaluation/verify/migrate_source_yaml-known-idkey-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/migrate_source_yaml-known-idkey-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "migrate_source_yaml-define-migration",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "Create a migrate_plus migration configuration with machine id 'msy_task' that uses the migrate_source_yaml 'yaml' source plugin to read the file /var/www/html/msy_task.yml, using a single integer id key named 'id'. Save it to the live site (you do not need to run the import).",
+      "reset": "agent-module-documentation/evaluation/verify/migrate_source_yaml-define-migration-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/migrate_source_yaml-define-migration-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/migrate_source_yaml-define-migration-reset.sh",
+      "expected_output": "Config migrate_plus.migration.msy_task exists with source.plugin = yaml, source.file = /var/www/html/msy_task.yml, and source.ids containing key 'id'."
+    },
+    {
+      "id": "migrate_source_yaml-import-nodes",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "Using the migrate_source_yaml module, import Article nodes from YAML into this site. Create a YAML data file containing two rows with titles 'MSY Alpha' and 'MSY Beta', define a migration (machine id msy_import) whose source plugin is 'yaml' reading that file and whose destination is entity:node (bundle article, mapping the title), and run the import so the two Article nodes exist on the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/migrate_source_yaml-import-nodes-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/migrate_source_yaml-import-nodes-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/migrate_source_yaml-import-nodes-reset.sh",
+      "expected_output": "Two Article nodes titled 'MSY Alpha' and 'MSY Beta' exist, imported via a yaml-source migration (msy_import) reading a YAML list of two rows."
+    }
+  ]
+}

@@ -1,0 +1,94 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "commerce_feeds",
+  "version": "1.0.x",
+  "note": "Commerce Feeds is a Feeds<->Commerce bridge with no config UI, no permissions, no Drush, no services, and no config schema of its own. It contributes one Feeds processor (id entity:commerce_product, class ProductProcessor extends EntityProcessorBase) and three configurable @FeedsTarget mappers: commerce_feeds_price (commerce_price, Currency setting), commerce_feeds_physical_measurement (physical_measurement, Unit) and commerce_feeds_physical_dimensions (physical_dimensions, length/width/height + Unit); the two physical targets require drupal/physical. All medium/hard cases are grounded in real feeds.feed_type config entities that use the entity:commerce_product processor.",
+  "evals": [
+    {
+      "id": "commerce_feeds-processor-id",
+      "mode": "recipe",
+      "prompt": "Using the Commerce Feeds module, I want a Feeds feed type to create Drupal Commerce products from an imported CSV. Which Feeds processor plugin do I choose, and what is its plugin id?",
+      "must_contain_any": [
+        "entity:commerce_product",
+        "Product processor",
+        "commerce_product"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Choose the 'Product' processor provided by Commerce Feeds; its plugin id is entity:commerce_product (ProductProcessor extends Feeds' EntityProcessorBase for the commerce_product entity type).",
+      "difficulty": "easy"
+    },
+    {
+      "id": "commerce_feeds-price-target",
+      "mode": "recipe",
+      "prompt": "In a Commerce Feeds feed type I am mapping a CSV price column onto a commerce_price product field. Which Feeds target does Commerce Feeds provide for commerce_price fields, and what per-target setting must I configure so the imported amounts get a currency?",
+      "must_contain_any": [
+        "commerce_feeds_price",
+        "currency_code",
+        "Currency"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The commerce_feeds_price target maps a commerce_price field (its 'number' property). It exposes a Currency select (currency_code) listing your commerce_currency entities; the chosen code is stamped onto every imported value.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "commerce_feeds-physical-targets",
+      "mode": "recipe",
+      "prompt": "Which Feeds targets does Commerce Feeds add for importing a product's weight and its length/width/height, and what extra module must be installed for them to work?",
+      "must_contain_any": [
+        "physical",
+        "commerce_feeds_physical_measurement",
+        "commerce_feeds_physical_dimensions"
+      ],
+      "must_not_contain": [],
+      "expected_output": "commerce_feeds_physical_measurement maps a physical_measurement field (weight) with a Unit setting; commerce_feeds_physical_dimensions maps a physical_dimensions field (length/width/height) with a shared Unit. Both require the drupal/physical module because they map its field types.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "commerce_feeds-inspect-processor",
+      "mode": "introspection",
+      "prompt": "This Drupal site has a Feeds feed type with machine id 'cf_med'. Inspect the live configuration and state which Feeds processor plugin it uses to import content.",
+      "must_contain_any": [
+        "entity:commerce_product"
+      ],
+      "must_not_contain": [],
+      "expected_output": "feeds.feed_type.cf_med uses the processor entity:commerce_product (the Commerce Feeds product processor), so it imports commerce_product entities.",
+      "setup": "agent-module-documentation/evaluation/verify/commerce_feeds-feedtype-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/commerce_feeds-feedtype-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "commerce_feeds-inspect-bundle",
+      "mode": "introspection",
+      "prompt": "The Feeds feed type 'cf_med2' on this site imports Commerce products. Inspect its live processor configuration and state which product type (bundle) machine name the imported products are created as.",
+      "must_contain_any": [
+        "default"
+      ],
+      "must_not_contain": [],
+      "expected_output": "In feeds.feed_type.cf_med2 the processor_configuration.values.type is 'default', so imported products are created as the 'default' commerce_product_type.",
+      "setup": "agent-module-documentation/evaluation/verify/commerce_feeds-bundle-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/commerce_feeds-bundle-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "commerce_feeds-build-importer",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site (Commerce Feeds is installed), create a Feeds feed type with machine id 'cf_import' that uploads a CSV file and creates Commerce products from it. Use the CSV parser and the Commerce product processor, and apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/commerce_feeds-build-importer-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/commerce_feeds-build-importer-verify.sh",
+      "expected_output": "A feeds.feed_type.cf_import config entity exists whose processor is entity:commerce_product (fetcher upload, parser csv). E.g. FeedType::create(['id'=>'cf_import','fetcher'=>'upload','parser'=>'csv','processor'=>'entity:commerce_product', ...])->save()."
+    },
+    {
+      "id": "commerce_feeds-remote-importer",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, create a Feeds feed type with machine id 'cf_remote' that downloads product data from a remote URL (the HTTP/download fetcher) and creates Commerce products from it using the Commerce product processor. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/commerce_feeds-remote-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/commerce_feeds-remote-verify.sh",
+      "expected_output": "A feeds.feed_type.cf_remote config entity exists with fetcher 'http' and processor entity:commerce_product, so it fetches from a URL and imports commerce_product entities."
+    }
+  ]
+}

@@ -1,0 +1,73 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "flexible_permissions",
+  "version": "2.0.x",
+  "note": "Flexible permissions is a developer API (no UI, no config, no permissions, no plugin manager). Cases are `recipe` (response-graded): they probe documented facts an agent would otherwise read source to answer — the extensibility mechanism (tagged service / Access Policy), the scope + calculated-permission value objects, the chain calculator and checker services, VariationCache caching, and that Group depends on it. No site mutation.",
+  "evals": [
+    {
+      "id": "flexperm-register-calculator",
+      "mode": "recipe",
+      "prompt": "On a Drupal 11 site using Flexible permissions, how do I register a custom permission calculator so the chain picks it up? Name the interface to implement and the service tag.",
+      "must_contain_any": ["flexible_permission_calculator", "PermissionCalculatorInterface", "PermissionCalculatorBase", "access_policy"],
+      "must_not_contain": [],
+      "expected_output": "There is no annotation/attribute plugin type. Implement PermissionCalculatorInterface (or extend PermissionCalculatorBase) and tag the service `flexible_permission_calculator` so the service_collector adds it to flexible_permissions.chain_calculator; in 2.0.x you can instead provide a core Access Policy tagged `access_policy`."
+    },
+    {
+      "id": "flexperm-plugin-type",
+      "mode": "recipe",
+      "prompt": "Does Flexible permissions define a Drupal plugin type (annotation/attribute plugin with a plugin manager) for its permission calculators?",
+      "must_contain_any": ["service", "tag", "no plugin", "service_collector", "collector"],
+      "must_not_contain": [],
+      "expected_output": "No. Calculators are plain tagged services (tag flexible_permission_calculator) gathered by a service_collector into the ChainPermissionCalculator — there is no plugin manager, annotation or attribute; 2.0.x also bridges to core's Access Policy API."
+    },
+    {
+      "id": "flexperm-scope-item",
+      "mode": "recipe",
+      "prompt": "In Flexible permissions, what does a CalculatedPermissionsItem hold, and what is a 'scope'? Include its constructor arguments.",
+      "must_contain_any": ["scope", "identifier", "isAdmin", "is_admin"],
+      "must_not_contain": [],
+      "expected_output": "A CalculatedPermissionsItem holds a scope name, an identifier within that scope, a list of permission strings, and an isAdmin flag (admin grants everything in the scope). Constructor: new CalculatedPermissionsItem($scope, $identifier, $permissions, $is_admin = FALSE). A scope is a string namespace for permissions (e.g. Group's group_outsider/group_insider/group_individual)."
+    },
+    {
+      "id": "flexperm-check-service",
+      "mode": "recipe",
+      "prompt": "On a Drupal site with Flexible permissions, which service and method do I call to check whether an account has a given permission within a scope and identifier?",
+      "must_contain_any": ["flexible_permissions.checker", "hasPermissionInScope", "PermissionChecker"],
+      "must_not_contain": [],
+      "expected_output": "Use the flexible_permissions.checker service (PermissionChecker) and call hasPermissionInScope($permission, $scope, $identifier, $account)."
+    },
+    {
+      "id": "flexperm-chain-service",
+      "mode": "recipe",
+      "prompt": "Which service in Flexible permissions runs all registered calculators and returns the calculated permissions for an account in a scope, and what does it return?",
+      "must_contain_any": ["flexible_permissions.chain_calculator", "ChainPermissionCalculator", "calculatePermissions"],
+      "must_not_contain": [],
+      "expected_output": "The flexible_permissions.chain_calculator service (ChainPermissionCalculator); call calculatePermissions($account, $scope), which returns an immutable CalculatedPermissions (CalculatedPermissionsInterface)."
+    },
+    {
+      "id": "flexperm-caching",
+      "mode": "recipe",
+      "prompt": "How does Flexible permissions cache calculated permissions so that conditional (e.g. office-hours) permissions are served correctly, and how do I flush them all?",
+      "must_contain_any": ["VariationCache", "getPersistentCacheContexts", "flexible_permissions"],
+      "must_not_contain": [],
+      "expected_output": "It uses core's VariationCache, varying by the persistent cache contexts each calculator declares in getPersistentCacheContexts(); every result carries the `flexible_permissions` cache tag, so invalidating that tag flushes all calculated permissions."
+    },
+    {
+      "id": "flexperm-scope-exception",
+      "mode": "recipe",
+      "prompt": "In Flexible permissions, what happens during the build pass if a permission calculator returns items for a scope other than the one it was asked to calculate?",
+      "must_contain_any": ["CalculatedPermissionsScopeException", "exception", "requested scope"],
+      "must_not_contain": [],
+      "expected_output": "The ChainPermissionCalculator throws a CalculatedPermissionsScopeException; a calculator may only return items for the requested scope (an empty result is allowed)."
+    },
+    {
+      "id": "flexperm-group-consumer",
+      "mode": "recipe",
+      "prompt": "Which well-known Drupal contrib module relies on Flexible permissions for its access layer, and since when?",
+      "must_contain_any": ["Group", "group"],
+      "must_not_contain": [],
+      "expected_output": "The Group module relies on Flexible permissions, since Group version 2.0.0, using scopes such as group_outsider, group_insider and group_individual."
+    }
+  ]
+}

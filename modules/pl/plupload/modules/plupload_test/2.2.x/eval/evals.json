@@ -1,0 +1,80 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "plupload_test",
+  "version": "2.2.x",
+  "note": "plupload_test is a demo/support submodule of plupload. Its only surface is one form (\\Drupal\\plupload_test\\PluploadTestForm, form id _plupload_test_form) at route plupload.test => /plupload-test (requirement _access: 'TRUE', 'do not enable in production'). The form uses a #type 'plupload' element restricted to 'zip', validates status==='done', and moves finished temp files into <default_scheme>://plupload-test. It has no config/permissions/services/plugins of its own. Medium cases read back the shared plupload.settings temporary_uri that the demo stages chunks in, and confirm the demo route is registered. Hard cases: (1) enable the demo module so /plupload-test is live; (2) create the public://plupload-test destination directory the demo writes finished uploads into, verified on disk.",
+  "evals": [
+    {
+      "id": "plupload_test-route",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "The Drupal 'plupload_test' submodule ships a working example. At what URL path can I open its demo upload form, and what file extension does that form accept?",
+      "must_contain_any": ["/plupload-test", "plupload.test"],
+      "must_not_contain": [],
+      "expected_output": "Visit /plupload-test (route plupload.test). The demo form restricts the plupload element to the 'zip' extension via #upload_validators."
+    },
+    {
+      "id": "plupload_test-class",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "Which form class and form id does the plupload_test module provide as its example, and what upload pattern does its submit handler demonstrate?",
+      "must_contain_any": ["PluploadTestForm", "_plupload_test_form"],
+      "must_not_contain": [],
+      "expected_output": "Class \\Drupal\\plupload_test\\PluploadTestForm, form id _plupload_test_form. Its submitForm() prepares a destination directory (<default_scheme>://plupload-test) and moves each finished plupload temp file (tmppath/name) there without creating File entities."
+    },
+    {
+      "id": "plupload_test-production",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "Is it safe to leave the plupload_test module enabled on a production Drupal site? Why or why not?",
+      "must_contain_any": ["production", "_access", "TRUE"],
+      "must_not_contain": [],
+      "expected_output": "No — it is a demo/test fixture. Its route plupload.test uses requirement _access: 'TRUE' (open to everyone) and its own routing file comments 'Do not enable in production'. Keep it disabled on production."
+    },
+    {
+      "id": "plupload_test-stage-uri",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "On this site, where does the plupload_test demo form (/plupload-test) stage its in-progress upload chunks before they are moved? Inspect the live configuration and give the exact URI.",
+      "must_contain_any": ["private://plupload_test_pt"],
+      "must_not_contain": [],
+      "expected_output": "It stages chunks at the plupload temporary_uri, currently 'private://plupload_test_pt' (drush cget plupload.settings temporary_uri). The demo relies on the parent module's plupload.settings.",
+      "setup": "agent-module-documentation/evaluation/verify/plupload_test-tmpuri-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/plupload_test-tmpuri-cleanup.sh"
+    },
+    {
+      "id": "plupload_test-route-live",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "On this Drupal site, is the plupload_test demo module currently providing its example form route, and what access requirement does that route carry? Inspect the running route table.",
+      "must_contain_any": ["/plupload-test", "plupload.test", "TRUE"],
+      "must_not_contain": [],
+      "expected_output": "Yes — route plupload.test is registered at path /plupload-test with requirement _access: 'TRUE' (open access). Confirm via drush php:eval reading router.route_provider->getRouteByName('plupload.test').",
+      "setup": "agent-module-documentation/evaluation/verify/plupload_test-route-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/plupload_test-route-cleanup.sh"
+    },
+    {
+      "id": "plupload_test-enable",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, make the plupload demo form available by enabling the plupload_test module, so that the route plupload.test at /plupload-test is live.",
+      "reset": "agent-module-documentation/evaluation/verify/plupload_test-enable-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/plupload_test-enable-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/plupload_test-enable-cleanup.sh",
+      "expected_output": "The plupload_test module is enabled (drush en plupload_test -y) and the route plupload.test resolves to path /plupload-test."
+    },
+    {
+      "id": "plupload_test-destdir",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "The plupload_test demo form moves finished uploads into the directory public://plupload-test. On this site, create that destination directory so it exists and is writable (as the demo's submit handler would).",
+      "reset": "agent-module-documentation/evaluation/verify/plupload_test-destdir-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/plupload_test-destdir-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/plupload_test-destdir-cleanup.sh",
+      "expected_output": "The directory public://plupload-test exists and is writable (e.g. via FileSystem::prepareDirectory($dir, CREATE_DIRECTORY | MODIFY_PERMISSIONS) with $dir passed as a variable)."
+    }
+  ]
+}

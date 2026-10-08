@@ -1,0 +1,80 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "hook_post_action_example",
+  "version": "2.0.x",
+  "note": "hook_post_action_example is the reference submodule of hook_post_action. It implements all 8 post-write hooks and logs to the 'hook_post_action_test' channel; it has no config/state of its own. Its only live 'state' is whether it is enabled, so execution cases are grounded in enabling/uninstalling the module (verified via drush pm:list and moduleHandler()->invokeAllWith to confirm the reference handler is/ isn't an active implementer of the post hooks). Introspection cases discover, on the live site, that it is the module implementing the hooks and the channel it logs to.",
+  "evals": [
+    {
+      "id": "hook-post-action-example-what",
+      "mode": "recipe",
+      "prompt": "What does the hook_post_action_example submodule do, and to which logger channel does it write?",
+      "must_contain_any": ["hook_post_action_test"],
+      "must_not_contain": [],
+      "expected_output": "It is a reference implementation of hook_post_action's hooks. On every entity/node insert/update/delete it logs a message via \\Drupal::logger('hook_post_action_test'), so its messages appear under the 'hook_post_action_test' channel in dblog.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "hook-post-action-example-hooks",
+      "mode": "recipe",
+      "prompt": "Which hook_post_action hooks does the hook_post_action_example module implement?",
+      "must_contain_any": ["hook_entity_postinsert", "hook_node_postsave", "postinsert", "postsave"],
+      "must_not_contain": [],
+      "expected_output": "All eight: hook_entity_postinsert/postupdate/postdelete/postsave and hook_node_postinsert/postupdate/postdelete/postsave. A single node insert therefore produces four log messages (node_postinsert, node_postsave, entity_postinsert, entity_postsave).",
+      "difficulty": "easy"
+    },
+    {
+      "id": "hook-post-action-example-observe",
+      "mode": "recipe",
+      "prompt": "How do I see the hook_post_action_example module in action after enabling it?",
+      "must_contain_any": ["admin/reports/dblog", "dblog", "log"],
+      "must_not_contain": [],
+      "expected_output": "Enable hook_post_action_example, then add/update/delete content on the site (through the UI / a real web request), and view the log at admin/reports/dblog. You will see 'hook_post_action_test' messages for each entity operation. (The hooks dispatch on request shutdown.)",
+      "difficulty": "easy"
+    },
+    {
+      "id": "hook-post-action-example-is-implementer",
+      "mode": "introspection",
+      "prompt": "On this live site, inspect the running module set and confirm which module implements hook_node_postinsert (a hook_post_action hook), and state its name.",
+      "must_contain_any": ["hook_post_action_example"],
+      "must_not_contain": [],
+      "expected_output": "hook_post_action_example implements hook_node_postinsert (discoverable via \\Drupal::moduleHandler()->invokeAllWith('node_postinsert', ...) or by listing enabled modules and their implementations).",
+      "setup": "agent-module-documentation/evaluation/verify/hook_post_action_example-is-implementer-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/hook_post_action_example-is-implementer-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "hook-post-action-example-channel-live",
+      "mode": "introspection",
+      "prompt": "The reference hook_post_action handler is enabled on this site. Inspect the live module code/config and report the exact logger channel string it uses for its messages.",
+      "must_contain_any": ["hook_post_action_test"],
+      "must_not_contain": [],
+      "expected_output": "The channel is 'hook_post_action_test' (every handler calls \\Drupal::logger('hook_post_action_test')).",
+      "setup": "agent-module-documentation/evaluation/verify/hook_post_action_example-channel-live-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/hook_post_action_example-channel-live-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "hook-post-action-example-enable",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "site-owner",
+      "prompt": "I want to switch on the bundled reference handler that logs a message whenever content is created, updated or deleted. Enable the hook_post_action_example module so its post-save logging becomes active on this site.",
+      "reset": "agent-module-documentation/evaluation/verify/hook_post_action_example-enable-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/hook_post_action_example-enable-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/hook_post_action_example-enable-cleanup.sh",
+      "expected_output": "hook_post_action_example is enabled (drush en hook_post_action_example), so it appears in the enabled module list and is an implementer of hook_entity_postinsert (invokeAllWith('entity_postinsert') includes it)."
+    },
+    {
+      "id": "hook-post-action-example-uninstall",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "The reference logging handler hook_post_action_example is currently enabled but we no longer want the post-save log noise. Uninstall the hook_post_action_example module (leave the parent hook_post_action in place).",
+      "reset": "agent-module-documentation/evaluation/verify/hook_post_action_example-uninstall-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/hook_post_action_example-uninstall-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/hook_post_action_example-uninstall-cleanup.sh",
+      "expected_output": "hook_post_action_example is no longer enabled (drush pmu hook_post_action_example), so it is absent from the enabled module list and no longer an implementer of the post hooks, while hook_post_action itself remains enabled."
+    }
+  ]
+}

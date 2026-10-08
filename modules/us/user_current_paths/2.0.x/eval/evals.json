@@ -1,0 +1,101 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "user_current_paths",
+  "version": "2.0.x",
+  "note": "user_current_paths is a config-less redirect module (no settings, permissions, plugins, schema, or Drush). It defines three login-required routes: /user/edit -> current user's edit form; /user/current -> /user/{uid}; /user/current/{wildcardaction} -> /user/{uid}/{wildcardaction}. The controller substitutes the current user's id for 'current' and validates the target with path.validator (invalid -> 404). It also adds an 'Edit my account' link (weight -9) to the 'account' menu. Because there is no per-site config, medium introspection cases create a namespaced test user with a FIXED uid and ask what /user/current/... resolves to for that account (the agent must look up the uid on the live site), and hard cases build a menu_link_content in the account menu that targets one of the module's UID-neutral paths, verified against live state.",
+  "evals": [
+    {
+      "id": "user_current_paths-what-paths",
+      "mode": "recipe",
+      "prompt": "What URLs does the Drupal user_current_paths module add, and what does each one do for the logged-in user?",
+      "must_contain_any": [
+        "/user/current",
+        "/user/edit",
+        "/user/current/",
+        "user/{uid}"
+      ],
+      "must_not_contain": [],
+      "expected_output": "It adds three login-required routes: /user/edit redirects to the current user's edit form; /user/current redirects to /user/{uid} (the current user's canonical page); and /user/current/{action} redirects to /user/{uid}/{action} (e.g. /user/current/edit, /user/current/cancel). It also adds an 'Edit my account' link to the account menu.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "user_current_paths-resolution-and-404",
+      "mode": "recipe",
+      "prompt": "In the user_current_paths module, how does /user/current/{action} decide where to send the user, and what happens if the resulting path is not a valid or accessible route?",
+      "must_contain_any": [
+        "path.validator",
+        "path validator",
+        "NotFoundHttpException",
+        "404",
+        "replaces",
+        "substitut"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The controller replaces 'current' with the current user's uid to build /user/{uid}/{action}, then validates it with the core path.validator service (getUrlIfValid). If it is a valid, access-checked route it redirects there; otherwise it throws NotFoundHttpException (404). Access checks on the target still apply.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "user_current_paths-menu-link",
+      "mode": "recipe",
+      "prompt": "The user_current_paths module adds a menu link for logged-in users. What is the link's title, which menu is it in, and which path does it point to?",
+      "must_contain_any": [
+        "Edit my account",
+        "account",
+        "/user/edit"
+      ],
+      "must_not_contain": [],
+      "expected_output": "It adds a static menu link titled 'Edit my account' (weight -9) to the 'account' menu, pointing at route user_current_paths.edit_redirect (/user/edit), which redirects to the current user's edit form.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "user_current_paths-introspect-edit",
+      "mode": "introspection",
+      "prompt": "This site has a user account with the email ucp_known@example.com. Given how the user_current_paths module works, if that specific user visited /user/current/edit, what exact path would they be redirected to? Inspect the live site to determine the account's user id.",
+      "must_contain_any": [
+        "/user/900169/edit",
+        "900169"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The account ucp_known@example.com has uid 900169, so user_current_paths replaces 'current' with 900169 and redirects /user/current/edit to /user/900169/edit.",
+      "setup": "agent-module-documentation/evaluation/verify/user_current_paths-introspect-edit-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/user_current_paths-introspect-edit-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "user_current_paths-introspect-view",
+      "mode": "introspection",
+      "prompt": "A user account with email ucp_alt@example.com exists on this site. Using the behavior of the user_current_paths module, what path does /user/current (with no action) resolve to for that user? Inspect the live site to find the user id.",
+      "must_contain_any": [
+        "/user/900170"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The account ucp_alt@example.com has uid 900170; /user/current has a default action of 'view', so it redirects to the canonical user page /user/900170 (no /view sub-path exists).",
+      "setup": "agent-module-documentation/evaluation/verify/user_current_paths-introspect-view-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/user_current_paths-introspect-view-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "user_current_paths-menu-current",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, add a link to the 'account' (user) menu that takes the logged-in user to their own profile page using the UID-neutral path provided by the user_current_paths module (/user/current). Create and save the menu link on the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/user_current_paths-menu-current-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/user_current_paths-menu-current-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/user_current_paths-menu-current-cleanup.sh",
+      "expected_output": "Create a menu_link_content entity in menu 'account' whose link uri is internal:/user/current (a path provided by user_current_paths that redirects to the current user's /user/{uid} page)."
+    },
+    {
+      "id": "user_current_paths-menu-cancel",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-layman",
+      "prompt": "On my Drupal site I want a menu item in the user account menu that lets whoever is logged in go straight to the page for deleting/cancelling their own account, without me hard-coding a specific user. The user_current_paths module provides a path for this. Add that menu link and save it.",
+      "reset": "agent-module-documentation/evaluation/verify/user_current_paths-menu-cancel-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/user_current_paths-menu-cancel-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/user_current_paths-menu-cancel-cleanup.sh",
+      "expected_output": "Create a menu_link_content entity in menu 'account' whose link uri is internal:/user/current/cancel, which user_current_paths redirects to /user/{uid}/cancel (the current user's account cancel page)."
+    }
+  ]
+}

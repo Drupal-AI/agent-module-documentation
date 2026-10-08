@@ -1,0 +1,97 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "better_passwords",
+  "version": "2.2.x",
+  "note": "Better Passwords enforces a minimum length and a minimum zxcvbn strength on every core password_confirm field, and can auto-generate initial passwords for admin-created accounts. Its entire persistent state is one config object, better_passwords.settings, with three integer keys: length (default 8), strength (default 3, a zxcvbn 0-4 score), auto_generate (0 Never / 1 Optional / 2 Required). Configure route better_passwords.admin_settings at /admin/config/people/passwords behind the 'administer better passwords' permission. No plugins, no Drush, no field types. Medium cases write a known value into better_passwords.settings and read it back; hard cases restore shipped defaults then require the agent to set a specific key, verified against the live config.",
+  "evals": [
+    {
+      "id": "better_passwords-length-key",
+      "mode": "recipe",
+      "prompt": "In the Drupal contrib module better_passwords, which config object and key control the minimum password length, and what is the shipped default value?",
+      "must_contain_any": [
+        "better_passwords.settings",
+        "length",
+        "8"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The key is 'length' in the better_passwords.settings config object; its shipped default is 8 (config/install sets length: 8). You can read it with `drush cget better_passwords.settings length`.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "better_passwords-strength-mechanism",
+      "mode": "recipe",
+      "prompt": "How does the better_passwords module decide whether a chosen password is strong enough, and what does the 'strength' setting mean?",
+      "must_contain_any": [
+        "zxcvbn",
+        "strength",
+        "score"
+      ],
+      "must_not_contain": [],
+      "expected_output": "It runs the entered password through the zxcvbn-php library (Zxcvbn::passwordStrength), which returns a score of 0-4 based on brute-force cost, dictionaries, dates, years, repeats, sequences and keyboard-adjacency (the user's name and email are passed in as extra dictionary words). The 'strength' config key is the minimum acceptable score; a password scoring below it is rejected. strength 0 disables the check.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "better_passwords-autogenerate",
+      "mode": "recipe",
+      "prompt": "I want better_passwords to always generate the initial password for accounts that administrators create, instead of letting the admin type one. Which setting controls this and what value forces auto-generation?",
+      "must_contain_any": [
+        "auto_generate",
+        "Required",
+        "2"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The auto_generate key in better_passwords.settings controls it: 0 = Never, 1 = Optional (adds an 'Auto-generate password' checkbox on the user register form), 2 = Required (hides the password fields and generates a 64-char password). Set auto_generate to 2 to force it: `drush cset better_passwords.settings auto_generate 2`.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "better_passwords-known-length",
+      "mode": "introspection",
+      "prompt": "On this Drupal site, better_passwords is already configured with a specific minimum password length. Inspect the live configuration and tell me the minimum number of characters a password must have.",
+      "must_contain_any": [
+        "16"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The minimum length is 16: better_passwords.settings has length: 16 (read with `drush cget better_passwords.settings length`).",
+      "setup": "agent-module-documentation/evaluation/verify/better_passwords-length-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/better_passwords-length-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "better_passwords-known-strength",
+      "mode": "introspection",
+      "prompt": "This site already has a better_passwords policy configured. Inspect the live configuration and tell me the minimum required password strength score it enforces.",
+      "must_contain_any": [
+        "4",
+        "Strongest"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The minimum strength is 4 (the 'Strongest' option): better_passwords.settings has strength: 4 (read with `drush cget better_passwords.settings strength`).",
+      "setup": "agent-module-documentation/evaluation/verify/better_passwords-strength-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/better_passwords-strength-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "better_passwords-set-length",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, use the better_passwords module to require that all passwords be at least 12 characters long. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/better_passwords-set-length-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/better_passwords-set-length-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/better_passwords-set-length-cleanup.sh",
+      "expected_output": "Set the 'length' key of better_passwords.settings to 12, e.g. `drush cset better_passwords.settings length 12 -y`, or via the form at /admin/config/people/passwords. Verify reads better_passwords.settings.length === 12."
+    },
+    {
+      "id": "better_passwords-require-autogenerate",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "Configure better_passwords on this site so that when an administrator creates a new user account, the initial password is auto-generated and the admin cannot type one manually. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/better_passwords-autogen-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/better_passwords-autogen-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/better_passwords-autogen-cleanup.sh",
+      "expected_output": "Set auto_generate to 2 (Required) in better_passwords.settings, e.g. `drush cset better_passwords.settings auto_generate 2 -y`, or choose 'Required' on the form at /admin/config/people/passwords. Verify reads better_passwords.settings.auto_generate === 2."
+    }
+  ]
+}

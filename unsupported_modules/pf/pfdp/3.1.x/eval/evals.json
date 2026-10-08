@@ -1,0 +1,96 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "pfdp",
+  "version": "3.1.x",
+  "note": "Project private_files_download_permission ships the module machine name `pfdp`. Everything is (a) the `pfdp_directory` config entity (pfdp.pfdp_directory.<id>, keys id/path/bypass/grant_file_owners/users/roles, path relative to $settings['file_private_path'] with a leading slash), (b) the five booleans in pfdp.settings (by_user_checks, cache_users, attachment_mode, override_mode, debug_mode), (c) three permissions (bypass pfdp, bypass pfdp for temporary files, administer pfdp) and (d) pfdp_file_download(), a hook_file_download() implementation that ignores public:// URIs, honours the bypass permissions, then longest-prefix matches the file's directory and allows on bypass/file-owner/uid/role, denying (-1) otherwise. NOTE the real packaging bug used by the hard case: config/install/pfdp.settings is missing its .yml extension and is empty, so pfdp.settings does not exist after install and every setting reads NULL. Medium cases read live directory entities (a role grant and a per-user grant); hard cases build a real directory entity and create the missing settings object.",
+  "evals": [
+    {
+      "id": "pfdp-directory-entity",
+      "mode": "recipe",
+      "prompt": "On a Drupal 11 site using the private_files_download_permission (pfdp) module, how do I express 'the role member may download files from the private directory downloads'? Name the configuration entity involved, its keys, and how the path is interpreted.",
+      "must_contain_any": [
+        "pfdp_directory",
+        "pfdp.pfdp_directory",
+        "file_private_path"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Create a pfdp_directory config entity (pfdp.pfdp_directory.<id>) with path: '/downloads', roles: ['member'], plus bypass, grant_file_owners and users. The path is relative to $settings['file_private_path'], must start with a slash, must not end with one and must not contain '//' — '/' alone means the entire private file system. UI: /admin/config/media/private-files-download-permission/add.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "pfdp-permissions",
+      "mode": "recipe",
+      "prompt": "Which permissions does the Drupal pfdp (private_files_download_permission) module define, and which of them let a user download a private file no matter how the directories are configured?",
+      "must_contain_any": [
+        "bypass pfdp",
+        "administer pfdp"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Three: 'bypass pfdp' (download from any private directory regardless of configuration), 'bypass pfdp for temporary files' (the same but only for temporary:// URIs) and 'administer pfdp' (access the directory list/add/edit/delete forms and the settings form; also the entity type's admin_permission). Both bypass checks run before any directory lookup in pfdp_file_download().",
+      "difficulty": "easy"
+    },
+    {
+      "id": "pfdp-unregistered-path",
+      "mode": "recipe",
+      "prompt": "With the Drupal pfdp module enabled, a user without any bypass permission requests a private file that sits in a directory I never registered in Private files download permission. What happens, and what does the hook return?",
+      "must_contain_any": [
+        "deny",
+        "denied",
+        "-1",
+        "403"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The download is denied: pfdp_file_download() finds no matching pfdp_directory, falls through to the final statement and returns -1, which Drupal turns into access denied (403). Enabling the module therefore locks down the whole private file system by default — register '/' with the roles that should keep access if you only meant to restrict one subdirectory. (public:// URIs are unaffected: they return NULL early.)",
+      "difficulty": "easy"
+    },
+    {
+      "id": "pfdp-known-directory",
+      "mode": "introspection",
+      "prompt": "This Drupal site has two private directories registered with the pfdp module, /pfdp-intro-open and /pfdp-intro-locked. Inspect the live configuration and tell me which user role is currently allowed to download files from /pfdp-intro-open.",
+      "must_contain_any": [
+        "pfdp_intro_role"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The role pfdp_intro_role, listed in the roles of the pfdp_directory entity pfdp.pfdp_directory.pfdp_intro_open (/pfdp-intro-locked grants no role at all). Readable with `drush config:get pfdp.pfdp_directory.pfdp_intro_open` or by loading Drupal\\pfdp\\Entity\\DirectoryEntity::loadMultiple().",
+      "setup": "agent-module-documentation/evaluation/verify/pfdp-known-directory-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/pfdp-known-directory-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "pfdp-known-user",
+      "mode": "introspection",
+      "prompt": "On this Drupal site the pfdp module grants download access to the private directory /pfdp-intro-user to exactly one individual account (not a role). Inspect the running site and give that account's username.",
+      "must_contain_any": [
+        "pfdp_intro_reader"
+      ],
+      "must_not_contain": [],
+      "expected_output": "pfdp_intro_reader. The pfdp_directory entity pfdp.pfdp_directory.pfdp_intro_user lists that account's uid in its `users` list, and pfdp.settings:by_user_checks is TRUE (per-user grants are ignored when it is off), so you must resolve the uid to the username with User::load().",
+      "setup": "agent-module-documentation/evaluation/verify/pfdp-known-user-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/pfdp-known-user-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "pfdp-secure-directory",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, use the pfdp (private_files_download_permission) module to put the private directory /pfdp-secure under control: create a directory configuration entity with the machine id pfdp_task_dir for that path, grant download access to the existing role pfdp_task_role, and also let whoever uploaded a file there download their own file. The module must not be told to ignore the path. Apply it to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/pfdp-secure-directory-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/pfdp-secure-directory-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/pfdp-secure-directory-cleanup.sh",
+      "expected_output": "A pfdp.pfdp_directory.pfdp_task_dir config entity with path: '/pfdp-secure', bypass: false, grant_file_owners: true, roles: ['pfdp_task_role'] — created at /admin/config/media/private-files-download-permission/add or with Drupal\\pfdp\\Entity\\DirectoryEntity::create([...])->save()."
+    },
+    {
+      "id": "pfdp-settings-init",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, per-user download grants configured in the pfdp module are being ignored, and I also need pfdp to log every download decision so I can debug denials. Files must keep opening inline in the browser and pfdp must not short-circuit the rest of Drupal's file-download chain. Fix this on the live site. Note that `drush config:get pfdp.settings` currently reports that the configuration object does not exist.",
+      "reset": "agent-module-documentation/evaluation/verify/pfdp-settings-init-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/pfdp-settings-init-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/pfdp-settings-init-cleanup.sh",
+      "expected_output": "The pfdp.settings object is missing because the project ships config/install/pfdp.settings without the .yml extension. Create it and set by_user_checks: true and debug_mode: true, leaving attachment_mode and override_mode false — e.g. save the form at /admin/config/media/private-files-download-permission/settings, or \\Drupal::configFactory()->getEditable('pfdp.settings')->set('by_user_checks', TRUE)->set('debug_mode', TRUE)->set('attachment_mode', FALSE)->set('override_mode', FALSE)->set('cache_users', FALSE)->save()."
+    }
+  ]
+}

@@ -1,0 +1,47 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "commerce_currency_resolver_shipping",
+  "version": "2.0.x",
+  "note": "Submodule of commerce_currency_resolver, requires commerce_shipping + commerce_exchanger. hook_commerce_shipping_method_info_alter swaps flat_rate -> FlatRateCurrency and flat_rate_per_item -> FlatRatePerItemCurrency (no new plugin ids). ShippingCurrencyOrderProcessor (order_processor priority 999) sets the shipping FORCE_REFRESH flag when the resolver flags a currency refresh. No config/schema/permission. Only easy + one introspection tier: there is no clean, self-contained config/entity 'execution' surface (execution would need a full shipping method + shipment fixture), so no hard case is defined - consistent with lighter submodules in this repo. Medium reads the live plugin definition to confirm the class override; no site mutation, so setup only ensures the module is enabled and cleanup is a no-op.",
+  "evals": [
+    {
+      "id": "ccr-shipping-what",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "What does the Commerce Currency Resolver shipping submodule do, and which modules does it require?",
+      "must_contain_any": ["shipping", "flat", "convert"],
+      "must_not_contain": [],
+      "expected_output": "It makes core flat-rate shipping methods currency-aware (per-currency amount or auto-conversion via Commerce Exchanger) and refreshes shipments when the order currency changes. Requires commerce_shipping and commerce_exchanger."
+    },
+    {
+      "id": "ccr-shipping-methods",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "How does the Commerce Currency Resolver shipping submodule make shipping methods currency-aware - does it add new shipping method plugins?",
+      "must_contain_any": ["flat_rate", "info_alter", "class"],
+      "must_not_contain": [],
+      "expected_output": "It does not add new plugin ids; hook_commerce_shipping_method_info_alter swaps the class of the core flat_rate and flat_rate_per_item methods to FlatRateCurrency / FlatRatePerItemCurrency."
+    },
+    {
+      "id": "ccr-shipping-processor",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "How does the Commerce Currency Resolver shipping submodule ensure shipping rates are recalculated after a currency change?",
+      "must_contain_any": ["order processor", "FORCE_REFRESH", "999", "refresh"],
+      "must_not_contain": [],
+      "expected_output": "ShippingCurrencyOrderProcessor (order_processor priority 999) reacts to the resolver's currency_order_refresh flag and sets the shipping FORCE_REFRESH flag so shipments recompute rates in the new currency."
+    },
+    {
+      "id": "ccr-shipping-class-override",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "On this Drupal site, which PHP class currently backs the core 'flat_rate' Commerce shipping method plugin? Inspect the live plugin definition.",
+      "must_contain_any": ["FlatRateCurrency"],
+      "must_not_contain": [],
+      "expected_output": "flat_rate is backed by Drupal\\commerce_currency_resolver_shipping\\Plugin\\Commerce\\ShippingMethod\\FlatRateCurrency (the submodule overrides the core class via hook_commerce_shipping_method_info_alter).",
+      "setup": "agent-module-documentation/evaluation/verify/ccr-shipping-class-override-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/ccr-shipping-class-override-cleanup.sh"
+    }
+  ]
+}

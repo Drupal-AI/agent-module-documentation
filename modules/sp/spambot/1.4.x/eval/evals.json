@@ -1,0 +1,78 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "spambot",
+  "version": "1.4.x",
+  "note": "Spambot checks user-registration (and Webform) email/username/IP against the Stop Forum Spam (www.stopforumspam.com) blacklist. All configuration lives in the single config object spambot.settings (form route spambot.settings_form at /admin/config/system/spambot). Thresholds spambot_criteria_email (default 1), spambot_criteria_username (default 0/off), spambot_criteria_ip (default 20); a criterion of 0 disables that check. Whitelists are spambot_whitelist_{email,username,ip}_list arrays. Cron scanning is gated by spambot_cron_user_limit with spambot_spam_account_action (0 none/1 block/2 delete). The permission 'protected from spambot scans' bypasses all checks. Reporting spammers needs spambot_sfs_api_key. Medium/hard cases are grounded in real spambot.settings keys, read/written via drush cget/cset.",
+  "evals": [
+    {
+      "id": "spambot-service-and-thresholds",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "In the Drupal spambot module, which external blacklist service does it check new registrations against, and which configuration keys set the per-criterion thresholds for email and IP address?",
+      "must_contain_any": ["stopforumspam", "Stop Forum Spam", "spambot_criteria_email", "spambot_criteria_ip"],
+      "must_not_contain": [],
+      "expected_output": "It queries Stop Forum Spam (www.stopforumspam.com). Thresholds are spambot_criteria_email and spambot_criteria_ip (and spambot_criteria_username) in spambot.settings; a value of 0 disables that check."
+    },
+    {
+      "id": "spambot-bypass-permission",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "Which Drupal permission does the spambot module provide, and what does granting it to a role do?",
+      "must_contain_any": ["protected from spambot scans"],
+      "must_not_contain": [],
+      "expected_output": "The single permission is 'protected from spambot scans'. A user/role holding it bypasses all spambot checks: the registration validator is not attached and cron scans take no block/delete action against those accounts."
+    },
+    {
+      "id": "spambot-config-location",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "There is no obvious settings link for spambot. What is the name of the configuration object that stores all spambot settings, and what is the admin form route/path?",
+      "must_contain_any": ["spambot.settings", "spambot.settings_form", "/admin/config/system/spambot"],
+      "must_not_contain": [],
+      "expected_output": "All settings live in the spambot.settings config object; the admin form is route spambot.settings_form at /admin/config/system/spambot (requires 'administer site configuration')."
+    },
+    {
+      "id": "spambot-current-ip-threshold",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "On this Drupal site, spambot is configured with a specific threshold for how many times an IP address must have been reported to Stop Forum Spam before a registration is blocked. Inspect the live configuration and state that IP-address threshold number.",
+      "must_contain_any": ["13"],
+      "must_not_contain": [],
+      "expected_output": "spambot.settings:spambot_criteria_ip is 13 on this site (drush cget spambot.settings spambot_criteria_ip).",
+      "setup": "agent-module-documentation/evaluation/verify/spambot-ip-threshold-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/spambot-ip-threshold-cleanup.sh"
+    },
+    {
+      "id": "spambot-current-email-whitelist",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "This site has one email address on spambot's email whitelist (so it is exempt from spam checks). Inspect the live spambot configuration and give that whitelisted email address.",
+      "must_contain_any": ["spambot_flagged@example.com"],
+      "must_not_contain": [],
+      "expected_output": "spambot.settings:spambot_whitelist_email_list contains spambot_flagged@example.com.",
+      "setup": "agent-module-documentation/evaluation/verify/spambot-whitelist-email-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/spambot-whitelist-email-cleanup.sh"
+    },
+    {
+      "id": "spambot-set-username-threshold",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, configure spambot so that a user registration is blocked when the chosen username has been reported to Stop Forum Spam at least 5 times. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/spambot-username-criteria-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/spambot-username-criteria-verify.sh",
+      "expected_output": "Set spambot.settings:spambot_criteria_username to 5 (drush cset spambot.settings spambot_criteria_username 5 -y)."
+    },
+    {
+      "id": "spambot-whitelist-an-ip",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "Add the IP address 198.51.100.7 to spambot's IP whitelist on this site so that spambot never checks or blocks that address. Apply the change to the live configuration.",
+      "reset": "agent-module-documentation/evaluation/verify/spambot-whitelist-ip-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/spambot-whitelist-ip-verify.sh",
+      "expected_output": "Add 198.51.100.7 to the spambot.settings:spambot_whitelist_ip_list array and save (e.g. drush cset spambot.settings spambot_whitelist_ip_list.0 198.51.100.7 -y, or set the full array in php:eval)."
+    }
+  ]
+}

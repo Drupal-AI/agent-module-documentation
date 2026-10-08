@@ -1,0 +1,103 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "workbench_moderation",
+  "version": "1.9.x",
+  "note": "Workbench Moderation adds moderation states (config entity moderation_state: id,label,published,default_revision) and transitions (config entity moderation_state_transition: id,label,stateFrom,stateTo,weight). Defaults: states draft/needs_review/published/archived. Moderation is enabled per bundle via a third-party setting on the bundle config (node.type.<bundle> -> third_party_settings.workbench_moderation: enabled/allowed_moderation_states/default_moderation_state). No external services. All medium/hard cases are grounded in live config verifiable via drush php:eval: introspection reads a custom moderation_state and the Article bundle's default state; execution creates a custom moderation_state and enables moderation on the Article node type. Baseline: Article is NOT moderated; cleanup unsets the third-party settings to restore it.",
+  "evals": [
+    {
+      "id": "workbench_moderation-default-states",
+      "mode": "recipe",
+      "prompt": "What moderation states does Workbench Moderation provide out of the box?",
+      "must_contain_any": [
+        "draft",
+        "needs_review",
+        "Needs Review",
+        "published",
+        "archived"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Four default moderation_state config entities: draft (Draft), needs_review (Needs Review), published (Published), archived (Archived), with default transitions between them.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "workbench_moderation-enable-where",
+      "mode": "recipe",
+      "prompt": "How do I turn on Workbench Moderation for a content type, and where is that stored in configuration?",
+      "must_contain_any": [
+        "third party setting",
+        "third_party_settings",
+        "workbench_moderation",
+        "allowed_moderation_states",
+        "default_moderation_state",
+        "Moderation tab"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Enable it per bundle (e.g. the Moderation tab on the content type), which stores a third-party setting on the bundle config (node.type.<bundle> -> third_party_settings.workbench_moderation) with enabled, allowed_moderation_states, and default_moderation_state. Enabling forces revisions on.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "workbench_moderation-transition-permission",
+      "mode": "recipe",
+      "prompt": "With Workbench Moderation, how do I control which roles can move content through a given transition (for example, publishing)? What form do the per-transition permissions take?",
+      "must_contain_any": [
+        "use draft_published transition",
+        "use ",
+        "transition",
+        "permission"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Each moderation_state_transition creates a dynamic permission named 'use <transition_id> transition' (e.g. 'use draft_published transition'); grant it to the roles allowed to perform that transition.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "workbench_moderation-known-state",
+      "mode": "introspection",
+      "prompt": "This site has a custom Workbench Moderation state added for testing. Inspect the live moderation_state config entities and tell me the label of the custom state whose machine id is wbm_eval_legal and whether it is a published state.",
+      "must_contain_any": [
+        "Legal Review"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The moderation_state wbm_eval_legal has label 'Legal Review' and is an unpublished state (published: false).",
+      "setup": "agent-module-documentation/evaluation/verify/workbench_moderation-state-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/workbench_moderation-state-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "workbench_moderation-known-bundle",
+      "mode": "introspection",
+      "prompt": "Workbench Moderation is enabled on the Article content type on this site. Inspect the live configuration and tell me which moderation state new Article content starts in by default.",
+      "must_contain_any": [
+        "needs_review",
+        "Needs Review"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The Article node type's third_party_settings.workbench_moderation.default_moderation_state is needs_review.",
+      "setup": "agent-module-documentation/evaluation/verify/workbench_moderation-bundle-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/workbench_moderation-bundle-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "workbench_moderation-add-state",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "Using Workbench Moderation, create a new moderation state with machine id 'wbm_task_state' and label 'Task State' that is an UNPUBLISHED state (content in it is not published). Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/workbench_moderation-addstate-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/workbench_moderation-addstate-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/workbench_moderation-addstate-cleanup.sh",
+      "expected_output": "Create a moderation_state config entity, e.g. ModerationState::create(['id' => 'wbm_task_state', 'label' => 'Task State', 'published' => FALSE, 'default_revision' => FALSE])->save(); verify checks it exists and isPublishedState() is FALSE."
+    },
+    {
+      "id": "workbench_moderation-enable-article",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "Enable Workbench Moderation on the Article content type, allowing the draft and published states and making draft the default state for new content. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/workbench_moderation-enable-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/workbench_moderation-enable-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/workbench_moderation-enable-cleanup.sh",
+      "expected_output": "On the article node type set third-party settings for workbench_moderation: enabled = TRUE, allowed_moderation_states = ['draft','published'], default_moderation_state = 'draft', then save. verify checks enabled === TRUE."
+    }
+  ]
+}

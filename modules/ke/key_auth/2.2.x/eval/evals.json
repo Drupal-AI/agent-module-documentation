@@ -1,0 +1,105 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "key_auth",
+  "version": "2.2.x",
+  "note": "key_auth adds an api_key base field to the User entity and an authentication_provider service (provider_id key_auth, priority 200) that authenticates a request as the user whose api_key matches a value found via the configured detection_methods (header and/or query parameter named by param_name), gated by the 'use key authentication' permission (KeyAuth::access()). Config object key_auth.settings ships defaults auto_generate_keys=true, key_length=32, param_name='api-key', detection_methods=[header,query]; configure route key_auth.settings at /admin/config/services/key-auth. Keys are produced by KeyAuth::generateKey() (a unique hex string truncated to key_length) and are auto-assigned on user creation when auto_generate_keys is on and the new user already has the permission; otherwise a user manages their own key at /user/{user}/key-auth. Medium cases write a known non-default key_auth.settings and read it back; hard cases (1) create ka_role/ka_client with api_key forced NULL and require the agent to generate/assign a real key of the configured length, and (2) require the agent to build a specific non-default key_auth.settings (param_name=api-token, detection_methods=[header] only).",
+  "evals": [
+    {
+      "id": "key_auth-default-settings",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "On a fresh install of the Drupal contrib module key_auth (Key Authentication), what are the default values of param_name, key_length, detection_methods, and auto_generate_keys in key_auth.settings, and what admin path do I visit to change them?",
+      "must_contain_any": [
+        "api-key",
+        "/admin/config/services/key-auth",
+        "admin/config/services/key-auth"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Shipped defaults (config/install/key_auth.settings.yml): auto_generate_keys: true, key_length: 32, param_name: 'api-key', detection_methods: [header, query]. Configure at /admin/config/services/key-auth (route key_auth.settings, permission 'administer site configuration')."
+    },
+    {
+      "id": "key_auth-client-request",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "Using the key_auth module's default configuration, how would an API client authenticate a request with a user's key -- as a header, a query parameter, or both, and what's the parameter/header name? What is the authentication provider's provider_id, and what permission must the user's role have for the key to actually authenticate?",
+      "must_contain_any": [
+        "api-key",
+        "provider_id",
+        "use key authentication"
+      ],
+      "must_not_contain": [],
+      "expected_output": "With the default detection_methods [header, query] and param_name 'api-key', a client sends either an HTTP header 'api-key: <key>' or a query string '?api-key=<key>'. The authentication provider is registered with provider_id 'key_auth' (priority 200). The key only authenticates a request if the matched user's role(s) have the 'use key authentication' permission (KeyAuth::access())."
+    },
+    {
+      "id": "key_auth-key-storage",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "In the key_auth module, where is each user's API key actually stored, and how does a user end up with one -- is it automatic, manual, or both?",
+      "must_contain_any": [
+        "api_key",
+        "generateKey",
+        "auto_generate_keys"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Each user's key lives in the api_key base field the module adds to the User entity (hook_entity_base_field_info in key_auth.module). If auto_generate_keys is enabled (default true) and the new user already has the 'use key authentication' permission, key_auth_user_insert() calls the key_auth service's generateKey() and saves it on user creation. Users can also generate a new key or delete their current one at /user/{user}/key-auth."
+    },
+    {
+      "id": "key_auth-param-detection",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "This Drupal site has the key_auth module configured with non-default settings. Inspect the live key_auth.settings configuration and tell me: what parameter/header name should an API client use to send its key, and which detection method(s) are currently enabled?",
+      "must_contain_any": [
+        "x-ka-token",
+        "header only",
+        "\"header\"",
+        "['header']"
+      ],
+      "must_not_contain": [],
+      "expected_output": "param_name is 'x-ka-token' and detection_methods is ['header'] only (query detection is disabled), per the live key_auth.settings config.",
+      "setup": "agent-module-documentation/evaluation/verify/key_auth-param-detection-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/key_auth-param-detection-cleanup.sh"
+    },
+    {
+      "id": "key_auth-length-autogen",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "Inspect the live key_auth.settings configuration on this Drupal site. What key length is currently configured, and is auto_generate_keys enabled -- will a newly created user (who has the right permission) automatically receive an API key?",
+      "must_contain_any": [
+        "key_length is 16",
+        "key_length: 16",
+        "length of 16",
+        "16 characters",
+        "auto_generate_keys is false",
+        "auto_generate_keys is disabled",
+        "will not automatically"
+      ],
+      "must_not_contain": [],
+      "expected_output": "key_length is 16 and auto_generate_keys is false, so a newly created user will NOT automatically receive an API key -- one must be generated for them afterward (e.g. via /user/{user}/key-auth or programmatically).",
+      "setup": "agent-module-documentation/evaluation/verify/key_auth-length-autogen-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/key_auth-length-autogen-cleanup.sh"
+    },
+    {
+      "id": "key_auth-generate-key",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site there is a role ka_role (with the 'use key authentication' permission) and a user ka_client who has that role, but ka_client currently has no API key. Using the key_auth module, generate and assign ka_client a valid API key so they can authenticate against the key_auth provider. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/key_auth-generate-key-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/key_auth-generate-key-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/key_auth-generate-key-cleanup.sh",
+      "expected_output": "ka_client's api_key field is set to a unique key produced by the key_auth service's generateKey() (e.g. $user->set('api_key', \\Drupal::service('key_auth')->generateKey())->save(), or via the 'Generate new key' button on /user/{ka_client uid}/key-auth), whose length equals the currently configured key_auth.settings key_length."
+    },
+    {
+      "id": "key_auth-config-build",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "Configure the key_auth module on this Drupal site so that API clients must send their key as the header/parameter named 'api-token', and so that only the header detection method is accepted (disable query-parameter detection). Apply the change to the live key_auth.settings configuration.",
+      "reset": "agent-module-documentation/evaluation/verify/key_auth-config-build-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/key_auth-config-build-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/key_auth-config-build-cleanup.sh",
+      "expected_output": "key_auth.settings has param_name set to 'api-token' and detection_methods set to ['header'] only (query removed), e.g. via the Key authentication settings form at /admin/config/services/key-auth, or drush cset key_auth.settings param_name api-token plus a php:eval setting detection_methods to ['header']."
+    }
+  ]
+}

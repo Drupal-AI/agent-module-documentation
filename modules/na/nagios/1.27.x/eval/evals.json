@@ -1,0 +1,97 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "nagios",
+  "version": "1.27.x",
+  "note": "Nagios Monitoring exposes a plain-text status page (dynamic route nagios.statuspage at nagios.settings->statuspage.path, default 'nagios') for Nagios/Icinga; DISABLED by default (statuspage.enabled=false). Request auth = HTTP User-Agent == nagios.ua (default 'Nagios'), or ?unique_id when statuspage.getparam, or 'administer site configuration'. Checks: built-ins cron/watchdog/maintenance/requirements plus hook_nagios(); status codes NAGIOS_STATUS_* from nagios.status.*. Settings form /admin/config/system/nagios; Drush nagios / nagios-list / nagios-updates. All evals are grounded in the module's own nagios.settings config (the status endpoint), restoring shipped defaults explicitly in cleanup.",
+  "evals": [
+    {
+      "id": "nagios-endpoint-path-default",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "After enabling the nagios module on a Drupal site, what URL path does its status page use by default, and is the endpoint reachable out of the box?",
+      "must_contain_any": [
+        "nagios",
+        "statuspage",
+        "enabled"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The status page defaults to the path /nagios (nagios.settings -> nagios.statuspage.path = 'nagios'), but it is DISABLED by default (nagios.statuspage.enabled = false). You must enable it (and rebuild routes) before Nagios/Icinga can poll it."
+    },
+    {
+      "id": "nagios-request-auth",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "How does the nagios module authorize a monitoring request to its status page without a login? What must the request send?",
+      "must_contain_any": [
+        "User-Agent",
+        "user agent",
+        "nagios.ua",
+        "unique_id"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The request must send an HTTP User-Agent equal to the configured nagios.ua (default 'Nagios'); e.g. curl -A Nagios https://site/nagios. Alternatively, if statuspage.getparam is enabled, a ?unique_id=<ua> GET parameter matching nagios.ua works, or a user with 'administer site configuration' can view it. Otherwise it returns an UNKNOWN 'Unauthorized' line."
+    },
+    {
+      "id": "nagios-drush-checks",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "Which Drush command does the nagios module provide to run its health checks from the CLI, and how do I see the list of available checks?",
+      "must_contain_any": [
+        "drush nagios",
+        "nagios-list",
+        "nagios"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Run `drush nagios` (optionally `drush nagios <check>`) to run the checks; it exits with the Nagios severity code (0 OK, 1 Warning, 2 Critical, 3 Unknown). Use `drush nagios-list` to list all available checks, and `drush nagios-updates` for pending updates."
+    },
+    {
+      "id": "nagios-endpoint-config-intro",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "On this Drupal site the nagios status page has been set up. Inspect the live nagios configuration and report whether the status page is enabled and what URL path it is served on.",
+      "must_contain_any": [
+        "nagios_intro_status"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The status page is enabled (nagios.settings -> nagios.statuspage.enabled = true) and served at path 'nagios_intro_status'. Discoverable via `drush cget nagios.settings nagios.statuspage`.",
+      "setup": "agent-module-documentation/evaluation/verify/nagios-statuspage-intro-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/nagios-statuspage-intro-cleanup.sh"
+    },
+    {
+      "id": "nagios-ua-config-intro",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "On this Drupal site, a monitoring probe must send a specific User-Agent string to be authorized by the nagios status page. Inspect the live nagios configuration and give that expected User-Agent string.",
+      "must_contain_any": [
+        "IcingaProbe42"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The expected User-Agent is 'IcingaProbe42' (nagios.settings -> nagios.ua). Discoverable via `drush cget nagios.settings nagios.ua`.",
+      "setup": "agent-module-documentation/evaluation/verify/nagios-ua-intro-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/nagios-ua-intro-cleanup.sh"
+    },
+    {
+      "id": "nagios-enable-endpoint",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, enable the nagios module's status page endpoint and serve it at the path 'nagios_status_task'. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/nagios-enable-endpoint-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/nagios-enable-endpoint-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/nagios-enable-endpoint-cleanup.sh",
+      "expected_output": "nagios.settings has nagios.statuspage.enabled = true and nagios.statuspage.path = 'nagios_status_task' (then routes rebuilt). E.g. set both keys via config and drush cr."
+    },
+    {
+      "id": "nagios-enable-endpoint-layman",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "site-owner",
+      "prompt": "I want my monitoring system to be able to check my Drupal site's health. Please switch on the Nagios status page and make it available at the address 'nagios_status_task'. Save it live.",
+      "reset": "agent-module-documentation/evaluation/verify/nagios-enable-endpoint-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/nagios-enable-endpoint-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/nagios-enable-endpoint-cleanup.sh",
+      "expected_output": "Same end state as the expert phrasing: nagios.statuspage.enabled = true and nagios.statuspage.path = 'nagios_status_task'."
+    }
+  ]
+}

@@ -1,0 +1,58 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "remove_entity_untranslatable_field_validation",
+  "version": "1.3.x",
+  "note": "This module has NO configuration, no schema, no permissions, no Drush and no plugins. Its entire effect is a single hook_entity_type_alter() that unsets core's 'EntityUntranslatableFields' validation constraint from every entity type (via the service remove_entity_untranslatable_field_validation.entity_modifier). Easy cases quiz the mechanism. Medium cases are grounded in live state: one asks the agent to identify the module responsible for node lacking the constraint; the other installs a known untranslatable field and reads it back. NO hard/execution tier is provided, deliberately: the module's only effect is a global, always-on constraint removal that is not a per-build artifact, and it is only observable during an in-memory edit/validate cycle - untranslatable field values are SHARED across translations, so after a save+reload the value is identical in every language and core's transient constraint no longer fires, making a reload-based live-state verify unable to distinguish the module's presence. The only way to force a failing reset state is to disable the module, which triggers a full container rebuild - unsafe and disruptive on this shared site. Authoring a contrived hard case that does not actually test the module would be dishonest, so it is omitted with this justification.",
+  "evals": [
+    {
+      "id": "ruftv-what-it-does",
+      "mode": "recipe",
+      "prompt": "What does the Drupal module remove_entity_untranslatable_field_validation do, and which core validation constraint does it remove?",
+      "must_contain_any": ["EntityUntranslatableFields", "untranslatable"],
+      "must_not_contain": [],
+      "expected_output": "It removes core's EntityUntranslatableFields validation constraint from every entity type, so untranslatable ('shared') fields can be changed while editing a non-default translation without a validation error.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "ruftv-mechanism",
+      "mode": "recipe",
+      "prompt": "How does remove_entity_untranslatable_field_validation actually remove the constraint? Name the hook and the service/method it uses.",
+      "must_contain_any": ["hook_entity_type_alter", "entity_type_alter", "removeUntranslatableEntityFieldValidation", "EntityModifier", "entity_modifier"],
+      "must_not_contain": [],
+      "expected_output": "A single hook_entity_type_alter() implementation calls the remove_entity_untranslatable_field_validation.entity_modifier service (EntityModifier::removeUntranslatableEntityFieldValidation()), which loops all entity types and unsets the 'EntityUntranslatableFields' constraint.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "ruftv-scope-and-verify",
+      "mode": "recipe",
+      "prompt": "Does remove_entity_untranslatable_field_validation let me choose which entity types are affected, and how would I confirm on a running site that it is active?",
+      "must_contain_any": ["all", "every", "getConstraints", "EntityUntranslatableFields"],
+      "must_not_contain": [],
+      "expected_output": "No - it is global and unconditional: it strips the constraint from ALL entity types (there is no settings form). Confirm by checking a translatable entity type: \\Drupal::entityTypeManager()->getDefinition('node')->getConstraints() no longer contains an 'EntityUntranslatableFields' key.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "ruftv-which-module",
+      "mode": "introspection",
+      "prompt": "On this Drupal site, the node entity type does NOT have the core 'EntityUntranslatableFields' validation constraint. Inspect the site and identify which enabled contrib module is responsible for removing it.",
+      "must_contain_any": ["remove_entity_untranslatable_field_validation"],
+      "must_not_contain": [],
+      "expected_output": "The remove_entity_untranslatable_field_validation module removes it (via hook_entity_type_alter); inspecting node's constraints shows EntityUntranslatableFields is absent.",
+      "setup": "agent-module-documentation/evaluation/verify/remove_entity_untranslatable_field_validation-which-module-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/remove_entity_untranslatable_field_validation-which-module-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "ruftv-known-field",
+      "mode": "introspection",
+      "prompt": "This site has a translation-enabled content type 'ruftv_med' with one added field that is configured as NOT translatable. Inspect the live field configuration and give the machine name of that untranslatable field.",
+      "must_contain_any": ["field_ruftv_med"],
+      "must_not_contain": [],
+      "expected_output": "field_ruftv_med - its FieldConfig on node.ruftv_med has translatable = false; because remove_entity_untranslatable_field_validation is enabled, editors can still change it from a non-default translation without a validation error.",
+      "setup": "agent-module-documentation/evaluation/verify/remove_entity_untranslatable_field_validation-known-field-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/remove_entity_untranslatable_field_validation-known-field-cleanup.sh",
+      "difficulty": "medium"
+    }
+  ]
+}

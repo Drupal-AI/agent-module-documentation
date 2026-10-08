@@ -1,0 +1,84 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "stringoverrides",
+  "version": "2.0.x",
+  "note": "String Overrides registers a string_translator service (StringOverridesTranslation extends StaticTranslation, priority 15) so t()/TranslatableMarkup lookups are overridden. Overrides are edited at /admin/config/regional/stringoverrides/{language} and stored in config object stringoverrides.string_override.<langcode> under a `contexts` list, each entry {context, translations:[{source, translation}]}; disabled rows live in ...<langcode>_disabled. Active translations are cached at cache id 'stringoverides:translation_for_<langcode>' (module's one-r spelling), cleared on save. Medium cases read a known override back from config; hard cases require writing a real override into config (with empty context, and with a non-empty context). Baseline site has no stringoverrides.string_override.en, so cleanup/reset delete that object.",
+  "evals": [
+    {
+      "id": "stringoverrides-where-configured",
+      "mode": "recipe",
+      "prompt": "On a Drupal site with the stringoverrides module enabled, where do I go to replace an interface string (like changing 'Log in' to 'Sign in'), and what permission is required?",
+      "must_contain_any": ["/admin/config/regional/stringoverrides", "regional/stringoverrides", "administer string overrides"],
+      "must_not_contain": [],
+      "expected_output": "Go to Configuration > Regional and language > String Overrides (/admin/config/regional/stringoverrides, which redirects to the default language form /admin/config/regional/stringoverrides/{language}). Add a row with the Original text and its Replacement, tick Enabled, Save. It requires the 'administer string overrides' permission.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "stringoverrides-mechanism",
+      "mode": "recipe",
+      "prompt": "How does the stringoverrides module actually make an overridden string appear everywhere on the site instead of the original t() text?",
+      "must_contain_any": ["string_translator", "StaticTranslation", "translator"],
+      "must_not_contain": [],
+      "expected_output": "It registers a tagged string_translator service (StringOverridesTranslation, which extends core StaticTranslation) at priority 15. That translator is consulted by the translation system for every t()/TranslatableMarkup lookup and returns your replacement when the source string (and optional context) matches.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "stringoverrides-storage",
+      "mode": "recipe",
+      "prompt": "Where does the stringoverrides module store its overrides in configuration for a given language, and what is the shape of that data?",
+      "must_contain_any": ["stringoverrides.string_override", "contexts", "translations"],
+      "must_not_contain": [],
+      "expected_output": "Enabled overrides are stored in the config object stringoverrides.string_override.<langcode> under a `contexts` list; each entry is {context: '<optional context>', translations: [{source: '<original>', translation: '<replacement>'}, ...]}. Disabled rows are kept separately in stringoverrides.string_override.<langcode>_disabled.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "stringoverrides-known-override",
+      "mode": "introspection",
+      "prompt": "This site already has a String Overrides entry configured for English. Inspect the live configuration and tell me what the original string 'Log in' is being replaced with.",
+      "must_contain_any": ["Sign in"],
+      "must_not_contain": [],
+      "expected_output": "'Log in' is overridden to 'Sign in' — in config stringoverrides.string_override.en, contexts[].translations contains {source: 'Log in', translation: 'Sign in'}.",
+      "setup": "agent-module-documentation/evaluation/verify/stringoverrides-known-override-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/stringoverrides-known-override-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "stringoverrides-context-override",
+      "mode": "introspection",
+      "prompt": "The English String Overrides on this site include one override that is scoped to a non-empty translation context. Inspect the live configuration and report the replacement text for the source string 'May' and the context it is scoped to.",
+      "must_contain_any": ["Mai", "Long month name"],
+      "must_not_contain": [],
+      "expected_output": "In config stringoverrides.string_override.en there is a contexts entry with context 'Long month name' whose translations map source 'May' to 'Mai'.",
+      "setup": "agent-module-documentation/evaluation/verify/stringoverrides-context-override-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/stringoverrides-context-override-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "stringoverrides-add-override",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-layman",
+      "prompt": "On my English site I want the word 'Search' shown in the interface to say 'Find' instead. Use the String Overrides module to make that change and apply it to the site.",
+      "reset": "agent-module-documentation/evaluation/verify/stringoverrides-add-override-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/stringoverrides-add-override-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/stringoverrides-add-override-reset.sh",
+      "expected_output": "Add an override with an empty context mapping source 'Search' to 'Find' in config stringoverrides.string_override.en (contexts: [{context: '', translations: [{source: 'Search', translation: 'Find'}]}]) and clear the cache id stringoverides:translation_for_en (or run drush cr).",
+      "must_contain_any": [],
+      "must_not_contain": []
+    },
+    {
+      "id": "stringoverrides-add-context",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "Using the stringoverrides module, add an English interface-string override for the source string 'May' with translation context 'Long month name' so it renders as 'Mai', and apply it to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/stringoverrides-add-override-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/stringoverrides-add-context-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/stringoverrides-add-override-reset.sh",
+      "expected_output": "In config stringoverrides.string_override.en add a contexts entry {context: 'Long month name', translations: [{source: 'May', translation: 'Mai'}]} and clear cache id stringoverides:translation_for_en (or drush cr).",
+      "must_contain_any": [],
+      "must_not_contain": []
+    }
+  ]
+}

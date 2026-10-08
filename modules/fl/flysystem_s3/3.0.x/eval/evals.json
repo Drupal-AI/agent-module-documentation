@@ -1,0 +1,80 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "flysystem_s3",
+  "version": "3.0.x",
+  "note": "flysystem_s3 provides a Flysystem @Adapter(id='s3') configured in settings.php under $settings['flysystem'] (driver 's3', config: region[region id], bucket, key/secret OR omit for IAM role, prefix, cname, endpoint, public, options[ACL/StorageClass], cors). No Drupal config UI/schema/Drush. It also enables direct browser->S3 CORS upload gated by the permission 'use S3 CORS upload' (defined in flysystem_s3.permissions.yml) plus scheme config.cors=TRUE and bucket CORS; POST routes /flysystem-s3/cors-upload-sign and /flysystem-s3/cors-upload-save; JS library flysystem_s3/drupal.s3_cors_upload; managed_file element altered via hook_element_info_alter. It decorates core file_system (FlysystemS3FileSystem) and caches IAM creds via AwsCacheAdapter. Because the adapter needs a real AWS/S3 bucket (unavailable in this eval sandbox), medium/hard cases are grounded in the one testable live surface: the 'use S3 CORS upload' permission and role config, verified with drush/user_role. Easy cases cover settings.php scheme config, auth (key/secret vs IAM), and CORS enablement.",
+  "evals": [
+    {
+      "id": "flysystem_s3-configure-scheme",
+      "mode": "recipe",
+      "prompt": "How do I configure Drupal to store files on Amazon S3 using the flysystem_s3 module? Where does the configuration go and what does a minimal scheme look like?",
+      "must_contain_any": ["$settings['flysystem']", "settings.php", "driver", "'s3'", "flysystem"],
+      "must_not_contain": [],
+      "expected_output": "There is no admin UI. In settings.php set $settings['flysystem'] with a scheme whose driver is 's3' and a config array giving region (region id), bucket, and either key+secret or none (IAM role), e.g. $settings['flysystem'] = ['s3' => ['driver' => 's3', 'config' => ['region' => 'eu-west-1', 'bucket' => 'my-bucket', 'key' => '...', 'secret' => '...']]]; then drush cr.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "flysystem_s3-auth",
+      "mode": "recipe",
+      "prompt": "With flysystem_s3, how can I authenticate to S3 without putting an access key and secret in settings.php, and what format must the region value be?",
+      "must_contain_any": ["IAM", "key", "secret", "region"],
+      "must_not_contain": [],
+      "expected_output": "Omit both 'key' and 'secret' from the scheme config to use an AWS IAM role / instance profile (credentials are cached via AwsCacheAdapter). The 'region' must be the AWS region id (e.g. us-east-1, eu-west-1), not the display name.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "flysystem_s3-cors-enable",
+      "mode": "recipe",
+      "prompt": "What is needed to enable direct browser-to-S3 (CORS) uploads with flysystem_s3? Which permission controls it?",
+      "must_contain_any": ["use S3 CORS upload", "cors"],
+      "must_not_contain": [],
+      "expected_output": "Three things: set config.cors = TRUE on the S3 scheme, add CORS rules to the bucket (see s3-cors-example.json), and grant the user the 'use S3 CORS upload' permission. Then a managed_file element targeting that scheme uploads directly to S3 via /flysystem-s3/cors-upload-sign and /flysystem-s3/cors-upload-save.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "flysystem_s3-live-perm-role",
+      "mode": "introspection",
+      "prompt": "On this site, which custom role has been granted the flysystem_s3 'use S3 CORS upload' permission (allowing direct S3 CORS uploads)? Inspect the live roles/permissions and name it.",
+      "must_contain_any": ["fs3_uploader"],
+      "must_not_contain": [],
+      "expected_output": "The role fs3_uploader has the 'use S3 CORS upload' permission. Check e.g. drush role:list or the user.role.fs3_uploader config.",
+      "setup": "agent-module-documentation/evaluation/verify/flysystem_s3-perm-role-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/flysystem_s3-perm-role-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "flysystem_s3-live-perm-onoff",
+      "mode": "introspection",
+      "prompt": "This site has two custom roles, fs3_on and fs3_off. Exactly one of them is allowed to upload files directly to S3 using CORS via flysystem_s3. Inspect the live configuration and state which role can.",
+      "must_contain_any": ["fs3_on"],
+      "must_not_contain": [],
+      "expected_output": "fs3_on can: it holds the 'use S3 CORS upload' permission, whereas fs3_off does not. Check the roles' permissions (drush role:list or the user.role.* config).",
+      "setup": "agent-module-documentation/evaluation/verify/flysystem_s3-perm-onoff-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/flysystem_s3-perm-onoff-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "flysystem_s3-grant-perm",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this site there is a role with machine name 'fs3_task'. Grant it the flysystem_s3 permission that allows uploading files directly to S3 using CORS. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/flysystem_s3-grant-perm-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/flysystem_s3-grant-perm-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/flysystem_s3-grant-perm-cleanup.sh",
+      "expected_output": "Grant the 'use S3 CORS upload' permission to role fs3_task, e.g. drush role:perm:add fs3_task 'use S3 CORS upload' (or via /admin/people/permissions)."
+    },
+    {
+      "id": "flysystem_s3-revoke-perm",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this site the role 'fs3_revoke' is currently allowed to upload files directly to S3 using CORS (flysystem_s3). Revoke that capability from the role, without deleting the role. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/flysystem_s3-revoke-perm-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/flysystem_s3-revoke-perm-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/flysystem_s3-revoke-perm-cleanup.sh",
+      "expected_output": "Remove the 'use S3 CORS upload' permission from role fs3_revoke, e.g. drush role:perm:remove fs3_revoke 'use S3 CORS upload' (the role itself remains)."
+    }
+  ]
+}

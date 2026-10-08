@@ -1,0 +1,2 @@
+<!-- SPDX-License-Identifier: GPL-2.0-or-later -->
+Commerce SagePay (v2.0.x): on-site card gateway src/Plugin/Commerce/PaymentGateway/Onsite.php (id sagepay_onsite). 3DS return controller src/Controller/CommerceSage.php route /3dSecureBack/{order} is `_permission: 'access content'`. Depends on commerce + commerce_payment.

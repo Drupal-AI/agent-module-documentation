@@ -1,0 +1,80 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "mailgun",
+  "version": "2.1.x",
+  "note": "Mailgun sends Drupal mail through the Mailgun HTTP API via two Mail plugins (mailgun_mail, mailgun_queue_mail) selected through Mailsystem. All behavior lives in the mailgun.settings config object (api_key, api_endpoint, working_domain, debug_mode, test_mode, tracking_opens/clicks, tracking_exception, format_filter, use_queue, use_theme, tagging_mailkey). Configure route mailgun.admin_settings_form (/admin/config/services/mailgun/settings); permission 'administer mailgun'; queue worker mailgun_send_mail; a Drush sql-sanitize hook empties the queue. Real sending needs a Mailgun API key, so ALL medium/hard cases are grounded in mailgun.settings (which the module owns) rather than the API or the shared mailsystem.settings (owned here by htmlmail). Scripts flip real booleans via configFactory (NOT `drush cset ... false`, which casts the string 'false' to boolean TRUE) and restore shipped defaults (use_queue=false, test_mode=false, tracking_opens='').",
+  "evals": [
+    {
+      "id": "mailgun-configure-where",
+      "mode": "recipe",
+      "prompt": "How do I configure the Mailgun module on a Drupal 11 site (where is its settings page and what config object / permission does it use), and how does Mailgun actually become the mailer for outgoing email?",
+      "must_contain_any": ["mailgun.admin_settings_form", "/admin/config/services/mailgun", "mailgun.settings", "mailsystem", "administer mailgun"],
+      "must_not_contain": [],
+      "expected_output": "Configure it at /admin/config/services/mailgun/settings (route mailgun.admin_settings_form, permission 'administer mailgun'); settings are stored in the mailgun.settings config object. To make it the mailer you select its Mail plugin (mailgun_mail) as sender/formatter through the Mailsystem module.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "mailgun-mail-plugins",
+      "mode": "recipe",
+      "prompt": "Which Mail plugins does the Drupal Mailgun module provide, and what is the difference between them?",
+      "must_contain_any": ["mailgun_mail", "mailgun_queue_mail", "queue", "cron"],
+      "must_not_contain": [],
+      "expected_output": "It provides mailgun_mail (sends immediately via the Mailgun API) and mailgun_queue_mail (enqueues the message into the mailgun_send_mail queue to be delivered on cron). You pick one through Mailsystem.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "mailgun-queue-how",
+      "mode": "recipe",
+      "prompt": "In the Mailgun module, how do I make outgoing emails be queued and sent in the background instead of during the page request?",
+      "must_contain_any": ["use_queue", "queue", "cron", "mailgun_queue_mail"],
+      "must_not_contain": [],
+      "expected_output": "Enable use_queue in mailgun.settings (and/or use the mailgun_queue_mail plugin); queued messages are delivered by the mailgun_send_mail cron QueueWorker on cron runs (drush queue:run mailgun_send_mail or drush cron).",
+      "difficulty": "easy"
+    },
+    {
+      "id": "mailgun-queue-setting",
+      "mode": "introspection",
+      "prompt": "On this Drupal site, inspect the Mailgun configuration: is Mailgun currently set to queue outgoing email for background/cron sending, or to send it immediately?",
+      "must_contain_any": ["true", "queue", "enabled", "yes", "background"],
+      "must_not_contain": [],
+      "expected_output": "It is queuing: mailgun.settings use_queue is true, so mail is queued and sent on cron rather than immediately.",
+      "setup": "agent-module-documentation/evaluation/verify/mailgun-queue-setting-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/mailgun-queue-setting-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "mailgun-tracking-setting",
+      "mode": "introspection",
+      "prompt": "On this Drupal site, inspect the Mailgun configuration and tell me the current value of the 'Track opens' (tracking_opens) setting.",
+      "must_contain_any": ["yes"],
+      "must_not_contain": [],
+      "expected_output": "tracking_opens is 'yes' — Mailgun open tracking is turned on (mailgun.settings tracking_opens: yes).",
+      "setup": "agent-module-documentation/evaluation/verify/mailgun-tracking-setting-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/mailgun-tracking-setting-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "mailgun-enable-queue",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, configure the Mailgun module so outgoing emails are queued and delivered on cron instead of being sent during the request. Apply the change to the live configuration.",
+      "reset": "agent-module-documentation/evaluation/verify/mailgun-enable-queue-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/mailgun-enable-queue-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/mailgun-enable-queue-cleanup.sh",
+      "expected_output": "Set mailgun.settings use_queue to boolean true (e.g. via the settings form's 'Send mail via queue' option or the config API). Verify checks use_queue === true."
+    },
+    {
+      "id": "mailgun-test-mode",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "We are on a staging site and do not want Mailgun to actually deliver email. Using the Mailgun module, turn on Mailgun test mode so messages are accepted but not delivered. Apply the change to the live configuration.",
+      "reset": "agent-module-documentation/evaluation/verify/mailgun-test-mode-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/mailgun-test-mode-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/mailgun-test-mode-cleanup.sh",
+      "expected_output": "Set mailgun.settings test_mode to boolean true (the 'Enable Test mode' option). Verify checks test_mode === true."
+    }
+  ]
+}

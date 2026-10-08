@@ -1,0 +1,80 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "tocbot",
+  "version": "2.0.x",
+  "note": "Tocbot wraps the Tocbot JS library. Configure route tocbot.settings at /admin/config/content/tocbot (perm 'administer site configuration') stores ~30 keys in the tocbot.settings config object (defaults: min_activate '3', content_selector '#content', heading_selector 'h2, h3, h4, h5, h6', toc_selector '.js-toc-block', create_auto_ids 1). The 'Tocbot TOC' block (plugin tocbot_block) renders <div class=js-toc-block> and attaches drupalSettings.tocbot + the library (CDN tocbot/external.tocbot by default, tocbot/internal.tocbot when /libraries/tocbot/dist files exist). No permissions of its own, no Drush, no config schema. Medium cases read back known config values; hard cases set config / place the block and verify live state.",
+  "evals": [
+    {
+      "id": "tocbot-settings-location",
+      "mode": "recipe",
+      "prompt": "Where is the Tocbot admin settings page in Drupal, and which setting stops the table of contents from appearing on pages that have only a couple of headings?",
+      "must_contain_any": ["/admin/config/content/tocbot", "min_activate", "minActivate", "tocbot.settings"],
+      "must_not_contain": [],
+      "expected_output": "The settings form is at /admin/config/content/tocbot (route tocbot.settings). The min_activate / minActivate setting (default 3) is the minimum number of matching headings required before Tocbot activates, so raising it prevents a TOC on short pages.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "tocbot-place-block",
+      "mode": "recipe",
+      "prompt": "After enabling the Tocbot module, how do I actually get the table of contents to show up on my pages? What block do I place?",
+      "must_contain_any": ["tocbot_block", "Tocbot TOC", "Block layout", "block", "js-toc-block"],
+      "must_not_contain": [],
+      "expected_output": "Place the 'Tocbot TOC' block (plugin id tocbot_block) into a region via Structure > Block layout. It outputs a <div class=\"js-toc-block\"> and attaches the Tocbot library; on any page whose content_selector container has at least min_activate headings, the TOC is built into that div.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "tocbot-cdn-vs-local",
+      "mode": "recipe",
+      "prompt": "Does the Tocbot Drupal module load the Tocbot JavaScript library from a CDN or locally, and how do I make it use a local copy?",
+      "must_contain_any": ["CDN", "libraries/tocbot", "internal", "external", "getLibrary"],
+      "must_not_contain": [],
+      "expected_output": "By default it loads from a CDN (tocbot/external.tocbot, cdnjs). If you place the library files at /libraries/tocbot/dist/tocbot.min.js and tocbot.css, TocbotHelper::getLibrary() detects them and switches to the local library (tocbot/internal.tocbot).",
+      "difficulty": "easy"
+    },
+    {
+      "id": "tocbot-min-activate-live",
+      "mode": "introspection",
+      "prompt": "On this Drupal site, how many headings must a page have before the Tocbot table of contents activates? Inspect the live tocbot configuration and give the number.",
+      "must_contain_any": ["7"],
+      "must_not_contain": [],
+      "expected_output": "7. The live tocbot.settings config has min_activate set to 7, so the TOC only activates when the page has 7 or more matching headings.",
+      "setup": "agent-module-documentation/evaluation/verify/tocbot-minactivate-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/tocbot-minactivate-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "tocbot-content-selector-live",
+      "mode": "introspection",
+      "prompt": "On this Drupal site, which CSS selector does Tocbot scan for headings when building the table of contents? Inspect the live tocbot configuration and give the exact selector value.",
+      "must_contain_any": ["main.toc-content-xyz", "toc-content-xyz"],
+      "must_not_contain": [],
+      "expected_output": "main.toc-content-xyz. The live tocbot.settings config has content_selector set to 'main.toc-content-xyz' (the container Tocbot scans for headings).",
+      "setup": "agent-module-documentation/evaluation/verify/tocbot-content-selector-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/tocbot-content-selector-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "tocbot-configure-threshold",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, configure Tocbot so the table of contents is built only from h2 and h3 headings and only activates once a page has at least 6 headings. Apply the change to the live tocbot settings.",
+      "reset": "agent-module-documentation/evaluation/verify/tocbot-threshold-headings-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/tocbot-threshold-headings-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/tocbot-threshold-headings-cleanup.sh",
+      "expected_output": "Set tocbot.settings min_activate to 6 and heading_selector to 'h2, h3' (e.g. via the form at /admin/config/content/tocbot or `drush config:set tocbot.settings min_activate 6` and `drush config:set tocbot.settings heading_selector 'h2, h3'`)."
+    },
+    {
+      "id": "tocbot-place-toc-block",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "site-owner",
+      "prompt": "I've enabled the Tocbot module but no table of contents shows up anywhere on my site. Please put the automatic table-of-contents block onto my site so it can display.",
+      "reset": "agent-module-documentation/evaluation/verify/tocbot-place-block-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/tocbot-place-block-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/tocbot-place-block-cleanup.sh",
+      "expected_output": "Place the 'Tocbot TOC' block (plugin tocbot_block) into a region of the active theme -- via Structure > Block layout, or by creating a block.block.* config entity with plugin: tocbot_block and status: true. Any enabled placement of tocbot_block satisfies this."
+    }
+  ]
+}

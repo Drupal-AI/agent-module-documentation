@@ -1,0 +1,73 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "acsf",
+  "version": "2.83.x",
+  "note": "ACSF Connector is Acquia Cloud Site Factory platform glue: a standalone acsf-init codebase patcher, site→Factory REST messaging (AcsfMessage), a custom event framework (AcsfEvent) with a site-duplication scrub chain, and scrub-preservation hooks. It only functions on Acquia-hosted ACSF sites and has no admin UI or permissions. Cases are `recipe` (response-graded) probing documented facts an agent would otherwise read source to answer; no site mutation.",
+  "evals": [
+    {
+      "id": "acsf-platform-only",
+      "mode": "recipe",
+      "prompt": "I enabled the acsf module on my ordinary self-hosted Drupal 11 site but nothing seems to happen. Is that expected, and what platform is this module actually for?",
+      "must_contain_any": ["Acquia Cloud Site Factory", "ACSF"],
+      "must_not_contain": [],
+      "expected_output": "Expected: the ACSF Connector only does useful work on Acquia Cloud Site Factory (ACSF) hosted sites. It is gated on is_acquia_host()/the acsf_site_id in sites.json and stays inert elsewhere."
+    },
+    {
+      "id": "acsf-init-standalone",
+      "mode": "recipe",
+      "prompt": "On an Acquia Cloud Site Factory codebase, which command patches the codebase (sites.php etc.) for ACSF, and why is it run with drush --include instead of enabling a module?",
+      "must_contain_any": ["acsf-init", "--include"],
+      "must_not_contain": [],
+      "expected_output": "Run `drush --include=<module>/acsf_init acsf-init`. acsf_init is a standalone Drush script, not an enableable module, so it can modify the codebase (sites.php) with no database present or a broken site. Re-run after every module update; acsf-init-verify gates deployment."
+    },
+    {
+      "id": "acsf-init-verify-deploy",
+      "mode": "recipe",
+      "prompt": "How do I confirm an ACSF codebase has the correct up-to-date ACSF files before deploying, and what happens if that check fails?",
+      "must_contain_any": ["acsf-init-verify"],
+      "must_not_contain": [],
+      "expected_output": "Run `drush --include=<module>/acsf_init acsf-init-verify`. Acquia Cloud Site Factory denies deploying any code that fails verification; re-run acsf-init after every module update."
+    },
+    {
+      "id": "acsf-duplication-scrub-event",
+      "mode": "recipe",
+      "prompt": "When Site Factory duplicates a production site to staging, which ACSF event type runs to sanitize the copied data, and roughly what does the scrub do to user accounts?",
+      "must_contain_any": ["site_duplication_scrub", "acsf-site-scrub"],
+      "must_not_contain": [],
+      "expected_output": "The `site_duplication_scrub` event (and the `acsf-site-scrub` command) sanitizes the copied database: anonymizes non-preserved user emails/init (SHA2 hashed), resets passwords, the cron key and private key, and truncates sessions/watchdog."
+    },
+    {
+      "id": "acsf-preserve-users-hook",
+      "mode": "recipe",
+      "prompt": "On an ACSF site I need certain admin user accounts to keep their real email/password when a site is staged and scrubbed. Which hooks let me preserve users by role or by user ID?",
+      "must_contain_any": ["hook_acsf_staging_scrub_admin_roles_alter", "hook_acsf_staging_scrub_preserved_users_alter", "acsf_staging_scrub"],
+      "must_not_contain": [],
+      "expected_output": "Implement hook_acsf_staging_scrub_admin_roles_alter() to preserve users by role ID and hook_acsf_staging_scrub_preserved_users_alter() to preserve specific user IDs from the staging scrub."
+    },
+    {
+      "id": "acsf-message-to-factory",
+      "mode": "recipe",
+      "prompt": "In PHP on an ACSF site, how do I send a REST message from the site to the Site Factory (the Factory) — which class and rough call?",
+      "must_contain_any": ["AcsfMessageRest", "AcsfMessage"],
+      "must_not_contain": [],
+      "expected_output": "Use AcsfMessageRest (concrete AcsfMessage): new AcsfMessageRest('GET', 'site-api/v1/sync/', ['site_id' => 406]); then $m->send(); read $m->getResponseCode()/getResponseBody(). It no-ops off Acquia hosting."
+    },
+    {
+      "id": "acsf-register-event-handler",
+      "mode": "recipe",
+      "prompt": "How does a custom module register its own handler into the ACSF event framework (for example to run code on acsf_install)?",
+      "must_contain_any": ["hook_acsf_registry", "acsf_registry"],
+      "must_not_contain": [],
+      "expected_output": "Implement hook_acsf_registry() returning an 'events' array with entries naming a 'type' (e.g. acsf_install), a handler 'class' (subclass of AcsfEventHandler), and optional weight/path. The registry is rebuilt on module install / via acsf-build-registry."
+    },
+    {
+      "id": "acsf-site-identity",
+      "mode": "recipe",
+      "prompt": "On an ACSF site, which class gives me the current site's Factory identity/metadata, and where does the site id come from?",
+      "must_contain_any": ["AcsfSite", "acsf_site_id"],
+      "must_not_contain": [],
+      "expected_output": "AcsfSite::load() returns a singleton mirror of the site's Factory data, keyed by acsf_site_id from $GLOBALS['gardens_site_settings']['conf'] (set in the platform's sites.json); refresh() re-syncs from the Factory and cron refreshes it daily."
+    }
+  ]
+}

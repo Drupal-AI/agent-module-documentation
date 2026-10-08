@@ -1,0 +1,98 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "slack",
+  "version": "1.6.x",
+  "note": "Slack posts to Slack.com via an Incoming Webhook. Config object slack.settings: slack_webhook_url (required), slack_channel, slack_username, slack_icon_type/emoji/url, slack_link_names, slack_queue_messages. Settings form slack.admin_settings at /admin/config/services/slack/config; test form slack.admin_test. Service slack.slack_service (Slack/SlackInterface): deliverMessage() (queues or sends per slack_queue_messages), sendMessage() (immediate), queueMessage() (enqueue to slack_message QueueWorker). Rules action rules_slack_send_message. No own permissions/Drush/plugin-types. Because a real webhook/token the agent won't have is required to actually deliver, ALL evals are grounded in the module's own slack.settings config — no message is ever sent to Slack.",
+  "evals": [
+    {
+      "id": "slack-send-from-code",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "On a Drupal site with the slack module, which service and method do I call from custom code to send a message to Slack, and what is the difference between deliverMessage(), sendMessage() and queueMessage()?",
+      "must_contain_any": [
+        "slack.slack_service",
+        "deliverMessage",
+        "sendMessage",
+        "queueMessage"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Use the slack.slack_service service (Slack/SlackInterface). deliverMessage() honours the slack_queue_messages setting (queues or sends), sendMessage() posts immediately via the webhook, queueMessage() enqueues to the slack_message queue worker for cron. All take ($message, $channel='', $username='', $webhook_url=NULL)."
+    },
+    {
+      "id": "slack-webhook-config",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "What does the slack module need to actually deliver messages, where is that configured (config object + route), and what permission guards it?",
+      "must_contain_any": [
+        "slack_webhook_url",
+        "slack.settings",
+        "/admin/config/services/slack",
+        "webhook"
+      ],
+      "must_not_contain": [],
+      "expected_output": "It needs an Incoming Webhook URL stored as slack.settings.slack_webhook_url, set on the Slack configuration form at /admin/config/services/slack/config (route slack.admin_settings), guarded by the 'administer site configuration' permission. Without a webhook nothing is delivered."
+    },
+    {
+      "id": "slack-rules-action",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "Can a site builder post to Slack from the Rules module using the slack module without writing code? What is the Rules action's id/label?",
+      "must_contain_any": [
+        "rules_slack_send_message",
+        "Send message to Slack",
+        "Rules"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Yes: the module ships a Rules action 'Send message to Slack' (id rules_slack_send_message, category Slack) with Message/Channel/User name context, so you can post to Slack from a Rules reaction. It requires the drupal/rules module."
+    },
+    {
+      "id": "slack-which-channel",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "On this Drupal site the slack module is configured. Inspect the live slack configuration and report the default channel and bot username it will post as.",
+      "must_contain_any": [
+        "#ops-intro"
+      ],
+      "must_not_contain": [],
+      "expected_output": "slack.settings has slack_channel = '#ops-intro' and slack_username = 'IntroBot'. Discoverable via `drush cget slack.settings` (slack_channel, slack_username).",
+      "setup": "agent-module-documentation/evaluation/verify/slack-settings-intro-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/slack-settings-intro-cleanup.sh"
+    },
+    {
+      "id": "slack-which-webhook",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "On this Drupal site the slack module is configured with an incoming webhook. Inspect the live slack configuration and report the webhook host/URL it will post to.",
+      "must_contain_any": [
+        "hooks.slack.com"
+      ],
+      "must_not_contain": [],
+      "expected_output": "slack.settings.slack_webhook_url is set to https://hooks.slack.com/services/T00INTRO/B00INTRO/introplaceholder (host hooks.slack.com). Discoverable via `drush cget slack.settings slack_webhook_url`.",
+      "setup": "agent-module-documentation/evaluation/verify/slack-settings-intro-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/slack-settings-intro-cleanup.sh"
+    },
+    {
+      "id": "slack-configure-webhook",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, configure the slack module to post to the channel #slack-task as the bot 'TaskBot' using the incoming webhook https://hooks.slack.com/services/T00000000/B00000000/taskplaceholdertoken, and enable message queueing so messages are sent on cron. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/slack-configure-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/slack-configure-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/slack-configure-cleanup.sh",
+      "expected_output": "slack.settings has slack_webhook_url set to the given hooks.slack.com URL, slack_channel = '#slack-task', slack_username = 'TaskBot', and slack_queue_messages = true (set via the settings form or config factory)."
+    },
+    {
+      "id": "slack-configure-webhook-layman",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "site-owner",
+      "prompt": "I want my Drupal site to drop messages into our Slack #slack-task channel as a bot called TaskBot. Here is the Slack incoming webhook address: https://hooks.slack.com/services/T00000000/B00000000/taskplaceholdertoken . Please set that up, and make it send the messages in the background (on cron) rather than instantly. Save it live.",
+      "reset": "agent-module-documentation/evaluation/verify/slack-configure-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/slack-configure-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/slack-configure-cleanup.sh",
+      "expected_output": "Same end state as the expert phrasing: slack.settings webhook set to the given URL, slack_channel '#slack-task', slack_username 'TaskBot', slack_queue_messages true."
+    }
+  ]
+}

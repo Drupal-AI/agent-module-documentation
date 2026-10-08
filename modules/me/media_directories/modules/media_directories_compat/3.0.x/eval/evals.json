@@ -1,0 +1,95 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "media_directories_compat",
+  "version": "3.0.x",
+  "note": "The submodule is one filter plugin: Drupal\\media_directories_compat\\Plugin\\Filter\\LegacyEntityEmbed, id media_directories_legacy_embed, title 'Legacy entity embed compatibility', TYPE_TRANSFORM_REVERSIBLE, weight 80, one setting inline_display_modes (schema filter_settings.media_directories_legacy_embed). It matches //drupal-entity[@data-entity-type=\"media\" and data-entity-uuid non-empty], derives a view mode only from a data-entity-embed-display of the form 'view_mode:media.<mode>', converts to <drupal-media> carrying data-view-mode plus data-width/data-height (only when image_width and image_height are set and image_style is empty), and copies every attribute except data-entity-type/data-entity-uuid and CONSUMED_ATTRIBUTES (data-entity-embed-display, data-entity-embed-display-settings, data-embed-button). When the derived view mode is listed in inline_display_modes the node instead becomes an <a href=\"file url\" data-entity-type=\"media\" data-entity-uuid=\"…\">label</a>, and is removed outright if the media or its file is gone. It must run before core's media_embed filter. No settings page, permissions, services or config object. Medium cases read live filter settings and run the real filter; hard cases assert live config plus real markup conversion. Artifacts are namespaced mdc_* and removed by cleanup.",
+  "evals": [
+    {
+      "id": "media_directories_compat-filter-id",
+      "mode": "recipe",
+      "prompt": "I am migrating a Drupal site away from entity_embed and my old content is full of <drupal-entity> tags. Which filter does media_directories_compat provide to keep those rendering, what is its plugin id, and where must it sit in the text format's processing order?",
+      "must_contain_any": [
+        "media_directories_legacy_embed"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The filter is 'Legacy entity embed compatibility', plugin id media_directories_legacy_embed (class LegacyEntityEmbed, TYPE_TRANSFORM_REVERSIBLE, default weight 80). It converts <drupal-entity data-entity-type=\"media\" …> tags into core <drupal-media> tags at render time without touching stored content, so it must run BEFORE core's 'Embed media' (media_embed) filter — i.e. with a lower weight — because media_embed is what actually renders the <drupal-media> tags it produces.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "media_directories_compat-inline-modes",
+      "mode": "recipe",
+      "prompt": "What does the inline_display_modes setting of the media_directories_compat legacy embed filter do, and what markup does a matching embed produce? What happens if the referenced media entity no longer exists?",
+      "must_contain_any": [
+        "inline_display_modes",
+        "<a"
+      ],
+      "must_not_contain": [],
+      "expected_output": "inline_display_modes is a list of view-mode ids. When the view mode derived from data-entity-embed-display (the part after 'view_mode:media.') is in that list, convertToLink() replaces the <drupal-entity> with an anchor: <a href=\"{file url}\" data-entity-type=\"media\" data-entity-uuid=\"{uuid}\">{media label}</a>, built from the media source's file. This is intended for legacy document embeds. If the media cannot be loaded by UUID, or its source field holds no FileInterface, the node is removed from the DOM entirely rather than rendering broken markup.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "media_directories_compat-attributes",
+      "mode": "recipe",
+      "prompt": "When media_directories_compat converts a legacy <drupal-entity> media embed into <drupal-media>, which attributes are dropped, which are preserved, and under what condition does it add data-width and data-height?",
+      "must_contain_any": [
+        "data-entity-embed-display",
+        "data-embed-button",
+        "CONSUMED_ATTRIBUTES"
+      ],
+      "must_not_contain": [],
+      "expected_output": "LegacyEntityEmbed::CONSUMED_ATTRIBUTES lists the three dropped attributes: data-entity-embed-display, data-entity-embed-display-settings and data-embed-button. data-entity-type and data-entity-uuid are re-set on the new tag; every other attribute (data-align, data-caption, class, …) is copied verbatim. data-view-mode is added when a view mode was derived from a 'view_mode:media.<mode>' display plugin. data-width and data-height are added only when the decoded display settings contain both image_width and image_height AND no image_style — those attributes are what media_directories_image_resize consumes.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "media_directories_compat-known-inline",
+      "mode": "introspection",
+      "prompt": "On this Drupal site a text format has the media_directories_compat 'Legacy entity embed compatibility' filter enabled. Inspect the live configuration and tell me which display modes are configured to be converted into inline file links rather than <drupal-media> tags.",
+      "must_contain_any": [
+        "teaser"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Two view modes are configured as inline: 'default' and 'teaser'. They live in filter.format.mdc_eval_format → filters.media_directories_legacy_embed.settings.inline_display_modes (readable with drush cget). The filter is enabled at weight 0, before media_embed at weight 100.",
+      "setup": "agent-module-documentation/evaluation/verify/media_directories_compat-known-inline-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/media_directories_compat-known-inline-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "media_directories_compat-convert-live",
+      "mode": "introspection",
+      "prompt": "This Drupal site has a text format mdc_live_format with the media_directories_compat legacy embed filter enabled, and an image media item named 'MDC live media'. Using that media item's UUID, run the filter on the live site over a legacy tag that has data-entity-embed-display=\"view_mode:media.full\", data-entity-embed-display-settings='{\"image_width\":300,\"image_height\":200}' and data-align=\"center\", and show me exactly what markup comes back.",
+      "must_contain_any": [
+        "data-width=\"300\"",
+        "data-width='300'",
+        "data-width=300"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The <drupal-entity> becomes <drupal-media data-entity-type=\"media\" data-entity-uuid=\"<uuid>\" data-view-mode=\"full\" data-width=\"300\" data-height=\"200\" data-align=\"center\"></drupal-media>. The view mode comes from the 'view_mode:media.' prefix, data-width/data-height come from image_width/image_height because no image_style was set, data-align is copied through, and the consumed data-entity-embed-display / data-entity-embed-display-settings attributes are dropped.",
+      "setup": "agent-module-documentation/evaluation/verify/media_directories_compat-convert-live-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/media_directories_compat-convert-live-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "media_directories_compat-enable-filter",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "This Drupal site has a text format with the machine name mdc_task_format that already has core's 'Embed media' filter enabled. Old content in that format still uses entity_embed-style <drupal-entity> media tags. Using media_directories_compat, make those legacy tags render as core media embeds, and place the filter correctly in the processing order. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/media_directories_compat-enable-filter-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/media_directories_compat-enable-filter-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/media_directories_compat-enable-filter-cleanup.sh",
+      "expected_output": "Enable filters.media_directories_legacy_embed on filter.format.mdc_task_format with a weight LOWER than media_embed's (e.g. 0 vs 100) so it runs first. Processing <drupal-entity data-entity-type=\"media\" data-entity-uuid=\"…\" data-entity-embed-display=\"view_mode:media.full\" data-align=\"center\"> then yields <drupal-media …  data-view-mode=\"full\" data-align=\"center\"> with the data-entity-embed-display attribute consumed."
+    },
+    {
+      "id": "media_directories_compat-inline-link",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, configure the text format mdc_inline_format so that legacy <drupal-entity> media embeds are handled by media_directories_compat, with one twist: embeds whose legacy display mode was the media 'default' view mode must come out as plain download links to the file instead of rendered media, while embeds using the 'full' view mode must still become normal media embeds. Apply it to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/media_directories_compat-inline-link-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/media_directories_compat-inline-link-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/media_directories_compat-inline-link-cleanup.sh",
+      "expected_output": "Enable filters.media_directories_legacy_embed on filter.format.mdc_inline_format with weight lower than media_embed and settings.inline_display_modes = ['default']. LegacyEntityEmbed::convertToLink() then turns data-entity-embed-display=\"view_mode:media.default\" embeds into <a href=\"{file url}\" data-entity-type=\"media\" data-entity-uuid=\"…\">{label}</a>, while view_mode:media.full embeds still become <drupal-media data-view-mode=\"full\">."
+    }
+  ]
+}

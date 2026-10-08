@@ -1,0 +1,95 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "media_directories",
+  "version": "3.0.x",
+  "note": "The base media_directories module adds a `directory` entity-reference base field to the media entity type (handler media_directory:default, target taxonomy_term), whose target vocabulary comes from the single config object media_directories.settings (keys directory_taxonomy, all_files_in_root). It has no permissions, no Drush commands and no plugin types of its own; it provides one selection handler (DirectorySelection), one Views filter (media_directory) and one Views argument (media_directory) registered onto media_field_data.directory by hook_views_data_alter(). MediaDirectoryRoot::VALUE is -1 (a request-time sentinel; hook_media_presave() nulls any target id <= 0, so 'root' is stored as NULL). hook_install() injects an exposed `directory` filter into the media_library and media views. Changing directory_taxonomy requires a full cache flush because the base field definition depends on it — the settings form calls drupal_flush_all_caches(). Every medium/hard case is grounded in that real config, those real plugin ids and the real base field; all site artifacts are namespaced md_eval_* / md_task_* / md_view_* and restored by cleanup.",
+  "evals": [
+    {
+      "id": "media_directories-where-stored",
+      "mode": "recipe",
+      "prompt": "How does the Drupal contrib module media_directories represent folders for Media entities, and where is the 'which vocabulary is the folder tree' choice stored? Give the config object name and the key.",
+      "must_contain_any": [
+        "media_directories.settings",
+        "directory_taxonomy"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Folders are taxonomy terms: media_directories adds a `directory` entity-reference base field to the media entity type via hook_entity_base_field_info(), targeting taxonomy_term through its own selection handler media_directory:default. Which vocabulary counts as the folder tree is the single config value media_directories.settings:directory_taxonomy (a vocabulary machine name); the companion key all_files_in_root (boolean, default false) decides whether the Root directory shows only unfiled media or everything. Set it at /admin/config/media/media_directories (route media_directories.config_form).",
+      "difficulty": "easy"
+    },
+    {
+      "id": "media_directories-root-value",
+      "mode": "recipe",
+      "prompt": "In media_directories, what value represents the 'Root' directory when it is passed to the module's Views contextual filter, why is that value used instead of 0, and what is actually stored in the database for a media item that sits in the root?",
+      "must_contain_any": [
+        "-1",
+        "MediaDirectoryRoot"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Drupal\\media_directories\\MediaDirectoryRoot::VALUE is -1. The class comment says 0 is avoided because it would be treated as an empty value in various places (e.g. the Views filter). -1 is only a request/argument sentinel: MediaDirectoriesHooks::mediaPresave() sets the field to NULL whenever the incoming target_id is <= 0, so a root media item is stored with directory = NULL, and MediaDirectoryArgument::query() turns the -1 argument into 'directory IS NULL' (OR'ed with IS NOT NULL when all_files_in_root is on).",
+      "difficulty": "easy"
+    },
+    {
+      "id": "media_directories-cache-flush",
+      "mode": "recipe",
+      "prompt": "I changed the media_directories directory vocabulary with `drush cset media_directories.settings directory_taxonomy my_vocab` on a Drupal 11 site, but media edit forms still offer terms from the old vocabulary. Why, and what extra step does the module's own settings form perform that drush cset does not?",
+      "must_contain_any": [
+        "cache",
+        "drupal_flush_all_caches",
+        "drush cr",
+        "rebuild"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The `directory` base field's handler_settings.target_bundles are built from media_directories.settings inside hook_entity_base_field_info(), and base field definitions are cached. MediaDirectoriesConfigForm::submitForm() (and createVocabulary()) therefore call drupal_flush_all_caches() whenever directory_taxonomy changes. A plain drush cset does not, so you must run `drush cr` yourself afterwards.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "media_directories-known-vocab",
+      "mode": "introspection",
+      "prompt": "This Drupal site has media_directories configured. Inspect the running site and tell me: which taxonomy vocabulary is currently acting as the media directory tree, and what does the Root directory show to editors right now — only unfiled media, or every media item?",
+      "must_contain_any": [
+        "md_eval_dirs"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The vocabulary is md_eval_dirs (media_directories.settings:directory_taxonomy = md_eval_dirs), and all_files_in_root is TRUE, so the Root directory shows EVERY media item, not just unfiled ones (the exposed Views filter's 'All' option is even relabelled 'All directories' instead of 'Root directory'). This is readable with `drush cget media_directories.settings`, and confirmable from the media `directory` base field's handler_settings.target_bundles.",
+      "setup": "agent-module-documentation/evaluation/verify/media_directories-known-vocab-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/media_directories-known-vocab-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "media_directories-filed-media",
+      "mode": "introspection",
+      "prompt": "On this Drupal site, media_directories is configured and several media items have been filed into directories. Inspect the live content and tell me the names of every media item currently filed into the directory called 'Photos', and which directory the media item named 'MD eval brochure' is filed into.",
+      "must_contain_any": [
+        "MD eval photo A"
+      ],
+      "must_not_contain": [],
+      "expected_output": "'Photos' contains two media items: 'MD eval photo A' and 'MD eval photo B'. 'MD eval brochure' is filed into the 'Brochures' directory. Both folders are terms in the md_eval_filed vocabulary (media_directories.settings:directory_taxonomy). The location is the `directory` base field on media: look up the term id, then run an entity query with ->condition('directory', $tid), or read $media->get('directory')->target_id / ->entity->label().",
+      "setup": "agent-module-documentation/evaluation/verify/media_directories-filed-media-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/media_directories-filed-media-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "media_directories-setup-vocab",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site media_directories is installed but not wired up. Create a taxonomy vocabulary with the machine name `md_task_dirs` named 'MD task directories', configure media_directories to use it as the media directory tree, and set it up so the Root directory shows every media item rather than only unfiled ones. Then create a top-level folder 'Campaigns' with a child folder 'Spring' inside it. Make sure the change is live — the media `directory` base field must actually be bound to the new vocabulary.",
+      "reset": "agent-module-documentation/evaluation/verify/media_directories-setup-vocab-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/media_directories-setup-vocab-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/media_directories-setup-vocab-cleanup.sh",
+      "expected_output": "Create Vocabulary md_task_dirs; set media_directories.settings directory_taxonomy=md_task_dirs and all_files_in_root=true; create Term 'Campaigns' (parent 0) in md_task_dirs and Term 'Spring' with parent = Campaigns' tid; then rebuild caches (drush cr / drupal_flush_all_caches) so getBaseFieldDefinitions('media')['directory'] has handler media_directory:default and handler_settings.target_bundles containing md_task_dirs. Doing it through /admin/config/media/media_directories flushes caches automatically."
+    },
+    {
+      "id": "media_directories-directory-view",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, build a View with the machine name `md_task_media` that lists Media and is scoped to a directory using the contextual filter that the media_directories module registers on the media directory field. Give it a page display at the path `md-task-media/%` so that visiting /md-task-media/-1 shows the root directory. Apply it to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/media_directories-directory-view-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/media_directories-directory-view-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/media_directories-directory-view-cleanup.sh",
+      "expected_output": "A views.view.md_task_media config entity with base_table media_field_data (base_field mid), a page display whose display_options.path is 'md-task-media/%', and an argument entry on table media_field_data / field 'directory' with plugin_id 'media_directory' (the argument handler media_directories registers via hook_views_data_alter(), class MediaDirectoryArgument). -1 is MediaDirectoryRoot::VALUE, which the handler turns into 'directory IS NULL'."
+    }
+  ]
+}

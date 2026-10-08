@@ -1,0 +1,99 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "salesforce_oauth",
+  "version": "5.1.x",
+  "note": "Salesforce OAuth user-agent Provider adds the 'oauth' @SalesforceAuthProvider plugin; an OAuth authorization is a salesforce_auth config entity (provider=oauth, provider_settings consumer_key/consumer_secret/login_url) completed via the browser callback route salesforce.oauth_callback. Creating/authorizing an OAuth entity requires the external org + a browser (it cannot be scripted offline - saving one triggers the callback route), so the LOCAL, verifiable surface these evals use is salesforce.settings.salesforce_auth_provider (the suite's DEFAULT authorization id, which an OAuth authorization populates). Medium/hard cases set/read/clear that value, verified by pure config reads; cleanup restores it to '' (the shipped baseline).",
+  "evals": [
+    {
+      "id": "salesforce_oauth-what",
+      "mode": "recipe",
+      "prompt": "What authentication method does the Salesforce OAuth user-agent Provider add, and how does it differ from the JWT provider?",
+      "must_contain_any": [
+        "oauth",
+        "interactive",
+        "user-agent",
+        "browser",
+        "consumer"
+      ],
+      "must_not_contain": [],
+      "expected_output": "It adds the interactive OAuth user-agent flow (auth provider id 'oauth'): an admin authorizes Drupal against a Salesforce connected app in the browser, and the access/refresh token is stored. JWT, by contrast, is unattended server-to-server auth using a signing key.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "salesforce_oauth-settings",
+      "mode": "recipe",
+      "prompt": "When setting up an OAuth Salesforce authorization, what provider settings do you configure, and what route/callback completes the flow?",
+      "must_contain_any": [
+        "consumer_key",
+        "consumer_secret",
+        "login_url",
+        "oauth_callback",
+        "salesforce.auth_config"
+      ],
+      "must_not_contain": [],
+      "expected_output": "An oauth salesforce_auth stores provider_settings consumer_key, consumer_secret and login_url. You create it at the salesforce.auth_config UI; completing it redirects to Salesforce and back to the salesforce.oauth_callback route, storing the token.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "salesforce_oauth-default-setting",
+      "mode": "recipe",
+      "prompt": "Once I have created a Salesforce authorization, which setting tells the Salesforce suite to use it as the default authorization for API calls?",
+      "must_contain_any": [
+        "salesforce_auth_provider",
+        "salesforce.settings"
+      ],
+      "must_not_contain": [],
+      "expected_output": "salesforce.settings.salesforce_auth_provider holds the id of the default salesforce_auth authorization used by the client.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "salesforce_oauth-known-default",
+      "mode": "introspection",
+      "prompt": "On this Drupal site, which Salesforce authorization is configured as the default provider? Inspect the live Salesforce settings and give the id.",
+      "must_contain_any": [
+        "prod_oauth"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The default authorization is prod_oauth: salesforce.settings.salesforce_auth_provider = prod_oauth.",
+      "setup": "agent-module-documentation/evaluation/verify/salesforce_oauth-known-default-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/salesforce_oauth-known-default-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "salesforce_oauth-known-default-sandbox",
+      "mode": "introspection",
+      "prompt": "On this Drupal site, inspect the Salesforce settings and state the id of the currently selected default Salesforce authorization provider.",
+      "must_contain_any": [
+        "sandbox_oauth"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The default authorization id is sandbox_oauth: salesforce.settings.salesforce_auth_provider = sandbox_oauth.",
+      "setup": "agent-module-documentation/evaluation/verify/salesforce_oauth-default-empty-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/salesforce_oauth-default-empty-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "salesforce_oauth-set-default",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, set the Salesforce suite's default authorization provider to the authorization with id my_oauth. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/salesforce_oauth-set-default-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/salesforce_oauth-set-default-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/salesforce_oauth-set-default-cleanup.sh",
+      "expected_output": "salesforce.settings.salesforce_auth_provider is set to my_oauth."
+    },
+    {
+      "id": "salesforce_oauth-clear-default",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site the Salesforce default authorization provider is set to a stale id (stale_oauth) that no longer exists. Clear it so that no default authorization is selected (empty). Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/salesforce_oauth-clear-default-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/salesforce_oauth-clear-default-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/salesforce_oauth-clear-default-cleanup.sh",
+      "expected_output": "salesforce.settings.salesforce_auth_provider is set to an empty string (no default provider)."
+    }
+  ]
+}

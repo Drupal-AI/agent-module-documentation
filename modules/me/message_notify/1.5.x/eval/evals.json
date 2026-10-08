@@ -1,0 +1,100 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "message_notify",
+  "version": "1.5.x",
+  "note": "Message Notify is a developer notification framework for the Message module. No admin UI (configure=null), no permissions, no Drush, no config schema. Entry point: the message_notify.sender service (MessageNotifier::send($message, $options, $notifier_name='email')). Notifiers are @Notifier plugins in Plugin/Notifier extending MessageNotifierBase (built-in 'email'; 'sms' is an unregistered stub). The module installs Message view modes mail_subject/mail_body and, on new message-bundle creation, per-bundle entity view displays (subject shows partial_0, body shows partial_1). Medium cases inspect real config produced by the module: the mail_body display's rendered partial for a created bundle, and a known message template's subject text. Hard cases build verifiable live state: create a notification bundle (message template) - verified by the template plus message_notify's auto-created mail_body display - and send a notification via message_notify.sender, verified by the message the email notifier saves on success (save on success defaults TRUE).",
+  "evals": [
+    {
+      "id": "message_notify-send-service",
+      "mode": "recipe",
+      "prompt": "Using the Drupal Message Notify module, how do I programmatically send an email notification for a Message entity? Name the service and the method, and how I target a specific recipient address.",
+      "must_contain_any": [
+        "message_notify.sender",
+        "->send(",
+        "send(",
+        "'mail'",
+        "\"mail\""
+      ],
+      "must_not_contain": [],
+      "expected_output": "Call the message_notify.sender service: \\Drupal::service('message_notify.sender')->send($message, $options, 'email'). The notifier defaults to 'email'; pass ['mail' => 'user@example.com'] in $options to send to a specific address, otherwise it uses the message owner's email.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "message_notify-view-modes",
+      "mode": "recipe",
+      "prompt": "The Message Notify email notifier renders a message into a subject and a body. Which two Message entity view modes does it use for that, and (by default) which text partial ends up as the subject vs the body?",
+      "must_contain_any": [
+        "mail_subject",
+        "mail_body",
+        "partial_0",
+        "partial_1"
+      ],
+      "must_not_contain": [],
+      "expected_output": "It uses the mail_subject and mail_body view modes (both auto-created by the module). By default the subject display shows partial_0 (the first message text delta) and the body display shows partial_1 (the second), so the first line becomes the email subject and the rest the body.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "message_notify-custom-notifier",
+      "mode": "recipe",
+      "prompt": "I want to add a custom delivery channel (e.g. Slack or push) to Message Notify. What plugin type and base class do I use, where does the plugin live, and which method must I implement?",
+      "must_contain_any": [
+        "@Notifier",
+        "MessageNotifierBase",
+        "deliver",
+        "Plugin/Notifier"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Create a @Notifier-annotated plugin in src/Plugin/Notifier/ extending MessageNotifierBase and implement deliver(array $output) (output is keyed by the view modes declared in the annotation's viewModes). Optionally override access(). The notifier plugin manager is plugin.message_notify.notifier.manager and definitions can be altered via hook_message_notifier_info_alter().",
+      "difficulty": "easy"
+    },
+    {
+      "id": "message_notify-body-display-partial",
+      "mode": "introspection",
+      "prompt": "On this Drupal site a Message template (bundle) named mn_alert exists, and Message Notify auto-created its notification view displays. Inspect the live 'mail_body' entity view display for the mn_alert message bundle and state which message text partial field it renders in its content region.",
+      "must_contain_any": [
+        "partial_1"
+      ],
+      "must_not_contain": [],
+      "expected_output": "It renders partial_1: core.entity_view_display.message.mn_alert.mail_body has partial_1 in its content region (partial_0 is hidden). This is what message_notify_entity_bundle_create() sets up for the body view mode.",
+      "setup": "agent-module-documentation/evaluation/verify/message_notify-body-display-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/message_notify-body-display-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "message_notify-known-subject",
+      "mode": "introspection",
+      "prompt": "This site has a Message template mn_welcome used for a welcome notification. Inspect its live configuration and give the exact subject line text (the first message text partial) that Message Notify would render as the email subject.",
+      "must_contain_any": [
+        "MN Welcome Subject XYZ"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The subject text is 'MN Welcome Subject XYZ': message.template.mn_welcome has text[0].value = 'MN Welcome Subject XYZ', which the mail_subject view mode (partial_0) renders as the email subject.",
+      "setup": "agent-module-documentation/evaluation/verify/message_notify-known-text-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/message_notify-known-text-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "message_notify-create-bundle",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, create a Message template (message bundle) with machine name mn_task and label 'MN Task' that has a subject text and a body text, so that Message Notify can send email notifications for it. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/message_notify-create-template-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/message_notify-create-template-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/message_notify-create-template-cleanup.sh",
+      "expected_output": "A message_template config entity mn_task exists (message.template.mn_task) with two text partials; because a new message bundle was created, message_notify auto-generated core.entity_view_display.message.mn_task.mail_body (rendering partial_1) and .mail_subject (rendering partial_0)."
+    },
+    {
+      "id": "message_notify-send-notification",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site there is a Message template mn_send. Using the Message Notify module, create a Message of that template and send it as an email notification to the address dev@example.com. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/message_notify-send-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/message_notify-send-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/message_notify-send-cleanup.sh",
+      "expected_output": "Create a Message with template mn_send and call \\Drupal::service('message_notify.sender')->send($message, ['mail' => 'dev@example.com'], 'email'). The email notifier's default 'save on success' saves the message after a successful send, so a persisted Message of template mn_send exists as evidence."
+    }
+  ]
+}

@@ -1,0 +1,92 @@
+<!-- SPDX-License-Identifier: GPL-2.0-or-later -->
+# Servers, models, backends & configuration
+
+Source: `web/modules/contrib/ai_provider_universal/`. This is the token-cheap map of how the
+`universal` provider is configured and operated. Cite these before reading source.
+
+## Install / enable
+
+`composer require drupal/ai_provider_universal` then `drush en ai_provider_universal`. Requires
+`drupal/ai` ^1.3 and `drupal/key` (both hard deps). `ai_provider_universal.install` defines one DB
+table, `ai_provider_universal_usage` (per-model daily counters: `model_id`, `day` YYYYMMDD, `requests`,
+`input_tokens`, `output_tokens`; PK `model_id`+`day`). Update hooks `10101`–`10103` add the usage table,
+migrate the old `__` model-id separator to `.`, and null out negative "dynamic pricing" cost sentinels.
+
+## The two config entities
+
+### `ai_universal_server` — `src/Entity/AiUniversalServer.php`
+Config entity, id `ai_universal_server`, config_prefix `server` (config names
+`ai_provider_universal.server.*`), `admin_permission: 'administer ai providers'`,
+`route_provider: AdminHtmlRouteProvider`. Managed at `/admin/config/ai/providers/universal`
+(collection), `/add`, `/{id}`, `/{id}/delete`. Form `AiUniversalServerForm`, list builder
+`AiUniversalServerListBuilder`. Exported / schema keys (`config/schema/ai_provider_universal.schema.yml`):
+
+- `backend` — the `AiServerBackend` plugin id (e.g. `openai_compatible`, `ollama`, `openrouter`,
+  `anthropic`).
+- `host_name`, `port` — assemble the base URI (each backend's `getBaseUri()` decides the exact form).
+- `api_key` — **a Key entity id**, resolved via `key.repository` at call time; never a raw secret.
+- `timeout` — request timeout seconds (default 600).
+- `operation_types` — restrict which AI operation types this server serves.
+- `model_filter` — allow/deny filter over discovered model ids (`src/Utility/ModelFilter.php`).
+- `daily_request_limit`, `daily_token_limit` — per-server daily caps (empty = unlimited).
+- `alert_threshold` — usage % that fires an alert log/event.
+- `limit_grace` — % a server may overshoot before it is blocked (empty/0 = hard stop).
+
+### `ai_universal_model` — `src/Entity/AiUniversalModel.php`
+Config entity, id `ai_universal_model`, config_prefix `model`, same admin permission. Collection at
+`/admin/config/ai/providers/universal/models`. Models are normally created by discovery, not by hand.
+Entity id is **`server.model`** (dot-separated) so AI core's `provider__model` option parsing and
+`ai_search` keep working. Exported / schema keys:
+
+- `server_id`, `raw_model_id` — owning server + the id the service knows.
+- `detected_operation_types` (from the backend) and `operation_types` (manual override).
+- `cost_input`, `cost_output` — USD per 1M tokens (nullable = unknown).
+- `quality_tier` (1–5), `context_length`, `reasoning` (none/low/medium/high).
+- `supported_features` — capability tags (tools, reasoning, json_mode, …).
+- `sampling` — `temperature`, `top_p`, `frequency_penalty`, `presence_penalty` (absent = server default).
+- `extra_params` — arbitrary provider-native params merged into every chat payload (schema `type: ignore`).
+
+Discovery defaults come from `definitions/model_defaults.yml` (only fill unset fields; override via
+`$settings['ai_provider_universal_model_defaults']`); `definitions/extra_params.yml` supplies the
+extra-param presets; `definitions/api_defaults.yml` holds operation input/output defaults.
+
+## The provider plugin — `src/Plugin/AiProvider/UniversalProvider.php`
+
+`#[AiProvider(id: 'universal', label: 'Universal')]`, extends `OpenAiBasedProviderClientBase`,
+implements `ReRankInterface`, `ModerationInterface`, `TextToImageInterface` (chat + embeddings from the
+base). It loads the server for a requested model, resolves the Key value via `keyRepository`, builds a
+Guzzle client through `http_client_factory` with the server timeout, and dispatches the call — over the
+OpenAI REST path by default, or via a backend's `AiInferenceBackendInterface::doChat()` for native
+protocols. Around every call it applies: a pre-call gate + model swap (`ModelPreCallEvent`), per-server
+usage-limit checks (delegated to the router submodule's `limits` service when present), usage recording
+via `UsageTracker`, and `ModelPostCallEvent`. Moderation responses are parsed by
+`src/Models/Moderation/LlamaGuard3.php` and `ShieldGemma.php`.
+
+## Services
+
+- `UsageTracker` (`src/Service/UsageTracker.php`) — increments/reads the `ai_provider_universal_usage`
+  table for per-model daily requests and token counts.
+- `ModelCatalog` (`src/Service/ModelCatalog.php`) — runs backend discovery and persists
+  `ai_universal_model` entities (dispatches `ModelsDiscoveredEvent`).
+- `AiServerBackendManager` — the plugin manager (see [api/backend-plugins.md](../api/backend-plugins.md)).
+
+## Routes & permissions
+
+The module ships **no** `.routing.yml` routes and **no** `.permissions.yml`. All server/model admin
+routes are auto-generated by `AdminHtmlRouteProvider` from the entity link definitions and gated by the
+AI core permission **`administer ai providers`**. Menu link `AI Servers` sits under `ai.admin_providers`;
+an "Add server" action link appears on the collection.
+
+## CLI — `src/Commands/UniversalCommands.php`
+
+- `drush aip:discover-models [server_id]` (aliases `aipdm`, `aip-discover`) — discover + persist models
+  for one or all servers.
+- `drush aip:chat …` — send a one-off chat to a configured model (smoke test).
+
+## Credentials & egress (operational notes)
+
+`api_key` is a Key entity id; the raw secret is fetched only at call time through the Key repository and
+is never written to logs (backend logs carry model/repo ids and error messages only). Prompt content is
+sent to the configured server, which for cloud backends means data egress and per-token cost — govern it
+with the per-server daily limits, the model filter, and (optionally) the router/governance submodules.
+Server base URIs are taken from admin-only config entities, never from request input.

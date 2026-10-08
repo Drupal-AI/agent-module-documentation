@@ -1,0 +1,80 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "user_redirect",
+  "version": "2.0.x",
+  "note": "User Redirect redirects users after login/logout to a per-role internal/external URL. All state lives in the schema-less config object user_redirect.settings (login.<role>.redirect_url + weight, logout.<role>.redirect_url + weight, ignore[], ignore_for{login,logout}); there is no config/install file so the object does not exist until the settings form is saved. Baseline on this site = config absent. Medium cases write known keys and read them back; hard cases delete the config (verify FAILS on the empty baseline) and require the agent to set the right key. Roles present on this site: anonymous, authenticated, content_editor, administrator.",
+  "evals": [
+    {
+      "id": "user_redirect-where-configured",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "On a Drupal 11 site I enabled the user_redirect module. Where do I configure where users go after login/logout, and where is that stored in config?",
+      "must_contain_any": ["user_redirect.settings", "/admin/people/users/redirect", "user_redirect.settings form", "login", "logout"],
+      "must_not_contain": [],
+      "expected_output": "Configure it on the settings form at /admin/people/users/redirect/form/settings (route user_redirect.settings, permission 'administer user redirect settings'). Values are stored in the user_redirect.settings config object under login.<role_id>.redirect_url/weight and logout.<role_id>.redirect_url/weight, plus ignore[] and ignore_for."
+    },
+    {
+      "id": "user_redirect-internal-vs-external",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "How does the user_redirect module actually perform the redirect for an internal path versus an external URL after login, and how does it choose when a user has several roles?",
+      "must_contain_any": ["destination", "TrustedRedirectResponse", "external", "role", "priority", "reverse"],
+      "must_not_contain": [],
+      "expected_output": "For an internal path it sets the request's 'destination' query parameter (core then redirects there); for an external URL (UrlHelper::isExternal) it sends a TrustedRedirectResponse immediately. When the user has several roles it reverses the roles and applies the first role that has a non-empty redirect_url (last role in the account's list wins)."
+    },
+    {
+      "id": "user_redirect-ignore-default",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "The user_redirect module has an 'Ignore paths' setting. What path does it ignore by default and why does that matter?",
+      "must_contain_any": ["/user/reset", "user/reset", "password reset", "one-time"],
+      "must_not_contain": [],
+      "expected_output": "The default ignore list contains /user/reset/* so that one-time login / password-reset links are not hijacked by the redirect. The ignore check runs only when ignore_for.login (or .logout) is enabled, matching the current path's alias against the patterns."
+    },
+    {
+      "id": "user_redirect-known-login",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "This Drupal site already has the user_redirect module configured. Inspect the live configuration and tell me where a user with the 'administrator' role will be redirected after they log in.",
+      "must_contain_any": ["/admin/content"],
+      "must_not_contain": [],
+      "expected_output": "The administrator role's login redirect is /admin/content (user_redirect.settings login.administrator.redirect_url = /admin/content).",
+      "setup": "agent-module-documentation/evaluation/verify/user_redirect-known-login-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/user_redirect-known-login-cleanup.sh"
+    },
+    {
+      "id": "user_redirect-ignore-paths",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "On this site, user_redirect is configured to skip the redirect on certain paths for login. Inspect the live configuration and list the ignore path patterns that are in effect.",
+      "must_contain_any": ["/promo/*", "/promo", "/user/reset/*"],
+      "must_not_contain": [],
+      "expected_output": "The ignore list is /user/reset/* and /promo/*, applied for login (user_redirect.settings ignore = [/user/reset/*, /promo/*], ignore_for.login enabled).",
+      "setup": "agent-module-documentation/evaluation/verify/user_redirect-ignore-paths-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/user_redirect-ignore-paths-cleanup.sh"
+    },
+    {
+      "id": "user_redirect-login-admin",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, use the user_redirect module to configure that users with the 'administrator' role are redirected to /admin/content immediately after they log in. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/user_redirect-login-admin-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/user_redirect-login-admin-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/user_redirect-login-admin-cleanup.sh",
+      "expected_output": "Set user_redirect.settings login.administrator.redirect_url to /admin/content (via the settings form at /admin/people/users/redirect/form/settings or drush config)."
+    },
+    {
+      "id": "user_redirect-logout-auth",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "site-owner",
+      "prompt": "On my Drupal site I want every logged-in (authenticated) user to be sent to the home page when they log out. Set this up using the user_redirect module.",
+      "reset": "agent-module-documentation/evaluation/verify/user_redirect-logout-auth-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/user_redirect-logout-auth-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/user_redirect-logout-auth-cleanup.sh",
+      "expected_output": "Set user_redirect.settings logout.authenticated.redirect_url to / (the front page) for the authenticated role."
+    }
+  ]
+}

@@ -1,0 +1,80 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "private_message",
+  "version": "3.0.x",
+  "note": "Private Message provides user-to-user private messaging. Real grounding: site settings live in the private_message.settings config object (keys include enable_notifications, notify_by_default, notify_when_using, number_of_seconds_considered_away=120, ban_mode=passive, ban_message, keys_send, create_message_label, save_message_label). Content entities: private_message (base table private_messages) and private_message_thread (base table private_message_threads, members user-reference + per-user access/delete history). Services: private_message.service (PrivateMessageServiceInterface: getThreadForMembers() creates a thread for a set of users, inbox/unread counts), private_message.thread_manager (PrivateMessageThreadManagerInterface::saveThread($message,$recipients,$thread) - the one-call way to post a message), private_message.ban_manager, private_message.mapper. Permissions: 'use private messaging system', 'delete private message thread for all', 'administer private messages', etc. Routes: /private-messages (private_message.private_message_page), /private-message/create. Medium/hard tiers are grounded in private_message.settings config and the thread/message entities via the services.",
+  "evals": [
+    {
+      "id": "private_message-settings-recipe",
+      "mode": "recipe",
+      "prompt": "Where does the Drupal Private Message module store its site-wide settings, and name a few of the settings it exposes.",
+      "must_contain_any": ["private_message.settings", "enable_notifications", "number_of_seconds_considered_away", "ban_mode", "keys_send"],
+      "must_not_contain": [],
+      "expected_output": "In the private_message.settings config object. Keys include enable_notifications, notify_by_default, notify_when_using, number_of_seconds_considered_away (default 120), ban_mode (default 'passive'), ban_message, keys_send, create_message_label, save_message_label, autofocus_enable, hide_recipient_field_when_prefilled.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "private_message-send-api-recipe",
+      "mode": "recipe",
+      "prompt": "How do I send a private message between users programmatically in the Private Message module — which service and method, and how is a thread found or created for a set of members?",
+      "must_contain_any": ["private_message.thread_manager", "saveThread", "getThreadForMembers", "private_message.service"],
+      "must_not_contain": [],
+      "expected_output": "Create a private_message entity (owner = sender, message body), then call private_message.thread_manager->saveThread($message, $recipients, $thread). If $thread is NULL it is loaded/created from $recipients via private_message.service->getThreadForMembers(array $members), which returns (creating if needed) the private_message_thread shared by exactly those users.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "private_message-access-recipe",
+      "mode": "recipe",
+      "prompt": "Which permission lets a Drupal user use the Private Message system, and what path is the private messages inbox served at?",
+      "must_contain_any": ["use private messaging system", "/private-messages", "private_message.private_message_page"],
+      "must_not_contain": [],
+      "expected_output": "The 'use private messaging system' permission (defined in private_message.permissions.yml) gates it. The inbox is at /private-messages (route private_message.private_message_page); creating a message is at /private-message/create.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "private_message-away-threshold-introspect",
+      "mode": "introspection",
+      "prompt": "On this Drupal site, Private Message has been configured with a non-default 'away' threshold (how many seconds of inactivity before a user is considered away from a thread). Inspect the live configuration and report that number of seconds.",
+      "must_contain_any": ["4242"],
+      "must_not_contain": [],
+      "expected_output": "It is 4242 seconds, stored at private_message.settings:number_of_seconds_considered_away (default is 120). Read it with drush config:get private_message.settings number_of_seconds_considered_away.",
+      "setup": "agent-module-documentation/evaluation/verify/private_message-away-threshold-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/private_message-away-threshold-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "private_message-ban-mode-introspect",
+      "mode": "introspection",
+      "prompt": "On this Drupal site, inspect the Private Message configuration and report the current user-blocking 'ban mode'.",
+      "must_contain_any": ["active"],
+      "must_not_contain": [],
+      "expected_output": "The ban mode is 'active' (the shipped default is 'passive'), stored at private_message.settings:ban_mode. Read it with drush config:get private_message.settings ban_mode.",
+      "setup": "agent-module-documentation/evaluation/verify/private_message-ban-mode-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/private_message-ban-mode-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "private_message-create-thread-execute",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site there are two users with emails pm_eval_alice@example.com and pm_eval_bob@example.com. Using the Private Message API, start a private message thread between exactly those two users containing a message whose body includes the text 'PM_EVAL'. Apply it to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/private_message-create-thread-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/private_message-create-thread-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/private_message-create-thread-cleanup.sh",
+      "expected_output": "Load the two users, create a private_message entity owned by one of them with a body containing 'PM_EVAL', then call private_message.thread_manager->saveThread($message, [$alice, $bob]). This creates a private_message_thread whose members are exactly those two users and adds the message. Verify finds that thread and a PM_EVAL message in it."
+    },
+    {
+      "id": "private_message-global-config-execute",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, turn OFF Private Message email notifications site-wide and set the 'considered away' threshold to 300 seconds. Apply the change to the live configuration.",
+      "reset": "agent-module-documentation/evaluation/verify/private_message-global-config-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/private_message-global-config-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/private_message-global-config-cleanup.sh",
+      "expected_output": "Set private_message.settings:enable_notifications to FALSE and number_of_seconds_considered_away to 300 (e.g. drush config:set private_message.settings enable_notifications 0 -y; drush config:set private_message.settings number_of_seconds_considered_away 300 -y). Verify checks enable_notifications === FALSE and away === 300."
+    }
+  ]
+}

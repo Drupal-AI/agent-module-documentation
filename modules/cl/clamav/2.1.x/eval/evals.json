@@ -1,0 +1,81 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "clamav",
+  "version": "2.1.x",
+  "note": "ClamAV's runtime behavior needs a live ClamAV daemon and infected test files, which are not present, so all cases are `recipe` (response-graded), probing scan modes, config keys, the service/result constants, the scannable hook, the Drush command, permission, and admin route.",
+  "evals": [
+    {
+      "id": "clamav-scan-modes",
+      "mode": "recipe",
+      "prompt": "What are the three ways the Drupal ClamAV module can connect to the ClamAV scanner, and which config key selects between them?",
+      "must_contain_any": ["scan_mode", "TCP/IP", "Unix socket", "executable"],
+      "must_not_contain": [],
+      "expected_output": "The `scan_mode` key in clamav.settings selects the backend: 0 = daemon over TCP/IP (default, DaemonTCPIP), 1 = local clamscan executable (Executable), 2 = daemon over a Unix socket (DaemonUnixSocket)."
+    },
+    {
+      "id": "clamav-daemon-defaults",
+      "mode": "recipe",
+      "prompt": "In the Drupal ClamAV module, what are the default hostname and port for the TCP/IP daemon scan mode, and which config keys hold them?",
+      "must_contain_any": ["mode_daemon_tcpip.hostname", "mode_daemon_tcpip.port", "3310", "localhost"],
+      "must_not_contain": [],
+      "expected_output": "Defaults are hostname `localhost` and port `3310`, stored in clamav.settings as `mode_daemon_tcpip.hostname` and `mode_daemon_tcpip.port`."
+    },
+    {
+      "id": "clamav-executable-mode",
+      "mode": "recipe",
+      "prompt": "I want the Drupal ClamAV module to use the local clamscan binary instead of a daemon. Which scan_mode value and which config keys do I set?",
+      "must_contain_any": ["scan_mode", "mode_executable.executable_path", "clamscan", "executable"],
+      "must_not_contain": [],
+      "expected_output": "Set scan_mode to 1 (Executable). Configure mode_executable.executable_path (default /usr/bin/clamscan) and optionally mode_executable.executable_parameters."
+    },
+    {
+      "id": "clamav-outage-action",
+      "mode": "recipe",
+      "prompt": "If the ClamAV service is unreachable when a user uploads a file to my Drupal site, how do I control whether the unscanned file is blocked or allowed?",
+      "must_contain_any": ["outage_action", "block unchecked", "allow unchecked"],
+      "must_not_contain": [],
+      "expected_output": "The `outage_action` key: 0 blocks unchecked files (default, fail-closed), 1 allows unchecked files through (fail-open)."
+    },
+    {
+      "id": "clamav-config-object-route",
+      "mode": "recipe",
+      "prompt": "Which Drupal config object stores the ClamAV module's settings, and at what admin path / permission is its settings form?",
+      "must_contain_any": ["clamav.settings", "/admin/config/media/clamav", "administer clamav"],
+      "must_not_contain": [],
+      "expected_output": "Config object clamav.settings; settings form at /admin/config/media/clamav (route clamav.admin_display), gated by the `administer clamav` permission."
+    },
+    {
+      "id": "clamav-scannable-hook",
+      "mode": "recipe",
+      "prompt": "In a custom Drupal module, which hook do I implement to stop ClamAV from scanning certain uploaded files (for example, images), and what should it return to exempt a file versus stay neutral?",
+      "must_contain_any": ["hook_clamav_file_is_scannable", "FILE_IS_NOT_SCANNABLE", "FILE_SCANNABLE_IGNORE"],
+      "must_not_contain": [],
+      "expected_output": "Implement hook_clamav_file_is_scannable(FileInterface $file); return Scanner::FILE_IS_NOT_SCANNABLE to exempt, Scanner::FILE_IS_SCANNABLE to force scanning, or Scanner::FILE_SCANNABLE_IGNORE to stay neutral."
+    },
+    {
+      "id": "clamav-scan-service",
+      "mode": "recipe",
+      "prompt": "How do I scan a Drupal File entity for viruses from custom code with the ClamAV module, and what result constant means the file is infected?",
+      "must_contain_any": ["\\Drupal::service('clamav')", "->scan(", "FILE_IS_INFECTED"],
+      "must_not_contain": [],
+      "expected_output": "Call the `clamav` service: \\Drupal::service('clamav')->scan($file). It returns Scanner::FILE_IS_CLEAN (0), Scanner::FILE_IS_INFECTED (1), or Scanner::FILE_IS_UNCHECKED (-1)."
+    },
+    {
+      "id": "clamav-scan-existing-files",
+      "mode": "recipe",
+      "prompt": "On a Drupal site that already has many uploaded files, which Drush command from the ClamAV module scans all existing managed files, and how do I change its batch size?",
+      "must_contain_any": ["clamav:scan-files", "cav-sf", "--batch-size"],
+      "must_not_contain": [],
+      "expected_output": "Run `drush clamav:scan-files` (alias cav-sf) to batch-scan all permanent managed files; use --batch-size=N to change the batch size (default 50)."
+    },
+    {
+      "id": "clamav-scheme-scanning",
+      "mode": "recipe",
+      "prompt": "By default, which files does the Drupal ClamAV module scan with respect to stream-wrapper schemes, and how is that decided?",
+      "must_contain_any": ["local", "remote", "overridden_schemes", "isSchemeScannable"],
+      "must_not_contain": [],
+      "expected_output": "By default local schemes (public/private/temporary) are scanned and remote schemes are not; Scanner::isSchemeScannable() computes local XOR overridden, where overridden_schemes inverts a scheme's default."
+    }
+  ]
+}

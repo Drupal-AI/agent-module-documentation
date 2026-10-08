@@ -1,0 +1,65 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "email_registration",
+  "version": "2.0.x",
+  "note": "Email Registration alters the core user forms to log in / register by email and auto-generates usernames. Cases are `recipe` (response-graded): they probe documented facts (the one setting, the generation pattern, the customization hook, the service, the bulk action) an agent would otherwise read source to answer; no site mutation.",
+  "evals": [
+    {
+      "id": "email-registration-login-by-email",
+      "mode": "recipe",
+      "prompt": "On a Drupal 11 site I want users to log in with their email address instead of a username using the Email Registration module. Do I need any configuration, and can I also allow logging in with either the email OR the username?",
+      "must_contain_any": ["login_with_username", "email_registration.settings"],
+      "must_not_contain": [],
+      "expected_output": "Login by email works out of the box (the login form's name field is validated by email via user_load_by_mail). To also allow either email or username, set login_with_username = true on the email_registration.settings config object (on the core Account settings form / entity.user.admin_form)."
+    },
+    {
+      "id": "email-registration-username-pattern",
+      "mode": "recipe",
+      "prompt": "When someone registers with just an email like jane.doe@example.com, what username does the Email Registration module store, and how are collisions handled?",
+      "must_contain_any": ["strip_mail_and_cleanup", "before the @", "part of the email", "local part"],
+      "must_not_contain": [],
+      "expected_output": "It takes the part of the email before the @ (via email_registration_strip_mail_and_cleanup), cleans illegal characters, giving e.g. 'jane.doe'; email_registration_unique_username() suffixes _1, _2, ... to make it unique."
+    },
+    {
+      "id": "email-registration-customize-username-hook",
+      "mode": "recipe",
+      "prompt": "In a custom Drupal module I want to change the username that Email Registration auto-generates from the email address. Which hook do I implement (the current, non-deprecated one)?",
+      "must_contain_any": ["hook_email_registration_name_alter", "email_registration_name_alter"],
+      "must_not_contain": [],
+      "expected_output": "Implement hook_email_registration_name_alter(string &$newAccountName, UserInterface $account). The older hook_email_registration_name() is deprecated (removed in 3.0)."
+    },
+    {
+      "id": "email-registration-generator-service",
+      "mode": "recipe",
+      "prompt": "Which Email Registration service generates a unique placeholder username, and what does the generated value look like?",
+      "must_contain_any": ["email_registration.username_generator", "UsernameGenerator", "generateRandomUsername"],
+      "must_not_contain": [],
+      "expected_output": "The email_registration.username_generator service (Drupal\\email_registration\\UsernameGenerator); generateRandomUsername() returns 'email_registration_' followed by a UUID."
+    },
+    {
+      "id": "email-registration-bulk-action",
+      "mode": "recipe",
+      "prompt": "I already have existing users with custom usernames. How can I bulk-regenerate their usernames using Email Registration's own logic from the People admin page?",
+      "must_contain_any": ["Update username", "email_registration_update_username"],
+      "must_not_contain": [],
+      "expected_output": "Use the 'Update username (from email_registration)' bulk action (id email_registration_update_username) on the People view (/admin/people); it resets each user to a temporary email_registration_<uuid> name and re-saves, triggering regeneration in hook_user_presave."
+    },
+    {
+      "id": "email-registration-configure-route",
+      "mode": "recipe",
+      "prompt": "Where do I configure the Email Registration module — what admin route/path holds its settings, and does it add its own permissions?",
+      "must_contain_any": ["entity.user.admin_form", "/admin/config/people/accounts", "Account settings"],
+      "must_not_contain": [],
+      "expected_output": "There is no dedicated form; its option lives on the core Account settings form (route entity.user.admin_form, /admin/config/people/accounts). The module defines no permissions of its own."
+    },
+    {
+      "id": "email-registration-hidden-username-field",
+      "mode": "recipe",
+      "prompt": "With Email Registration enabled, who can still see and edit the username field on the registration/account form?",
+      "must_contain_any": ["change own username", "administer users"],
+      "must_not_contain": [],
+      "expected_output": "The username field is hidden (rendered as a value element) unless the user has 'change own username' (for their own account) or 'administer users'; otherwise it can be left blank and is auto-generated."
+    }
+  ]
+}

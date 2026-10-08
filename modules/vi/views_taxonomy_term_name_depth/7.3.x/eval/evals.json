@@ -1,0 +1,80 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "views_taxonomy_term_name_depth",
+  "version": "7.3.x",
+  "note": "Views Taxonomy Term Name Depth provides one Views contextual filter (argument) handler, `taxonomy_index_name_depth` (\"Has taxonomy term NAME (with depth)\", exposed as node_field_data.term_node_taxonomy_name_depth), matching nodes by taxonomy TERM NAME (via Pathauto's alias cleaner) with a configurable hierarchy depth; plus a companion default-argument plugin `taxonomy_tpid`. No settings form, no permissions, no Drush. Cases span three tiers: easy/recipe (response-graded facts about the plugin id and what it does), medium/introspection (a setup script builds a KNOWN view using the argument at a set depth, the agent inspects the live view config to answer, cleanup deletes the view), and hard/execution (reset clears state, the agent BUILDS a Content view whose contextual filter uses taxonomy_index_name_depth at depth 2, a verify script checks the live view config).",
+  "evals": [
+    {
+      "id": "vttnd-plugin-id",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "On a Drupal 11 site with the Views Taxonomy Term Name Depth module, what is the Views argument (contextual filter) plugin id it provides, and under what label does it appear when adding a contextual filter to a Content view?",
+      "must_contain_any": ["taxonomy_index_name_depth"],
+      "must_not_contain": [],
+      "expected_output": "The argument handler plugin id is `taxonomy_index_name_depth`, exposed on the node base table as the contextual filter \"Has taxonomy term NAME (with depth)\" (field node_field_data.term_node_taxonomy_name_depth)."
+    },
+    {
+      "id": "vttnd-what-it-does",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "What does the Views Taxonomy Term Name Depth module's contextual filter match on, and what does its 'depth' option do?",
+      "must_contain_any": ["name", "term name"],
+      "must_not_contain": [],
+      "expected_output": "It filters content by taxonomy TERM NAME (not term id, resolved via Pathauto's alias cleaner). The depth option walks the term hierarchy: a positive depth also includes nodes tagged with descendant/child terms, a negative depth includes ancestor/parent terms, and depth 0 matches only the exact term."
+    },
+    {
+      "id": "vttnd-name-not-id",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "How does the Views Taxonomy Term Name Depth contextual filter differ from Drupal core's 'Has taxonomy term ID (with depth)' filter, and which module must be installed for it to work?",
+      "must_contain_any": ["name", "pathauto"],
+      "must_not_contain": [],
+      "expected_output": "Core's filter keys off numeric term IDs; this module's `taxonomy_index_name_depth` argument accepts a human-readable term NAME in the URL. It requires the Pathauto module (a hard dependency) and uses pathauto.alias_cleaner to match cleaned names."
+    },
+    {
+      "id": "vttnd-known-view-depth",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "persona": "drupal-expert",
+      "prompt": "Inspect this running Drupal site (drush available). A View with machine id `eval_vttnd_known` exists and uses the Views Taxonomy Term Name Depth contextual filter. What DEPTH value is configured on that term-name-depth argument? Answer from the view's actual stored config.",
+      "setup": "agent-module-documentation/evaluation/verify/views_taxonomy_term_name_depth-known-view-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/views_taxonomy_term_name_depth-known-view-cleanup.sh",
+      "must_contain_any": ["3", "depth of 3", "depth is 3"],
+      "must_not_contain": [],
+      "expected_output": "The argument term_node_taxonomy_name_depth (plugin_id taxonomy_index_name_depth) on view eval_vttnd_known has depth = 3. Read from $view->get('display')['default']['display_options']['arguments']."
+    },
+    {
+      "id": "vttnd-known-view-plugin",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "persona": "drupal-expert",
+      "prompt": "Inspect this running Drupal site (drush available). For the View with machine id `eval_vttnd_known`, which Views argument PLUGIN handles its contextual filter, and what base table is the view built on? Answer from the live view config.",
+      "setup": "agent-module-documentation/evaluation/verify/views_taxonomy_term_name_depth-known-view-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/views_taxonomy_term_name_depth-known-view-cleanup.sh",
+      "must_contain_any": ["taxonomy_index_name_depth"],
+      "must_not_contain": [],
+      "expected_output": "The contextual filter uses plugin_id `taxonomy_index_name_depth` (field term_node_taxonomy_name_depth) and the view's base_table is node_field_data (Content)."
+    },
+    {
+      "id": "vttnd-build-view-depth2",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site (drush available), create a View with machine id `eval_vttnd_build` on the Content base table (node_field_data) and add a contextual filter that uses the Views Taxonomy Term Name Depth module's term-name-depth argument (plugin id taxonomy_index_name_depth, field term_node_taxonomy_name_depth) configured at DEPTH 2. Apply it to the live site config; don't just describe it. One-line summary.",
+      "reset": "agent-module-documentation/evaluation/verify/views_taxonomy_term_name_depth-build-view-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/views_taxonomy_term_name_depth-build-view-verify.sh",
+      "expected_output": "A View `eval_vttnd_build` (base_table node_field_data) exists with a contextual filter whose plugin_id is taxonomy_index_name_depth and depth is 2. Verified against the live view config."
+    },
+    {
+      "id": "vttnd-build-view-name-filter",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site (drush available), I want a Content listing whose URL argument is a taxonomy term NAME and that also includes content tagged with descendant terms TWO levels deep (children and grandchildren). Build a View with machine id `eval_vttnd_build` on the Content (node_field_data) base table using this site's 'Has taxonomy term NAME (with depth)' contextual filter, with its depth set to 2. Apply it to the live site; don't just describe it. One-line summary.",
+      "reset": "agent-module-documentation/evaluation/verify/views_taxonomy_term_name_depth-build-view-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/views_taxonomy_term_name_depth-build-view-verify.sh",
+      "expected_output": "A View `eval_vttnd_build` on node_field_data with a contextual filter using plugin_id taxonomy_index_name_depth at depth 2 (two hierarchy levels of descendants). Verified against live view config."
+    }
+  ]
+}

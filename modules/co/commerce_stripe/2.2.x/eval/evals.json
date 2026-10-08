@@ -1,0 +1,97 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "commerce_stripe",
+  "version": "2.2.x",
+  "note": "Commerce Stripe integrates Stripe with Drupal Commerce (^3). Two payment gateway plugins: stripe_payment_element (recommended, PaymentIntents + Payment Element) and legacy stripe (Card Element). Global config object commerce_stripe.settings (load_on_every_page, collect_user_fraud_signals, link_payments_remote_id) via /admin/commerce/config/stripe (route commerce_stripe.settings, perm 'administer commerce stripe'). Per-account config is a commerce_payment_gateway config entity, config name commerce_payment.commerce_payment_gateway.<id>, plugin config keys publishable_key/secret_key/mode/webhook_signing_secret/express_checkout.* (schema commerce_payment.commerce_payment_gateway.plugin.stripe_payment_element). Payment method type plugins: stripe_card, stripe_affirm, stripe_klarna, stripe_paypal, stripe_cashapp, stripe_us_bank_account, stripe_alipay, stripe_wechat_pay, stripe_link, stripe_amazon_pay. Events StripeEvents::PAYMENT_INTENT_CREATE/UPDATE/EXPRESS_CHECKOUT_SHIPPING_PROFILE_ALTER. Live Stripe API needs real keys, so all medium/hard cases are grounded in the LOCAL gateway config entity using test-mode placeholder keys (no Stripe call: saving the gateway does not hit the API). Submodule commerce_stripe_webhook_event documented separately.",
+  "evals": [
+    {
+      "id": "commerce_stripe-gateway-plugins",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "I'm setting up Stripe on a Drupal Commerce site with the commerce_stripe module. Which payment gateway plugin should I choose for the modern Stripe integration (PaymentIntents / Payment Element), and what is the other (legacy) plugin it provides?",
+      "must_contain_any": [
+        "stripe_payment_element",
+        "Payment Element"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Use the stripe_payment_element plugin ('Stripe Payment Element', PaymentIntents + Payment Element, recommended). The legacy plugin is 'stripe' ('Stripe Card Element', on-site Card Element)."
+    },
+    {
+      "id": "commerce_stripe-global-settings",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "Where are commerce_stripe's global (non-gateway) settings configured, and name at least one setting stored in its config object.",
+      "must_contain_any": [
+        "/admin/commerce/config/stripe",
+        "commerce_stripe.settings",
+        "load_on_every_page",
+        "collect_user_fraud_signals",
+        "link_payments_remote_id"
+      ],
+      "must_not_contain": [],
+      "expected_output": "At Commerce -> Configuration -> Stripe settings (/admin/commerce/config/stripe, route commerce_stripe.settings). The config object commerce_stripe.settings holds load_on_every_page, collect_user_fraud_signals, and link_payments_remote_id."
+    },
+    {
+      "id": "commerce_stripe-intent-event",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "With commerce_stripe, which event do I subscribe to so I can add custom metadata/attributes to the Stripe PaymentIntent before it is created?",
+      "must_contain_any": [
+        "commerce_stripe.payment_intent.create",
+        "PAYMENT_INTENT_CREATE",
+        "PaymentIntentCreateEvent"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Subscribe to StripeEvents::PAYMENT_INTENT_CREATE ('commerce_stripe.payment_intent.create'), which dispatches a PaymentIntentCreateEvent that lets you add/modify intent attributes and metadata before creation. (PAYMENT_INTENT_UPDATE lets you change metadata only.)"
+    },
+    {
+      "id": "commerce_stripe-gateway-plugin-introspect",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "This Commerce site has a Stripe payment gateway configured. Inspect the live configuration and tell me which commerce payment gateway plugin that gateway uses.",
+      "must_contain_any": [
+        "stripe_payment_element"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The gateway commerce_payment.commerce_payment_gateway.csstr_gw uses plugin: stripe_payment_element (drush config:get commerce_payment.commerce_payment_gateway.csstr_gw plugin).",
+      "setup": "agent-module-documentation/evaluation/verify/commerce_stripe-gateway-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/commerce_stripe-gateway-cleanup.sh"
+    },
+    {
+      "id": "commerce_stripe-publishable-key-introspect",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "On this site, a Stripe payment gateway is set up in test mode. Inspect the live gateway configuration and tell me the Stripe publishable key it is configured with.",
+      "must_contain_any": [
+        "pk_test_CSMED123"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The publishable key is pk_test_CSMED123, stored in the gateway's plugin configuration (commerce_payment.commerce_payment_gateway.csstr_gw -> configuration.publishable_key).",
+      "setup": "agent-module-documentation/evaluation/verify/commerce_stripe-gateway-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/commerce_stripe-gateway-cleanup.sh"
+    },
+    {
+      "id": "commerce_stripe-create-gateway",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Commerce site, create a Stripe payment gateway with the machine id 'csstr_hard' that uses the commerce_stripe 'Stripe Payment Element' plugin, is in test mode, and is configured with the test publishable key 'pk_test_HARD' and test secret key 'sk_test_HARD'. Apply it to the live site (no live Stripe call needed).",
+      "reset": "agent-module-documentation/evaluation/verify/commerce_stripe-create-gateway-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/commerce_stripe-create-gateway-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/commerce_stripe-create-gateway-cleanup.sh",
+      "expected_output": "A commerce_payment_gateway config entity 'csstr_hard' exists with plugin stripe_payment_element and plugin configuration publishable_key=pk_test_HARD (mode test, secret_key sk_test_HARD). Create it via PaymentGateway::create()/setPluginConfiguration()->save() or the Payment gateways admin form."
+    },
+    {
+      "id": "commerce_stripe-express-on-cart",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "This site has a Stripe Payment Element gateway with the machine id 'csstr_xc'. Express Checkout buttons are currently NOT shown on the shopping-cart page. Using commerce_stripe, configure that gateway to show the Express Checkout (Apple Pay / Google Pay) buttons on the cart page, and apply the change live.",
+      "reset": "agent-module-documentation/evaluation/verify/commerce_stripe-express-cart-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/commerce_stripe-express-cart-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/commerce_stripe-express-cart-cleanup.sh",
+      "expected_output": "The csstr_xc gateway's plugin configuration has express_checkout.enable_on_cart = true. Set it on the gateway config (getPlugin()->getConfiguration(), flip express_checkout.enable_on_cart, setPluginConfiguration()->save()) or tick 'Show Express Checkout buttons on the shopping cart page' on the gateway form."
+    }
+  ]
+}

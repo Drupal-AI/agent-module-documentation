@@ -1,0 +1,80 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "cms_content_sync",
+  "version": "3.2.x",
+  "note": "Content Sync syndicates entities between Drupal sites through an external content-sync.io Sync Core backend; there is no backend on this eval site, so all cases are grounded in the module's two config entities (cms_content_sync_pool, cms_content_sync_flow), its Drush commands, its plugin types and its permissions - NOT in live push/pull. Pool::create() and Flow::create() persist to config without contacting any backend. In 3.2.x the Pool config_export only includes id/label/backend_url; a Flow requires variant=simple (the only variant with a controller) or it throws on save.",
+  "evals": [
+    {
+      "id": "cms_content_sync-config-entities",
+      "mode": "recipe",
+      "prompt": "In the Drupal module cms_content_sync (Content Sync / content-sync.io), what are the two config entity types that model syndication, and what does each represent?",
+      "must_contain_any": ["Pool", "Flow"],
+      "must_not_contain": [],
+      "expected_output": "A Pool (cms_content_sync_pool) is the shared syndication channel (identified by a backend_url Sync Core URL); a Flow (cms_content_sync_flow) declares which entity types/bundles this site pushes or pulls and to/from which pools.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "cms_content_sync-register-command",
+      "mode": "recipe",
+      "prompt": "Using the cms_content_sync module's Drush commands, which command registers the current site with the Sync Core backend, and which command pushes a flow's entities?",
+      "must_contain_any": ["cms_content_sync:register", "csr", "cms_content_sync:push", "cs-push"],
+      "must_not_contain": [],
+      "expected_output": "drush cms_content_sync:register <environment_type> <contract> <space> <token> (alias csr) registers the site; drush cms_content_sync:push <flow_id> (alias cs-push) pushes a flow's entities. Other commands: cms_content_sync:pull, cms_content_sync:configuration-export (cse), cms_content_sync:reset-status-entities, cms_content_sync:check-entity-flags.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "cms_content_sync-plugin-types",
+      "mode": "recipe",
+      "prompt": "cms_content_sync serializes each entity and field during sync via plugins. What are the two plugin types it defines, and what is one bundled handler for each?",
+      "must_contain_any": ["entity handler", "field handler", "cms_content_sync_entity_handler", "cms_content_sync_field_handler", "EntityHandler", "FieldHandler"],
+      "must_not_contain": [],
+      "expected_output": "It defines cms_content_sync_entity_handler (annotation @EntityHandler; e.g. DefaultNodeHandler, DefaultMediaHandler, DefaultTaxonomyHandler) and cms_content_sync_field_handler (annotation @FieldHandler; e.g. DefaultFieldHandler, DefaultEntityReferenceHandler, DefaultParagraphsReferenceHandler). Handlers live in src/Plugin/cms_content_sync/entity_handler and .../field_handler.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "cms_content_sync-known-pool-url",
+      "mode": "introspection",
+      "prompt": "This Drupal site has a cms_content_sync Pool configured. Inspect the live configuration and report the backend (Sync Core) URL of the pool whose machine id is ccs_known_pool.",
+      "must_contain_any": ["https://known.content-sync.example"],
+      "must_not_contain": [],
+      "expected_output": "The Pool ccs_known_pool has backend_url https://known.content-sync.example (config cms_content_sync.pool.ccs_known_pool). Read it with drush cget cms_content_sync.pool.ccs_known_pool or Pool::load('ccs_known_pool')->backend_url.",
+      "setup": "agent-module-documentation/evaluation/verify/cms_content_sync-known-pool-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/cms_content_sync-known-pool-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "cms_content_sync-known-flow-variant",
+      "mode": "introspection",
+      "prompt": "This site has a cms_content_sync Flow with machine id ccs_known_flow. Inspect the live configuration and state that Flow's variant and its type.",
+      "must_contain_any": ["simple"],
+      "must_not_contain": [],
+      "expected_output": "The Flow ccs_known_flow has variant 'simple' and type 'both' (config cms_content_sync.flow.ccs_known_flow). Read it with drush cget cms_content_sync.flow.ccs_known_flow or Flow::load('ccs_known_flow').",
+      "setup": "agent-module-documentation/evaluation/verify/cms_content_sync-known-flow-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/cms_content_sync-known-flow-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "cms_content_sync-create-pool",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, create a cms_content_sync Pool config entity with machine id 'ccs_task_pool', label 'CCS Task Pool', and backend (Sync Core) URL 'https://task.content-sync.example'. Apply it to the live site. Do not attempt to contact any backend.",
+      "reset": "agent-module-documentation/evaluation/verify/cms_content_sync-create-pool-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/cms_content_sync-create-pool-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/cms_content_sync-create-pool-cleanup.sh",
+      "expected_output": "A cms_content_sync_pool entity ccs_task_pool exists with backend_url https://task.content-sync.example, e.g. Pool::create(['id'=>'ccs_task_pool','label'=>'CCS Task Pool','backend_url'=>'https://task.content-sync.example'])->save(); (config_export in 3.2.x persists id/label/backend_url)."
+    },
+    {
+      "id": "cms_content_sync-create-flow",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, create a cms_content_sync Flow config entity with machine id 'ccs_task_flow', name 'CCS Task Flow', type 'both', and the 'simple' variant. Apply it to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/cms_content_sync-create-flow-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/cms_content_sync-create-flow-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/cms_content_sync-create-flow-cleanup.sh",
+      "expected_output": "A cms_content_sync_flow entity ccs_task_flow exists with variant 'simple' (the only variant with a controller in 3.2.x), e.g. Flow::create(['id'=>'ccs_task_flow','name'=>'CCS Task Flow','type'=>'both','variant'=>'simple','simple_settings'=>[],'per_bundle_settings'=>[],'sync_entities'=>[]])->save()."
+    }
+  ]
+}

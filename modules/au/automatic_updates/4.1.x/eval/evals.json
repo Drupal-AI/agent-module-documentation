@@ -1,0 +1,65 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "automatic_updates",
+  "version": "4.1.x",
+  "note": "Automatic Updates builds on core Package Manager to update Drupal core, adds a cron/unattended runner, a config object, and pre-update validators plus readiness checks. Cases are `recipe` (response-graded) probing documented facts an agent would otherwise read source to answer; no site mutation.",
+  "evals": [
+    {
+      "id": "au-package-manager-dependency",
+      "mode": "recipe",
+      "prompt": "How does the Automatic Updates module actually apply a Drupal core update without breaking the live site, and which core module does it depend on to do so?",
+      "must_contain_any": ["package_manager", "Package Manager", "sandbox", "SandboxManagerBase"],
+      "must_not_contain": [],
+      "expected_output": "It depends on core's Package Manager module; it stages the Composer change in a temporary sandbox copy of the site (via a SandboxManagerBase), then commits it back live, entering maintenance mode only briefly."
+    },
+    {
+      "id": "au-unattended-level",
+      "mode": "recipe",
+      "prompt": "On a Drupal 11 site I want cron to automatically apply only security releases of Drupal core. Which config object and key do I set, and to what value?",
+      "must_contain_any": ["automatic_updates.settings", "unattended.level", "unattended"],
+      "must_not_contain": [],
+      "expected_output": "Set unattended.level to 'security' on automatic_updates.settings (options: disable, security, patch). unattended.method controls web vs console."
+    },
+    {
+      "id": "au-pushbutton-vs-cron",
+      "mode": "recipe",
+      "prompt": "What is the difference between push-button and unattended updates in Automatic Updates, and what makes unattended updates run?",
+      "must_contain_any": ["CronUpdateRunner", "cron", "Update now", "decorates"],
+      "must_not_contain": [],
+      "expected_output": "Push-button = the 'Update now' flow from the Available updates report (UpdateSandboxManager). Unattended = CronUpdateRunner, which decorates core's cron service and launches a detached background update after cron when unattended.level is not disable."
+    },
+    {
+      "id": "au-readiness-checks",
+      "mode": "recipe",
+      "prompt": "Where do the 'Update readiness' status checks come from in Automatic Updates, and which service runs them?",
+      "must_contain_any": ["StatusChecker", "readiness", "status report", "Status report"],
+      "must_not_contain": [],
+      "expected_output": "The StatusChecker service (Validation\\StatusChecker) runs the Package Manager validators outside an update, caches results, and surfaces them on the site Status report / admin messages; failures can be emailed during cron."
+    },
+    {
+      "id": "au-permission",
+      "mode": "recipe",
+      "prompt": "Which permission gates the Automatic Updates 'Update now' and status pages, and does the module define its own permissions?",
+      "must_contain_any": ["administer software updates"],
+      "must_not_contain": [],
+      "expected_output": "The core 'administer software updates' permission gates all its routes; the module defines no permissions of its own (no permissions.yml)."
+    },
+    {
+      "id": "au-slated-for-core",
+      "mode": "recipe",
+      "prompt": "Is the Automatic Updates contrib module a permanent add-on, and how does it relate to updating contributed modules and themes?",
+      "must_contain_any": ["core", "Automatic Updates Extensions", "automatic_updates_extensions", "obsolete"],
+      "must_not_contain": [],
+      "expected_output": "It is the Automatic Updates Initiative's contrib home and is slated to move into Drupal core. Contrib module/theme updates were handled by the Automatic Updates Extensions sub-module, now lifecycle: obsolete because that functionality moved into the main module."
+    },
+    {
+      "id": "au-custom-validator",
+      "mode": "recipe",
+      "prompt": "I want to add my own rule that blocks a core update unless a condition is met. How do I extend Automatic Updates / Package Manager to do this?",
+      "must_contain_any": ["validator", "event subscriber", "ValidationResult", "Package Manager events"],
+      "must_not_contain": [],
+      "expected_output": "Register a Package Manager event-subscriber validator (like the module's VersionPolicyValidator, StagedProjectsValidator, etc.) subscribing to lifecycle events (PreCreate/PreApply/StatusCheck) and add ValidationResults; don't subclass the internal sandbox managers."
+    }
+  ]
+}

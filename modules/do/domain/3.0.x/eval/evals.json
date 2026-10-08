@@ -1,0 +1,78 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "domain",
+  "version": "3.0.x",
+  "note": "Domain lets one Drupal install answer to many hostnames; each hostname is a `domain` config entity (entity type id `domain`, config prefix `domain.record.*`) and the DomainNegotiator resolves the active domain per request by matching the HTTP host. Easy cases are response-graded (no site changes). Medium cases stage KNOWN eval domain records on the live site (distinct `eval*` ids) and ask the agent to introspect them via drush; cleanup deletes them. Hard cases (persona drupal-expert) have the agent CREATE a real `domain` record; a verify script checks the live config entity (exit 0 = pass). All setup/reset/cleanup only ever touch eval-prefixed domain ids, never real domains. NB: the FIRST domain saved on a site is auto-marked default, so the create-default hard case seeds a placeholder default first to force an explicit promotion.",
+  "evals": [
+    {
+      "id": "domain-entity-basics",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "On a Drupal 11 site with the Domain (Domain Access) module installed, how is a single site domain stored? Give the entity type id, whether it is a config or content entity, and the config object prefix used for each record.",
+      "must_contain_any": ["domain.record", "config entity", "config_prefix"],
+      "must_not_contain": [],
+      "expected_output": "Each domain is a `domain` config entity (a ConfigEntityType, not content). Records are stored as config objects prefixed `domain.record.<id>` (config_prefix `record`)."
+    },
+    {
+      "id": "domain-drush-create",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "Using the Domain module's Drush commands, what single command creates a new domain record for the hostname example.com with the label \"Example\"? Give the command and the order of its two arguments.",
+      "must_contain_any": ["domain:add"],
+      "must_not_contain": [],
+      "expected_output": "drush domain:add example.com \"Example\" — the first argument is the hostname, the second is the human name; optional --scheme, --weight, --path-prefix options."
+    },
+    {
+      "id": "domain-negotiation-service",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "In the Domain module, which service determines the 'active' domain for the current request, and what method returns the active domain object? Also name the match-type constant for an exact hostname match.",
+      "must_contain_any": ["domain.negotiator", "getActiveDomain", "DOMAIN_MATCHED_EXACT"],
+      "must_not_contain": [],
+      "expected_output": "The `domain.negotiator` service (DomainNegotiatorInterface); getActiveDomain() returns the active DomainInterface. An exact host match is DomainNegotiatorInterface::DOMAIN_MATCHED_EXACT (=1)."
+    },
+    {
+      "id": "domain-list-hostnames",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "This Drupal 11 site already has some domain records configured. Using the Domain module, list the domain records currently configured on this site and give each one's hostname.",
+      "setup": "agent-module-documentation/evaluation/verify/domain-list-hostnames-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/domain-list-hostnames-cleanup.sh",
+      "must_contain_any": ["eval-alpha.example.com", "eval-beta.example.com"],
+      "must_not_contain": [],
+      "expected_output": "Two domain records are configured: eval_alpha (hostname eval-alpha.example.com, 'Eval Alpha') and eval_beta (hostname eval-beta.example.com, 'Eval Beta')."
+    },
+    {
+      "id": "domain-which-default",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "On this live Drupal 11 site, several domain records exist. Which domain is the site's default (canonical) domain? Give its machine id and hostname.",
+      "setup": "agent-module-documentation/evaluation/verify/domain-which-default-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/domain-which-default-cleanup.sh",
+      "must_contain_any": ["eval-two.example.com", "eval_two"],
+      "must_not_contain": [],
+      "expected_output": "The default domain is eval_two (hostname eval-two.example.com); eval_one exists but is not the default."
+    },
+    {
+      "id": "domain-create-record",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal 11 site with the Domain module installed, create a new domain record for the hostname news.eval.example.com with the label \"Eval News\". The end state I need: a `domain` config entity exists whose hostname is news.eval.example.com.",
+      "reset": "agent-module-documentation/evaluation/verify/domain-create-record-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/domain-create-record-verify.sh",
+      "expected_output": "A `domain` config entity exists with hostname news.eval.example.com (label 'Eval News'), e.g. created via `drush domain:add news.eval.example.com \"Eval News\"` or the domain storage."
+    },
+    {
+      "id": "domain-create-default",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal 11 site (which already has a default domain), add a new domain record for hostname shop.eval.example.com labelled \"Eval Shop\" and make it the site's default (canonical) domain. The end state I need: a `domain` record for shop.eval.example.com exists and is marked as the default domain.",
+      "reset": "agent-module-documentation/evaluation/verify/domain-create-default-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/domain-create-default-verify.sh",
+      "expected_output": "A `domain` config entity for shop.eval.example.com exists and is_default = TRUE (e.g. `drush domain:add shop.eval.example.com \"Eval Shop\"` then `drush domain:default <id>`, or ->saveDefault())."
+    }
+  ]
+}

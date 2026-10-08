@@ -1,0 +1,84 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "aws",
+  "version": "2.0.x",
+  "note": "AWS module is credential/client plumbing for aws/aws-sdk-php - it makes NO AWS API calls, so all cases are grounded in config entities and services only (no live AWS, no credentials needed). Code-grounded facts: AWS Profile = config entity type aws_profile (config aws.profile.<id>) with fields id,name,default,region,aws_access_key_id,aws_secret_access_key,aws_role_arn,aws_role_session_name,encryption_profile; service overrides in config aws.settings:services.<service_id>={profile,version}; service list comes from the SDK's Aws\\manifest(); client built via aws.client_factory->getClient('s3') -> \\Aws\\S3\\S3Client using Profile::getClientArgs(); credential order = role ARN (STS temp creds, cached) -> stored key/secret -> CredentialProvider::defaultProvider(); permission 'administer aws'. Medium cases install known config state (a profile's region; an S3 service override). Hard cases build real config state verified against live config entities: create a default profile with a region, and bind the S3 service to a profile. All fixtures namespaced aws_*; verify scripts only read Drupal config/entities, never call AWS.",
+  "evals": [
+    {
+      "id": "aws-get-client",
+      "mode": "recipe",
+      "prompt": "Using the Drupal 'aws' (Amazon Web Services) module, how does custom code obtain a ready-configured AWS SDK client (e.g. an S3 client) for a given service?",
+      "must_contain_any": ["aws.client_factory", "getClient", "getClientArgs"],
+      "must_not_contain": [],
+      "expected_output": "Call the aws.client_factory service: \\Drupal::service('aws.client_factory')->getClient('s3') returns an \\Aws\\S3\\S3Client. The factory resolves a profile (explicit setProfile() -> per-service override -> default profile) and instantiates \\Aws\\<Namespace>\\<Namespace>Client with the profile's getClientArgs() (credentials, region, version).",
+      "difficulty": "easy"
+    },
+    {
+      "id": "aws-profile-storage",
+      "mode": "recipe",
+      "prompt": "In the Drupal aws module, how/where are AWS credentials and region stored, and what fields does a profile hold?",
+      "must_contain_any": ["aws.profile", "aws_profile", "aws_access_key_id", "region"],
+      "must_not_contain": [],
+      "expected_output": "Credentials are stored as 'aws_profile' config entities (config aws.profile.<id>) with fields id, name, default, region, aws_access_key_id, aws_secret_access_key, aws_role_arn, aws_role_session_name and encryption_profile. Managed at /admin/config/services/aws (permission 'administer aws').",
+      "difficulty": "easy"
+    },
+    {
+      "id": "aws-credential-order",
+      "mode": "recipe",
+      "prompt": "In the Drupal aws module, how does a profile decide which AWS credentials to use when building a client (the resolution order)?",
+      "must_contain_any": ["aws_role_arn", "default provider", "CredentialProvider", "STS", "instance profile"],
+      "must_not_contain": [],
+      "expected_output": "Profile::getClientArgs() resolves credentials in order: (1) if aws_role_arn is set, assume the role via STS and use the temporary credentials (cached in a key-value-expirable store); (2) else use the stored aws_access_key_id + aws_secret_access_key; (3) else fall back to the SDK's CredentialProvider::defaultProvider() (environment vars, EC2/ECS instance profile, etc.). Region and version are added too.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "aws-known-region",
+      "mode": "introspection",
+      "prompt": "On this Drupal site an AWS profile has been configured with the 'aws' module. Inspect the live configuration and report the AWS region that profile is set to.",
+      "must_contain_any": ["us-west-2"],
+      "must_not_contain": [],
+      "expected_output": "The aws_eval_profile profile has region us-west-2 (readable via `drush cget aws.profile.aws_eval_profile region`); it is also the default profile.",
+      "setup": "agent-module-documentation/evaluation/verify/aws-known-profile-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/aws-known-profile-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "aws-known-override",
+      "mode": "introspection",
+      "prompt": "On this Drupal site, the aws module has a service override so the S3 service uses a specific AWS profile. Inspect the live configuration and give the machine id of the profile bound to the S3 service.",
+      "must_contain_any": ["aws_svc_eval"],
+      "must_not_contain": [],
+      "expected_output": "The S3 service override in aws.settings:services.s3 points at profile aws_svc_eval (readable via `drush cget aws.settings services` or \\Drupal::service('aws')->getServiceConfig('s3')).",
+      "setup": "agent-module-documentation/evaluation/verify/aws-known-override-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/aws-known-override-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "aws-create-profile",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, using the aws module, create a new AWS profile for the eu-central-1 region and make it the default profile (used by services with no override). You do not need real credentials. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/aws-create-profile-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/aws-create-profile-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/aws-create-profile-cleanup.sh",
+      "expected_output": "A new aws_profile config entity exists with region 'eu-central-1' and its default flag set (isDefault() TRUE) - created via the Add profile form at /admin/config/services/aws/add-profile or the aws_profile entity storage.",
+      "must_contain_any": [],
+      "must_not_contain": []
+    },
+    {
+      "id": "aws-set-override",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site there is an AWS profile with machine id aws_svc_profile. Using the aws module, configure a service override so the S3 service uses that profile. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/aws-set-override-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/aws-set-override-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/aws-set-override-cleanup.sh",
+      "expected_output": "aws.settings:services.s3.profile is set to 'aws_svc_profile' - via the service-override form at /admin/config/services/aws/service/add (service s3) or \\Drupal::service('aws')->setServiceConfig('s3', ['profile' => 'aws_svc_profile', 'version' => 'latest']).",
+      "must_contain_any": [],
+      "must_not_contain": []
+    }
+  ]
+}

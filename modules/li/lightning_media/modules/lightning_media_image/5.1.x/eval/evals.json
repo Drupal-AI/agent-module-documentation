@@ -1,0 +1,97 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "lightning_media_image",
+  "version": "5.1.x",
+  "note": "Media Image is the largest Lightning Media component but still defines no plugin type, permission, route, service or settings form (configure = null). Its hooks: hook_media_source_info_alter() sets input_match.field_types = ['image'], swaps in the input-matching Image source and sets entity_embed_display = 'media_image'; hook_field_widget_info_alter() swaps the image_widget_crop widget class for ImageCropWidget; hook_ENTITY_TYPE_insert() on crop_type creates an image style crop_<id> with a crop_crop effect; hook_ENTITY_TYPE_presave() on entity_form_display switches newly added image fields (outside media.image.*) to the entity_browser_file widget using the image_browser entity browser; hook_install() converts media.image form displays to image_widget_crop with crop_list [freeform] and show_crop_area TRUE. config/optional ships media.type.image (source image, source field field_media_image, extensions 'png gif jpg jpeg webp'), the media_browser form mode, entity_browser.browser.image_browser, views.view.image_browser and crop.type.freeform.",
+  "evals": [
+    {
+      "id": "lightning_media_image-what-it-adds",
+      "mode": "recipe",
+      "prompt": "What does the Drupal module lightning_media_image install, and which entity browser and crop type does it bring with it?",
+      "must_contain_any": [
+        "image_browser",
+        "freeform",
+        "field_media_image"
+      ],
+      "must_not_contain": [],
+      "expected_output": "An Image media type (media.type.image, source 'image', source field field_media_image with extensions png gif jpg jpeg webp), a dedicated media_browser form mode, the image_browser entity browser plus its backing views.view.image_browser, and the crop.type.freeform crop type - all in config/optional so they only install when their dependencies (entity_browser, crop / image_widget_crop) are present.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "lightning_media_image-crop-style",
+      "mode": "recipe",
+      "prompt": "On a Drupal site with lightning_media_image, I created a new crop type and an image style appeared on its own. Which hook does that, and what is the generated image style called?",
+      "must_contain_any": [
+        "crop_",
+        "hook_ENTITY_TYPE_insert",
+        "crop_type_insert",
+        "crop_crop"
+      ],
+      "must_not_contain": [],
+      "expected_output": "lightning_media_image_crop_type_insert() creates an image style named crop_<crop_type_id> labelled 'Cropped: <crop type label>' containing a single crop_crop image effect configured with that crop type. It is skipped during config sync.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "lightning_media_image-entity-browser-widget",
+      "mode": "recipe",
+      "prompt": "On a Drupal site with lightning_media_image, every new image field I add to a content type ends up using an entity browser widget instead of the plain image upload widget. Which hook causes that, and which form displays are exempt?",
+      "must_contain_any": [
+        "entity_browser_file",
+        "entity_form_display",
+        "presave"
+      ],
+      "must_not_contain": [],
+      "expected_output": "lightning_media_image_entity_form_display_presave() finds newly added image fields (via DisplayHelper::getNewFields()) and sets their widget to entity_browser_file pointed at the image_browser entity browser. It skips config sync, skips form displays for the Image media type itself (media / image), and does nothing unless Entity Browser is installed and an image_browser entity browser exists.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "lightning_media_image-extensions",
+      "mode": "introspection",
+      "prompt": "Inspect the live configuration of this Drupal site and tell me exactly which image file extensions the Image media type currently accepts, and on which field that is configured.",
+      "must_contain_any": [
+        "svg"
+      ],
+      "must_not_contain": [],
+      "expected_output": "field.field.media.image.field_media_image has settings.file_extensions set to 'png svg', so only PNG and SVG uploads are accepted.",
+      "setup": "agent-module-documentation/evaluation/verify/lightning_media_image-extensions-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/lightning_media_image-extensions-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "lightning_media_image-max-resolution",
+      "mode": "introspection",
+      "prompt": "An editor on this Drupal site says their photos are being resized when they upload them to the Image media type. Inspect the live field configuration and tell me the maximum image resolution that is currently enforced.",
+      "must_contain_any": [
+        "1600x1200"
+      ],
+      "must_not_contain": [],
+      "expected_output": "field.field.media.image.field_media_image has settings.max_resolution set to 1600x1200, so larger uploads are scaled down to fit those dimensions.",
+      "setup": "agent-module-documentation/evaluation/verify/lightning_media_image-max-resolution-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/lightning_media_image-max-resolution-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "lightning_media_image-add-extension",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, the Image media type provided by lightning_media_image accepts png, gif, jpg, jpeg and webp. Change the live configuration so that SVG and AVIF files are also accepted, without losing any of the existing formats.",
+      "reset": "agent-module-documentation/evaluation/verify/lightning_media_image-add-extension-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/lightning_media_image-add-extension-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/lightning_media_image-add-extension-cleanup.sh",
+      "expected_output": "field.field.media.image.field_media_image settings.file_extensions contains png, gif, jpg, jpeg, webp, svg and avif."
+    },
+    {
+      "id": "lightning_media_image-create-item",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, create an Image media item named 'LM Image Task' whose source field references a real file entity and whose alt text is exactly 'LM hero'.",
+      "reset": "agent-module-documentation/evaluation/verify/lightning_media_image-create-item-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/lightning_media_image-create-item-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/lightning_media_image-create-item-cleanup.sh",
+      "expected_output": "A media entity of bundle 'image' named 'LM Image Task' whose field_media_image first value has a target_id pointing at a saved File entity and alt => 'LM hero'."
+    }
+  ]
+}

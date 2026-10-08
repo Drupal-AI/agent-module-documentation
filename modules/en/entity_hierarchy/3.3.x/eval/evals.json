@@ -1,0 +1,80 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "entity_hierarchy",
+  "version": "3.3.x",
+  "note": "Entity Hierarchy provides the entity_reference_hierarchy field type (entity reference + integer weight) and maintains a nested-set tree per field in a table nested_set_<field>_<entity_type> via previousnext/nested-set. No global settings form (configure=null); config is per field on a bundle. Selection handler id 'entity_hierarchy'; widgets entity_reference_hierarchy_autocomplete (default, with hide_weight) and entity_reference_hierarchy_select; formatter entity_reference_hierarchy_label. Views: arguments entity_hierarchy_argument_is_child_of_entity / is_parent_of / is_sibling_of and relationship entity_hierarchy_root, plus tree summary field. Drush: entity-hierarchy:rebuild-tree <field> <type>; migration flag state key entity_hierarchy_disable_writes. Permission: 'reorder entity_hierarchy children'. Medium cases read real field/widget config; hard cases add a field and build a real parent-child tree, verified against live field data and the nested-set storage service.",
+  "evals": [
+    {
+      "id": "entity_hierarchy-field-type",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "In the Drupal contrib module Entity Hierarchy, what is the machine name of the field type it provides to build a parent/child hierarchy, and what extra value does it store on each item beyond a normal entity reference target?",
+      "must_contain_any": ["entity_reference_hierarchy", "weight"],
+      "must_not_contain": [],
+      "expected_output": "It provides the 'entity_reference_hierarchy' field type (extending core's entity reference item). Besides the referenced parent (target_id) each item stores an integer 'weight' used to order siblings; a per-field nested-set table maintains the tree."
+    },
+    {
+      "id": "entity_hierarchy-rebuild-migration",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "Entity Hierarchy says tree writes are expensive. During a large migration on a Drupal site, how do you temporarily stop it updating the hierarchy tree on each entity save, and how do you rebuild the tree afterwards for a field named field_parents on nodes?",
+      "must_contain_any": ["entity_hierarchy_disable_writes", "rebuild-tree", "entity-hierarchy:rebuild-tree"],
+      "must_not_contain": [],
+      "expected_output": "Set the State flag entity_hierarchy_disable_writes to 1 (drush sset entity_hierarchy_disable_writes 1) before the migration so saves skip the nested-set write; afterwards set it back to 0 and rebuild with drush entity-hierarchy:rebuild-tree field_parents node."
+    },
+    {
+      "id": "entity_hierarchy-views-argument",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "Using Entity Hierarchy's Views integration, which contextual filter (argument) do I add to list all the descendants (children at any depth) of a given entity, and what setting limits it to only direct children?",
+      "must_contain_any": ["is_child_of_entity", "entity_hierarchy_argument_is_child_of_entity", "depth"],
+      "must_not_contain": [],
+      "expected_output": "Add the 'entity_hierarchy_argument_is_child_of_entity' argument (the is-child-of contextual filter), pass the ancestor entity's id as the argument, and set its 'depth' option to 1 to return only direct children (leave it unlimited for all descendants)."
+    },
+    {
+      "id": "entity_hierarchy-known-field",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "On this Drupal site the Article content type has an Entity Hierarchy parent field configured. Inspect the live configuration and give the field's machine name and its field type.",
+      "must_contain_any": ["field_eh_parent"],
+      "must_not_contain": [],
+      "expected_output": "The field is field_eh_parent; its field.field.node.article.field_eh_parent config has field type entity_reference_hierarchy (the field type this module provides).",
+      "setup": "agent-module-documentation/evaluation/verify/entity_hierarchy-known-field-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/entity_hierarchy-known-field-cleanup.sh"
+    },
+    {
+      "id": "entity_hierarchy-hide-weight",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "On this site the Article default form display has an Entity Hierarchy field field_eh_hw using the autocomplete widget. Inspect the live form-display configuration: is the sibling weight sub-field shown to editors or hidden for this widget?",
+      "must_contain_any": ["hide_weight", "hidden", "hide"],
+      "must_not_contain": [],
+      "expected_output": "It is hidden: in core.entity_form_display.node.article.default the field_eh_hw component (widget entity_reference_hierarchy_autocomplete) has settings.hide_weight = true, so the weight field is not shown to editors.",
+      "setup": "agent-module-documentation/evaluation/verify/entity_hierarchy-hide-weight-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/entity_hierarchy-hide-weight-cleanup.sh"
+    },
+    {
+      "id": "entity_hierarchy-add-field",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, add an Entity Hierarchy parent field named field_eh_task to the Article content type so Articles can be nested under other Articles. Use the field type Entity Hierarchy provides (entity_reference_hierarchy) targeting nodes, and apply it to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/entity_hierarchy-add-field-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/entity_hierarchy-add-field-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/entity_hierarchy-add-field-cleanup.sh",
+      "expected_output": "Create a FieldStorageConfig field_eh_task on node of type entity_reference_hierarchy (target_type node) and a FieldConfig on the article bundle; verify checks FieldConfig::loadByName('node','article','field_eh_task')->getType() === 'entity_reference_hierarchy'."
+    },
+    {
+      "id": "entity_hierarchy-build-tree",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "This site has two Article nodes titled 'EH Parent Node' and 'EH Child Node' and an Entity Hierarchy field field_eh_tree on Article. Make 'EH Child Node' a child of 'EH Parent Node' by setting its field_eh_tree parent reference, and save so the hierarchy tree records the relationship.",
+      "reset": "agent-module-documentation/evaluation/verify/entity_hierarchy-build-tree-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/entity_hierarchy-build-tree-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/entity_hierarchy-build-tree-cleanup.sh",
+      "expected_output": "Set the EH Child Node's field_eh_tree.target_id to the EH Parent Node's id and save the child node. verify confirms both the field reference and that the nested-set storage (entity_hierarchy.nested_set_storage_factory) reports the child among the parent's descendants."
+    }
+  ]
+}

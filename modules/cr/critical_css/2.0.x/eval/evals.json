@@ -1,0 +1,80 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "critical_css",
+  "version": "2.0.x",
+  "note": "Critical CSS inlines a per-request critical CSS file into the head and loads other CSS async. Config object critical_css.settings (has schema, but NO config/install defaults, so it does not exist until saved): enabled (bool), dir_path (string, must start with '/', relative to active theme, no '..'), excluded_ids (newline-separated entity ids), enabled_for_logged_in_users (bool), preload_non_critical_css (bool). Form route critical_css.settings at /admin/config/development/performance/critical-css (permission: core administer site configuration). File match order ends in default-critical.css. Disabled on admin routes and AJAX; disabled for logged-in users unless enabled_for_logged_in_users. Medium/hard cases write/read the critical_css.settings config; baseline is 'config absent', so cleanup deletes the object.",
+  "evals": [
+    {
+      "id": "cc-enable-and-dir",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "How do I switch on the Critical CSS module and tell it which directory holds my critical CSS files? Name the config object/keys and the settings page path.",
+      "must_contain_any": ["critical_css.settings", "dir_path", "enabled", "/admin/config/development/performance/critical-css"],
+      "must_not_contain": [],
+      "expected_output": "Enable it on /admin/config/development/performance/critical-css (route critical_css.settings) and set the 'Critical CSS base directory' (dir_path, must start with '/', relative to the active theme). Config keys live in critical_css.settings: enabled, dir_path, excluded_ids, enabled_for_logged_in_users, preload_non_critical_css."
+    },
+    {
+      "id": "cc-filenames",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "Inside the critical CSS directory, what filenames does critical_css look for to match a page, and what is the final fallback filename if nothing more specific exists?",
+      "must_contain_any": ["default-critical.css", "default-critical", "bundle", "entity", "{bundle}.css"],
+      "must_not_contain": [],
+      "expected_output": "It tries, most specific first: {entity_id}.css, path-{path}.css, {path}.css, path-{path_info}.css, {path_info}.css, {bundle}.css (e.g. article.css), and finally the fallback default-critical.css."
+    },
+    {
+      "id": "cc-when-disabled",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "On which requests does critical_css never inline critical CSS, even when enabled - think admin pages, AJAX, and logged-in users?",
+      "must_contain_any": ["admin", "ajax", "logged-in", "logged in", "enabled_for_logged_in_users"],
+      "must_not_contain": [],
+      "expected_output": "It is disabled on admin routes (for users who can view the admin theme), on AJAX/XHR requests, and for authenticated users unless enabled_for_logged_in_users is on; entities listed in excluded_ids are also skipped."
+    },
+    {
+      "id": "cc-known-dir",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "Critical CSS is configured on this site. Inspect the live critical_css.settings configuration and report the directory path (relative to the theme) where it looks for critical CSS files.",
+      "must_contain_any": ["/css/ccss-known"],
+      "must_not_contain": [],
+      "expected_output": "dir_path is /css/ccss-known in critical_css.settings.",
+      "setup": "agent-module-documentation/evaluation/verify/critical_css-known-dir-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/critical_css-known-dir-cleanup.sh"
+    },
+    {
+      "id": "cc-excluded-ids",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "On this site, Critical CSS has been told to skip processing for certain entity ids. Read the live critical_css.settings and report which entity ids are excluded from critical CSS.",
+      "must_contain_any": ["42", "99"],
+      "must_not_contain": [],
+      "expected_output": "critical_css.settings excluded_ids lists 42 and 99 (one id per line).",
+      "setup": "agent-module-documentation/evaluation/verify/critical_css-excluded-ids-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/critical_css-excluded-ids-cleanup.sh"
+    },
+    {
+      "id": "cc-turn-on",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, configure the Critical CSS module so it is enabled and looks for critical CSS files in the directory '/css/critical' (relative to the active theme). Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/critical_css-turn-on-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/critical_css-turn-on-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/critical_css-turn-on-cleanup.sh",
+      "expected_output": "In critical_css.settings set enabled = true and dir_path = '/css/critical' (via the settings form or \\Drupal::configFactory()->getEditable('critical_css.settings')->set('enabled', TRUE)->set('dir_path', '/css/critical')->save())."
+    },
+    {
+      "id": "cc-exclude-entity",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "site-owner",
+      "prompt": "Critical CSS is already on for this site, but I need node 7 to load its CSS the normal way instead of using critical CSS. Configure Critical CSS to exclude entity id 7 from critical CSS processing, and apply it to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/critical_css-exclude-entity-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/critical_css-exclude-entity-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/critical_css-exclude-entity-cleanup.sh",
+      "expected_output": "Add 7 to critical_css.settings excluded_ids (one id per line), e.g. \\Drupal::configFactory()->getEditable('critical_css.settings')->set('excluded_ids', \"7\")->save(), or enter 7 in the 'Exclude entity ids' textarea on the settings form."
+    }
+  ]
+}

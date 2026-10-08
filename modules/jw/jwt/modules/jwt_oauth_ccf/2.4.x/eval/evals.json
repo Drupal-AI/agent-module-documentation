@@ -1,0 +1,95 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "jwt_oauth_ccf",
+  "version": "2.4.x",
+  "note": "JWT OAuth Client Credentials issues short-lived JWTs via the OAuth 2.0 client credentials grant at POST /oauth2/token (machine-to-machine). Each Drupal account can hold one or more client credentials, managed at /user/{user}/oauth-clients; credentials are stored in the core user.data store (module key 'jwt_oauth_ccf') keyed by a globally-unique client_id, as ClientCredential {uid, clientId, label, secretHash, created} objects via the jwt_oauth_ccf.client_repository service - only a bcrypt hash of the secret is ever persisted. Two permissions gate the management UI: 'manage own oauth client credentials' and the restricted 'administer oauth client credentials'. All cases here are grounded in that real repository service and the user.data store, using uid 1 (admin), and never touch the shared jwt.config or require an actual HTTP token exchange.",
+  "evals": [
+    {
+      "id": "jwt_oauth_ccf-token-endpoint",
+      "mode": "recipe",
+      "prompt": "What endpoint does the Drupal jwt_oauth_ccf module expose for machine-to-machine token issuance, and which OAuth 2.0 grant does it implement?",
+      "must_contain_any": [
+        "/oauth2/token",
+        "client_credentials",
+        "client credentials"
+      ],
+      "must_not_contain": [],
+      "expected_output": "POST /oauth2/token (route jwt_oauth_ccf.token, anonymous access) implements the OAuth 2.0 client credentials grant (RFC 6749 4.4): a client presents client_id/client_secret (form body or HTTP Basic header) and receives a short-lived (3600s) access_token, a signed site JWT built with jwt.transcoder.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "jwt_oauth_ccf-permissions",
+      "mode": "recipe",
+      "prompt": "Which permissions does jwt_oauth_ccf define for managing OAuth client credentials on user accounts, and which one is marked security-restricted?",
+      "must_contain_any": [
+        "manage own oauth client credentials",
+        "administer oauth client credentials"
+      ],
+      "must_not_contain": [],
+      "expected_output": "'manage own oauth client credentials' (manage your own account's credentials) and 'administer oauth client credentials' (manage any account's credentials). The latter is marked restrict access: true, since a credential can mint tokens that fully impersonate its owning account.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "jwt_oauth_ccf-storage",
+      "mode": "recipe",
+      "prompt": "Where does jwt_oauth_ccf store OAuth client credentials, and what part of the secret is actually persisted to storage?",
+      "must_contain_any": [
+        "user.data",
+        "hash",
+        "client_repository"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Credentials live in the core user.data key-value store (module key 'jwt_oauth_ccf'), keyed by a globally-unique client_id, via the jwt_oauth_ccf.client_repository service. Only a bcrypt hash of the secret (password_hash) is stored; the plaintext is shown to the user exactly once, at generation time, and cannot be recovered.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "jwt_oauth_ccf-known-client-owner",
+      "mode": "introspection",
+      "prompt": "This Drupal site has an OAuth client credential (jwt_oauth_ccf) with client_id 'jwtccf_eval_client'. Inspect the live site via the client repository / user.data and state which user account owns it, and its label.",
+      "must_contain_any": [
+        "jwtccf_eval"
+      ],
+      "must_not_contain": [],
+      "expected_output": "It is owned by uid 1 with label 'jwtccf_eval'. Resolve it with \\Drupal::service('jwt_oauth_ccf.client_repository')->getClient('jwtccf_eval_client'), which returns a ClientCredential with uid === 1 and label === 'jwtccf_eval'.",
+      "setup": "agent-module-documentation/evaluation/verify/jwt_oauth_ccf-known-client-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/jwt_oauth_ccf-known-client-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "jwt_oauth_ccf-report-client-id",
+      "mode": "introspection",
+      "prompt": "User 1 on this Drupal site has an OAuth client credential registered through jwt_oauth_ccf with client_id 'jwtccf_report_client'. Inspect the live site and confirm its label and that it belongs to uid 1.",
+      "must_contain_any": [
+        "jwtccf_report"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Label is 'jwtccf_report', owned by uid 1 - found via \\Drupal::service('jwt_oauth_ccf.client_repository')->getUserClients(1) (keyed by client_id) or ->getClient('jwtccf_report_client').",
+      "setup": "agent-module-documentation/evaluation/verify/jwt_oauth_ccf-report-client-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/jwt_oauth_ccf-report-client-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "jwt_oauth_ccf-create-client",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, create an OAuth client credential (jwt_oauth_ccf) for user 1 with the client_id 'jwtccf_task_client', so it can be used with the client-credentials grant. Apply the change to the live site via the client credential repository.",
+      "reset": "agent-module-documentation/evaluation/verify/jwt_oauth_ccf-create-client-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/jwt_oauth_ccf-create-client-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/jwt_oauth_ccf-create-client-cleanup.sh",
+      "expected_output": "Call \\Drupal::service('jwt_oauth_ccf.client_repository')->createClient(1, '<label>', NULL, 'jwtccf_task_client') (or use the Generate form at /user/1/oauth-clients/generate, supplying the client ID as an administrator). Verify passes when getClient('jwtccf_task_client') returns a ClientCredential with uid === 1."
+    },
+    {
+      "id": "jwt_oauth_ccf-revoke-client",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "The OAuth client credential 'jwtccf_del_client' on this Drupal site is no longer trusted and must be revoked so it can never mint new tokens again. Remove it via jwt_oauth_ccf. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/jwt_oauth_ccf-revoke-client-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/jwt_oauth_ccf-revoke-client-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/jwt_oauth_ccf-revoke-client-cleanup.sh",
+      "expected_output": "Delete the credential: \\Drupal::service('jwt_oauth_ccf.client_repository')->deleteClient('jwtccf_del_client') (or the delete confirmation form at /user/1/oauth-clients/jwtccf_del_client/delete). Verify passes when getClient('jwtccf_del_client') returns NULL. Note: any tokens already issued under this credential remain valid until they expire - deleting it only stops new tokens."
+    }
+  ]
+}

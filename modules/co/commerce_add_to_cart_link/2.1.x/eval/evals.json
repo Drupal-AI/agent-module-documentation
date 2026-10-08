@@ -1,0 +1,80 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "commerce_add_to_cart_link",
+  "version": "2.1.x",
+  "note": "Commerce Add To Cart Link renders an add-to-cart LINK (GET /add-to-cart/{product}/{variation}/{token}) instead of the Commerce form. Its display mechanism is an 'add_to_cart_link' pseudo/extra field added by hook_entity_extra_field_info() to every commerce_product and commerce_product_variation view display (hidden by default) - shown by adding the component to the entity_view_display config. Its settings config object is commerce_add_to_cart_link.settings with keys csrf_token.roles (sequence of role ids whose links get a CSRF token via the commerce_add_to_cart_link.token service) and redirect_back (bool). It also provides a @ViewsField('commerce_add_to_cart_link') and a themeable Twig template. Medium/hard cases are grounded in real live config: introspection reads csrf_token.roles/redirect_back and which view display shows the pseudo field; execution shows the pseudo field on commerce_product.default.default and sets csrf_token.roles. Shipped baseline: csrf_token.roles=[], redirect_back=false, pseudo field hidden. Site has product type 'default' and variation type 'default'.",
+  "evals": [
+    {
+      "id": "catl-link-not-form",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "In Drupal Commerce I want an 'Add to cart' link (not a form) on my product catalog/teaser view mode using the commerce_add_to_cart_link module. What is the name of the field I enable, and where do I enable it?",
+      "must_contain_any": ["add_to_cart_link", "Manage display", "extra field", "pseudo", "view display", "view mode"],
+      "must_not_contain": [],
+      "expected_output": "Enable the 'add_to_cart_link' pseudo/extra field on the product (or product variation) view mode via Manage display (drag it out of Disabled). It is provided by hook_entity_extra_field_info() on every commerce_product and commerce_product_variation bundle and is hidden by default; on the product it links the default variation, on a variation it links that variation."
+    },
+    {
+      "id": "catl-token-protection",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "How does the commerce_add_to_cart_link module let me stop bots from guessing the add-to-cart URLs, and which config controls it?",
+      "must_contain_any": ["csrf_token", "CSRF", "token", "roles", "commerce_add_to_cart_link.settings", "private key"],
+      "must_not_contain": [],
+      "expected_output": "You enable per-role CSRF token protection at Configuration -> Commerce -> Commerce Add To Cart Link, which writes commerce_add_to_cart_link.settings:csrf_token.roles. For users in those roles the commerce_add_to_cart_link.token service adds an HMAC token (private key + hash salt over the product/variation ids) to the link, and the controller's access() validates it. Empty roles = no protection."
+    },
+    {
+      "id": "catl-settings-keys",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "What are the two settings offered by the commerce_add_to_cart_link admin settings form, and what config object stores them?",
+      "must_contain_any": ["csrf_token", "redirect_back", "commerce_add_to_cart_link.settings"],
+      "must_not_contain": [],
+      "expected_output": "The commerce_add_to_cart_link.settings config object stores csrf_token.roles (a list of role ids whose links get a CSRF token) and redirect_back (a boolean; when true the shopper returns to the referring page after adding, otherwise to the cart page). The form is at /admin/commerce/config/add-to-cart-link."
+    },
+    {
+      "id": "catl-which-roles-protected",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "On this Drupal site, inspect the live commerce_add_to_cart_link configuration and tell me which user role(s) currently have their add-to-cart links protected with a CSRF token, and whether redirect-back is enabled.",
+      "must_contain_any": ["authenticated"],
+      "must_not_contain": [],
+      "expected_output": "The 'authenticated' role is protected (commerce_add_to_cart_link.settings:csrf_token.roles = ['authenticated']) and redirect_back is true.",
+      "setup": "agent-module-documentation/evaluation/verify/commerce_add_to_cart_link-settings-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/commerce_add_to_cart_link-settings-cleanup.sh"
+    },
+    {
+      "id": "catl-which-display-shows-link",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "On this site the commerce_add_to_cart_link 'add_to_cart_link' pseudo field is currently enabled on exactly one Commerce view display. Inspect the live view-display configuration and tell me which entity/view display shows it.",
+      "must_contain_any": ["commerce_product_variation.default.default", "commerce_product_variation", "variation"],
+      "must_not_contain": [],
+      "expected_output": "It is shown on the product variation default view display: commerce_product_variation.default.default has the add_to_cart_link component in the content region (getComponent('add_to_cart_link') is set, not hidden).",
+      "setup": "agent-module-documentation/evaluation/verify/commerce_add_to_cart_link-display-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/commerce_add_to_cart_link-display-cleanup.sh"
+    },
+    {
+      "id": "catl-show-on-product-display",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, using commerce_add_to_cart_link, make the 'Add to cart' link appear on the default product view display (commerce_product.default.default) for the 'default' product type. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/commerce_add_to_cart_link-show-product-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/commerce_add_to_cart_link-show-product-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/commerce_add_to_cart_link-show-product-cleanup.sh",
+      "expected_output": "Add the add_to_cart_link component to the commerce_product.default.default entity_view_display in a visible region, e.g. $display->setComponent('add_to_cart_link', ['weight' => 10, 'region' => 'content'])->save(); (or drag it out of Disabled on Manage display). getComponent('add_to_cart_link') must then be set (not hidden)."
+    },
+    {
+      "id": "catl-protect-authenticated",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, configure commerce_add_to_cart_link so that add-to-cart links for users in the 'authenticated' role are protected with a CSRF token. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/commerce_add_to_cart_link-protect-role-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/commerce_add_to_cart_link-protect-role-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/commerce_add_to_cart_link-protect-role-cleanup.sh",
+      "expected_output": "Set commerce_add_to_cart_link.settings:csrf_token.roles to include 'authenticated' (via the settings form or drush cset commerce_add_to_cart_link.settings csrf_token.roles.0 authenticated). The token service then adds an HMAC token to those users' links."
+    }
+  ]
+}

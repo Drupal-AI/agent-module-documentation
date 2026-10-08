@@ -1,0 +1,80 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "reassign_user_content",
+  "version": "1.1.x",
+  "note": "Reassign User Content adds a user-cancel method user_cancel_reassign_content that, on account deletion, reassigns the user's nodes (and revisions), media, and groups to a chosen user and anonymizes their comments. It also ships a node action reassign_user_content_action (system.action, type node) that tempstores selected nodes and redirects to /admin/content/reassign-author (AssignAuthorForm, perm access content). No config, no own permissions. Medium introspection reads back the author of a fixture node; hard execution reassigns a fixture node's authorship to a target user (the end state the module produces), verified by the node's uid. Fixtures create/delete their own ruc_* users and nodes.",
+  "evals": [
+    {
+      "id": "reassign_user_content-cancel-method",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "What does the reassign_user_content module add to Drupal's account-cancellation process, and what happens to the deleted user's content?",
+      "must_contain_any": ["user_cancel_reassign_content", "cancel method", "reassign", "another user", "belong to another user"],
+      "must_not_contain": [],
+      "expected_output": "It adds a user-cancel method (user_cancel_reassign_content) 'Delete the account and make its content, media, and groups belong to another user', plus a 'Choose user to assign' field on the cancel form. On cancel it reassigns the user's nodes (and revisions), media and groups to the chosen user and anonymizes their comments."
+    },
+    {
+      "id": "reassign_user_content-comments",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "When reassign_user_content deletes a user and reassigns their content, are the user's comments reassigned to the new user too? What happens to them?",
+      "must_contain_any": ["anonymiz", "anonymous", "owner set to 0", "not reassigned"],
+      "must_not_contain": [],
+      "expected_output": "Comments are NOT reassigned; they are anonymized — the owner is set to anonymous (uid 0) and the author name to the site's anonymous name."
+    },
+    {
+      "id": "reassign_user_content-bulk-action",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "Besides the account-cancel flow, how can reassign_user_content bulk re-author selected nodes, and where does that action take you?",
+      "must_contain_any": ["reassign_user_content_action", "Reassign selected content to user", "/admin/content/reassign-author", "reassign-author"],
+      "must_not_contain": [],
+      "expected_output": "It provides a node action 'Reassign selected content to user' (reassign_user_content_action). Running it on selected content stores the node ids in a private tempstore and redirects to /admin/content/reassign-author (AssignAuthorForm), where you pick the destination user."
+    },
+    {
+      "id": "reassign_user_content-known-author",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "On this site there is an article titled 'RUC Known'. Inspect the live site and report the username of the account that currently authors that node.",
+      "must_contain_any": ["ruc_author"],
+      "must_not_contain": [],
+      "expected_output": "The node 'RUC Known' is authored by the user 'ruc_author' (load the node and read its uid/owner).",
+      "setup": "agent-module-documentation/evaluation/verify/reassign_user_content-known-author-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/reassign_user_content-known-author-cleanup.sh"
+    },
+    {
+      "id": "reassign_user_content-reassign-node",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this site the article 'RUC Sample' is currently authored by the user 'ruc_from'. Reassign that node's authorship to the user 'ruc_target' (the outcome the reassign_user_content module produces when reassigning content). Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/reassign_user_content-reassign-node-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/reassign_user_content-reassign-node-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/reassign_user_content-reassign-node-cleanup.sh",
+      "expected_output": "The node 'RUC Sample' now has its author (uid) set to the ruc_target user's id (e.g. $node->setOwnerId($target_uid)->save(), or node_mass_update). Its owner is ruc_target, not ruc_from."
+    },
+    {
+      "id": "reassign_user_content-count-authored",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "On this site there is a user named 'ruc_bulk'. Before deleting them you want to know how much content they own. Inspect the live site and report how many nodes are currently authored by ruc_bulk.",
+      "must_contain_any": ["3"],
+      "must_not_contain": [],
+      "expected_output": "The user ruc_bulk authors 3 nodes (entity query on node by uid = ruc_bulk's id).",
+      "setup": "agent-module-documentation/evaluation/verify/reassign_user_content-count-authored-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/reassign_user_content-count-authored-cleanup.sh"
+    },
+    {
+      "id": "reassign_user_content-reassign-all",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "The user 'ruc_source' is about to be removed. Reassign ALL of ruc_source's nodes to the user 'ruc_dest' (the same content-ownership transfer the reassign_user_content module performs on account deletion), so that ruc_source owns no nodes afterward. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/reassign_user_content-reassign-all-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/reassign_user_content-reassign-all-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/reassign_user_content-reassign-all-cleanup.sh",
+      "expected_output": "All nodes previously authored by ruc_source now have their uid set to ruc_dest (e.g. node_mass_update($nids, ['uid' => $dest_uid]) or setOwnerId per node). A node query for uid = ruc_source returns none; the reassigned nodes are owned by ruc_dest."
+    }
+  ]
+}

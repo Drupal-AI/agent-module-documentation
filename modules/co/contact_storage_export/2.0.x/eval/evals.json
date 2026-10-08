@@ -1,0 +1,82 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "contact_storage_export",
+  "version": "2.0.x",
+  "note": "Contact Storage Export adds an 'Export submissions' operation (hook_entity_operation_alter) to each contact form on /admin/structure/contact, gated by the 'export contact form messages' permission, that downloads Contact Storage submissions as CSV via a Batch. The exporter service is contact_storage_export.exporter (ContactStorageExportService: getLabels/serialize/encode/encodeData). The 'since last export' watermark is stored per form in the key/value store contact_storage_export.<form_id> -> last_id via ContactStorageExport::get/setLastExportId(). No configure route, no config object, no schema, no Drush. Cases are grounded in the permission, the exporter service, and the keyValue watermark.",
+  "evals": [
+    {
+      "id": "contact_storage_export-how-export",
+      "mode": "recipe",
+      "prompt": "On a Drupal site with contact_storage_export, how does an editor export a contact form's stored submissions, where does the option appear, and which permission is required?",
+      "must_contain_any": ["/admin/structure/contact", "Export", "export contact form messages", "CSV"],
+      "must_not_contain": [],
+      "expected_output": "The module adds an 'Export submissions' operation to each contact form on /admin/structure/contact (export form at /admin/structure/contact/manage/export). It downloads the stored submissions as CSV and requires the 'export contact form messages' permission.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "contact_storage_export-service",
+      "mode": "recipe",
+      "prompt": "Which service does contact_storage_export use to turn contact_message entities into CSV, and name a couple of its public methods.",
+      "must_contain_any": ["contact_storage_export.exporter", "ContactStorageExportService", "serialize", "encode", "getLabels"],
+      "must_not_contain": [],
+      "expected_output": "The contact_storage_export.exporter service (ContactStorageExportService). Public methods include getLabels(), serialize(), getFormattedValue(), encode(), and encodeData() (the last uses the csv_serialization CsvEncoder).",
+      "difficulty": "easy"
+    },
+    {
+      "id": "contact_storage_export-since-last",
+      "mode": "recipe",
+      "prompt": "The contact_storage_export export form has an 'only export new messages since the last export' option. How does the module remember which submissions were already exported for a given contact form?",
+      "must_contain_any": ["key", "keyValue", "last_id", "last export", "setLastExportId"],
+      "must_not_contain": [],
+      "expected_output": "It stores a watermark in Drupal's key/value store: collection contact_storage_export.<form_id>, key last_id (via ContactStorageExport::getLastExportId()/setLastExportId()). The next 'since last export' run only includes messages with an id greater than that value.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "contact_storage_export-which-form",
+      "mode": "introspection",
+      "prompt": "This Drupal site has a custom contact form (besides the default personal form) whose submissions can be exported. Inspect the live site and give the machine name of that contact form.",
+      "must_contain_any": ["cse_feedback"],
+      "must_not_contain": [],
+      "expected_output": "The contact form machine name is cse_feedback (a contact_form config entity); alongside core's default personal form it is exportable via the module's Export operation.",
+      "setup": "agent-module-documentation/evaluation/verify/contact_storage_export-which-form-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/contact_storage_export-which-form-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "contact_storage_export-last-id",
+      "mode": "introspection",
+      "prompt": "On this site the contact_storage_export module has recorded a 'last exported message id' for the contact form cse_feedback. Inspect the live key/value store and state that recorded id.",
+      "must_contain_any": ["7"],
+      "must_not_contain": [],
+      "expected_output": "The key/value collection contact_storage_export.cse_feedback holds last_id = 7, so the next 'since last export' run for cse_feedback would only include messages with id > 7.",
+      "setup": "agent-module-documentation/evaluation/verify/contact_storage_export-last-id-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/contact_storage_export-last-id-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "contact_storage_export-set-watermark",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "Using the contact_storage_export module's API, record that message id 5 is the last exported id for the contact form cse_feedback, and persist it on the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/contact_storage_export-set-watermark-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/contact_storage_export-set-watermark-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/contact_storage_export-set-watermark-reset.sh",
+      "expected_output": "The key/value store contact_storage_export.cse_feedback has last_id = 5 (e.g. call \\Drupal\\contact_storage_export\\ContactStorageExport::setLastExportId('cse_feedback', 5)).",
+      "difficulty": "hard"
+    },
+    {
+      "id": "contact_storage_export-grant-perm",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-layman",
+      "prompt": "On my Drupal site I want ordinary logged-in users (the 'authenticated' role) to be able to download contact form submissions as a spreadsheet. Please give that role the right permission from the contact storage export module.",
+      "reset": "agent-module-documentation/evaluation/verify/contact_storage_export-grant-perm-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/contact_storage_export-grant-perm-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/contact_storage_export-grant-perm-reset.sh",
+      "expected_output": "The 'authenticated' role has the 'export contact form messages' permission granted (e.g. drush role:perm:add authenticated 'export contact form messages').",
+      "difficulty": "hard"
+    }
+  ]
+}

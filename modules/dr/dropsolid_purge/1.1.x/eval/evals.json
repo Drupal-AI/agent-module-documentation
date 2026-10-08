@@ -1,0 +1,80 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "dropsolid_purge",
+  "version": "1.1.x",
+  "note": "Dropsolid Purge is a plugin for the contrib purge framework that invalidates Varnish. It has no configure route/form; config is the dropsolid_purge.config array (site_name, site_environment, site_group, loadbalancers[{ip,protocol,port}]) normally set in settings.php, and the purger (plugin id dropsolid_purge, types tag/everything) is enabled via Purge (drush p:purger-add dropsolid_purge, stored in purge.plugins.purgers). It emits X-Dropsolid-Site and X-Dropsolid-Purge-Tags headers. ALL eval cases are grounded in LOCAL config only (dropsolid_purge.config as a plain config object, and purge.plugins) - NO live Varnish/HTTP calls are made. Reset scripts only remove dropsolid_purge's own purger entries and its own config object, leaving other purgers untouched.",
+  "evals": [
+    {
+      "id": "dropsolid_purge-config-object",
+      "mode": "recipe",
+      "prompt": "I installed the dropsolid_purge module on Drupal but there is no settings page. Where do I configure the Varnish load balancers, and what is the name of the configuration array/object it reads?",
+      "must_contain_any": ["dropsolid_purge.config", "loadbalancers", "settings.php"],
+      "must_not_contain": [],
+      "expected_output": "There is no admin form. You set $config['dropsolid_purge.config'] in settings.php (the dropsolid_purge.config object) with site_name, site_environment, site_group and a loadbalancers list of {ip, protocol, port}.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "dropsolid_purge-purger-types",
+      "mode": "recipe",
+      "prompt": "In the dropsolid_purge module, what is the Purge purger plugin id, and which invalidation types does it support?",
+      "must_contain_any": ["dropsolid_purge", "tag", "everything"],
+      "must_not_contain": [],
+      "expected_output": "The purger plugin id is dropsolid_purge ('Dropsolid Varnish Purge'); it supports the 'tag' and 'everything' invalidation types. You add it with drush p:purger-add dropsolid_purge.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "dropsolid_purge-site-header",
+      "mode": "recipe",
+      "prompt": "How does dropsolid_purge make sure that purging one Drupal site behind a shared Varnish does not clear the cache of another site? Name the response header involved.",
+      "must_contain_any": ["X-Dropsolid-Site", "X-Dropsolid-Purge-Tags"],
+      "must_not_contain": [],
+      "expected_output": "It emits an X-Dropsolid-Site header (a per-site identifier hashed from site name/path/environment/group) that Varnish bans against, so a BAN only matches this site's objects; cache tags are sent hashed in X-Dropsolid-Purge-Tags.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "dropsolid_purge-known-sitename",
+      "mode": "introspection",
+      "prompt": "On this Drupal site, dropsolid_purge is configured. Inspect the live dropsolid_purge configuration and state the configured site_name.",
+      "must_contain_any": ["DocSite"],
+      "must_not_contain": [],
+      "expected_output": "dropsolid_purge.config has site_name 'DocSite'.",
+      "setup": "agent-module-documentation/evaluation/verify/dropsolid_purge-known-sitename-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/dropsolid_purge-known-sitename-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "dropsolid_purge-known-loadbalancer",
+      "mode": "introspection",
+      "prompt": "The dropsolid_purge module is configured on this site with a Varnish load balancer. Inspect the live dropsolid_purge configuration and state the IP address of the configured load balancer.",
+      "must_contain_any": ["203.0.113.9"],
+      "must_not_contain": [],
+      "expected_output": "dropsolid_purge.config -> loadbalancers.varnish.ip is 203.0.113.9 (protocol http, port 6081).",
+      "setup": "agent-module-documentation/evaluation/verify/dropsolid_purge-known-loadbalancer-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/dropsolid_purge-known-loadbalancer-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "dropsolid_purge-add-purger",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site the dropsolid_purge module is enabled but its purger has not been added to Purge yet. Add the Dropsolid Varnish Purge purger to Purge so it is configured to run. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/dropsolid_purge-add-purger-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/dropsolid_purge-add-purger-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/dropsolid_purge-add-purger-reset.sh",
+      "expected_output": "purge.plugins -> purgers contains an entry with plugin_id 'dropsolid_purge' (e.g. added with `drush p:purger-add dropsolid_purge`)."
+    },
+    {
+      "id": "dropsolid_purge-configure-lb",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "Configure the dropsolid_purge module's settings on this site: set site_name to 'AcmeProd' and add a single Varnish load balancer named 'varnish' at IP 198.51.100.20 on port 8080 using the http protocol. Write it to the dropsolid_purge configuration on the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/dropsolid_purge-configure-lb-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/dropsolid_purge-configure-lb-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/dropsolid_purge-configure-lb-reset.sh",
+      "expected_output": "dropsolid_purge.config has site_name 'AcmeProd' and loadbalancers.varnish.ip '198.51.100.20' with port '8080' (protocol http)."
+    }
+  ]
+}

@@ -1,0 +1,102 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "crowdsec",
+  "version": "1.2.x",
+  "note": "CrowdSec integrates Drupal with the CrowdSec security network. It is driven by one config object crowdsec.settings (log_level, env dev|prod, api_timeout, cti_api_key, signal_scenarios[], scenarios[], plugins.<id>.{enable,ban_duration,leak_speed,bucket_capacity}). Ban plugins are a crowdsec_scenario plugin type (dir src/Plugin/CrowdsecScenario, attribute Drupal\\crowdsec\\Attribute\\Scenario, base ScenarioPluginBase, manager plugin.manager.crowdsec_scenario). Three ship in-box: flood (drupal/auth-bruteforce), core-ban (drupal/core-ban), whisper (drupal/4xx-scan, buffered default; only whisper uses leak_speed+bucket_capacity). Config UI: /admin/config/services/crowdsec (route crowdsec.settings, permission 'administer site configuration'). Drush: crowdsec:enroll|signal|collect|test:signal|test:ip. Events under Drupal\\crowdsec\\Event\\CrowdSecEvents (crowdsec.ip.banned etc). This site has NO live CrowdSec API/agent, so all medium/hard cases are grounded purely in local crowdsec.settings config reads/writes (no upstream calls).",
+  "evals": [
+    {
+      "id": "crowdsec-ban-plugins",
+      "mode": "recipe",
+      "prompt": "The Drupal CrowdSec module ships three built-in ban plugins that detect bad behaviour locally. Name them and say briefly what each one detects.",
+      "must_contain_any": [
+        "flood",
+        "core-ban",
+        "whisper",
+        "4xx",
+        "brute",
+        "auth-bruteforce"
+      ],
+      "must_not_contain": [],
+      "expected_output": "flood (Flood control bans, scenario drupal/auth-bruteforce) — IPs hitting Drupal flood control such as failed logins; core-ban (Administrator bans, drupal/core-ban) — IPs manually banned via core Ban / Advanced Ban; whisper (4xx response bans, drupal/4xx-scan) — IPs causing many 4xx responses within a time window.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "crowdsec-custom-scenario",
+      "mode": "recipe",
+      "prompt": "How do I add a custom CrowdSec 'scenario' (ban) plugin in my own Drupal module? What plugin directory, attribute and base class are involved, and how do I emit a signal for an IP?",
+      "must_contain_any": [
+        "Plugin/CrowdsecScenario",
+        "CrowdsecScenario",
+        "Scenario",
+        "ScenarioPluginBase",
+        "addSignal"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Create a class in my_module/src/Plugin/CrowdsecScenario/ annotated with the #[Scenario(id, scenario, label, description, buffer)] attribute (Drupal\\crowdsec\\Attribute\\Scenario) extending ScenarioPluginBase. Emit signals via ScenarioPluginManager::getPlugin('id')->addSignal($ip, $status, $targetUser). Its settings are auto-added under crowdsec.settings plugins.<id>.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "crowdsec-config-and-drush",
+      "mode": "recipe",
+      "prompt": "Where is the CrowdSec module configured in the Drupal admin (route/path), and which Drush command forces it to download and enforce the subscribed CrowdSec blocklists?",
+      "must_contain_any": [
+        "admin/config/services/crowdsec",
+        "crowdsec.settings",
+        "crowdsec:collect"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Configure it at /admin/config/services/crowdsec (route crowdsec.settings, permission 'administer site configuration'). drush crowdsec:collect refreshes/downloads the subscribed blocklists (Client::refresh()); it also runs on cron.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "crowdsec-env-value",
+      "mode": "introspection",
+      "prompt": "On this Drupal site, inspect the live CrowdSec configuration and report: which environment (dev or prod) is CrowdSec set to, and what is the ban duration (in seconds) configured for the 4xx response ban plugin?",
+      "must_contain_any": [
+        "prod",
+        "7200"
+      ],
+      "must_not_contain": [],
+      "expected_output": "In crowdsec.settings, env is 'prod' and plugins.whisper.ban_duration (the 4xx-scan / whisper plugin) is 7200 seconds.",
+      "setup": "agent-module-documentation/evaluation/verify/crowdsec-env-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/crowdsec-env-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "crowdsec-disabled-plugin",
+      "mode": "introspection",
+      "prompt": "One of CrowdSec's built-in ban plugins has been turned off on this site. Inspect the live crowdsec.settings configuration and state which ban plugin is currently disabled.",
+      "must_contain_any": [
+        "flood"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The flood plugin is disabled: crowdsec.settings plugins.flood.enable is FALSE (the core-ban and whisper plugins remain enabled).",
+      "setup": "agent-module-documentation/evaluation/verify/crowdsec-flood-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/crowdsec-flood-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "crowdsec-set-threshold",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, configure the CrowdSec 4xx response ban plugin (whisper) so its threshold (bucket_capacity) is 25, meaning 25 bad requests in the time window are needed to ban an IP. Apply the change to the live crowdsec.settings configuration.",
+      "reset": "agent-module-documentation/evaluation/verify/crowdsec-threshold-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/crowdsec-threshold-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/crowdsec-threshold-cleanup.sh",
+      "expected_output": "Set crowdsec.settings -> plugins.whisper.bucket_capacity to 25 (via the 'Threshold' field on the 4xx response bans plugin in the CrowdSec settings form, or drush cset crowdsec.settings plugins.whisper.bucket_capacity 25)."
+    },
+    {
+      "id": "crowdsec-disable-flood",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, disable CrowdSec's flood-control ban plugin (the one that locally bans IPs triggering Drupal flood control) while leaving the other ban plugins enabled. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/crowdsec-disable-flood-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/crowdsec-disable-flood-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/crowdsec-disable-flood-cleanup.sh",
+      "expected_output": "Set crowdsec.settings -> plugins.flood.enable to FALSE (untick 'Enable' on the Flood control bans plugin in the CrowdSec settings form, or drush cset crowdsec.settings plugins.flood.enable 0)."
+    }
+  ]
+}

@@ -1,0 +1,101 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "language_switcher_extended",
+  "version": "1.2.x",
+  "note": "Language Switcher Extended post-processes core's Language Switcher block links via one config object, language_switcher_extended.settings. easy=recipe (response-graded facts about the settings). medium=introspection (a setup script writes a known mode/handler, the agent inspects the live config, a cleanup restores mode=default baseline). hard=execution (a reset clears config to baseline so verify FAILs on empty state, the agent configures the mode via drush/config, and a verify reads the live config, exit 0=pass). Confirmed config keys from config/schema and the settings form: mode (default|always_link_to_front|process_untranslated), untranslated_handler (hide_link|link_to_front|no_link), translation_detection (default|is_published), current_language_mode (default|hide_link|no_link), hide_single_link, hide_single_link_block, show_langcode.",
+  "evals": [
+    {
+      "id": "language_switcher_extended-mode-values",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "In the Language Switcher Extended module, which config key selects the overall behaviour of the language switcher and what are its possible values?",
+      "must_contain_any": ["mode", "process_untranslated", "always_link_to_front"],
+      "must_not_contain": [],
+      "expected_output": "The `mode` key on language_switcher_extended.settings. Values: `default` (leave core untouched), `always_link_to_front` (every item links to its language front page), and `process_untranslated` (handle languages the current content entity is not translated into)."
+    },
+    {
+      "id": "language_switcher_extended-untranslated-handler",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "With Language Switcher Extended in process_untranslated mode, how do I make it HIDE the switcher link for a language the current entity has no translation in, and which config key controls that?",
+      "must_contain_any": ["untranslated_handler", "hide_link"],
+      "must_not_contain": [],
+      "expected_output": "Set `untranslated_handler` to `hide_link` on language_switcher_extended.settings (its other values are `link_to_front` and `no_link`). It only applies when `mode` = process_untranslated."
+    },
+    {
+      "id": "language_switcher_extended-config-route-permission",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "For Language Switcher Extended, what is the config object name, the settings-form route/path, and the permission that gates it?",
+      "must_contain_any": ["language_switcher_extended.settings", "/admin/config/regional/language/language-switcher-extended", "administer language_switcher_extended"],
+      "must_not_contain": [],
+      "expected_output": "Config object `language_switcher_extended.settings`; form route `language_switcher_extended.settings` at /admin/config/regional/language/language-switcher-extended (Configuration > Regional and language > Language Switcher Extended); permission `administer language_switcher_extended`."
+    },
+    {
+      "id": "language_switcher_extended-inspect-untranslated-handler",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "persona": "drupal-expert",
+      "prompt": "On this site, Language Switcher Extended is already configured. When a content entity has no translation in one of the site's languages, what does the language switcher currently do with that language's link?",
+      "setup": "agent-module-documentation/evaluation/verify/language_switcher_extended-untranslated-handler-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/language_switcher_extended-untranslated-handler-cleanup.sh",
+      "must_contain_any": ["link_to_front", "front", "front page"],
+      "must_not_contain": [],
+      "expected_output": "It is in process_untranslated mode with untranslated_handler = link_to_front, so a missing-translation language link is repointed to that site's front page (rather than hidden or shown as plain text)."
+    },
+    {
+      "id": "language_switcher_extended-inspect-mode",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "What mode is the Language Switcher Extended module currently set to on this site, and what effect does that mode have on the language switcher block?",
+      "setup": "agent-module-documentation/evaluation/verify/language_switcher_extended-mode-front-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/language_switcher_extended-mode-front-cleanup.sh",
+      "must_contain_any": ["always_link_to_front", "front page", "frontpage"],
+      "must_not_contain": [],
+      "expected_output": "mode = always_link_to_front: every language switcher item is repointed to its corresponding language's front page, regardless of the current page or translation state."
+    },
+    {
+      "id": "language_switcher_extended-inspect-single-link",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "persona": "drupal-expert",
+      "prompt": "On this site's Language Switcher Extended configuration, if hiding untranslated links leaves only one language link, what happens to the switcher block? Name the config keys that decide this.",
+      "setup": "agent-module-documentation/evaluation/verify/language_switcher_extended-single-link-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/language_switcher_extended-single-link-cleanup.sh",
+      "must_contain_any": ["hide_single_link", "hide_single_link_block"],
+      "must_not_contain": [],
+      "expected_output": "hide_single_link is TRUE, so when fewer than two links remain the switcher is emptied; hide_single_link_block is also TRUE, so the whole block is hidden (links set to NULL) rather than rendering an empty list. Mode is process_untranslated with untranslated_handler = hide_link."
+    },
+    {
+      "id": "language_switcher_extended-configure-hide-untranslated",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "Configure the Language Switcher Extended module so that, on content-entity pages, the language switcher hides links to any language the entity is not translated into. Set the mode and the untranslated handler accordingly in language_switcher_extended.settings.",
+      "reset": "agent-module-documentation/evaluation/verify/language_switcher_extended-hide-untranslated-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/language_switcher_extended-hide-untranslated-verify.sh",
+      "expected_output": "language_switcher_extended.settings has mode = process_untranslated and untranslated_handler = hide_link."
+    },
+    {
+      "id": "language_switcher_extended-configure-always-front",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "Configure Language Switcher Extended so that every language switcher link always points to that language's front page, regardless of the current page. Set the appropriate mode in language_switcher_extended.settings.",
+      "reset": "agent-module-documentation/evaluation/verify/language_switcher_extended-always-front-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/language_switcher_extended-always-front-verify.sh",
+      "expected_output": "language_switcher_extended.settings has mode = always_link_to_front."
+    },
+    {
+      "id": "language_switcher_extended-configure-no-link",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "Configure Language Switcher Extended so that, on content-entity pages, languages the entity is not translated into are shown as plain un-clickable text (a <nolink>) rather than being hidden. Set the mode and untranslated handler in language_switcher_extended.settings.",
+      "reset": "agent-module-documentation/evaluation/verify/language_switcher_extended-no-link-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/language_switcher_extended-no-link-verify.sh",
+      "expected_output": "language_switcher_extended.settings has mode = process_untranslated and untranslated_handler = no_link."
+    }
+  ]
+}

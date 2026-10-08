@@ -1,0 +1,88 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "theme_compiler",
+  "version": "2.0.x",
+  "note": "Theme Compiler compiles theme-provided assets via a `compiler` plugin (e.g. scss) and serves them from dynamically generated routes. Config is a THEME.theme_compiler.yml file (keyed compiler-id -> target-path -> {files, options, data}); there is no admin UI, no configure route, no permissions, no Drush, no plugins of its own. Routes are named theme_compiler.<sha384-of-uri> -> theme_compiler.controller:serve, built by the route callback theme_compiler.route_helper:routes. Compiled bytes live under public://theme-compiler-assets/. Recompile triggers: theme install/uninstall, THEME.settings config save/delete (CompileSubscriber on ConfigEvents), OnDemandCompileEvent. easy = recipe facts. medium = introspect live wiring (the Compiler service class; the compile subscriber's subscribed config events). hard = the agent adds a valid THEME.theme_compiler.yml to a custom theme so a theme_compiler.* route becomes registered (grounded in route/registration, NOT live SCSS compilation which needs node-sass). Baseline site has ZERO theme_compiler.* routes.",
+  "evals": [
+    {
+      "id": "theme-compiler-where-declared",
+      "mode": "recipe",
+      "prompt": "Using the Drupal 'theme_compiler' module, how does a theme declare that an SCSS file should be compiled and served as CSS? Name the file it uses and the structure of that file (what the keys mean).",
+      "must_contain_any": [
+        "theme_compiler.yml",
+        "files"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The theme ships THEME.theme_compiler.yml, keyed by compiler plugin id (e.g. scss), then by a theme-relative target path, whose value has a required `files` list (theme-relative sources) plus optional `options` and `data`. The module discovers it and builds a route to serve the compiled result.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "theme-compiler-triggers",
+      "mode": "recipe",
+      "prompt": "In the Drupal 'theme_compiler' module, what events cause the theme's assets to be (re)compiled?",
+      "must_contain_any": [
+        "themes_installed",
+        "OnDemandCompileEvent",
+        "settings",
+        "ConfigEvents"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Recompilation happens on theme install/uninstall (hook_themes_installed/uninstalled), when a relevant THEME.settings config is saved or deleted (CompileSubscriber on ConfigEvents::SAVE/DELETE), and on demand when an OnDemandCompileEvent is dispatched.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "theme-compiler-storage",
+      "mode": "recipe",
+      "prompt": "Where does the Drupal 'theme_compiler' module store the compiled asset files, and how are they served to the browser?",
+      "must_contain_any": [
+        "theme-compiler-assets",
+        "public://",
+        "serve"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Compiled bytes are written into the sandbox public://theme-compiler-assets/<theme>/<path>. Each declared target gets a dynamic route (theme_compiler.<hash>) mapped to theme_compiler.controller:serve, which returns the file (200/204) or a cacheable 404 if it is not yet generated.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "theme-compiler-service-class",
+      "mode": "introspection",
+      "prompt": "On this running Drupal site, inspect the service container: what PHP class backs the theme_compiler.compiler service?",
+      "must_contain_any": [
+        "Drupal\\theme_compiler\\Compiler",
+        "theme_compiler\\Compiler"
+      ],
+      "must_not_contain": [],
+      "expected_output": "theme_compiler.compiler is an instance of Drupal\\theme_compiler\\Compiler. Discoverable via drush php:eval 'echo get_class(\\Drupal::service(\"theme_compiler.compiler\"));'.",
+      "setup": "agent-module-documentation/evaluation/verify/theme_compiler-service-class-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/theme_compiler-service-class-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "theme-compiler-subscribed-events",
+      "mode": "introspection",
+      "prompt": "On this running Drupal site, inspect theme_compiler's event subscriber (service theme_compiler.compile_subscriber). Which configuration events does it subscribe to in order to trigger recompilation?",
+      "must_contain_any": [
+        "config.save",
+        "config.delete",
+        "ConfigEvents"
+      ],
+      "must_not_contain": [],
+      "expected_output": "CompileSubscriber::getSubscribedEvents() subscribes to ConfigEvents::SAVE ('config.save') and ConfigEvents::DELETE ('config.delete') -> onConfigChange, plus OnDemandCompileEvent -> compile. Discoverable by calling ::getSubscribedEvents() on the subscriber class.",
+      "setup": "agent-module-documentation/evaluation/verify/theme_compiler-subscribed-events-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/theme_compiler-subscribed-events-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "theme-compiler-register-route",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, make theme_compiler register a compiled-asset route. Create a small custom theme named 'tc_probe' (base theme stark) under web/themes/custom/tc_probe with a real source file (e.g. css/src.txt) and a tc_probe.theme_compiler.yml that declares a target using the 'scss' compiler and that source file (path resolvable). Install the theme and rebuild so a route named theme_compiler.<hash> is registered by the module. Apply this to the live site. (You do NOT need the SCSS to actually compile; only the route registration is checked.)",
+      "reset": "agent-module-documentation/evaluation/verify/theme_compiler-register-route-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/theme_compiler-register-route-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/theme_compiler-register-route-cleanup.sh",
+      "expected_output": "A custom theme tc_probe with a valid tc_probe.theme_compiler.yml (files resolvable) is installed; the router now contains at least one route whose name starts with 'theme_compiler.' (built by theme_compiler.route_helper:routes)."
+    }
+  ]
+}

@@ -1,0 +1,80 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "flysystem",
+  "version": "2.3.x",
+  "note": "Flysystem is configured entirely through settings.php ($settings['flysystem'][<scheme>] = ['driver'=>..., 'config'=>[...]]) - there is NO Drupal config object and NO configure route (configure=null). To keep the eval grounded in LOCAL config with no external service, every medium/hard case uses the built-in 'local' driver. The setup/reset/cleanup scripts add or remove a clearly-marked block in web/sites/default/settings.php via the helper evaluation/verify/flysystem-settings-edit.py and run `drush cr`; they normalise the file end so the baseline is restored byte-for-byte. Introspection/verify read live state through the flysystem_factory service (getSchemes()/getSettings()) or Settings::get('flysystem'). Scheme names may not contain underscores, which is why the scheme ids are flyknown/flyroot/flytask/flypub.",
+  "evals": [
+    {
+      "id": "flysystem-where-configured",
+      "mode": "recipe",
+      "prompt": "I installed the Drupal flysystem module but there is no admin settings page for adding a filesystem backend. Where do I declare a Flysystem stream-wrapper scheme, and what is the basic structure (which keys) of that declaration?",
+      "must_contain_any": ["settings.php", "$settings['flysystem']", "settings['flysystem']"],
+      "must_not_contain": [],
+      "expected_output": "Schemes are declared in settings.php: $settings['flysystem']['myscheme'] = ['driver' => '<adapter id>', 'config' => [...]]. There is no configure route; after editing settings.php run `drush cr`. Each key is the stream-wrapper name (no underscores).",
+      "difficulty": "easy"
+    },
+    {
+      "id": "flysystem-builtin-drivers",
+      "mode": "recipe",
+      "prompt": "Which filesystem adapter drivers does the flysystem module ship with out of the box (without installing an extra contrib module), and what is the 'driver' value used for a plain local directory?",
+      "must_contain_any": ["local", "ftp"],
+      "must_not_contain": [],
+      "expected_output": "Built-in drivers are 'local' and 'ftp' (FTP needs the PHP ftp extension). A local directory uses 'driver' => 'local'. Remote backends like s3v2, sftp, dropbox, gcs come from separate contrib modules.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "flysystem-adapter-plugin-type",
+      "mode": "recipe",
+      "prompt": "In the flysystem module, how do you add support for a brand-new storage backend in code? What plugin type / annotation and interface do you implement, and where does the class live?",
+      "must_contain_any": ["@Adapter", "Adapter", "FlysystemPluginInterface", "plugin.manager.flysystem"],
+      "must_not_contain": [],
+      "expected_output": "Create an adapter plugin: a class in your module's src/Flysystem/ annotated with @Adapter(id = \"...\") implementing Drupal\\flysystem\\Plugin\\FlysystemPluginInterface (getAdapter/getExternalUrl/ensure), discovered by plugin.manager.flysystem. Sites then reference it via 'driver' => 'yourid'.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "flysystem-scheme-known",
+      "mode": "introspection",
+      "prompt": "This Drupal site has exactly one Flysystem scheme configured. Inspect the running site and state the scheme (stream-wrapper) name and which driver it uses.",
+      "must_contain_any": ["flyknown"],
+      "must_not_contain": [],
+      "expected_output": "The scheme is 'flyknown' and it uses the 'local' driver. Find it with `drush php:eval 'print implode(\",\", \\Drupal::service(\"flysystem_factory\")->getSchemes());'` and read its driver from Settings::get('flysystem')['flyknown']['driver'].",
+      "setup": "agent-module-documentation/evaluation/verify/flysystem-scheme-known-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/flysystem-scheme-known-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "flysystem-scheme-root",
+      "mode": "introspection",
+      "prompt": "A Flysystem scheme named 'flyroot' is configured on this site using the local driver. Inspect the live configuration and state the root directory path it is configured to use.",
+      "must_contain_any": ["sites/default/files/flysystem-eval-data"],
+      "must_not_contain": [],
+      "expected_output": "flyroot's local root is 'sites/default/files/flysystem-eval-data'. Read it from Settings::get('flysystem')['flyroot']['config']['root'] or flysystem_factory->getSettings('flyroot').",
+      "setup": "agent-module-documentation/evaluation/verify/flysystem-scheme-root-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/flysystem-scheme-root-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "flysystem-create-local",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, configure a Flysystem stream-wrapper scheme named 'flytask' that uses the built-in local driver (root it at sites/default/files/flysystem-flytask). Apply the change so the running site recognises the scheme.",
+      "reset": "agent-module-documentation/evaluation/verify/flysystem-create-local-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/flysystem-create-local-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/flysystem-create-local-cleanup.sh",
+      "expected_output": "Add to settings.php: $settings['flysystem']['flytask'] = ['driver' => 'local', 'config' => ['root' => 'sites/default/files/flysystem-flytask']]; then `drush cr`. flysystem_factory->getSchemes() then contains 'flytask' with driver 'local'."
+    },
+    {
+      "id": "flysystem-create-public",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, create a PUBLIC Flysystem scheme named 'flypub' using the local driver, rooted at sites/default/files/flysystem-pub, so its files are served at browser-accessible URLs. Apply the change to the running site.",
+      "reset": "agent-module-documentation/evaluation/verify/flysystem-create-public-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/flysystem-create-public-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/flysystem-create-public-cleanup.sh",
+      "expected_output": "Add to settings.php: $settings['flysystem']['flypub'] = ['driver' => 'local', 'config' => ['root' => 'sites/default/files/flysystem-pub', 'public' => TRUE]]; then `drush cr`. The scheme must exist with driver 'local', config.public TRUE and the given root."
+    }
+  ]
+}

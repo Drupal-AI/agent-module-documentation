@@ -1,0 +1,97 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "openapi_ui_swagger",
+  "version": "1.2.x",
+  "note": "openapi_ui_swagger is a pure plugin provider: one @OpenApiUi(id = \"swagger\") plugin class, one JS behavior and one libraries file. It has no settings form, no routes, no permissions, no config schema, no Drush commands and defines no plugin types - so there is no module-owned config to introspect. The two medium cases therefore probe the two pieces of live state that actually decide whether it works: who may reach openapi's docs routes (permission 'access openapi api docs') and whether the swagger-ui distribution is present at <docroot>/libraries/swagger-ui (the absolute paths in openapi_ui_swagger.libraries.yml). The hard cases are a persona pair (expert / site-owner wording) sharing one reset+verify: build a custom module that renders the 'swagger' plugin through the openapi_ui render element, verified by an anonymous sub-request that must contain the id=\"swagger-ui\" / swagger-ui-wrap container and a data-openapi-ui-url|spec attribute produced by SwaggerUi::build().",
+  "evals": [
+    {
+      "id": "openapi_ui_swagger-plugin-id",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "On a Drupal 11 site with the openapi_ui_swagger module enabled, I want to render an OpenAPI specification with Swagger UI from my own controller. Which render element type do I use, and what plugin id identifies Swagger UI?",
+      "must_contain_any": [
+        "openapi_ui",
+        "'swagger'",
+        "\"swagger\"",
+        "#openapi_ui_plugin"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Use the openapi_ui render element from the openapi_ui module: ['#type' => 'openapi_ui', '#openapi_ui_plugin' => 'swagger', '#openapi_schema' => $url_or_array]. The plugin id provided by openapi_ui_swagger is 'swagger' (label 'Swagger UI'), class Drupal\\openapi_ui_swagger\\Plugin\\openapi_ui\\OpenApiUi\\SwaggerUi."
+    },
+    {
+      "id": "openapi_ui_swagger-library-path",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "I enabled openapi_ui_swagger on Drupal 11 but the API documentation page renders blank. Which external JavaScript library does the module need and exactly where on disk must it be installed?",
+      "must_contain_any": [
+        "libraries/swagger-ui",
+        "swagger-ui/dist",
+        "swagger-api/swagger-ui"
+      ],
+      "must_not_contain": [],
+      "expected_output": "It needs the swagger-ui distribution (composer package swagger-api/swagger-ui) unpacked at <docroot>/libraries/swagger-ui, because openapi_ui_swagger.libraries.yml references /libraries/swagger-ui/dist/swagger-ui-bundle.js, /libraries/swagger-ui/dist/swagger-ui-standalone-preset.js and /libraries/swagger-ui/dist/swagger-ui.css by absolute path. There is no hook_requirements(), so a missing library just yields an empty page. With Composer you need composer/installers plus mnsami/composer-custom-directory-installer and an installer-paths entry mapping swagger-api/swagger-ui to web/libraries/{$name}."
+    },
+    {
+      "id": "openapi_ui_swagger-docs-url",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "A Drupal 11 site has openapi, openapi_jsonapi and openapi_ui_swagger enabled. What URL shows the JSON:API OpenAPI documentation rendered with Swagger UI, and which permission does a user need to open it?",
+      "must_contain_any": [
+        "/admin/config/services/openapi/swagger/jsonapi",
+        "admin/config/services/openapi",
+        "access openapi api docs"
+      ],
+      "must_not_contain": [],
+      "expected_output": "/admin/config/services/openapi/swagger/jsonapi - the openapi module's openapi.documentation route is /admin/config/services/openapi/{openapi_ui}/{openapi_generator}, where {openapi_ui} is this module's plugin id 'swagger' and {openapi_generator} is 'jsonapi'. It requires openapi's 'access openapi api docs' permission (the raw spec is at /openapi/jsonapi)."
+    },
+    {
+      "id": "openapi_ui_swagger-docs-role",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "On this Drupal site someone has prepared a user role that is allowed to open the OpenAPI documentation pages rendered by Swagger UI. Inspect the running site and tell me the machine name of that role and the permission it was granted.",
+      "must_contain_any": [
+        "openapi_ui_swagger_viewer"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The role is openapi_ui_swagger_viewer and it holds the 'access openapi api docs' permission (defined by the openapi module), which is the _permission requirement on openapi.documentation, i.e. /admin/config/services/openapi/swagger/{generator}.",
+      "setup": "agent-module-documentation/evaluation/verify/openapi_ui_swagger-docs-role-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/openapi_ui_swagger-docs-role-cleanup.sh"
+    },
+    {
+      "id": "openapi_ui_swagger-library-installed",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "Check this running Drupal site: is the swagger-ui JavaScript library that openapi_ui_swagger depends on actually installed, and if so, which version does it report?",
+      "must_contain_any": [
+        "5.29.3"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Yes - the distribution is present at <docroot>/libraries/swagger-ui (web/libraries/swagger-ui) with dist/swagger-ui-bundle.js, dist/swagger-ui-standalone-preset.js and dist/swagger-ui.css, and its package.json declares version 5.29.3.",
+      "setup": "agent-module-documentation/evaluation/verify/openapi_ui_swagger-library-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/openapi_ui_swagger-library-cleanup.sh"
+    },
+    {
+      "id": "openapi_ui_swagger-custom-page-expert",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, create and enable a custom module named openapi_ui_swagger_eval in web/modules/custom/openapi_ui_swagger_eval. It must expose the route path /openapi-ui-swagger-eval/docs, accessible to everyone (_access: 'TRUE'), whose controller returns an openapi_ui render element that renders the OpenAPI specification at /openapi/jsonapi using the Swagger UI plugin provided by openapi_ui_swagger. Apply it to the live site so the page actually responds.",
+      "reset": "agent-module-documentation/evaluation/verify/openapi_ui_swagger-custom-page-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/openapi_ui_swagger-custom-page-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/openapi_ui_swagger-custom-page-reset.sh",
+      "expected_output": "A module with openapi_ui_swagger_eval.info.yml (dependency openapi_ui_swagger:openapi_ui_swagger), a routing entry for /openapi-ui-swagger-eval/docs with _access: 'TRUE', and a controller returning ['#type' => 'openapi_ui', '#openapi_ui_plugin' => 'swagger', '#openapi_schema' => Url::fromUri('base:/openapi/jsonapi', ['absolute' => TRUE])]. Enabled with drush en, the page returns 200 and contains <div id=\"swagger-ui\" class=\"swagger-ui-wrap\" data-openapi-ui-url=\"...\">."
+    },
+    {
+      "id": "openapi_ui_swagger-custom-page-layman",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "site-owner",
+      "prompt": "Our Drupal site publishes an API description file at /openapi/jsonapi, but it is just raw JSON. I want a normal page on the site, at the address /openapi-ui-swagger-eval/docs, that anybody can open and that shows those API docs in the nice interactive Swagger explorer instead of raw JSON. Please build that page on the live site; if you need to add code, put it in a small custom module called openapi_ui_swagger_eval.",
+      "reset": "agent-module-documentation/evaluation/verify/openapi_ui_swagger-custom-page-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/openapi_ui_swagger-custom-page-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/openapi_ui_swagger-custom-page-reset.sh",
+      "expected_output": "Same verified end state as the expert phrasing: an enabled openapi_ui_swagger_eval module whose /openapi-ui-swagger-eval/docs route is publicly accessible and returns the openapi_ui render element built with the 'swagger' plugin, so the markup contains id=\"swagger-ui\" / swagger-ui-wrap and a data-openapi-ui-url attribute pointing at /openapi/jsonapi."
+    }
+  ]
+}

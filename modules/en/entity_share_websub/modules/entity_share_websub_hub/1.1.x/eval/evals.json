@@ -1,0 +1,58 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "entity_share_websub_hub",
+  "version": "1.1.x",
+  "note": "Publisher submodule of entity_share_websub. Real, inspectable state: the entity_share_websub_hub_subscription DB table (columns include subscriber_endpoint, entity_type, entity_id (uuid), subscriber_secret, is_verified, channel_id) and the 'see content subscriptions' permission. Medium introspection inserts a known row and the agent reads it back; hard execution grants the module's permission to a role and verifies via the role config. Easy cases cover the /subscribe endpoint, the queue/kernel.terminate delivery, and X-Hub-Signature.",
+  "evals": [
+    {
+      "id": "entity_share_websub_hub-subscribe-endpoint",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "On a site running entity_share_websub_hub, what HTTP endpoint do subscriber sites call to register a subscription, what method, and what Drupal permission guards that route?",
+      "must_contain_any": ["/subscribe", "POST", "access content"],
+      "must_not_contain": [],
+      "expected_output": "Subscribers POST to /subscribe (route entity_share_websub_hub.subscription_controller_subscribe). The route requires only the 'access content' permission (so remote sites, typically anonymous, can call it); the real authentication is the intent-validation challenge and the X-Hub-Signature header, not a permission."
+    },
+    {
+      "id": "entity_share_websub_hub-notify-flow",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "How does entity_share_websub_hub deliver update notifications to subscribers without slowing down the editor's save request? Mention the queue and when it is processed.",
+      "must_contain_any": ["queue", "kernel.terminate", "terminate", "processUpdates", "entity_share_websub"],
+      "must_not_contain": [],
+      "expected_output": "hook_entity_update/hook_entity_delete flag affected subscriptions and enqueue items on the 'entity_share_websub' queue. The NotificationProcessor event subscriber drains that queue on the KernelEvents::TERMINATE event (after the response is sent) by calling Hub::processUpdates(), which PUTs updates / DELETEs cancels to each subscriber with an X-Hub-Signature header. There is no cron dependency."
+    },
+    {
+      "id": "entity_share_websub_hub-table",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "Where does entity_share_websub_hub store the list of who has subscribed to what, and which permission lets an administrator view that as a report?",
+      "must_contain_any": ["entity_share_websub_hub_subscription", "see content subscriptions", "Syndicated content"],
+      "must_not_contain": [],
+      "expected_output": "Subscriptions live in the entity_share_websub_hub_subscription database table. The module ships a 'Syndicated content' View over that table, gated by the 'see content subscriptions' permission."
+    },
+    {
+      "id": "entity_share_websub_hub-known-subscription",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "This hub site already has one subscription recorded in its subscription database table. Inspect the live site and report the subscriber_endpoint (callback URL) stored for that subscription.",
+      "must_contain_any": ["https://eswhub-example.test/subscription/known-key-123"],
+      "must_not_contain": [],
+      "expected_output": "Querying entity_share_websub_hub_subscription shows one row with subscriber_endpoint = https://eswhub-example.test/subscription/known-key-123 (entity_type node, channel_id eswhub_channel).",
+      "setup": "agent-module-documentation/evaluation/verify/entity_share_websub_hub-known-subscription-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/entity_share_websub_hub-known-subscription-cleanup.sh"
+    },
+    {
+      "id": "entity_share_websub_hub-grant-view-perm",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this hub site there is a role 'eswhub_editor'. Using the entity_share_websub_hub module's permission, allow that role to view the syndicated content subscriptions report. Apply it to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/entity_share_websub_hub-grant-view-perm-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/entity_share_websub_hub-grant-view-perm-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/entity_share_websub_hub-grant-view-perm-cleanup.sh",
+      "expected_output": "The eswhub_editor role is granted the 'see content subscriptions' permission (e.g. `drush role:perm:add eswhub_editor 'see content subscriptions'`), so user.role.eswhub_editor lists that permission."
+    }
+  ]
+}

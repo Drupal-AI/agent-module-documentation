@@ -1,0 +1,80 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "http_client_manager",
+  "version": "11.0.x",
+  "note": "HTTP Client Manager describes remote HTTP APIs as Guzzle service descriptions and calls their operations through managed clients. APIs are declared in MODULE.http_services_api.yml (title, api_path, config.base_uri) + a Guzzle description. Call via \\Drupal::service('http_client_manager.factory')->get('<api>')->call('<Command>', $params). Reusable calls are stored as http_config_request config entities (config name http_client_manager.http_config_request.<id>; keys service_api, command_name, parameters) executed with ->execute(). The enabled example submodule provides the 'example_services' API (JSONPlaceholder) with commands FindPosts/FindPost/CreatePost/FindComments. Medium cases create an http_config_request with known values and the agent reads it back; hard cases have the agent create http_config_request entities verified against live config. All test entities are namespaced hcm_eval_*.",
+  "evals": [
+    {
+      "id": "http_client_manager-call-from-code",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "Using the HTTP Client Manager Drupal module, how do I get a client for a described API and execute one of its operations from PHP?",
+      "must_contain_any": ["http_client_manager.factory", "->call(", "->get(", "HttpClient"],
+      "must_not_contain": [],
+      "expected_output": "Get the client from the http_client_manager.factory service: $client = \\Drupal::service('http_client_manager.factory')->get('<service_api>'); then $client->call('<CommandName>', ['param' => value]). You can also define an injectable service that extends http_client_manager.client_base."
+    },
+    {
+      "id": "http_client_manager-define-api",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "How do you register a new HTTP/REST API with HTTP Client Manager so its operations become callable?",
+      "must_contain_any": ["http_services_api.yml", "api_path", "base_uri", "Guzzle"],
+      "must_not_contain": [],
+      "expected_output": "Add a MODULE.http_services_api.yml declaring an id, title, api_path (pointing at a Guzzle service description with operations/models) and a config block with at least base_uri. Definitions can be overridden from settings.php via $settings['http_services_api']."
+    },
+    {
+      "id": "http_client_manager-config-request",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "What is an HTTP Config Request in HTTP Client Manager, what does it store, and how do you run one?",
+      "must_contain_any": ["http_config_request", "command_name", "service_api", "execute"],
+      "must_not_contain": [],
+      "expected_output": "It is a config entity (http_config_request) storing a pre-configured call: service_api, command_name and fixed parameters. Load and run it with HttpConfigRequest::load('<id>')->execute(). Config name http_client_manager.http_config_request.<id>."
+    },
+    {
+      "id": "http_client_manager-known-param",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "This site has an HTTP Config Request with id 'hcm_eval_m1'. Inspect its live configuration and report the value of the postId parameter it is configured with.",
+      "must_contain_any": ["7"],
+      "must_not_contain": [],
+      "expected_output": "postId is 7 (config http_client_manager.http_config_request.hcm_eval_m1, command FindPost on example_services).",
+      "setup": "agent-module-documentation/evaluation/verify/http_client_manager-known-param-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/http_client_manager-known-param-cleanup.sh"
+    },
+    {
+      "id": "http_client_manager-known-target",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "Inspect the HTTP Config Request 'hcm_eval_m2' on this site and report which service API and command name it targets.",
+      "must_contain_any": ["CreatePost"],
+      "must_not_contain": [],
+      "expected_output": "It targets service_api example_services, command_name CreatePost.",
+      "setup": "agent-module-documentation/evaluation/verify/http_client_manager-known-target-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/http_client_manager-known-target-cleanup.sh"
+    },
+    {
+      "id": "http_client_manager-build-findpost",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "Create an HTTP Config Request with id 'hcm_eval_h1' that calls the FindPost command on the example_services API with the parameter postId set to 3. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/http_client_manager-build-findpost-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/http_client_manager-build-findpost-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/http_client_manager-build-findpost-reset.sh",
+      "expected_output": "Create an http_config_request config entity id=hcm_eval_h1, service_api=example_services, command_name=FindPost, parameters={postId: 3} (via HttpConfigRequest::create(...)->save() or the admin UI)."
+    },
+    {
+      "id": "http_client_manager-build-createpost",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "Create an HTTP Config Request with id 'hcm_eval_h2' for the CreatePost command on example_services, with parameters title='QA', body='hello' and userId=42. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/http_client_manager-build-createpost-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/http_client_manager-build-createpost-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/http_client_manager-build-createpost-reset.sh",
+      "expected_output": "Create an http_config_request id=hcm_eval_h2, service_api=example_services, command_name=CreatePost, parameters={title: 'QA', body: 'hello', userId: 42}."
+    }
+  ]
+}

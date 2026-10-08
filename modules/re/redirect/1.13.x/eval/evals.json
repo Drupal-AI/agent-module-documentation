@@ -1,0 +1,147 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "redirect",
+  "version": "1.13.x",
+  "note": "Redirect exposes a content entity, a config settings object, two submodules, and a small service API. Cases span three difficulty tiers: `easy`/`recipe` (response-graded) probe documented facts an agent would otherwise read source to answer; `medium`/`introspection` cases install a KNOWN redirect via `setup`, have the agent read it back from the live site (drush), grade on response text, then `cleanup`; `hard`/`execution` cases mutate live state and are graded by reset -> model -> verify against real redirect entities.",
+  "evals": [
+    {
+      "id": "redirect-build-301",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site (drush available), create a permanent (301) URL redirect so that visits to the path `eval-old-page` are forwarded to the site's front page. Create the redirect as a real redirect entity on the live site; don't just describe it. One-line summary.",
+      "reset": "agent-module-documentation/evaluation/verify/redirect-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/redirect-old-page.sh",
+      "expected_output": "A redirect entity with source path `eval-old-page`, status_code 301, and a non-empty target pointing to the front page (internal:/ , <front>, or route:<front>) exists on the live site. Verified against live site state."
+    },
+    {
+      "id": "redirect-build-temp-page",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site (drush available), create a temporary (302) URL redirect so that visits to the path `eval-temp-page` are forwarded to `/node/1`. Create the redirect as a real redirect entity on the live site; don't just describe it. One-line summary.",
+      "reset": "agent-module-documentation/evaluation/verify/redirect-temp-page-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/redirect-temp-page-verify.sh",
+      "expected_output": "A redirect entity with source path `eval-temp-page`, status_code 302, and target node/1 (stored as internal:/node/1) exists on the live site. Verified against live site state."
+    },
+    {
+      "id": "redirect-build-external",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site (drush available), create a permanent (301) URL redirect so that visits to the path `eval-ext` are forwarded to the external URL https://www.drupal.org . Create the redirect as a real redirect entity on the live site; don't just describe it. One-line summary.",
+      "reset": "agent-module-documentation/evaluation/verify/redirect-ext-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/redirect-ext-verify.sh",
+      "expected_output": "A redirect entity with source path `eval-ext`, status_code 301, and a target that is an external http(s) URL (e.g. https://www.drupal.org) exists on the live site. Verified against live site state."
+    },
+    {
+      "id": "redirect-intro-target-and-code",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "persona": "drupal-expert",
+      "setup": "agent-module-documentation/evaluation/verify/redirect-intro-src-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/redirect-intro-src-cleanup.sh",
+      "prompt": "A redirect already exists on this site for the path `eval-intro-src` — where does it point and with what HTTP status code? Inspect the live site (drush available) to answer.",
+      "must_contain_any": ["node/1", "302"],
+      "must_not_contain": [],
+      "expected_output": "The eval-intro-src redirect points to node/1 (stored internal:/node/1) with HTTP status code 302. Read back from live site state via drush."
+    },
+    {
+      "id": "redirect-intro-status-code",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "persona": "drupal-expert",
+      "setup": "agent-module-documentation/evaluation/verify/redirect-intro-src-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/redirect-intro-src-cleanup.sh",
+      "prompt": "What status code (301 or 302) does the `eval-intro-src` redirect use on this site? Inspect the live site (drush available) to answer.",
+      "must_contain_any": ["302"],
+      "must_not_contain": [],
+      "expected_output": "The eval-intro-src redirect uses HTTP status code 302 (temporary). Read back from live site state via drush."
+    },
+    {
+      "id": "redirect-intro-target",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "persona": "drupal-expert",
+      "setup": "agent-module-documentation/evaluation/verify/redirect-intro-src-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/redirect-intro-src-cleanup.sh",
+      "prompt": "What is the target (destination) of the `eval-intro-src` redirect on this site? Inspect the live site (drush available) to answer.",
+      "must_contain_any": ["node/1"],
+      "must_not_contain": [],
+      "expected_output": "The eval-intro-src redirect targets node/1 (stored as internal:/node/1). Read back from live site state via drush."
+    },
+    {
+      "id": "redirect-create-in-code",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "In PHP on a Drupal 11 site, programmatically create a redirect from `old/path` to `node/1` with a 301 status code. Show the code.",
+      "must_contain_any": ["Redirect::create(", "Drupal\\redirect\\Entity\\Redirect"],
+      "must_not_contain": [],
+      "expected_output": "Uses the Redirect entity: Redirect::create() then setSource('old/path'), setRedirect('node/1'), setStatusCode(301), save()."
+    },
+    {
+      "id": "redirect-lookup-service",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "On a Drupal 11 site I want to look up whether a given source path already has a redirect before creating a new one. Which service do I use and which method performs the main lookup?",
+      "must_contain_any": ["redirect.repository", "findMatchingRedirect", "findBySourcePath", "RedirectRepository"],
+      "must_not_contain": [],
+      "expected_output": "The redirect.repository service (RedirectRepository); findMatchingRedirect() is the main lookup, findBySourcePath() also returns matches."
+    },
+    {
+      "id": "redirect-auto-on-alias-change",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "I want Redirect to automatically create a redirect when a node's URL alias changes so SEO ranking survives. Which config setting controls this, and what config object holds it?",
+      "must_contain_any": ["auto_redirect", "redirect.settings"],
+      "must_not_contain": [],
+      "expected_output": "The auto_redirect key (default true) in the redirect.settings config object controls auto-creating a redirect when an alias changes."
+    },
+    {
+      "id": "redirect-default-status-code",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "How do I change the site-wide default HTTP status code used for new redirects on a Drupal site? Give the config key and a drush command.",
+      "must_contain_any": ["default_status_code", "redirect.settings"],
+      "must_not_contain": [],
+      "expected_output": "Set the default_status_code key (default 301) on redirect.settings, e.g. drush cset redirect.settings default_status_code 302."
+    },
+    {
+      "id": "redirect-permissions",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "What are the two permission machine names Redirect provides, and which one gates the global settings form versus managing individual redirects?",
+      "must_contain_any": ["administer redirects", "administer redirect settings"],
+      "must_not_contain": [],
+      "expected_output": "'administer redirects' gates creating/editing/deleting individual redirects; 'administer redirect settings' gates the global settings form."
+    },
+    {
+      "id": "redirect-submodules",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "Which Redirect submodule logs 404s so I can turn frequent missing-page requests into redirects, and which submodule redirects between whole domains?",
+      "must_contain_any": ["redirect_404", "redirect_domain"],
+      "must_not_contain": [],
+      "expected_output": "redirect_404 logs 404s and turns frequent misses into redirects; redirect_domain redirects between whole domains."
+    },
+    {
+      "id": "redirect-response-hook",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "In a custom Drupal module I want to alter the redirect response just before it is sent (e.g. add a message or change the target). Which hook do I implement?",
+      "must_contain_any": ["hook_redirect_response_alter", "redirect_response_alter"],
+      "must_not_contain": [],
+      "expected_output": "Implement hook_redirect_response_alter(TrustedRedirectResponse $response, Redirect $redirect)."
+    },
+    {
+      "id": "redirect-query-passthrough",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "Which Redirect setting controls whether the incoming query string is kept (passed through) when a request is redirected, and what is its default?",
+      "must_contain_any": ["passthrough_querystring"],
+      "must_not_contain": [],
+      "expected_output": "The passthrough_querystring key on redirect.settings (default true) keeps the incoming query string on redirect."
+    }
+  ]
+}

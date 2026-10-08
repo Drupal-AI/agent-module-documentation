@@ -1,0 +1,80 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "limited_field_widgets",
+  "version": "3.0.x",
+  "note": "Grounded in the real mechanism: a per-widget third-party setting `limited_field_widgets.limit_values` (integer, 0 = unlimited) stored on the form-display widget component of an UNLIMITED-cardinality field, plus an ItemCount validation constraint. Medium/hard cases create namespaced string fields (field_lfw_*) with cardinality -1 on node.article and read/write the limit_values setting on core.entity_form_display.node.article.default. Cleanup deletes only the field_lfw_* storages it created.",
+  "evals": [
+    {
+      "id": "lfw-how-to-limit",
+      "mode": "recipe",
+      "prompt": "I have a Drupal field with Unlimited cardinality but I want editors to add at most 3 values. Using the limited_field_widgets module, where and how do I set that cap? There is no admin settings page for the module.",
+      "must_contain_any": ["Manage form display", "form display", "form-display", "Limit values", "limit_values"],
+      "must_not_contain": [],
+      "expected_output": "On the bundle's Manage form display, open the field widget's gear and set 'Limit values' to 3. It is stored as third_party_settings.limited_field_widgets.limit_values on the widget component (and on the FieldConfig).",
+      "difficulty": "easy"
+    },
+    {
+      "id": "lfw-which-fields",
+      "mode": "recipe",
+      "prompt": "On which fields does the limited_field_widgets 'Limit values' setting appear, and what does setting it to 0 mean?",
+      "must_contain_any": ["unlimited", "CARDINALITY_UNLIMITED", "-1", "no limit"],
+      "must_not_contain": [],
+      "expected_output": "The setting only appears for fields whose storage cardinality is Unlimited (CARDINALITY_UNLIMITED / -1). A value of 0 means unlimited (no cap; no ItemCount constraint is added).",
+      "difficulty": "easy"
+    },
+    {
+      "id": "lfw-enforcement",
+      "mode": "recipe",
+      "prompt": "Besides hiding the 'Add another' button in the form, how does limited_field_widgets make sure the configured maximum is enforced even when an entity is saved programmatically?",
+      "must_contain_any": ["ItemCount", "constraint", "validation"],
+      "must_not_contain": [],
+      "expected_output": "hook_entity_bundle_field_info_alter() adds an 'ItemCount' validation constraint (max = limit) to the field, so validation fails when the value count exceeds the max — enforced on any save, not just the UI.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "lfw-known-limit",
+      "mode": "introspection",
+      "prompt": "On this Drupal site, the Article content type has an unlimited field field_lfw_known whose widget uses limited_field_widgets to cap the number of values. Inspect the live default form display and tell me the maximum number of values allowed.",
+      "must_contain_any": ["4"],
+      "must_not_contain": [],
+      "expected_output": "4: in core.entity_form_display.node.article.default the field_lfw_known component has third_party_settings.limited_field_widgets.limit_values = 4.",
+      "setup": "agent-module-documentation/evaluation/verify/lfw-known-limit-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/lfw-known-limit-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "lfw-capped-vs-free",
+      "mode": "introspection",
+      "prompt": "The Article content type has two unlimited fields, field_lfw_capped and field_lfw_free. One has a limited_field_widgets values cap set and the other does not. Inspect the live form display and state the value cap configured on field_lfw_capped.",
+      "must_contain_any": ["2"],
+      "must_not_contain": [],
+      "expected_output": "field_lfw_capped is capped at 2 (limit_values = 2); field_lfw_free has limit_values = 0 (unlimited).",
+      "setup": "agent-module-documentation/evaluation/verify/lfw-capped-vs-free-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/lfw-capped-vs-free-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "lfw-set-limit-3",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, the Article content type has an unlimited field field_lfw_task with a string_textfield widget on the default form display. Using limited_field_widgets, configure that widget so editors can add at most 3 values. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/lfw-set-limit-3-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/lfw-set-limit-3-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/lfw-set-limit-3-cleanup.sh",
+      "expected_output": "In core.entity_form_display.node.article.default the field_lfw_task component has third_party_settings.limited_field_widgets.limit_values = 3."
+    },
+    {
+      "id": "lfw-set-limit-1",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "site-builder",
+      "prompt": "On this Drupal site, the Article content type has an unlimited field field_lfw_single with a string_textfield widget on the default form display. Make it so an editor can enter only ONE value, using the limited_field_widgets module. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/lfw-set-limit-1-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/lfw-set-limit-1-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/lfw-set-limit-1-cleanup.sh",
+      "expected_output": "In core.entity_form_display.node.article.default the field_lfw_single component has third_party_settings.limited_field_widgets.limit_values = 1."
+    }
+  ]
+}

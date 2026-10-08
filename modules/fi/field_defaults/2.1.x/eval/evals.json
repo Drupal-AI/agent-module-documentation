@@ -1,0 +1,99 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "field_defaults",
+  "version": "2.1.x",
+  "note": "Field Defaults applies a field's configured default_value[0] to EXISTING content in bulk (Drupal itself only applies defaults to new entities). One field at a time; batches over every entity of the field's target entity type + bundle (10 at a time). Real surface: the Drush command field_defaults:bulk-update (alias fdbu, args entity_type entity_bundle field_name [lang] [no_overwrite]; no_overwrite default TRUE fills only empty fields, no_overwrite=0 overwrites existing), the field_defaults.processor service (processFieldForm()), the per-field 'Update existing content' UI on the Manage-fields edit form (gated by 'administer field defaults'), and the single config field_defaults.settings:retain_changed_date (int 0/1, default 1) which preserves each entity's changed timestamp via a PreserveChangedItem decorator of core ChangedItem. Medium cases introspect a known setting value and a known field default_value on Article; hard cases create a namespaced field_fd_* field (with a default) plus a namespaced Article node and verify the module pushed the default onto the existing node (fill-empty and overwrite paths). All site artifacts are namespaced field_fd_* / nodes titled field_defaults_*; reuse the core `article` type.",
+  "evals": [
+    {
+      "id": "field_defaults-drush-command",
+      "mode": "recipe",
+      "prompt": "On a Drupal site, I want to bulk-apply a field's configured default value to all existing content of that type using the field_defaults module from the command line (not the UI). What is the Drush command, and what are its main arguments?",
+      "must_contain_any": [
+        "field_defaults:bulk-update",
+        "fdbu",
+        "field_defaults-bulk-update"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Use `drush field_defaults:bulk-update <entity_type> <entity_bundle> <field_name> [<lang>] [<no_overwrite>]` (alias `fdbu`). It applies the field's own configured default_value[0] to existing entities; pass -y to skip the confirm prompt. `no_overwrite` defaults to TRUE (fill only empty fields); pass 0 to overwrite existing values; `lang` is a comma-separated list of translation languages to also update.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "field_defaults-setting",
+      "mode": "recipe",
+      "prompt": "The field_defaults module has a single global setting. Which config object and key control whether an entity's original updated (changed) timestamp is kept when a bulk default update runs, and what is the shipped default?",
+      "must_contain_any": [
+        "retain_changed_date",
+        "field_defaults.settings"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The config object is `field_defaults.settings` with the integer key `retain_changed_date` (default 1 = on). When on, the processor sets a `preserve` flag so the PreserveChangedItem decorator skips bumping the entity's changed timestamp during a bulk update. The settings form is at /admin/config/system/field_defaults/settings.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "field_defaults-overwrite-behavior",
+      "mode": "recipe",
+      "prompt": "When the field_defaults module applies a default value to existing content, does it overwrite fields that already contain a value? Explain the option that controls this and which entities get processed.",
+      "must_contain_any": [
+        "no_overwrite",
+        "Keep existing values",
+        "empty",
+        "overwrite"
+      ],
+      "must_not_contain": [],
+      "expected_output": "By default it can overwrite every entity, but the 'Keep existing values' checkbox (the `no_overwrite` flag; TRUE by default in the Drush command) restricts the update to fields that are currently empty (`->isEmpty()`), so existing data is not clobbered. It processes ALL entities of the field's target entity type and bundle (batched 10 at a time), plus any selected translation languages.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "field_defaults-known-setting",
+      "mode": "introspection",
+      "prompt": "On this Drupal site, inspect the field_defaults configuration and report the current value of its retain_changed_date setting — i.e. whether retaining the original changed/updated timestamp during a bulk default update is currently on or off.",
+      "must_contain_any": [
+        "0",
+        "off",
+        "disabled",
+        "not retained"
+      ],
+      "must_not_contain": [],
+      "expected_output": "retain_changed_date is 0 (off) — read via `drush cget field_defaults.settings retain_changed_date`. So the original changed timestamp is NOT retained during a bulk update on this site.",
+      "setup": "agent-module-documentation/evaluation/verify/field_defaults-known-setting-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/field_defaults-known-setting-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "field_defaults-known-field",
+      "mode": "introspection",
+      "prompt": "This site's Article content type has a text field named field_fd_known. Inspect the live field configuration and report the default value that is configured for that field.",
+      "must_contain_any": [
+        "FD_DEFAULT_XYZ"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The field's configured default value is 'FD_DEFAULT_XYZ' — visible via `drush cget field.field.node.article.field_fd_known default_value` (default_value: [{ value: FD_DEFAULT_XYZ }]).",
+      "setup": "agent-module-documentation/evaluation/verify/field_defaults-known-field-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/field_defaults-known-field-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "field_defaults-fill-empty",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, the Article content type has a text field field_fd_task whose configured Default value is 'TASK_DEFAULT'. There is an existing Article node titled 'field_defaults_hard1' whose field_fd_task is currently empty. Using the field_defaults module, apply the field's default value to that existing node so its empty field_fd_task is filled with 'TASK_DEFAULT'. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/field_defaults-fill-empty-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/field_defaults-fill-empty-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/field_defaults-fill-empty-cleanup.sh",
+      "expected_output": "Run `drush field_defaults:bulk-update node article field_fd_task -y` (no_overwrite defaults TRUE, which fills empty fields) or call the field_defaults.processor service. Afterwards the field_defaults_hard1 node's field_fd_task holds 'TASK_DEFAULT'."
+    },
+    {
+      "id": "field_defaults-overwrite",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, the Article content type has a text field field_fd_over whose configured Default value is 'NEW_DEFAULT'. An existing Article node titled 'field_defaults_hard2' currently has field_fd_over set to 'OLD_VALUE'. Using the field_defaults module, overwrite the existing value on that node with the field's default so field_fd_over becomes 'NEW_DEFAULT'. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/field_defaults-overwrite-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/field_defaults-overwrite-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/field_defaults-overwrite-cleanup.sh",
+      "expected_output": "Run `drush fdbu node article field_fd_over '' 0 -y` (no_overwrite=0 forces overwriting existing values) or call the field_defaults.processor service with no_overwrite FALSE. Afterwards the field_defaults_hard2 node's field_fd_over is 'NEW_DEFAULT' (was 'OLD_VALUE')."
+    }
+  ]
+}

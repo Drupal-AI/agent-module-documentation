@@ -1,0 +1,96 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "field_tools",
+  "version": "1.0.x",
+  "note": "Field Tools has no settings form (configure=null) and no config of its own; it adds Field-UI tabs and site-wide field reports, and exposes four services. All cases are grounded in real service ids/methods (field_tools.field_cloner->cloneField), real routes (/admin/reports/fields/tools), the real permission (access field tools pages), and real live field config. Medium cases read back which bundles a field instance lives on; hard cases clone a field (and its form-display settings) from Article to Page, verified against live field.field / entity_form_display config.",
+  "evals": [
+    {
+      "id": "field_tools-clone-service",
+      "mode": "recipe",
+      "prompt": "In the Drupal contrib module Field Tools, which service and method would I call in code to copy an existing field configuration from one bundle to a different bundle?",
+      "must_contain_any": [
+        "field_tools.field_cloner",
+        "cloneField",
+        "FieldCloner"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Call the field_tools.field_cloner service (\\Drupal\\field_tools\\FieldCloner) and its cloneField($field_config, $destination_entity_type_id, $destination_bundle) method.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "field_tools-reports-permission",
+      "mode": "recipe",
+      "prompt": "Field Tools adds site-wide field overview pages under Reports. What is the URL path of its field list report, and which permission controls access to those pages?",
+      "must_contain_any": [
+        "/admin/reports/fields",
+        "access field tools pages"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The field list is at /admin/reports/fields/tools (references at /admin/reports/fields/references, graph at /admin/reports/fields/graph). Access is gated by the 'access field tools pages' permission.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "field_tools-clone-copies-displays",
+      "mode": "recipe",
+      "prompt": "When Field Tools clones a field to another bundle, does it also copy the field's display configuration? If so, which displays receive the settings?",
+      "must_contain_any": [
+        "display",
+        "view mode",
+        "form display",
+        "view display"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Yes. cloneField() also copies the field's form and view display settings onto displays on the destination bundle whose view-mode name matches one on the source (both entity_form_display and entity_view_display). Modes that do not exist on the destination are skipped.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "field_tools-which-bundles",
+      "mode": "introspection",
+      "prompt": "On this Drupal site a field named field_ft_seen has been added to more than one content type. Using the kind of information Field Tools' field list report exposes, inspect the live site and name every content-type bundle that currently has an instance of field_ft_seen.",
+      "must_contain_any": [
+        "page"
+      ],
+      "must_not_contain": [],
+      "expected_output": "field_ft_seen is instanced on the article and page content types (field.field.node.article.field_ft_seen and field.field.node.page.field_ft_seen both exist).",
+      "setup": "agent-module-documentation/evaluation/verify/field_tools-which-bundles-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/field_tools-which-bundles-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "field_tools-reference-field",
+      "mode": "introspection",
+      "prompt": "Field Tools' references report lists entity-reference fields and what they point at. On this site the Article content type has exactly one custom reference field added for this task. Inspect the live configuration and give its machine name and the entity type it references.",
+      "must_contain_any": [
+        "field_ft_ref"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The field is field_ft_ref, an entity_reference field on node.article that targets the user entity type (settings.target_type: user).",
+      "setup": "agent-module-documentation/evaluation/verify/field_tools-reference-field-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/field_tools-reference-field-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "field_tools-clone-field",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site the Article content type has a field field_ft_source that the Page content type does not have. Using Field Tools, clone field_ft_source from Article to the Page content type so that Page gains an instance of the same field. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/field_tools-clone-field-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/field_tools-clone-field-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/field_tools-clone-field-cleanup.sh",
+      "expected_output": "A FieldConfig field.field.node.page.field_ft_source now exists (e.g. via \\Drupal::service('field_tools.field_cloner')->cloneField(FieldConfig::loadByName('node','article','field_ft_source'),'node','page'), or by duplicating the FieldConfig onto the page bundle)."
+    },
+    {
+      "id": "field_tools-clone-with-widget",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "layman",
+      "prompt": "I added a field called field_ft_widget to my Articles and set up how it looks on the edit form. I want the exact same field, including its edit-form widget, to also show up on Basic pages. Please make that happen on the site.",
+      "reset": "agent-module-documentation/evaluation/verify/field_tools-clone-with-widget-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/field_tools-clone-with-widget-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/field_tools-clone-with-widget-cleanup.sh",
+      "expected_output": "Page gains FieldConfig field.field.node.page.field_ft_widget AND the node.page.default entity_form_display has a component for field_ft_widget (Field Tools' cloneField copies form-display settings to the matching-named display; the article default form display already has the component)."
+    }
+  ]
+}

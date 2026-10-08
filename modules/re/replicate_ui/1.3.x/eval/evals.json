@@ -1,0 +1,102 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "replicate_ui",
+  "version": "1.3.x",
+  "note": "Replicate UI is a thin UI layer over the Replicate module's replicate.replicator service. It has one config object (replicate_ui.settings: entity_types + check_edit_access), one permission (replicate entities), and a settings form at /admin/config/content/replicate; enabling an entity type dynamically registers an entity.{type}.replicate route, a Replicate local task, an entity-operation link, an entity_replicate Action, a Rules action and a replicate_ui_link Views field. Easy cases are response-graded. Medium cases share one setup that saves a known replicate_ui.settings (entity_types=[node,taxonomy_term], check_edit_access=true) and a cleanup that restores baseline. Hard cases FAIL on empty state, PASS after the agent builds config / clones an entity, and leave the site clean.",
+  "evals": [
+    {
+      "id": "replicate_ui-settings-keys",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "On a Drupal 11 site using the replicate_ui module, which configuration object controls the module, and which two keys decide (a) which entity types get a Replicate UI and (b) whether the user must also have edit access on the original before replicating?",
+      "must_contain_any": ["entity_types", "check_edit_access"],
+      "must_not_contain": [],
+      "expected_output": "The config object is replicate_ui.settings. entity_types (a list of content entity type machine ids) selects which types are replicable; check_edit_access (boolean) additionally requires core update/edit access on the original entity when true."
+    },
+    {
+      "id": "replicate_ui-service",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "The replicate_ui module does not clone entities itself — it delegates to the Replicate module. In custom PHP on a Drupal site, which service and method do I call to deep-clone AND save a content entity the way Replicate UI does?",
+      "must_contain_any": ["replicate.replicator", "replicateEntity"],
+      "must_not_contain": [],
+      "expected_output": "Call the replicate.replicator service (\\Drupal\\replicate\\Replicator) and its replicateEntity($entity) method, which clones the entity (including referenced children) and saves it, returning the new copy. cloneEntity() clones without saving."
+    },
+    {
+      "id": "replicate_ui-permission-route",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "For the Drupal replicate_ui module: what is the machine name of the permission that lets a role use the Replicate UI, and at what admin path is the settings form where you choose which entity types are replicable?",
+      "must_contain_any": ["replicate entities", "/admin/config/content/replicate"],
+      "must_not_contain": [],
+      "expected_output": "The permission machine name is 'replicate entities'. The settings form is at /admin/config/content/replicate (route replicate_ui.settings). Note the user also needs core create access on the entity type for the Replicate tab/operation to appear."
+    },
+    {
+      "id": "replicate_ui-known-enabled-types",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "persona": "drupal-expert",
+      "prompt": "This Drupal site already has replicate_ui configured. Using drush, inspect the live configuration and tell me exactly which entity types currently have the Replicate UI enabled.",
+      "must_contain_any": ["taxonomy_term"],
+      "must_not_contain": [],
+      "setup": "agent-module-documentation/evaluation/verify/replicate_ui-known-settings-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/replicate_ui-known-settings-cleanup.sh",
+      "expected_output": "Read from replicate_ui.settings.entity_types: the Replicate UI is enabled for node and taxonomy_term."
+    },
+    {
+      "id": "replicate_ui-known-edit-access",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, inspect the live replicate_ui configuration with drush and tell me whether replicating an entity currently also requires the user to have edit access on the original entity. Answer with the exact setting and its value.",
+      "must_contain_any": ["check_edit_access", "true"],
+      "must_not_contain": [],
+      "setup": "agent-module-documentation/evaluation/verify/replicate_ui-known-settings-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/replicate_ui-known-settings-cleanup.sh",
+      "expected_output": "Yes. replicate_ui.settings.check_edit_access is set to true, so each replicate route also requires core update (edit) access on the original entity."
+    },
+    {
+      "id": "replicate_ui-known-node-route",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "persona": "drupal-expert",
+      "prompt": "Given how replicate_ui is currently configured on this live site, what is the URL path of the route that lets an editor replicate a node? Inspect the running site (routes/config) with drush to answer, do not guess.",
+      "must_contain_any": ["/node/{node}/replicate"],
+      "must_not_contain": [],
+      "setup": "agent-module-documentation/evaluation/verify/replicate_ui-known-settings-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/replicate_ui-known-settings-cleanup.sh",
+      "expected_output": "Because node is enabled in replicate_ui.settings, the dynamically registered route entity.node.replicate exists at /node/{node}/replicate."
+    },
+    {
+      "id": "replicate_ui-enable-node",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, configure the replicate_ui module so that editors get a Replicate tab/operation on nodes. Apply it live so that the replicate route for nodes actually exists (path /node/{node}/replicate).",
+      "reset": "agent-module-documentation/evaluation/verify/replicate_ui-enable-node-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/replicate_ui-enable-node-verify.sh",
+      "expected_output": "replicate_ui.settings.entity_types now includes 'node' and, after a router/cache rebuild, the route entity.node.replicate exists at /node/{node}/replicate."
+    },
+    {
+      "id": "replicate_ui-enable-taxonomy-editaccess",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, use the replicate_ui module to enable replication for taxonomy terms, and configure it so that a user must also be able to edit the original term before they may replicate it. Apply it live.",
+      "reset": "agent-module-documentation/evaluation/verify/replicate_ui-enable-taxonomy-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/replicate_ui-enable-taxonomy-verify.sh",
+      "expected_output": "replicate_ui.settings.entity_types includes 'taxonomy_term' and check_edit_access is true; after a rebuild the route entity.taxonomy_term.replicate exists and carries the _entity_access: taxonomy_term.update requirement."
+    },
+    {
+      "id": "replicate_ui-clone-node",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site there is an article node titled 'Replicate Eval Source'. Using the deep-clone service that the replicate_ui module builds on, create a duplicate (a saved copy) of that node.",
+      "reset": "agent-module-documentation/evaluation/verify/replicate_ui-clone-node-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/replicate_ui-clone-node-verify.sh",
+      "expected_output": "After calling replicate.replicator->replicateEntity() (which copies the label and saves), at least two nodes whose title starts with 'Replicate Eval Source' exist on the live site."
+    }
+  ]
+}

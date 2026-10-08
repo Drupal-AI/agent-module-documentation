@@ -1,0 +1,58 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "search_api_stats_block",
+  "version": "1.0.x",
+  "note": "Trivial submodule of search_api_stats: one derivative block plugin (base id search_api_stats_block, deriver SearchApiStatsBlock -> one derivative per Search API index, id search_api_stats_block:<index_id>) that lists the top search keywords for that index by querying the parent's search_api_stats table (SELECT keywords, COUNT(*) ... GROUP BY keywords ORDER BY num DESC). Block settings: num_phrases (default 8), path (default 'search'), param_name (default 'search'). Theme hook search_api_stats_block renders <path>?<param_name>=<keyword> links with counts; rendered uncached. No permissions/config schema/routes/Drush. Medium grounds in the block's own query over seeded rows; hard places the derivative block (a real Search API index is created so the derivative exists).",
+  "evals": [
+    {
+      "id": "search_api_stats_block-what-block",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "What block does the search_api_stats_block submodule provide, and why does the site show one variant per Search API index?",
+      "must_contain_any": ["search_api_stats_block", "derivative", "per index", "per-index"],
+      "must_not_contain": [],
+      "expected_output": "It provides a derivative block plugin (base id search_api_stats_block) whose deriver calls Index::loadMultiple() to create one variant per Search API index, id search_api_stats_block:<index_id>, showing that index's top search phrases."
+    },
+    {
+      "id": "search_api_stats_block-settings",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "When placing the Search API stats term block, what settings can I configure and what do they default to?",
+      "must_contain_any": ["num_phrases", "param_name", "path", "number of top search phrases"],
+      "must_not_contain": [],
+      "expected_output": "Three settings: num_phrases (how many top phrases, default 8), path (the search page path each keyword links to, default 'search'), and param_name (the query-string key for the phrase, default 'search')."
+    },
+    {
+      "id": "search_api_stats_block-data-source",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "Where does the search_api_stats_block block get the list of top search terms it displays?",
+      "must_contain_any": ["search_api_stats", "COUNT", "GROUP BY", "keywords"],
+      "must_not_contain": [],
+      "expected_output": "From the parent module's search_api_stats table: getStats() runs SELECT keywords, COUNT(*) ... WHERE s_name and i_name match the block's index/server AND keywords != '' GROUP BY keywords ORDER BY num DESC, limited to num_phrases."
+    },
+    {
+      "id": "search_api_stats_block-top-live",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "The Search API stats term block is configured for the index 'sasblk_idx' (its server is 'sasblk_srv'). Based on the live search_api_stats data on this site, which single keyword would appear at the top of that block? Inspect the running site to answer.",
+      "must_contain_any": ["blkterm_win"],
+      "must_not_contain": [],
+      "expected_output": "blkterm_win - grouping search_api_stats rows for s_name='sasblk_srv' and i_name='sasblk_idx' by keywords and counting (the query the block runs), blkterm_win has 4 vs blkterm_lose 1, so it tops the block.",
+      "setup": "agent-module-documentation/evaluation/verify/search_api_stats_block-top-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/search_api_stats_block-top-cleanup.sh"
+    },
+    {
+      "id": "search_api_stats_block-place",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "This site has a Search API index 'sasblk_idx'. Using the search_api_stats_block submodule, place its top-search-terms block for that index into a region of the default theme, so the derivative block search_api_stats_block:sasblk_idx is active on the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/search_api_stats_block-place-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/search_api_stats_block-place-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/search_api_stats_block-place-cleanup.sh",
+      "expected_output": "A block config entity exists with plugin: search_api_stats_block:sasblk_idx (placed via the Block UI 'Place block' on the index's variant, or by creating a block.block.* config), in any region of the default theme."
+    }
+  ]
+}

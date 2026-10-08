@@ -1,0 +1,80 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "paragraphs_asymmetric_translation_widgets",
+  "version": "1.4.x",
+  "note": "Tiered suite. easy (recipe): probe module-specific, load-bearing facts graded on response text, no site mutation. medium (introspection): a setup script installs a known asymmetric-widget configuration to the live site, the agent inspects the entity_form_display via drush and answers, graded on response text; a cleanup script restores baseline. hard (execution): a reset script creates a paragraphs field on Article with a non-asymmetric widget, the agent switches the form-display widget to this module's asymmetric widget, and a verify script checks live state (exit 0 = pass). The one selectable widget id this module registers is 'paragraphs_classic_asymmetric'; the modern 'paragraphs' widget is made asymmetric by a class swap (hook_field_widget_info_alter), not a new id.",
+  "evals": [
+    {
+      "id": "pasym-legacy-widget-id",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "On a Drupal 11 site, the Paragraphs Asymmetric Translation Widgets module adds one new, selectable field widget for entity_reference_revisions fields so the legacy inline Paragraphs form supports asymmetric translations. What is the machine name (plugin id) of that widget?",
+      "must_contain_any": ["paragraphs_classic_asymmetric"],
+      "must_not_contain": [],
+      "expected_output": "The widget id is `paragraphs_classic_asymmetric` (label \"Paragraphs Legacy Asymmetric\"), extending the classic InlineParagraphsWidget."
+    },
+    {
+      "id": "pasym-modern-widget-classswap",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "How does Paragraphs Asymmetric Translation Widgets make the MODERN stable `paragraphs` field widget support asymmetric translations? Does it register a new widget id for the modern form, and which hook does it use?",
+      "must_contain_any": ["field_widget_info_alter"],
+      "must_not_contain": [],
+      "expected_output": "It does NOT add a new id for the modern form; it implements hook_field_widget_info_alter() to swap the class of the existing `paragraphs` widget to ParagraphsAsymmetricWidget."
+    },
+    {
+      "id": "pasym-translation-duplication",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "Which Drupal hook does the Paragraphs Asymmetric Translation Widgets module implement to give each new translation its own independent set of paragraphs, and what does it do in that hook?",
+      "must_contain_any": ["entity_translation_create"],
+      "must_not_contain": [],
+      "expected_output": "It implements hook_entity_translation_create(), recursively duplicating the source language's translatable entity_reference_revisions -> paragraph items so each translation starts with its own paragraph revisions."
+    },
+    {
+      "id": "pasym-introspect-widget-id",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site (drush available), the Article content type has a paragraphs reference field `field_asym_para`. Inspect the Article default entity form display and tell me which field widget (plugin id) is configured for that field.",
+      "setup": "agent-module-documentation/evaluation/verify/paragraphs_asymmetric-introspect-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/paragraphs_asymmetric-introspect-cleanup.sh",
+      "must_contain_any": ["paragraphs_classic_asymmetric"],
+      "must_not_contain": [],
+      "expected_output": "The node.article default form display uses the `paragraphs_classic_asymmetric` widget for field_asym_para."
+    },
+    {
+      "id": "pasym-introspect-edit-mode",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site (drush available), inspect the Article default form display component for the paragraphs field `field_asym_para`. What is the value of its widget `edit_mode` setting?",
+      "setup": "agent-module-documentation/evaluation/verify/paragraphs_asymmetric-introspect-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/paragraphs_asymmetric-introspect-cleanup.sh",
+      "must_contain_any": ["closed"],
+      "must_not_contain": [],
+      "expected_output": "The widget's edit_mode setting is `closed` (the field_asym_para component uses the paragraphs_classic_asymmetric widget with edit_mode: closed)."
+    },
+    {
+      "id": "pasym-set-widget-expert",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site (drush available), the Article content type has a paragraphs reference field `field_asym_para` whose form-display widget is the stock stable `paragraphs` widget. Change the Article default entity form display so that `field_asym_para` uses the Paragraphs Asymmetric Translation Widgets legacy asymmetric widget (`paragraphs_classic_asymmetric`). Apply it to the live site so it really takes effect; don't just describe it. One-line summary.",
+      "reset": "agent-module-documentation/evaluation/verify/paragraphs_asymmetric-article-widget-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/paragraphs_asymmetric-article-widget-verify.sh",
+      "expected_output": "node.article's default form display component for field_asym_para has widget type `paragraphs_classic_asymmetric`. Verified against live site state."
+    },
+    {
+      "id": "pasym-set-widget-layman",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-layman",
+      "prompt": "My multilingual site has Articles with a 'paragraphs' section builder field called field_asym_para, but right now every language is forced to have the exact same sections. I want translators to be able to add, remove and reorder the sections differently for each language. Make that happen on the live site using the module I already installed for this. Give me a one-line summary when done.",
+      "reset": "agent-module-documentation/evaluation/verify/paragraphs_asymmetric-article-widget-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/paragraphs_asymmetric-article-widget-verify.sh",
+      "expected_output": "The agent switches node.article's field_asym_para form-display widget to `paragraphs_classic_asymmetric` (the asymmetric widget), enabling per-language paragraph sets. Verified against live site state."
+    }
+  ]
+}

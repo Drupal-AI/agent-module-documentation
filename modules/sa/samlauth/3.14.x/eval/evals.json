@@ -1,0 +1,73 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "samlauth",
+  "version": "3.14.x",
+  "note": "samlauth makes Drupal a SAML 2.0 Service Provider on top of externalauth + onelogin/php-saml. Cases are `recipe` (response-graded) probing documented facts (config keys, /saml/* routes, external lib, externalauth linkage, sync events) an agent would otherwise read source to answer; no site mutation.",
+  "evals": [
+    {
+      "id": "samlauth-external-library",
+      "mode": "recipe",
+      "prompt": "Which external (non-Drupal) PHP library does the Drupal samlauth module require to do the SAML message handling?",
+      "must_contain_any": ["onelogin/php-saml", "php-saml"],
+      "must_not_contain": [],
+      "expected_output": "onelogin/php-saml (the OneLogin / SAML-Toolkits SAML PHP Toolkit), required via composer (^3.8.1 || ^4.3.1)."
+    },
+    {
+      "id": "samlauth-acs-metadata-routes",
+      "mode": "recipe",
+      "prompt": "On a Drupal site using samlauth, which URL path is the Assertion Consumer Service that receives the IdP response, and which path publishes the SP metadata XML?",
+      "must_contain_any": ["/saml/acs"],
+      "must_not_contain": [],
+      "expected_output": "/saml/acs is the ACS endpoint that validates the IdP response; /saml/metadata publishes the SP metadata XML (gated by the 'view sp metadata' permission)."
+    },
+    {
+      "id": "samlauth-config-object",
+      "mode": "recipe",
+      "prompt": "Which config object holds all samlauth SP/IdP settings, and which key identifies each SAML login as a stable unique identifier?",
+      "must_contain_any": ["samlauth.authentication", "unique_id_attribute"],
+      "must_not_contain": [],
+      "expected_output": "All settings live in samlauth.authentication; the unique_id_attribute key holds the never-changing Unique ID (a NameID or named attribute)."
+    },
+    {
+      "id": "samlauth-externalauth-linkage",
+      "mode": "recipe",
+      "prompt": "How does samlauth remember which Drupal user a given SAML login belongs to, and which module/table stores that link?",
+      "must_contain_any": ["externalauth", "authmap"],
+      "must_not_contain": [],
+      "expected_output": "samlauth depends on the externalauth module and stores the SAML-login-to-Drupal-user link in externalauth's authmap table under provider 'samlauth' (managed at /admin/people/authmap/samlauth)."
+    },
+    {
+      "id": "samlauth-user-sync-event",
+      "mode": "recipe",
+      "prompt": "In a custom Drupal module I want to set extra user fields from SAML attributes during login, and be able to block the login by throwing. Which samlauth event should I subscribe to?",
+      "must_contain_any": ["USER_SYNC", "samlauth.user_sync", "SamlauthUserSyncEvent"],
+      "must_not_contain": [],
+      "expected_output": "Subscribe to SamlauthEvents::USER_SYNC (SamlauthUserSyncEvent); call markAccountChanged() to persist changes, or throw an exception to prevent the login/registration."
+    },
+    {
+      "id": "samlauth-library-config-alter",
+      "mode": "recipe",
+      "prompt": "I need to set an advanced php-saml toolkit setting that samlauth doesn't expose in its UI (e.g. requestedAuthnContext). Which samlauth event lets me alter the OneLogin config array?",
+      "must_contain_any": ["LIBRARY_CONFIG_ALTER", "samlauth.library_config_alter", "SamlauthLibraryConfigAlterEvent"],
+      "must_not_contain": [],
+      "expected_output": "Subscribe to SamlauthEvents::LIBRARY_CONFIG_ALTER (SamlauthLibraryConfigAlterEvent); use getConfig()/setConfig() to modify the settings array before OneLogin\\Saml2\\Auth is built, keyed on getPurpose()."
+    },
+    {
+      "id": "samlauth-service",
+      "mode": "recipe",
+      "prompt": "Which Drupal service id and class does samlauth provide to drive SAML login/acs/logout and read the returned attributes?",
+      "must_contain_any": ["samlauth.saml", "SamlService"],
+      "must_not_contain": [],
+      "expected_output": "The samlauth.saml service (Drupal\\samlauth\\SamlService); e.g. getAttributes() reads the validated SAML attributes and acs() processes the IdP response."
+    },
+    {
+      "id": "samlauth-permissions",
+      "mode": "recipe",
+      "prompt": "What are the two permissions samlauth defines, and which one is needed to reach the SP metadata URL?",
+      "must_contain_any": ["configure saml", "view sp metadata"],
+      "must_not_contain": [],
+      "expected_output": "'configure saml' gates the admin configuration forms; 'view sp metadata' gates /saml/metadata."
+    }
+  ]
+}

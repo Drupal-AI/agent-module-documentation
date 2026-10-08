@@ -1,0 +1,99 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "term_reference_change",
+  "version": "2.0.x",
+  "note": "Term Reference Change is an API-only module: no UI, no routes, no permissions, no settings, no plugin types, no Drush. Everything is behind two services declared in term_reference_change.services.yml - term_reference_change.reference_finder (ReferenceFinder: findTermReferenceFields() and findReferencesFor(TermInterface)) and term_reference_change.migrator (ReferenceMigrator::migrateReference(TermInterface $source, TermInterface $target, array $limit = [])). The finder only matches fields of type 'entity_reference' whose target_type setting is 'taxonomy_term', excludes computed fields, and hard-skips the taxonomy 'parent' field. The migrator rewrites every matching target_id, de-duplicates the resulting values and saves the entity; it does NOT delete the source term. All cases are grounded in those exact APIs: recipe cases ask about service ids / filtering rules / $limit semantics, introspection cases read live field definitions and live references, and execution cases perform a full merge and a $limit-scoped merge verified against live entity data.",
+  "evals": [
+    {
+      "id": "term_reference_change-services",
+      "mode": "recipe",
+      "prompt": "I have the Drupal contrib module term_reference_change installed on a Drupal 11 site but I cannot find any admin page for it. What service do I call to re-point every entity that references taxonomy term A so that it references term B instead, and what is the method signature?",
+      "must_contain_any": [
+        "term_reference_change.migrator",
+        "migrateReference",
+        "ReferenceMigrator"
+      ],
+      "must_not_contain": [],
+      "expected_output": "There is no UI (configure is null). Call the term_reference_change.migrator service (Drupal\\term_reference_change\\ReferenceMigrator) and use migrateReference(TermInterface $sourceTerm, TermInterface $targetTerm, array $limit = []). It rewrites the references and saves the entities; it does not delete the source term.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "term_reference_change-which-fields-count",
+      "mode": "recipe",
+      "prompt": "In the Drupal module term_reference_change, which fields does the ReferenceFinder service consider to be taxonomy term reference fields, and is there any field it deliberately refuses to look at?",
+      "must_contain_any": [
+        "entity_reference",
+        "target_type",
+        "taxonomy_term",
+        "parent"
+      ],
+      "must_not_contain": [],
+      "expected_output": "findTermReferenceFields() walks every fieldable entity type and bundle and keeps a field only when its type is exactly 'entity_reference', its target_type setting is 'taxonomy_term', and it is not computed. It deliberately skips the field named 'parent' because taxonomy's parent field causes fatal errors in entity queries (drupal.org/node/2543726).",
+      "difficulty": "easy"
+    },
+    {
+      "id": "term_reference_change-limit-argument",
+      "mode": "recipe",
+      "prompt": "The term_reference_change module's ReferenceMigrator::migrateReference() takes an optional third argument called $limit. What shape does that array have, and what happens to entities that are not covered by it?",
+      "must_contain_any": [
+        "entity type",
+        "entity_type",
+        "keyed by",
+        "entity ids",
+        "entity IDs"
+      ],
+      "must_not_contain": [],
+      "expected_output": "$limit is an array of entity IDs keyed by entity type ID, e.g. ['node' => [12, 34]]. If it is empty the migration touches everything. If it is non-empty, any entity type that is not a key is skipped entirely, and within a listed entity type any entity whose ID is not in the list is skipped.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "term_reference_change-known-usage",
+      "mode": "introspection",
+      "prompt": "This Drupal site has a taxonomy vocabulary 'TRC Topics' (trc_topics) containing a term named 'Alpha'. Using term_reference_change's reference finder against the running site, tell me the machine name of the field through which content references that term, and how many nodes reference it.",
+      "must_contain_any": [
+        "field_trc_topic"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The field is field_trc_topic on the Article content type, and two nodes (TRC Known One and TRC Known Two) reference the Alpha term. Discoverable via \\Drupal::service('term_reference_change.reference_finder')->findTermReferenceFields() and ->findReferencesFor($alpha_term).",
+      "setup": "agent-module-documentation/evaluation/verify/term_reference_change-known-usage-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/term_reference_change-known-usage-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "term_reference_change-which-field",
+      "mode": "introspection",
+      "prompt": "The Article content type on this Drupal site has two entity reference fields whose machine names start with field_trc_: field_trc_primary and field_trc_related. Inspect the live field configuration and tell me which of the two term_reference_change's ReferenceFinder would return from findTermReferenceFields(), and why the other one is excluded.",
+      "must_contain_any": [
+        "field_trc_primary"
+      ],
+      "must_not_contain": [],
+      "expected_output": "field_trc_primary, because its storage setting target_type is taxonomy_term. field_trc_related is also an entity_reference field but its target_type is node, and ReferenceFinder only keeps entity_reference fields whose target_type setting equals 'taxonomy_term'.",
+      "setup": "agent-module-documentation/evaluation/verify/term_reference_change-which-field-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/term_reference_change-which-field-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "term_reference_change-merge-all",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "This Drupal site has a vocabulary 'TRC Merge' (trc_merge) with the terms 'Old Topic' and 'New Topic', and three Article nodes (TRC Merge A, B and C) that reference 'Old Topic' through the field field_trc_merge. Using the term_reference_change module, migrate every reference from 'Old Topic' to 'New Topic' on the live site so that no content still references 'Old Topic'. Do not delete any nodes.",
+      "reset": "agent-module-documentation/evaluation/verify/term_reference_change-merge-all-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/term_reference_change-merge-all-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/term_reference_change-merge-all-cleanup.sh",
+      "expected_output": "Load both terms and call \\Drupal::service('term_reference_change.migrator')->migrateReference($old, $new); afterwards all three articles' field_trc_merge holds the New Topic term ID and none holds the Old Topic term ID."
+    },
+    {
+      "id": "term_reference_change-merge-limited",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "This Drupal site has a vocabulary 'TRC Limit' (trc_limit) with the terms 'Legacy Tag' and 'Current Tag'. Three Article nodes - 'TRC Limit Keep 1', 'TRC Limit Keep 2' and 'TRC Limit Move' - all reference 'Legacy Tag' through field_trc_limit. Using term_reference_change, move ONLY the node titled 'TRC Limit Move' onto 'Current Tag'. The two 'Keep' nodes must still reference 'Legacy Tag' when you are done.",
+      "reset": "agent-module-documentation/evaluation/verify/term_reference_change-merge-limited-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/term_reference_change-merge-limited-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/term_reference_change-merge-limited-cleanup.sh",
+      "expected_output": "Use the $limit argument: migrateReference($legacy, $current, ['node' => [$nid_of_TRC_Limit_Move]]). Afterwards field_trc_limit on 'TRC Limit Move' points at the Current Tag term ID while both Keep nodes still point at Legacy Tag."
+    }
+  ]
+}

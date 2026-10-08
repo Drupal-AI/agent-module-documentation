@@ -1,0 +1,100 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "views_taxonomy_term_name_into_id",
+  "version": "1.0.x",
+  "note": "The module provides a single Views argument (contextual filter) validator plugin, id taxonomy_term_name_into_id ('Taxonomy term name as ID'), class Drupal\\views_taxonomy_term_name_into_id\\Plugin\\views\\argument_validator\\TermNameAsId which extends core TermName. It converts a term NAME argument to the term ID so the efficient 'Has taxonomy term ID' (taxonomy_index_tid) contextual filter can use human-readable URLs. No settings form, no configure route, no permissions, no services, no Drush. It is configured entirely inside a view: display.<d>.display_options.arguments.<arg>.validate.type = taxonomy_term_name_into_id with specify_validation: true and validate_options (bundles, transform, access, operation). Medium/hard cases build real views (prefixed vttnii_) from the module's own test view and verify the validator config on the live view. hard cases mutate live view config and are verified against it. NOTE: on this shared site an unrelated contrib module currently makes a full Views handler discovery fatal after a cache clear, so setup/reset/verify write and read the view via raw config storage; a solving agent should likewise edit the view configuration (config:set / config storage / Views UI) rather than depend on programmatic View entity re-saves.",
+  "evals": [
+    {
+      "id": "views_taxonomy_term_name_into_id-plugin-id",
+      "mode": "recipe",
+      "prompt": "In Drupal Views, I want a taxonomy listing page to accept the term NAME in the URL (e.g. /blog/jazz) but still use the efficient 'Has taxonomy term ID' contextual filter. Which module/validator does that, and what is the argument validator's plugin id?",
+      "must_contain_any": [
+        "taxonomy_term_name_into_id",
+        "Taxonomy term name as ID",
+        "term name as ID"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Use the Views Taxonomy Term Name Into ID module's argument validator 'Taxonomy term name as ID' (plugin id taxonomy_term_name_into_id). On the 'Has taxonomy term ID' contextual filter tick 'Specify validation criteria' and choose that validator; it converts the term name to its ID before the query runs.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "views_taxonomy_term_name_into_id-where-configured",
+      "mode": "recipe",
+      "prompt": "The views_taxonomy_term_name_into_id module has no settings page. Where and how do you actually turn on its 'Taxonomy term name as ID' validator?",
+      "must_contain_any": [
+        "contextual filter",
+        "argument",
+        "Specify validation",
+        "validate",
+        "validator"
+      ],
+      "must_not_contain": [],
+      "expected_output": "There is no configure route. You configure it inside a view: on a taxonomy term ID contextual filter, tick 'Specify validation criteria' and set Validator to 'Taxonomy term name as ID'. In config it is arguments.<arg>.validate.type = taxonomy_term_name_into_id with specify_validation: true.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "views_taxonomy_term_name_into_id-uniqueness",
+      "mode": "recipe",
+      "prompt": "What happens with the views_taxonomy_term_name_into_id validator if two vocabularies contain a term with the same name, and how do you make the result predictable?",
+      "must_contain_any": [
+        "vocabulary",
+        "bundles",
+        "first",
+        "unique",
+        "restrict"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The conversion assumes term names are unique; with duplicate names across vocabularies only the first accessible matching term is used. Restrict the validator to a single vocabulary via the 'Filter to vocabulary' option (validate_options.bundles) to make it predictable.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "views_taxonomy_term_name_into_id-which-validator",
+      "mode": "introspection",
+      "prompt": "This Drupal site has a view named 'vttnii_known' with a taxonomy term ID contextual filter. Inspect the live view configuration and state which argument validator plugin its contextual filter uses.",
+      "must_contain_any": [
+        "taxonomy_term_name_into_id"
+      ],
+      "must_not_contain": [],
+      "expected_output": "It uses taxonomy_term_name_into_id: views.view.vttnii_known -> display.default.display_options.arguments.tid.validate.type = taxonomy_term_name_into_id.",
+      "setup": "agent-module-documentation/evaluation/verify/views_taxonomy_term_name_into_id-known-validator-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/views_taxonomy_term_name_into_id-known-validator-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "views_taxonomy_term_name_into_id-which-vocab",
+      "mode": "introspection",
+      "prompt": "On this site the view 'vttnii_vocabview' uses the 'Taxonomy term name as ID' validator, and the term-name lookup has been restricted to a single vocabulary. Inspect the live view configuration and give the machine name of that vocabulary.",
+      "must_contain_any": [
+        "vttnii_vocab"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The validator is restricted to the vttnii_vocab vocabulary: arguments.tid.validate_options.bundles contains vttnii_vocab.",
+      "setup": "agent-module-documentation/evaluation/verify/views_taxonomy_term_name_into_id-known-vocab-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/views_taxonomy_term_name_into_id-known-vocab-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "views_taxonomy_term_name_into_id-set-validator",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site the view 'vttnii_task' has a 'Has taxonomy term ID' contextual filter with no name-based validation. Configure that contextual filter to use the views_taxonomy_term_name_into_id validator ('Taxonomy term name as ID') so term names in the URL are converted to IDs. Apply it to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/views_taxonomy_term_name_into_id-set-validator-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/views_taxonomy_term_name_into_id-set-validator-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/views_taxonomy_term_name_into_id-set-validator-cleanup.sh",
+      "expected_output": "On views.view.vttnii_task set display.default.display_options.arguments.tid.specify_validation: true and validate.type: taxonomy_term_name_into_id, then save."
+    },
+    {
+      "id": "views_taxonomy_term_name_into_id-restrict-vocab",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site the view 'vttnii_task2' already uses the 'Taxonomy term name as ID' validator on its contextual filter, but it searches all vocabularies. A vocabulary 'vttnii_vocab' exists. Restrict the validator's term-name lookup to only the 'vttnii_vocab' vocabulary and apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/views_taxonomy_term_name_into_id-restrict-vocab-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/views_taxonomy_term_name_into_id-restrict-vocab-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/views_taxonomy_term_name_into_id-restrict-vocab-cleanup.sh",
+      "expected_output": "On views.view.vttnii_task2 set display.default.display_options.arguments.tid.validate_options.bundles to include vttnii_vocab (e.g. {vttnii_vocab: vttnii_vocab}), keeping validate.type: taxonomy_term_name_into_id, then save."
+    }
+  ]
+}

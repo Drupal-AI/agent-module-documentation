@@ -1,0 +1,101 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "commerce_stock",
+  "version": "3.0.x",
+  "note": "Commerce Stock is the stock framework for Drupal Commerce. It defines pluggable stock services (tagged commerce_stock.stock_service, resolved by commerce_stock.service_manager / StockServiceManager) and order->stock event handling (stock_events + commerce_stock_event_type plugin types), and registers a StockAvailabilityChecker. Built-in service always_in_stock; the commerce_stock_local submodule adds local_stock. Which service applies is chosen on the form at /admin/commerce/config/stock/settings (route commerce_stock.stock_config) and stored in commerce_stock.service_manager config: default_service_id, per-bundle <entity_type>_<bundle>_service_id (e.g. commerce_product_variation_default_service_id), and stock_events_plugin_id (core_stock_events / disabled_stock_events). All medium/hard cases are grounded in that real local config, verified by pure config reads - no external service or product data needed. Cleanup restores baseline explicitly (clears the keys / core_stock_events).",
+  "evals": [
+    {
+      "id": "commerce_stock-services",
+      "mode": "recipe",
+      "prompt": "In Drupal Commerce Stock, what are the built-in stock 'services', and which one do I need for real inventory tracking (actual stock quantities and locations)?",
+      "must_contain_any": [
+        "always_in_stock",
+        "local_stock",
+        "commerce_stock_local",
+        "Local"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The core module ships only the Always-in-stock service (always_in_stock), which reports everything as available. For real inventory you enable the Commerce Stock Local Storage submodule, which adds the database-backed local_stock service with stock levels, locations and transactions.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "commerce_stock-choose-service",
+      "mode": "recipe",
+      "prompt": "How do I choose which stock service Commerce Stock uses for a given product variation type, and where is that stored?",
+      "must_contain_any": [
+        "commerce_stock.service_manager",
+        "default_service_id",
+        "stock_config",
+        "/admin/commerce/config/stock/settings",
+        "service_id"
+      ],
+      "must_not_contain": [],
+      "expected_output": "On the form at /admin/commerce/config/stock/settings (route commerce_stock.stock_config) you set a default service and a per-entity-type/bundle override. It is stored in commerce_stock.service_manager config: default_service_id plus per-bundle keys like commerce_product_variation_default_service_id (value use_default = fall back to default).",
+      "difficulty": "easy"
+    },
+    {
+      "id": "commerce_stock-api",
+      "mode": "recipe",
+      "prompt": "Which Drupal Commerce Stock service and method would I use in code to read a product variation's available stock level, and what method records receiving new stock?",
+      "must_contain_any": [
+        "commerce_stock.service_manager",
+        "StockServiceManager",
+        "getStockLevel",
+        "receiveStock",
+        "createTransaction"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Use the commerce_stock.service_manager service (StockServiceManager): getStockLevel($entity) reads the available level, and receiveStock(...) (or the low-level createTransaction(...) with a STOCK_IN type) records incoming stock. It also has sellStock/moveStock/returnStock.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "commerce_stock-known-default",
+      "mode": "introspection",
+      "prompt": "On this Drupal site, which stock service is configured as the default in Commerce Stock? Inspect the live configuration and give the service id.",
+      "must_contain_any": [
+        "local_stock"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The default is local_stock: commerce_stock.service_manager has default_service_id set to local_stock.",
+      "setup": "agent-module-documentation/evaluation/verify/commerce_stock-default-service-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/commerce_stock-default-service-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "commerce_stock-known-bundle-service",
+      "mode": "introspection",
+      "prompt": "On this Drupal site the default product variation type has been assigned a specific Commerce Stock service (an override rather than 'use default'). Inspect the live configuration and state which stock service is set for the default product variation type.",
+      "must_contain_any": [
+        "local_stock"
+      ],
+      "must_not_contain": [],
+      "expected_output": "It is local_stock: commerce_stock.service_manager has commerce_product_variation_default_service_id set to local_stock (the per-bundle override for the default product variation type).",
+      "setup": "agent-module-documentation/evaluation/verify/commerce_stock-bundle-service-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/commerce_stock-bundle-service-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "commerce_stock-set-default",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, configure Commerce Stock so that the default stock service is the local (database-backed) stock service, so products are tracked with real inventory by default. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/commerce_stock-set-default-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/commerce_stock-set-default-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/commerce_stock-set-default-cleanup.sh",
+      "expected_output": "commerce_stock.service_manager default_service_id is set to local_stock (e.g. choose 'Local stock' as the Default service on /admin/commerce/config/stock/settings, or set the config key and save)."
+    },
+    {
+      "id": "commerce_stock-disable-events",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, turn OFF Commerce Stock's automatic order-driven stock updates (do not let placing/cancelling orders change stock levels) by selecting the stock events plugin that disables them. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/commerce_stock-disable-events-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/commerce_stock-disable-events-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/commerce_stock-disable-events-cleanup.sh",
+      "expected_output": "commerce_stock.service_manager stock_events_plugin_id is set to disabled_stock_events (the DisabledStockEvents plugin), replacing the default core_stock_events."
+    }
+  ]
+}

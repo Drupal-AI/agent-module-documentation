@@ -1,0 +1,52 @@
+{
+  "name": "Test Helpers",
+  "data_name": "test_helpers",
+  "description": "An API to simplify writing Drupal unit tests (stubs/mocks for core services).",
+  "version": "1.7.x",
+  "package": "Development",
+  "composer_namespace": "drupal/test_helpers",
+  "composer_requirements": {},
+  "dependent_modules": [],
+  "configure": null,
+  "core_version_requirement": "^11.3||^12",
+  "active_installs": null,
+  "list_position": null,
+  "project_url": "https://www.drupal.org/project/test_helpers",
+  "license": "GPL-2.0-or-later",
+  "php_requirement": null,
+  "library_dependencies": [],
+  "suggests": {},
+  "submodules": [],
+  "provides_permissions": false,
+  "provides_drush_commands": false,
+  "provides_config_schema": true,
+  "provides_plugin_types": [],
+  "categories": [
+    "Developer tools"
+  ],
+  "subcategories": [
+    "Testing"
+  ],
+  "keywords": [
+    "test helpers",
+    "unit tests",
+    "stubs",
+    "mocks",
+    "testing"
+  ],
+  "project_description": "The module provides API to simplify writing Drupal tests - unit and functional. Using the API can significantly reduce the amount of code in your tests to cover all the logic of tested functions, using provided stubs of Drupal core services and many other helpers.\n\n Basically, the module provides stubs for the most popular Drupal services like Entity Storage, EntityQuery, Database, Configuration Factory, and many others. The stubs can emulate the behavior of entities (create, load, save, delete) and core services, but without the real initialization of Drupal Kernel, a database, and other persistent storages, all are emulated in the memory.\n\n Additionally, it provides some utility functions to get private properties and methods from classes, Plugin Definitions from a YAML file, and many more.\n\n Also, it provides helpers for functional and Nightwatch tests, which can significantly speed up the test execution time.\n\n And to use the Test Helpers API in your project or a contrib module, you don't even need to install it in Drupal, adding it via composer as a dev dependency (without installing on production) is enough:\n\n composer require --dev drupal/test_helpers\n\n \n\n And this approach will even work in Drupal.org infrastructure and for testing Drupal Core features too!\n\n The module was presented at DrupalCon 2023 - here is the presentation and the slides .\n\n An example: \n A simple function that just renders a list of recent articles: \n <?php\n\n public function articlesList() {\n\n $amount = $this->configFactory->get('test_helpers_example.settings')\n\n ->get('articles_to_display') ?? 3;\n\n $articlesIds = $this->entityTypeManager->getStorage('node')->getQuery()\n\n ->accessCheck()\n\n ->condition('status', 1)\n\n ->condition('type', 'article')\n\n ->sort('created', 'DESC')\n\n ->range(0, $amount)\n\n ->execute();\n\n $articles = $this->entityTypeManager->getStorage('node')\n\n ->loadMultiple($articlesIds);\n\n $articlesList = [];\n\n foreach ($articles as $article) {\n\n $linkText = $this->t('@label (@date by @username)', [\n\n '@label' => $article->label(),\n\n '@date' => $this->dateFormatter->format($article->created->value),\n\n '@username' => $article->uid->entity->label(),\n\n ]);\n\n $articlesList[] = $article->toLink($linkText);\n\n }\n\n return [\n\n '#theme' => 'item_list',\n\n '#items' => $articlesList,\n\n '#cache' => ['tags' => ['node_list:article']],\n\n ];\n\n }\n\n?>\n\n A unit test to cover all the logic of that function, using Test Helpers API: \n <?php\n\n public function testArticlesList() {\n\n TestHelpers::service('config.factory')->stubSetConfig('test_helpers_example.settings', ['articles_to_display' => 1]);\n\n TestHelpers::service('date.formatter')->stubSetFormat('medium', 'Medium', 'd.m.Y');\n\n TestHelpers::saveEntity('user', ['name' => 'Alice']);\n\n TestHelpers::saveEntity('node', ['type' => 'article', 'title' => 'A1', 'status' => 1, 'uid' => 1, 'created' => 1672574400]);\n\n TestHelpers::saveEntity('node', ['type' => 'article', 'title' => 'A2', 'status' => 1, 'uid' => 1, 'created' => 1672660800]);\n\n TestHelpers::saveEntity('node', ['type' => 'page', 'title' => 'P1', 'status' => 1, 'uid' => 1, 'created' => 1672747200]);\n\n TestHelpers::saveEntity('node', ['type' => 'article', 'title' => 'A3', 'status' => 0, 'uid' => 1, 'created' => 1672833600]);\n\n $result = TestHelpers::createClass(TestHelpersExampleController::class)->articlesList();\n\n $this->assertCount(1, $result['#items']);\n\n $this->assertEquals('A2 (02.01.2023 by Alice)', $result['#items'][0]->getText());\n\n $this->assertContains('node_list:article', $result['#cache']['tags']);\n\n }\n\n?>\n\n The modern test function has just 12 lines of code - even less than the code of the tested function (29 lines)! You can see the full source in the file TestHelpersExampleControllerModernResultTest.php . \n\n And the classic approach requires 100 lines of code - more than 8 times more! Here it is: TestHelpersExampleControllerClassicTest.php . So, which one is easier to write and review? 😉\n\n More examples you can find in the \"Test Helpers …",
+  "maintenance_status": "Actively maintained",
+  "development_status": "Under active development",
+  "security_advisory_coverage": "covered",
+  "project_created": "2022-09-15",
+  "project_changed": "2026-08-18",
+  "core_semver_minimum": 8000000,
+  "core_semver_maximum": 13000000,
+  "tooling": {
+    "provides_tool_plugins": false,
+    "tool_plugins": [],
+    "provides_agent_skills": false,
+    "agent_skills": []
+  },
+  "contributor_count": 13
+}

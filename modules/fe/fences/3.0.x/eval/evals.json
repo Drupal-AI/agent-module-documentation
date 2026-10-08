@@ -1,0 +1,78 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "fences",
+  "version": "3.0.x",
+  "note": "Fences controls the HTML wrapper markup around a rendered field. It overrides core field.html.twig and adds eight per-field settings (tags + classes for the field, label, items wrapper, and each item). Settings are stored as THIRD-PARTY SETTINGS ON THE FIELD FORMATTER inside the entity_view_display config: content.<field>.third_party_settings.fences.<key> (schema field.formatter.third_party.fences). Keys: fences_field_tag, fences_field_classes, fences_field_items_wrapper_tag, fences_field_items_wrapper_classes, fences_field_item_tag, fences_field_item_classes, fences_label_tag, fences_label_classes. Any tag value can be a real HTML tag from the *.fences.yml registry or the sentinel 'none' (TagManagerInterface::NO_MARKUP_VALUE) to emit no wrapper. Defaults: field/item/label = div, items wrapper = none. Editing is gated by the `edit fences formatter settings` permission; a global settings form (fences.settings) toggles fences_field_template_override_all_themes. Recipe cases are response-graded documented facts. Medium cases install known fences settings on node.article.default's body field and require live drush introspection of the entity_view_display third_party_settings. Hard cases (persona drupal-expert) clear the body field's fences settings, the agent configures specific tags/classes, and a verify script checks the real entity_view_display fences settings (config-level; a thin honest bound for a markup module).",
+  "evals": [
+    {
+      "id": "fences-wrapper-basics",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "On a Drupal 11 site, core wraps every field in generic <div>s. Which contrib module lets me choose the actual HTML tag that wraps a field, its label, and each item (e.g. a <section> field with an <h3> label) per field, and where in configuration are those choices stored?",
+      "must_contain_any": ["fences", "third_party_settings", "entity_view_display", "field.formatter.third_party.fences"],
+      "must_not_contain": [],
+      "expected_output": "The Fences module. It overrides core's field.html.twig and adds per-field settings (configured on Manage display) letting you pick the tag for the field, label, items wrapper, and each item. The choices are stored as third-party settings on the field's formatter inside the entity_view_display config: content.<field>.third_party_settings.fences.* (schema field.formatter.third_party.fences)."
+    },
+    {
+      "id": "fences-settings-keys",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "For the Fences module, list the third-party settings keys it stores on a field's formatter for controlling wrapper markup, and give their default tag values. Which permission is required to edit them on Manage display?",
+      "must_contain_any": ["fences_field_tag", "fences_label_tag", "fences_field_item_tag", "fences_field_items_wrapper_tag"],
+      "must_not_contain": [],
+      "expected_output": "Eight keys under third_party_settings.fences: fences_field_tag, fences_field_classes, fences_field_items_wrapper_tag, fences_field_items_wrapper_classes, fences_field_item_tag, fences_field_item_classes, fences_label_tag, fences_label_classes. Default tags: field = div, item = div, label = div, items wrapper = none (classes default to empty strings). Editing them requires the `edit fences formatter settings` permission."
+    },
+    {
+      "id": "fences-none-value",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "With Fences, how do I make a field render with NO wrapper element at all (just the value, no surrounding tag)? What special value do the tag settings use, and where does the list of selectable tags come from?",
+      "must_contain_any": ["none", "NO_MARKUP_VALUE"],
+      "must_not_contain": [],
+      "expected_output": "Set the relevant tag setting to the special value `none` (TagManagerInterface::NO_MARKUP_VALUE). When a tag is `none`, fences_preprocess_field sets the matching display_*_tag flag false and the field.html.twig template omits that element entirely. The selectable tags come from a *.fences.yml discovery registry (fences ships fences.fences.yml); any module or theme can add tags with its own MODULE.fences.yml."
+    },
+    {
+      "id": "fences-known-body-semantic",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "The Article content type's default display on this site has had its Body field's Fences wrapper markup customized. Inspect the live entity_view_display configuration and tell me exactly which HTML tag Fences wraps the field in and which tag it uses for the field label.",
+      "setup": "agent-module-documentation/evaluation/verify/fences-body-section-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/fences-body-section-cleanup.sh",
+      "must_contain_any": ["section", "h3"],
+      "must_not_contain": [],
+      "expected_output": "On core.entity_view_display.node.article.default, the body component's third_party_settings.fences sets fences_field_tag = section (the field is wrapped in <section>) and fences_label_tag = h3 (the label is rendered as <h3>). The item tag stays div and the items wrapper is none."
+    },
+    {
+      "id": "fences-known-body-stripped",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "This site's Article default display has Fences settings on the Body field that remove some wrapper elements and add an items-wrapper list. Inspect the live entity_view_display config for that field and tell me which wrappers are suppressed (set to none) and what tag wraps the whole set of items.",
+      "setup": "agent-module-documentation/evaluation/verify/fences-body-list-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/fences-body-list-cleanup.sh",
+      "must_contain_any": ["none", "ul"],
+      "must_not_contain": [],
+      "expected_output": "On core.entity_view_display.node.article.default the body component's third_party_settings.fences sets fences_label_tag = none and fences_field_item_tag = none (label and per-item wrappers are suppressed), while fences_field_items_wrapper_tag = ul wraps all items in a <ul>. The field tag remains div."
+    },
+    {
+      "id": "fences-configure-semantic",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, use the Fences module to customize the Article content type's DEFAULT view display for the Body field so that: the field is wrapped in a <article> tag with the CSS class `node-body`, and the field label is rendered as an <h2>. Apply it live so the entity_view_display's Fences third-party settings reflect it.",
+      "reset": "agent-module-documentation/evaluation/verify/fences-body-semantic-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/fences-body-semantic-verify.sh",
+      "expected_output": "core.entity_view_display.node.article.default body component third_party_settings.fences has fences_field_tag = article, fences_field_classes containing 'node-body', and fences_label_tag = h2."
+    },
+    {
+      "id": "fences-configure-inline",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, configure the Article content type's DEFAULT view display so the Body field renders inline using Fences: wrap the field in a <span> (fences_field_tag = span), and suppress both the label and the per-item wrapper by setting their Fences tags to none (fences_label_tag = none, fences_field_item_tag = none). Save it to the live entity_view_display.",
+      "reset": "agent-module-documentation/evaluation/verify/fences-body-inline-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/fences-body-inline-verify.sh",
+      "expected_output": "core.entity_view_display.node.article.default body component third_party_settings.fences has fences_field_tag = span, fences_label_tag = none, and fences_field_item_tag = none."
+    }
+  ]
+}

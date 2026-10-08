@@ -1,0 +1,103 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "simple_image_rotate",
+  "version": "2.3.x",
+  "note": "Simple Image Rotate adds a 'Rotate image clockwise' button to core image field widgets; the rotation is applied to the file on entity save (hook_entity_presave rewrites it to an _r<n> name, idempotent). It has NO settings page and NO config object; rotation is enabled per image field via the third-party setting simple_image_rotate.enable_rotate (boolean) on the field's FieldConfig, and the button also requires the 'rotate images' permission. Medium/hard cases are grounded in that real third-party setting on image fields on the Article content type (namespaced field_sir_*); each case creates/inspects/toggles the enable_rotate setting and cleans up its own fields. (Role/permission cases are avoided: this shared site currently cannot rebuild its router — an unrelated gdpr/workbench_moderation issue makes role saves throw — so the 'rotate images' permission side is documented but not used in a live case.)",
+  "evals": [
+    {
+      "id": "simple-image-rotate-how-to-enable",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "How do I turn on image rotation for an image field with the simple_image_rotate module, and what else does a user need to see the rotate button?",
+      "must_contain_any": [
+        "enable_rotate",
+        "Enable rotate function",
+        "third party setting",
+        "third_party_settings",
+        "rotate images"
+      ],
+      "must_not_contain": [],
+      "expected_output": "On the image field's edit form tick 'Enable rotate function', which stores the third-party setting simple_image_rotate.enable_rotate = true on the field's FieldConfig. The 'Rotate image clockwise' button then appears for users who also have the 'rotate images' permission."
+    },
+    {
+      "id": "simple-image-rotate-mechanism",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "When an editor rotates an image with simple_image_rotate, when and how is the actual image file changed?",
+      "must_contain_any": [
+        "entity_presave",
+        "save",
+        "_r",
+        "rotate",
+        "image factory",
+        "idempotent"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The JS rotates only the preview and records an angle; on entity save hook_entity_presave() moves the file to a new _r<counter> filename, rotates the real image via the image factory, updates width/height/filesize, and resets the angle to 0 (so it is idempotent)."
+    },
+    {
+      "id": "simple-image-rotate-scope",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "Which fields does simple_image_rotate work on, does it have a settings page, and what does it depend on?",
+      "must_contain_any": [
+        "image",
+        "no settings page",
+        "per field",
+        "per-field",
+        "configure"
+      ],
+      "must_not_contain": [],
+      "expected_output": "It works only on core image fields and depends on the core Image module. It has no settings page (configure is null) and no config object — it is enabled per image field via the enable_rotate third-party setting, plus the 'rotate images' permission."
+    },
+    {
+      "id": "simple-image-rotate-known-field",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "On this site, the Article content type has an image field with simple_image_rotate rotation enabled. Inspect the live field configuration and give the machine name of that field.",
+      "must_contain_any": [
+        "field_sir_known"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The field is field_sir_known: its FieldConfig on node.article carries third_party_settings.simple_image_rotate.enable_rotate = true.",
+      "setup": "agent-module-documentation/evaluation/verify/simple_image_rotate-known-field-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/simple_image_rotate-known-field-cleanup.sh"
+    },
+    {
+      "id": "simple-image-rotate-on-vs-off",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "The Article content type has two image fields, field_sir_on and field_sir_off. Exactly one has simple_image_rotate rotation enabled. Inspect the live configuration and say which one.",
+      "must_contain_any": [
+        "field_sir_on"
+      ],
+      "must_not_contain": [],
+      "expected_output": "field_sir_on has rotation enabled: its FieldConfig has third_party_settings.simple_image_rotate.enable_rotate = true, whereas field_sir_off does not.",
+      "setup": "agent-module-documentation/evaluation/verify/simple_image_rotate-on-vs-off-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/simple_image_rotate-on-vs-off-cleanup.sh"
+    },
+    {
+      "id": "simple-image-rotate-enable-task",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this site the Article content type has an image field field_sir_task. Using simple_image_rotate, enable the rotate function on that field, and apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/simple_image_rotate-enable-task-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/simple_image_rotate-enable-task-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/simple_image_rotate-enable-task-cleanup.sh",
+      "expected_output": "Set the third-party setting on the field's FieldConfig: FieldConfig::loadByName('node','article','field_sir_task')->setThirdPartySetting('simple_image_rotate','enable_rotate',TRUE)->save() (or tick 'Enable rotate function' on the field edit form). Verified by enable_rotate === true on field_sir_task."
+    },
+    {
+      "id": "simple-image-rotate-enable-photo",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "site-owner",
+      "prompt": "I want my editors to be able to rotate the photos they upload to the 'Photo' image field (field_sir_photo) on Articles. Turn on the rotate feature for that field on the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/simple_image_rotate-enable-photo-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/simple_image_rotate-enable-photo-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/simple_image_rotate-enable-photo-cleanup.sh",
+      "expected_output": "Enable the rotate function on the field_sir_photo image field by setting third_party_settings.simple_image_rotate.enable_rotate = true on its FieldConfig (via the field edit form's 'Enable rotate function' checkbox or in code). (Editors also need the 'rotate images' permission to see the button.) Verified by enable_rotate === true on field_sir_photo."
+    }
+  ]
+}

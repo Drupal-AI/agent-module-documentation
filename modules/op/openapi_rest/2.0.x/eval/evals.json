@@ -1,0 +1,97 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "openapi_rest",
+  "version": "2.0.x",
+  "note": "openapi_rest contributes a single @OpenApiGenerator plugin (id 'rest') to the openapi module. It has no settings form, no configure route, no config/schema of its own, and no permissions of its own (it uses openapi's 'access openapi api docs'). It generates a Swagger/OpenAPI 2.0 spec by reading the site's core rest_resource_config entities (RestInspectionTrait::getResourceConfigs). The spec is served at /openapi/rest?_format=json. All medium/hard cases are grounded in real rest_resource_config state: medium reads back the formats/methods enabled on a REST resource; hard makes an entity (user, node) REST-enabled for GET+json, which is exactly the input openapi_rest documents. NOTE: on this live site invoking the full generator (getSpecification/getPaths) throws a core-serializer 'str_contains(array)' error unrelated to openapi_rest's own code, so hard verify checks the rest_resource_config the generator reads rather than the generated JSON.",
+  "evals": [
+    {
+      "id": "openapi_rest-spec-url",
+      "mode": "recipe",
+      "prompt": "On a Drupal 11 site with the openapi_rest module enabled, what URL returns the OpenAPI/Swagger specification that describes the site's core REST API, and what is the id of the OpenAPI generator plugin that openapi_rest registers with the openapi module?",
+      "must_contain_any": [
+        "/openapi/rest",
+        "openapi/rest"
+      ],
+      "must_not_contain": [],
+      "expected_output": "openapi_rest registers an @OpenApiGenerator plugin with id 'rest'. Its spec is served by the openapi module at GET /openapi/rest?_format=json (route openapi.download, path /openapi/{openapi_generator}), gated by the 'access openapi api docs' permission; the admin list is at /admin/config/services/openapi.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "openapi_rest-reads-rest-config",
+      "mode": "recipe",
+      "prompt": "How does the openapi_rest 'rest' generator decide which endpoints to document? Which Drupal configuration entities does it inspect, and does it document a REST resource that is not enabled?",
+      "must_contain_any": [
+        "rest_resource_config",
+        "rest resource config",
+        "RestResourceConfig",
+        "REST resource config"
+      ],
+      "must_not_contain": [],
+      "expected_output": "It reads the site's rest_resource_config entities (the config produced by the core REST module / REST UI) via RestInspectionTrait::getResourceConfigs()/getRestEnabledEntityTypes(). Only enabled resources are documented; it does not create or enable resources itself, so a disabled/absent resource does not appear in the spec.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "openapi_rest-schemata-role",
+      "mode": "recipe",
+      "prompt": "openapi_rest depends on the schemata and schemata_json_schema modules. What do they contribute to the generated OpenAPI document for entity REST resources?",
+      "must_contain_any": [
+        "JSON Schema",
+        "json schema",
+        "definitions",
+        "SchemaFactory"
+      ],
+      "must_not_contain": [],
+      "expected_output": "schemata (via SchemaFactory) builds a JSON Schema for each REST-enabled entity type/bundle, which openapi_rest emits as the OpenAPI 'definitions' block (referenced from request/response bodies). Bundles are expressed with allOf polymorphism and a discriminator on the bundle key. Without them, entity resources fall back to generic object schemas.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "openapi_rest-node-formats",
+      "mode": "introspection",
+      "prompt": "This Drupal site has the core REST API configured for the node entity. Inspect the live REST configuration and tell me exactly which serializer formats are enabled for the GET method of the node REST resource (these are the formats openapi_rest would list as producible for that path).",
+      "must_contain_any": [
+        "xml"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The node resource (rest.resource.entity.node) enables GET with the json and xml formats. Read it via `drush config:get rest.resource.entity.node` (configuration.GET.supported_formats: [json, xml]).",
+      "setup": "agent-module-documentation/evaluation/verify/openapi_rest-node-formats-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/openapi_rest-node-formats-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "openapi_rest-taxo-methods",
+      "mode": "introspection",
+      "prompt": "This site exposes the taxonomy_term entity over the core REST API. Inspect the live configuration and list which HTTP methods are enabled on that REST resource (openapi_rest turns each into a documented operation).",
+      "must_contain_any": [
+        "DELETE"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The taxonomy_term resource (rest.resource.entity.taxonomy_term) enables the GET and DELETE methods. Read it via `drush config:get rest.resource.entity.taxonomy_term` (the keys under configuration are GET and DELETE).",
+      "setup": "agent-module-documentation/evaluation/verify/openapi_rest-taxo-methods-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/openapi_rest-taxo-methods-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "openapi_rest-doc-user",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, make the user entity available over the core REST API so that the openapi_rest generator will document it: enable a REST resource for the user entity that exposes the GET method with the json format. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/openapi_rest-doc-user-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/openapi_rest-doc-user-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/openapi_rest-doc-user-cleanup.sh",
+      "expected_output": "Create/enable the rest_resource_config 'entity.user' (plugin_id entity:user) with configuration.GET.supported_formats including json (e.g. via REST UI, or RestResourceConfig::create([...])->save(), or a config import). openapi_rest's RestInspectionTrait then picks it up and documents a /user/{user} GET operation."
+    },
+    {
+      "id": "openapi_rest-doc-node",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "Configure the core REST API on this Drupal site so that openapi_rest documents the node (content) entity: enable a REST resource for the node entity with the GET method and the json format, applied to live config.",
+      "reset": "agent-module-documentation/evaluation/verify/openapi_rest-doc-node-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/openapi_rest-doc-node-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/openapi_rest-doc-node-cleanup.sh",
+      "expected_output": "Create/enable rest_resource_config 'entity.node' (plugin_id entity:node) with configuration.GET.supported_formats including json. openapi_rest then documents a /node/{node} GET operation in the generated spec."
+    }
+  ]
+}

@@ -1,0 +1,80 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "photos_access",
+  "version": "6.1.x",
+  "note": "Photos access (submodule of Photos) adds per-album privacy: Open(0)/Locked(1)/User list(2)/Password(3), enforced via node access grants. Its master switch is the parent config flag photos.settings:photos_access_<type> (photos_access_photos for the 'photos' album type); per-album state lives in DB tables photos_access_album (viewid,pass) and photos_access_user, and the password page is /photos_privacy/pass/{node}. It has no config schema or permissions of its own. Medium/hard cases are grounded in the safe master-switch config flag photos_access_photos (config-only). Per-album privacy (the viewid in photos_access_album) requires a real album node; that path is deliberately NOT exercised here to avoid node create/delete on the shared site. Treated as a lighter submodule: 3 easy / 1 medium / 1 hard.",
+  "evals": [
+    {
+      "id": "photos_access-levels",
+      "mode": "recipe",
+      "prompt": "What per-album privacy options does the Drupal photos_access submodule provide, and how is each stored?",
+      "must_contain_any": [
+        "Open",
+        "Locked",
+        "Password",
+        "viewid",
+        "User list"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Each album can be Open, Locked (owner only), User list (specific users), or Password protected. The choice is stored per album in the photos_access_album table as viewid 0=Open, 1=Locked, 2=User list, 3=Password (with a hashed pass for password mode).",
+      "difficulty": "easy"
+    },
+    {
+      "id": "photos_access-master-switch",
+      "mode": "recipe",
+      "prompt": "How do I turn on the photos_access album privacy features for the Photos album content type? Which config flag controls it?",
+      "must_contain_any": [
+        "photos_access_photos",
+        "photos.settings",
+        "photos_access_"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Album privacy is active only when the parent module flag photos.settings:photos_access_<type> is true - photos_access_photos for the 'photos' album type. The privacy fields and node-access hooks only apply when that flag is set.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "photos_access-enforcement",
+      "mode": "recipe",
+      "prompt": "How does photos_access enforce album privacy, and where do anonymous visitors enter an album password?",
+      "must_contain_any": [
+        "node grant",
+        "node access",
+        "hook_node_grants",
+        "/photos_privacy/pass",
+        "photos_access.page"
+      ],
+      "must_not_contain": [],
+      "expected_output": "It uses Drupal's node access system (hook_node_access_records + hook_node_grants) to grant/deny album view. Visitors enter an album password at /photos_privacy/pass/{node} (route photos_access.page), which stores a session grant.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "photos_access-is-enabled",
+      "mode": "introspection",
+      "prompt": "On this Drupal site, is photos_access album privacy currently active for the Photos album content type? Inspect the live configuration and report the value of the controlling flag.",
+      "must_contain_any": [
+        "1",
+        "true",
+        "enabled",
+        "on",
+        "photos_access_photos"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Yes - photos.settings:photos_access_photos is 1, so album privacy is enabled for the photos album type.",
+      "setup": "agent-module-documentation/evaluation/verify/photos_access-enabled-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/photos_access-enabled-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "photos_access-enable",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, using photos_access, turn ON album privacy for the Photos album content type so that albums can be set to Locked/User-list/Password. Apply the change to the live site configuration.",
+      "reset": "agent-module-documentation/evaluation/verify/photos_access-enable-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/photos_access-enable-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/photos_access-enable-cleanup.sh",
+      "expected_output": "photos.settings:photos_access_photos is set to 1 (album privacy enabled for the photos type)."
+    }
+  ]
+}

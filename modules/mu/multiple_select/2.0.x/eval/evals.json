@@ -1,0 +1,98 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "multiple_select",
+  "version": "2.0.x",
+  "note": "Multiple Select adds a 'Select All / Uncheck All' master checkbox above configured multi-value checkboxes fields on node/media/taxonomy_term/site_setting_entity edit forms. It has no field/widget of its own. All persistent state is one config object multiple_select.settings, key 'table', a JSON-encoded string mapping '<entity_type>-<bundle>' -> array of field machine names (e.g. {\"node-article\":[\"field_x\"]}). The helper only renders for fields whose form-display widget is 'Check boxes' (core options_buttons). Configure route multiple_select.admin_form (/admin/config/content/multiple-config), permission 'access multiple select config page'. Medium cases seed a known table map and read it back; hard cases add/remove a field to/from the node-article list, verified against the live config.",
+  "evals": [
+    {
+      "id": "multiple_select-config-key",
+      "mode": "recipe",
+      "prompt": "In the Drupal contrib module multiple_select, which config object and key store the list of fields that get the 'Select All / Uncheck All' helper, and what is the format of that value?",
+      "must_contain_any": [
+        "multiple_select.settings",
+        "table",
+        "json"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The list lives in the config object multiple_select.settings under the key 'table'. The value is a JSON-encoded string mapping '<entity_type>-<bundle>' (e.g. node-article) to an array of field machine names, so it must be json_encode/json_decode-d rather than treated as a normal nested config array.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "multiple_select-which-widget",
+      "mode": "recipe",
+      "prompt": "I enabled multiple_select and registered a multi-value field, but no 'Select All' checkbox shows up on the node form. What are the requirements for the helper to actually appear on a field?",
+      "must_contain_any": [
+        "checkboxes",
+        "Check boxes",
+        "options_buttons",
+        "multi-value",
+        "cardinality"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The field must be multi-value and its form-display widget must be 'Check boxes' (core options_buttons), because the module only injects the master checkbox when $form[field]['widget']['#type'] == 'checkboxes'. It also only alters node, media, taxonomy_term and site_setting_entity forms. A field registered in multiple_select.settings:table but shown with another widget (select list, autocomplete) gets nothing.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "multiple_select-configure-route",
+      "mode": "recipe",
+      "prompt": "Where is the admin configuration page for the Drupal multiple_select module, and which permission controls access to it?",
+      "must_contain_any": [
+        "/admin/config/content/multiple-config",
+        "multiple_select.admin_form",
+        "access multiple select config page"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The configure route is multiple_select.admin_form at /admin/config/content/multiple-config, gated by the 'access multiple select config page' permission. There you tick a bundle and pick which of its list_string/entity_reference fields get the helper.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "multiple_select-known-field",
+      "mode": "introspection",
+      "prompt": "On this Drupal site, multiple_select has been configured to add its Select-All helper to one field on the Article content type. Inspect the live multiple_select configuration and give the machine name of that field.",
+      "must_contain_any": [
+        "field_ms_known"
+      ],
+      "must_not_contain": [],
+      "expected_output": "field_ms_known: multiple_select.settings:table (a JSON string) decodes to {\"node-article\":[\"field_ms_known\"]}.",
+      "setup": "agent-module-documentation/evaluation/verify/multiple_select-known-field-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/multiple_select-known-field-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "multiple_select-two-fields",
+      "mode": "introspection",
+      "prompt": "This site has multiple_select enabled for more than one field on the Article content type. Inspect the running configuration and list every Article field that currently has the Select-All helper enabled.",
+      "must_contain_any": [
+        "field_ms_a"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Two fields: field_ms_a and field_ms_b. multiple_select.settings:table decodes to {\"node-article\":[\"field_ms_a\",\"field_ms_b\"]}.",
+      "setup": "agent-module-documentation/evaluation/verify/multiple_select-two-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/multiple_select-two-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "multiple_select-enable-field",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site the Article content type has a multi-value checkboxes field field_ms_task. Using the multiple_select module, configure it so that field gets the 'Select All / Uncheck All' helper, and apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/multiple_select-enable-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/multiple_select-enable-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/multiple_select-enable-cleanup.sh",
+      "expected_output": "multiple_select.settings:table (JSON string) must decode to a map whose 'node-article' entry includes field_ms_task, e.g. set table to json_encode([\"node-article\" => [\"field_ms_task\"]]) and save."
+    },
+    {
+      "id": "multiple_select-disable-field",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, field_ms_off on the Article content type currently has the multiple_select Select-All helper enabled. Remove the helper from that field (leave the field itself in place) and apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/multiple_select-disable-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/multiple_select-disable-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/multiple_select-disable-cleanup.sh",
+      "expected_output": "After the change, multiple_select.settings:table must no longer list field_ms_off under 'node-article' (remove it from the array, or clear the map). The field field_ms_off must still exist."
+    }
+  ]
+}

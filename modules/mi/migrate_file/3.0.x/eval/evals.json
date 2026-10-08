@@ -1,0 +1,102 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "migrate_file",
+  "version": "3.0.x",
+  "note": "Migrate Files (extended) is a set of four migrate process plugins (file_import, image_import, file_remote_url, file_remote_image) with no UI/config-schema/services/Drush. Installed release is 3.0.0-alpha1 (alpha). Cases span three tiers: `recipe` (easy, response-graded facts about the plugin ids, their config options, and how they differ from core file_copy); `introspection` (medium — a known migrate_plus.migration config entity `mf_eval_known` is staged on the live site and the agent must read back which plugin/options it uses via drush config:get); and `execution` (hard, persona drupal-expert — the agent BUILDS a migrate_plus.migration config entity that uses a migrate_file process plugin, verified against live config-entity state). LIMITATION: the migration *runtime* is broken on this install by an unrelated legacy `pathauto_pattern` upgrade template missing its `source_module` property (drush migrate:* and single-migration createInstance throw BadPluginDefinitionException), so the hard tier verifies the built config entity + plugin rather than a completed import; the file_import verify still accepts an actually-imported file as a fallback.",
+  "evals": [
+    {
+      "id": "migrate_file-plugin-ids",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "I'm writing a Drupal migration and want to create managed file/image entities inline from the migrate_file (Migrate Files extended) module. What are the migrate process plugin ids this module provides? Name them.",
+      "must_contain_any": ["file_import", "image_import", "file_remote_url", "file_remote_image"],
+      "must_not_contain": [],
+      "expected_output": "migrate_file provides four process plugins: file_import, image_import (extends file_import), file_remote_url, and file_remote_image (extends file_remote_url)."
+    },
+    {
+      "id": "migrate_file-file-import-options",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "For the migrate_file `file_import` process plugin, which configuration keys control the destination path, the owning user, overwrite-on-collision behaviour, and skipping a row when the source file is missing? List the key names and the file_exists values.",
+      "must_contain_any": ["destination", "uid", "file_exists", "skip_on_missing_source"],
+      "must_not_contain": [],
+      "expected_output": "Keys: source (required), destination (trailing slash = directory), uid, move, file_exists (replace [default] | rename | use existing), skip_on_missing_source, source_check_method (HEAD|GET), skip_on_error, guzzle_options, id_only."
+    },
+    {
+      "id": "migrate_file-vs-core-file-copy",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "How does migrate_file's `file_import` process plugin differ from core Migrate's `file_copy`? And what do `file_remote_url` / `file_remote_image` do differently from downloading a file?",
+      "must_contain_any": ["file entity", "target_id", "creates a", "managed file"],
+      "must_not_contain": [],
+      "expected_output": "file_import extends core file_copy but, after copying/downloading, it CREATES a managed file entity and returns an entityreference value (['target_id' => N], or just N with id_only), whereas core file_copy only copies and returns the destination URI (no entity). file_remote_url / file_remote_image do NOT download: they create a file entity whose URI is the remote URL itself (needs remote_stream_wrapper to serve it); file_remote_image can also carry width/height to avoid remote measuring."
+    },
+    {
+      "id": "migrate_file-inspect-plugin",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "persona": "drupal-expert",
+      "prompt": "This Drupal site (drush available) has a migration config entity `mf_eval_known` that imports an image into a media entity. Inspect the live site and tell me which migrate_file process plugin its `field_media_image` mapping uses.",
+      "setup": "agent-module-documentation/evaluation/verify/migrate_file-known-migration-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/migrate_file-known-migration-cleanup.sh",
+      "must_contain_any": ["image_import"],
+      "must_not_contain": [],
+      "expected_output": "The field_media_image mapping in migrate_plus.migration.mf_eval_known uses the `image_import` process plugin (read via `drush config:get migrate_plus.migration.mf_eval_known process`)."
+    },
+    {
+      "id": "migrate_file-inspect-destination",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site (drush available), the migration config entity `mf_eval_known` imports an image via a migrate_file plugin. Inspect the live site and tell me the destination directory the imported files go to, and whether the import is set to skip rows whose source file is missing.",
+      "setup": "agent-module-documentation/evaluation/verify/migrate_file-known-migration-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/migrate_file-known-migration-cleanup.sh",
+      "must_contain_any": ["eval-images", "skip_on_missing_source"],
+      "must_not_contain": [],
+      "expected_output": "The field_media_image image_import mapping uses destination `constants/dest` = `public://eval-images/` and has `skip_on_missing_source: true` (so missing source files are skipped rather than failing the row)."
+    },
+    {
+      "id": "migrate_file-inspect-uid",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "persona": "drupal-expert",
+      "prompt": "The `mf_eval_known` migration on this Drupal site (drush available) imports an image with a migrate_file plugin. Inspect the live config and tell me which user id (uid) the imported file entities are attributed to.",
+      "setup": "agent-module-documentation/evaluation/verify/migrate_file-known-migration-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/migrate_file-known-migration-cleanup.sh",
+      "must_contain_any": ["uid", "1"],
+      "must_not_contain": [],
+      "expected_output": "The image_import mapping sets `uid: 1`, so imported file entities are owned by user 1 (read from migrate_plus.migration.mf_eval_known process.field_media_image)."
+    },
+    {
+      "id": "migrate_file-build-file-import",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site (drush available), create a migrate_plus migration config entity with id `mf_eval_file_import` that imports a local file into a managed file entity using the migrate_file module's `file_import` process plugin. Use an `embedded_data` source with one row pointing at the local file `/var/www/html/web/core/misc/druplicon.png`, map it onto a media image entity's `field_media_image` (destination bundle `image`, destination directory `public://eval-file-import/`), and save the config entity to the live site. Apply it for real; don't just describe the YAML. One-line summary. NOTE: this site's migrate runtime is broken by an unrelated legacy pathauto migration, so building and saving the config entity that uses file_import is sufficient.",
+      "reset": "agent-module-documentation/evaluation/verify/migrate_file-file-import-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/migrate_file-file-import-verify.sh",
+      "expected_output": "A migrate_plus.migration config entity `mf_eval_file_import` exists on the live site whose process pipeline includes a mapping using the `file_import` plugin (source = the local druplicon.png, destination public://eval-file-import/). Verified against live config-entity state (or, if the runtime were available, an actually-imported managed file)."
+    },
+    {
+      "id": "migrate_file-build-image-import",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site (drush available), build and save a migrate_plus migration config entity with id `mf_eval_image_import` that uses the migrate_file module's `image_import` process plugin to import an image onto a media image entity's `field_media_image`, also setting the image `alt` text from a source field. Use an `embedded_data` source and destination `entity:media` (bundle `image`). Save it to the live site for real; don't just print YAML. One-line summary. NOTE: this site's migrate runtime is broken by an unrelated legacy pathauto migration, so building and saving the config entity that uses image_import is sufficient.",
+      "reset": "agent-module-documentation/evaluation/verify/migrate_file-image-import-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/migrate_file-image-import-verify.sh",
+      "expected_output": "A migrate_plus.migration config entity `mf_eval_image_import` exists on the live site whose process pipeline includes a `field_media_image` mapping using the `image_import` plugin (with an `alt` mapping). Verified against live config-entity state."
+    },
+    {
+      "id": "migrate_file-build-remote-url",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site (drush available), build and save a migrate_plus migration config entity with id `mf_eval_remote_url` that registers a remote file URL as a managed file entity WITHOUT downloading it, using the migrate_file module's `file_remote_url` process plugin. Use an `embedded_data` source with a row whose value is a remote URL (e.g. https://www.drupal.org/files/drupal_logo-blue.png) mapped through file_remote_url. Save it to the live site for real; don't just print YAML. One-line summary. NOTE: this site's migrate runtime is broken by an unrelated legacy pathauto migration, so building and saving the config entity that uses file_remote_url is sufficient.",
+      "reset": "agent-module-documentation/evaluation/verify/migrate_file-remote-url-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/migrate_file-remote-url-verify.sh",
+      "expected_output": "A migrate_plus.migration config entity `mf_eval_remote_url` exists on the live site whose process pipeline includes a mapping using the `file_remote_url` plugin (remote URL, no download; would need remote_stream_wrapper to serve). Verified against live config-entity state."
+    }
+  ]
+}

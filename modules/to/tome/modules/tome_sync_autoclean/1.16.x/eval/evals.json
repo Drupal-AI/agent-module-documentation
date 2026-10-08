@@ -1,0 +1,58 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "tome_sync_autoclean",
+  "version": "1.16.x",
+  "note": "Tome Sync Autoclean is an experimental glue sub-module with NO config, permissions, routes, or Drush command. Its entire behavior is one event subscriber (ExportEventSubscriber) on tome_sync.export_content that auto-runs Tome's unused-file cleanup (like drush tome:clean-files) after each export; enabling the module is the whole setup, and it can cause data loss. Because there is no config/state to read or write, the only meaningful, verifiable execution is the module's own install state. The hard case therefore has the agent ENABLE the experimental module: reset uninstalls it (verify FAILS), the agent enables it, verify passes, and cleanup re-enables it so the site baseline (all Tome sub-modules enabled) is preserved. NOTE: module install/uninstall triggers a full container rebuild and takes ~1-2 minutes per operation on this host; this was smoke-tested (reset->FAIL, enable->PASS) and the module was left enabled.",
+  "evals": [
+    {
+      "id": "tome_sync_autoclean-what",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "What does the tome_sync_autoclean module do, and which manual Drush command's behavior does it automate?",
+      "must_contain_any": ["clean-files", "tome:clean-files", "unused files", "unused file"],
+      "must_not_contain": [],
+      "expected_output": "It automatically deletes unused exported files after every Tome Sync export, automating what 'drush tome:clean-files' does manually. It is experimental and can cause data loss."
+    },
+    {
+      "id": "tome_sync_autoclean-how-enabled",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "How do you turn tome_sync_autoclean's behavior on and off? Does it have a settings page?",
+      "must_contain_any": ["enable", "uninstall", "no", "none", "no configuration"],
+      "must_not_contain": [],
+      "expected_output": "There is no settings page or configuration. Enable the module to turn the auto-cleanup on ('drush en tome_sync_autoclean -y'); uninstall it to turn it off ('drush pmu tome_sync_autoclean -y')."
+    },
+    {
+      "id": "tome_sync_autoclean-event",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "Technically, how does tome_sync_autoclean hook into Tome Sync to trigger cleanup? Name the event.",
+      "must_contain_any": ["tome_sync.export_content", "EXPORT_CONTENT", "event subscriber", "ExportEventSubscriber"],
+      "must_not_contain": [],
+      "expected_output": "It registers an event subscriber (ExportEventSubscriber) on the TomeSyncEvents::EXPORT_CONTENT ('tome_sync.export_content') event and runs the clean-files logic after content is exported."
+    },
+    {
+      "id": "tome_sync_autoclean-enabled-state",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "Inspect this running site: is the experimental tome_sync_autoclean module enabled, and what Tome Sync event does it subscribe to?",
+      "must_contain_any": ["tome_sync_autoclean"],
+      "must_not_contain": [],
+      "setup": "agent-module-documentation/evaluation/verify/tome_sync_autoclean-subscriber-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/tome_sync_autoclean-subscriber-cleanup.sh",
+      "expected_output": "tome_sync_autoclean is enabled (check 'drush pm:list'); its ExportEventSubscriber subscribes to tome_sync.export_content and auto-runs the unused-file cleanup after each export."
+    },
+    {
+      "id": "tome_sync_autoclean-enable",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "A site owner wants stray unused files cleaned up automatically on every Tome export. Enable the experimental Tome sub-module that provides this, and apply it to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/tome_sync_autoclean-enable-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/tome_sync_autoclean-enable-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/tome_sync_autoclean-enable-cleanup.sh",
+      "expected_output": "Enable tome_sync_autoclean, e.g. 'drush en tome_sync_autoclean -y'. Verify passes when \\Drupal::moduleHandler()->moduleExists('tome_sync_autoclean') is TRUE."
+    }
+  ]
+}

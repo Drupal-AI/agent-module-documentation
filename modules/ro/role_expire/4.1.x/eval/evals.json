@@ -1,0 +1,80 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "role_expire",
+  "version": "4.1.x",
+  "note": "Role Expire gives each user's role an expiration timestamp (stored in the role_expire DB table: uid, rid, expiry_timestamp) and removes it on cron (role_expire_cron), optionally granting a replacement role. Global config object role_expire.config holds: role_expire_default_duration_roles (map rid -> strtotime duration string), role_expire_default_roles (JSON map rid -> replacement rid), role_expire_disabled_roles (JSON map rid -> 0/1), role_expire_expiration_details_expanded (bool). Programmatic API is the role_expire.api service (writeRecord, getUserRoleExpiryTime, setDefaultDuration, getDefaultDuration, getExpired, getRolesAfterExpiration). Configure route role_expire.config (/admin/config/people/role-expire). Permissions: administer role expire, edit users role expire, edit role expire default duration. Medium/hard cases use namespaced roles (re_*) and the real role_expire.config keys.",
+  "evals": [
+    {
+      "id": "role_expire-default-duration",
+      "mode": "recipe",
+      "prompt": "Using the Role Expire module, how do I make a particular role automatically expire a fixed time after it is granted to any user (for example one year later)? What format is the duration entered in?",
+      "must_contain_any": ["default duration", "strtotime", "role_expire_default_duration_roles", "1 year"],
+      "must_not_contain": [],
+      "expected_output": "Set a 'Default duration for the role' on the role's edit form (/admin/people/roles/manage/<rid>) as a relative strtotime string like '1 year', '3 months', '2 weeks'. It is stored in role_expire.config under role_expire_default_duration_roles (map rid -> duration) and applied when the role is granted.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "role_expire-api-service",
+      "mode": "recipe",
+      "prompt": "In Role Expire, which service and method do I call to set a specific user's role to expire at a given time from custom code, and where is that expiry stored?",
+      "must_contain_any": ["role_expire.api", "writeRecord", "role_expire", "expiry_timestamp"],
+      "must_not_contain": [],
+      "expected_output": "Call the role_expire.api service (RoleExpireApiService), e.g. \\Drupal::service('role_expire.api')->writeRecord($uid, $rid, strtotime('+3 months')). Per-user expiry is stored in the role_expire database table (uid, rid, expiry_timestamp), not in config. Read it back with getUserRoleExpiryTime($uid, $rid).",
+      "difficulty": "easy"
+    },
+    {
+      "id": "role_expire-cron-and-replacement",
+      "mode": "recipe",
+      "prompt": "With Role Expire, what actually removes an expired role from a user, and can the module give the user a different role when one expires? Is there a way for other code to react to the expiry?",
+      "must_contain_any": ["cron", "role_expire_default_roles", "RoleExpiresEvent", "replacement"],
+      "must_not_contain": [],
+      "expected_output": "role_expire_cron() finds expired rows and removes the role from the user. If role_expire_default_roles maps the expiring role id to a replacement role id, that role is added (and picks up its own default duration). It also dispatches a RoleExpiresEvent (role_expire_event_role_expires) with the account and the expired role id, which other code (or role_expire_rules) can subscribe to.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "role_expire-known-duration",
+      "mode": "introspection",
+      "prompt": "On this site a role with machine name re_known has a Role Expire default expiration duration configured. Inspect the live configuration and state the default duration set for that role.",
+      "must_contain_any": ["3 months"],
+      "must_not_contain": [],
+      "expected_output": "role_expire.config -> role_expire_default_duration_roles['re_known'] is '3 months'. Read with `drush cget role_expire.config role_expire_default_duration_roles`.",
+      "setup": "agent-module-documentation/evaluation/verify/role_expire-known-duration-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/role_expire-known-duration-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "role_expire-known-replacement",
+      "mode": "introspection",
+      "prompt": "On this site, Role Expire is configured so that when a particular role (machine name re_repl) expires, users are given a different role instead. Inspect the live configuration and state the machine name of the role that is assigned when re_repl expires.",
+      "must_contain_any": ["authenticated"],
+      "must_not_contain": [],
+      "expected_output": "role_expire.config -> role_expire_default_roles maps re_repl to 'authenticated' (stored JSON-encoded; getRolesAfterExpiration() returns ['re_repl' => 'authenticated']). Read with `drush cget role_expire.config role_expire_default_roles`.",
+      "setup": "agent-module-documentation/evaluation/verify/role_expire-known-replacement-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/role_expire-known-replacement-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "role_expire-set-duration",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "This site has a role with machine name re_task. Using Role Expire, configure this role so that it automatically expires 1 year after it is granted to a user (a default duration of '1 year'). Apply the change to the live configuration.",
+      "reset": "agent-module-documentation/evaluation/verify/role_expire-set-duration-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/role_expire-set-duration-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/role_expire-set-duration-cleanup.sh",
+      "expected_output": "role_expire.config -> role_expire_default_duration_roles['re_task'] === '1 year' (set via the role edit form's 'Default duration for the role', RoleExpireApiService::setDefaultDuration('re_task','1 year'), or editing role_expire.config)."
+    },
+    {
+      "id": "role_expire-replacement-role",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "This site has two roles: re_task and re_after. Using Role Expire, configure it so that when a user's re_task role expires, they are automatically given the re_after role instead. Apply the change to the live configuration.",
+      "reset": "agent-module-documentation/evaluation/verify/role_expire-replacement-role-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/role_expire-replacement-role-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/role_expire-replacement-role-cleanup.sh",
+      "expected_output": "role_expire.config -> role_expire_default_roles maps re_task -> re_after (the settings form stores it JSON-encoded; getRolesAfterExpiration() returns ['re_task' => 're_after'])."
+    }
+  ]
+}

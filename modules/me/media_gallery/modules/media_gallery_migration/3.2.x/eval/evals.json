@@ -1,0 +1,99 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "media_gallery_migration",
+  "version": "3.2.x",
+  "note": "media_gallery_migration is a submodule of media_gallery that imports Drupal 7 Media 7.x-1.x galleries. It ships three migrate_plus.migration config entities (group media_gallery, all enforced by media_gallery_migration): d7_media_gallery_files (source d7_media_gallery_file -> entity:file), d7_media_gallery_media (source d7_media_gallery_file -> entity:media bundle image), d7_media_gallery_entity (source d7_node node_type media_gallery -> entity:media_gallery; images sub_process reads source 'media_gallery_media'). It provides one migrate source plugin d7_media_gallery_file (MediaGalleryFile extends DrupalSqlBase, source_module file) that reads file_managed and in prepareRow filters to gallery files via the D7 table field_data_media_gallery_media (column media_gallery_media_fid) -- this table is the only meaningful difference from media_gallery_migration2. Depends on media_gallery, migrate, migrate_drupal, migrate_plus, migrate_tools. No permissions, no config schema, no own Drush commands (use migrate_tools). source.constants.source_base_path defaults to the placeholder http://d7media.docksal.site. Because it shares migration ids with media_gallery_migration2, only one can be enabled at once. Medium cases enable the submodule and read the live migration config; hard cases start from the submodule uninstalled (migrations absent) and require enabling it so the migration config entities become registered on the live site, verified against config.",
+  "evals": [
+    {
+      "id": "media_gallery_migration-ids-and-group",
+      "mode": "recipe",
+      "prompt": "The media_gallery_migration submodule ships some migrations. What are the migration ids it defines, and what migration group are they in?",
+      "must_contain_any": [
+        "d7_media_gallery_entity",
+        "d7_media_gallery_files",
+        "d7_media_gallery_media",
+        "media_gallery"
+      ],
+      "must_not_contain": [],
+      "expected_output": "It defines three migrate_plus migrations in the migration group 'media_gallery': d7_media_gallery_files (-> file), d7_media_gallery_media (-> media, bundle image), and d7_media_gallery_entity (D7 media_gallery nodes -> media_gallery entities). Effective order is files -> media -> entity.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "media_gallery_migration-source-plugin",
+      "mode": "recipe",
+      "prompt": "In the media_gallery_migration submodule, what is the id of the custom migrate source plugin, and which Drupal 7 database table does it read to get the raw records?",
+      "must_contain_any": [
+        "d7_media_gallery_file",
+        "file_managed",
+        "field_data_media_gallery_media"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The source plugin id is d7_media_gallery_file (class MediaGalleryFile extends DrupalSqlBase). Its query() reads the D7 file_managed table; prepareRow() then keeps only files that belong to a gallery by looking them up in field_data_media_gallery_media (column media_gallery_media_fid).",
+      "difficulty": "easy"
+    },
+    {
+      "id": "media_gallery_migration-source-base-path",
+      "mode": "recipe",
+      "prompt": "Before running the media_gallery_migration migrations against a real Drupal 7 site, which source setting must you change so the file migration can fetch the original files?",
+      "must_contain_any": [
+        "source_base_path",
+        "d7media.docksal.site",
+        "constants"
+      ],
+      "must_not_contain": [],
+      "expected_output": "You must change source.constants.source_base_path (it defaults to the placeholder http://d7media.docksal.site) to your real D7 site's public base URL/path, and register the legacy D7 database as the 'migrate' source connection. Then run via migrate_tools: drush migrate:import --group=media_gallery.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "media_gallery_migration-live-ids",
+      "mode": "introspection",
+      "prompt": "The media_gallery_migration submodule is enabled on this site. Inspect the live configuration and list the migration id(s) it registered in the media_gallery migration group.",
+      "must_contain_any": [
+        "d7_media_gallery_entity",
+        "d7_media_gallery_files",
+        "d7_media_gallery_media"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The live site has migrate_plus.migration.d7_media_gallery_files, .d7_media_gallery_media and .d7_media_gallery_entity (migration_group media_gallery), each enforced by media_gallery_migration. Discoverable via drush config listing (e.g. \\Drupal::configFactory()->listAll('migrate_plus.migration.d7_media_gallery')).",
+      "setup": "agent-module-documentation/evaluation/verify/media_gallery_migration-enabled-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/media_gallery_migration-enabled-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "media_gallery_migration-images-source",
+      "mode": "introspection",
+      "prompt": "On this site the media_gallery_migration submodule is enabled. Inspect the live migrate_plus.migration.d7_media_gallery_entity configuration and report which source property the 'images' field is built from (the sub_process source).",
+      "must_contain_any": [
+        "media_gallery_media"
+      ],
+      "must_not_contain": [],
+      "expected_output": "In d7_media_gallery_entity, process.images is a sub_process whose source is 'media_gallery_media' (with a migration_lookup on d7_media_gallery_media). This is the Media 7.x-1.x property name, discoverable via drush config:get migrate_plus.migration.d7_media_gallery_entity process.images.",
+      "setup": "agent-module-documentation/evaluation/verify/media_gallery_migration-enabled-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/media_gallery_migration-enabled-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "media_gallery_migration-make-available",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "This Drupal site has the media_gallery module but its Drupal 7 gallery migrations are not currently available. Using the media_gallery_migration submodule, make the D7 gallery migrations available on the live site (so the d7_media_gallery_entity migration is registered).",
+      "reset": "agent-module-documentation/evaluation/verify/media_gallery_migration-available-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/media_gallery_migration-available-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/media_gallery_migration-available-cleanup.sh",
+      "expected_output": "Enable the submodule (drush en media_gallery_migration -y), which installs its enforced migration config. Afterwards migrate_plus.migration.d7_media_gallery_entity exists with source.plugin d7_node and dependencies.enforced.module including media_gallery_migration."
+    },
+    {
+      "id": "media_gallery_migration-register-files",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this site, ensure the media_gallery_migration submodule's D7 file import migration is registered live: after your change, the d7_media_gallery_files migration (which uses the custom d7_media_gallery_file source plugin) must exist in the site configuration.",
+      "reset": "agent-module-documentation/evaluation/verify/media_gallery_migration-registered-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/media_gallery_migration-registered-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/media_gallery_migration-registered-cleanup.sh",
+      "expected_output": "Enable the submodule (drush en media_gallery_migration -y). Then migrate_plus.migration.d7_media_gallery_files exists with source.plugin d7_media_gallery_file and dependencies.enforced.module including media_gallery_migration."
+    }
+  ]
+}

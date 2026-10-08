@@ -1,0 +1,121 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "pdf",
+  "version": "1.3.x",
+  "note": "The PDF module ships no field type, no widget, no service, no plugin type and no Drush command. Everything it does is (a) three core FieldFormatter implementations for the `file` field type — pdf_default (iframe around the pdf.js viewer.html), pdf_thumbnail (page 1 into a canvas) and pdf_pages (every page into stacked canvases), each gated per item on getMimeType() == 'application/pdf' with a file_link fallback; (b) one schema-less config object `pdf.settings` with the single key `custom_viewer`, edited at /admin/config/media/pdfjs (route pdf.config_form, permission `administer pdfjs`, menu link under system.admin_config_media); and (c) one theme hook `file_pdf` rendering templates/file-pdf.html.twig. pdf.info.yml has NO `configure` key, so configure is null. pdf.js itself is not bundled and must be unpacked at the docroot path /libraries/pdf.js/. Medium cases therefore read back real formatter settings and the real pdf.settings value from the live site; hard cases build real entity_view_display components with the real formatter setting keys (keep_pdfjs, width, height, page, zoom, custom_zoom, pagemode, scale) and the real permission.",
+  "evals": [
+    {
+      "id": "pdf-formatter-ids",
+      "mode": "recipe",
+      "prompt": "On a Drupal 11 site with the contrib module `pdf` enabled, I have a core File field that holds PDF uploads. Which field formatter plugin IDs does the pdf module add for that field, and what does each one render?",
+      "must_contain_any": [
+        "pdf_default",
+        "pdf_thumbnail",
+        "pdf_pages"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Three FieldFormatter plugins, all with field_types = {\"file\"}: pdf_default (\"PDF: Default viewer of PDF.js\") renders an <iframe> around the pdf.js viewer.html; pdf_thumbnail (\"PDF: Display the first page\") renders page 1 into a <canvas class=\"pdf-thumbnail pdf-canvas\">; pdf_pages (\"PDF: Continuous scroll (experimental)\") renders a <div class=\"pdf-pages\"> that JavaScript fills with one canvas per page. Each formatter only applies the PDF treatment when $item->entity->getMimeType() == 'application/pdf' and otherwise falls back to core's file_link theme.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "pdf-custom-viewer-key",
+      "mode": "recipe",
+      "prompt": "I want the Drupal `pdf` contrib module to use a re-skinned copy of the pdf.js viewer.html that lives in my theme instead of the stock one. Where do I set that, which config object and key stores it, and which formatter actually reads it?",
+      "must_contain_any": [
+        "custom_viewer",
+        "pdf.settings",
+        "/admin/config/media/pdfjs"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Set it on the PDF.js configuration form at /admin/config/media/pdfjs (route pdf.config_form, permission 'administer pdfjs'). It is stored as the single key custom_viewer in the pdf.settings config object, e.g. `drush config:set pdf.settings custom_viewer '/themes/custom/mytheme/pdfjs/viewer.html'`. Only the pdf_default formatter reads it; when empty it falls back to base_path() . 'libraries/pdf.js/web/viewer.html'. The module ships no config/install and no config schema, so pdf.settings does not exist until saved.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "pdf-library-location",
+      "mode": "recipe",
+      "prompt": "I enabled the Drupal `pdf` contrib module and set the PDF formatter on my file field, but the viewer area is blank and the browser console shows 404s. The module does not bundle the JavaScript library. Where exactly on disk must the pdf.js library be placed for this module's declared libraries to resolve?",
+      "must_contain_any": [
+        "libraries/pdf.js",
+        "/libraries/pdf.js/",
+        "libraries/pdf.js/build/pdf.js",
+        "libraries/pdf.js/web/viewer.html"
+      ],
+      "must_not_contain": [],
+      "expected_output": "pdf.libraries.yml points at the docroot path /libraries/pdf.js/build/pdf.js, the formatters set drupalSettings.pdf.workerSrc to /libraries/pdf.js/build/pdf.worker.js, and pdf_default's default viewer is base_path() . 'libraries/pdf.js/web/viewer.html'. So unpack a Mozilla pdf.js release into the docroot as libraries/pdf.js/ so that build/pdf.js, build/pdf.worker.js and web/viewer.html exist. The module performs no requirements check, so there is no warning when it is missing.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "pdf-known-custom-viewer",
+      "mode": "introspection",
+      "prompt": "This Drupal site has the `pdf` contrib module enabled and someone has already pointed it at a custom pdf.js viewer file. Inspect the running site and tell me the exact viewer path that is configured.",
+      "must_contain_any": [
+        "/themes/custom/acme/pdfjs/viewer.html"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The pdf.settings config object has custom_viewer: /themes/custom/acme/pdfjs/viewer.html (readable with `drush config:get pdf.settings`).",
+      "setup": "agent-module-documentation/evaluation/verify/pdf-custom-viewer-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/pdf-custom-viewer-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "pdf-known-formatter-settings",
+      "mode": "introspection",
+      "prompt": "On this Drupal site the Article content type has a file field `field_pdf_report` that is rendered with the pdf module's PDF.js viewer on the default view display. Inspect the live configuration and tell me which pdf.js zoom level it is configured to open with.",
+      "must_contain_any": [
+        "page-width"
+      ],
+      "must_not_contain": [],
+      "expected_output": "In core.entity_view_display.node.article.default the field_pdf_report component uses formatter pdf_default with settings zoom: page-width (plus keep_pdfjs: true, height: 900px, page: 7, pagemode: thumbs).",
+      "setup": "agent-module-documentation/evaluation/verify/pdf-formatter-settings-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/pdf-formatter-settings-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "pdf-which-formatter",
+      "mode": "introspection",
+      "prompt": "The Article content type on this Drupal site has two file fields for PDFs, `field_pdf_cover` and `field_pdf_scroll`. One of them is configured to render every page of the PDF as a continuous scroll, the other only renders the first page. Inspect the live view display and tell me which field is the continuous-scroll one.",
+      "must_contain_any": [
+        "field_pdf_scroll"
+      ],
+      "must_not_contain": [],
+      "expected_output": "field_pdf_scroll uses the pdf_pages formatter (\"PDF: Continuous scroll (experimental)\", scale 1.25) in core.entity_view_display.node.article.default, while field_pdf_cover uses pdf_thumbnail, which renders only the first page.",
+      "setup": "agent-module-documentation/evaluation/verify/pdf-which-formatter-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/pdf-which-formatter-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "pdf-default-viewer-display",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site the Article content type has a core File field `field_pdf_manual`. Using the pdf contrib module, configure the DEFAULT view display for Article so that this field is rendered with the PDF.js viewer formatter, always using pdf.js (never handing off to a browser PDF plugin), with the viewer 800px tall, opening on page 4, at the 'Fit Page' zoom level. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/pdf-default-viewer-display-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/pdf-default-viewer-display-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/pdf-default-viewer-display-cleanup.sh",
+      "expected_output": "In core.entity_view_display.node.article.default the field_pdf_manual component must have type: pdf_default with settings keep_pdfjs: true, height: '800px', page: 4 and zoom: 'page-fit' ('Fit Page' is the page-fit option). Set it via the Manage display cog or by loading the entity_view_display and calling setComponent()."
+    },
+    {
+      "id": "pdf-thumbnail-display-layman",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "layman",
+      "prompt": "On my Drupal site, articles have a PDF attachment field called field_pdf_preview. In the article teaser (the short summary version that shows in listings) I don't want a download link — I just want a picture of the PDF's first page, about 300 pixels wide, rendered at double size so it looks sharp. Please set that up on the site for me.",
+      "reset": "agent-module-documentation/evaluation/verify/pdf-thumbnail-display-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/pdf-thumbnail-display-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/pdf-thumbnail-display-cleanup.sh",
+      "expected_output": "In core.entity_view_display.node.article.teaser the field_pdf_preview component must have type: pdf_thumbnail (the pdf module's 'PDF: Display the first page' formatter) with settings scale: 2 and width: '300px'."
+    },
+    {
+      "id": "pdf-custom-viewer-role",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, configure the pdf contrib module to use the themed PDF.js viewer at /themes/custom/acme/pdfjs/viewer.html instead of the stock one. Then create a user role with the machine name `pdf_doc_manager` and grant it the permission the pdf module uses to gate its own settings form, so document managers can change that path themselves. Apply both changes to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/pdf-custom-viewer-role-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/pdf-custom-viewer-role-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/pdf-custom-viewer-role-cleanup.sh",
+      "expected_output": "pdf.settings.custom_viewer must equal /themes/custom/acme/pdfjs/viewer.html (e.g. `drush config:set pdf.settings custom_viewer '/themes/custom/acme/pdfjs/viewer.html' -y`; the object does not exist until created because the module ships no config/install). A user_role entity pdf_doc_manager must exist holding the permission `administer pdfjs`, which is the only permission pdf.permissions.yml defines and the requirement on route pdf.config_form."
+    }
+  ]
+}

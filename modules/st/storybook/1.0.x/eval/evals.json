@@ -1,0 +1,80 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "storybook",
+  "version": "1.0.x",
+  "note": "Storybook bridges Drupal Twig to a Storybook front-end. Actually browsing components requires the EXTERNAL Storybook (npm/Node) application plus CORS -- an out-of-Drupal dependency that cannot be exercised on this site. So all medium/hard cases are grounded in LOCAL, verifiable state that needs no external server: the 'render storybook stories' permission (storybook.permissions.yml), the render route storybook.render_story -> /storybook/stories/render/{hash}, and the Drush story compiler (storybook:generate-all-stories / storybook:generate-stories) which turns a *.stories.twig into a sibling *.stories.json. No configure route, no config schema, no plugin types. NOTE on generate-stories: template_path is relative to the Drupal root (docroot, e.g. web/), and the command writes the JSON with file_put_contents relative to the CWD, so it must be run FROM the docroot; the compiled setup/verify scripts run it via (cd web && drush ...). Introspection reads which role may render / a compiled story title; execution grants the anonymous render permission and compiles a Twig story to JSON, both verified from live state (role permission / the generated .stories.json).",
+  "evals": [
+    {
+      "id": "storybook-twig-tags",
+      "mode": "recipe",
+      "prompt": "How do I write a Storybook story for a Drupal component using the storybook module, and what should the file be named?",
+      "must_contain_any": ["{% stories", "{% story", "stories.twig", "stories", "story"],
+      "must_not_contain": [],
+      "expected_output": "Write the story in a *.stories.twig file using the {% stories ... %} tag (a story group with a title) and {% story ... %} tags (each variant, with a name and args). The args become Twig variables for rendering the component.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "storybook-compile-command",
+      "mode": "recipe",
+      "prompt": "The Storybook application can't read Twig stories directly. Which Drush command does the storybook module provide to compile *.stories.twig files into the *.stories.json that Storybook understands?",
+      "must_contain_any": ["storybook:generate-all-stories", "storybook:generate-stories", "generate-all-stories", "generate-stories"],
+      "must_not_contain": [],
+      "expected_output": "drush storybook:generate-all-stories (scans modules/profiles/themes) or drush storybook:generate-stories <path> for a single template. Options include --force, --omit-server-url, and Drush's --uri.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "storybook-render-permission",
+      "mode": "recipe",
+      "prompt": "Storybook renders each Drupal story by calling an endpoint on the site. What is that render route, and which permission must be granted (typically to anonymous in local dev) for Storybook to fetch renders?",
+      "must_contain_any": ["render storybook stories", "/storybook/stories/render", "storybook.render_story"],
+      "must_not_contain": [],
+      "expected_output": "The render route is storybook.render_story at /storybook/stories/render/{hash}. It is gated by the 'render storybook stories' permission; grant it to the anonymous role in local/dev (keep it disabled in production).",
+      "difficulty": "easy"
+    },
+    {
+      "id": "storybook-which-role",
+      "mode": "introspection",
+      "prompt": "On this site, one custom role has been granted access to the Storybook render endpoint. Inspect the live configuration and state which role can render Storybook stories.",
+      "must_contain_any": ["storybook_viewer"],
+      "must_not_contain": [],
+      "expected_output": "The 'storybook_viewer' role has the 'render storybook stories' permission (user.role.storybook_viewer includes that permission).",
+      "setup": "agent-module-documentation/evaluation/verify/storybook-viewerrole-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/storybook-viewerrole-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "storybook-compiled-title",
+      "mode": "introspection",
+      "prompt": "This site has a Twig story that has already been compiled to JSON by the storybook module, under web/modules/custom/storybook_ev_data/. Inspect the compiled *.stories.json file and report the Storybook story group title it declares.",
+      "must_contain_any": ["Components/StorybookEval/Widget"],
+      "must_not_contain": [],
+      "expected_output": "The compiled widget.stories.json has title 'Components/StorybookEval/Widget' (with a Primary story and args.label 'Click me').",
+      "setup": "agent-module-documentation/evaluation/verify/storybook-compiled-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/storybook-compiled-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "storybook-grant-anon",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "This is a local development site running the storybook module. Configure Drupal so the external Storybook application (which is anonymous) can fetch rendered stories from the Storybook render endpoint. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/storybook-anon-perm-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/storybook-anon-perm-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/storybook-anon-perm-cleanup.sh",
+      "expected_output": "The anonymous role is granted the 'render storybook stories' permission (e.g. drush role:perm:add anonymous 'render storybook stories', or via /admin/people/permissions), so /storybook/stories/render/{hash} is reachable by Storybook."
+    },
+    {
+      "id": "storybook-compile-story",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "This site has a Twig story file at web/modules/custom/storybook_ev_task/card.stories.twig but no compiled JSON yet. Using the storybook module, compile that Twig story into the *.stories.json file the Storybook application reads. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/storybook-generate-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/storybook-generate-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/storybook-generate-cleanup.sh",
+      "expected_output": "web/modules/custom/storybook_ev_task/card.stories.json is generated (title 'Components/StorybookEval/Card') by running the compiler from the Drupal docroot, e.g. (cd web && drush storybook:generate-stories modules/custom/storybook_ev_task/card.stories.twig), or drush storybook:generate-all-stories."
+    }
+  ]
+}

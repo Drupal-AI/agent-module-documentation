@@ -1,0 +1,82 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "typed_entity_example",
+  "version": "4.1.x",
+  "note": "typed_entity_example is a reference implementation of the Typed Entity pattern. It registers two repositories: node.article (default wrapper Drupal\\typed_entity_example\\WrappedEntities\\Article, variant BakingArticle, renderer Full) and the bundle-less user (wrapper User). Article implements domain logic (owner() returns a wrapped User, access() forbids on an inappropriate author nickname), ArticleRepository implements AccessibleInterface (forbid when >8 published articles), User::nickname() = email local-part, Full renderer sets a cyan background in preprocess(). It has no config/permissions/plugin types of its own. Medium cases enable the submodule and read the live repository registry/definitions; hard cases create a real article/user and verify the module wraps them into the correct example wrapped-entity class. cleanup uninstalls the submodule (baseline: disabled).",
+  "evals": [
+    {
+      "id": "typed_entity_example-what-it-wraps",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "Which entity types (and bundle) does the Drupal typed_entity_example submodule provide typed repositories for?",
+      "must_contain_any": ["article", "node", "user"],
+      "must_not_contain": [],
+      "expected_output": "It provides ArticleRepository for node / bundle article, and UserRepository for the bundle-less user entity."
+    },
+    {
+      "id": "typed_entity_example-baking-variant",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "In typed_entity_example, the article repository has a default wrapped-entity class and a specialized variant. Name both wrapper classes and say which is the variant.",
+      "must_contain_any": ["Article", "BakingArticle"],
+      "must_not_contain": [],
+      "expected_output": "The default (fallback) wrapper is Article; the variant is BakingArticle (declared via new ClassWithVariants(Article::class, [BakingArticle::class]))."
+    },
+    {
+      "id": "typed_entity_example-access-rule",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "The example ArticleRepository implements AccessibleInterface to demonstrate repository-level access control. Under what condition does its access() method forbid access?",
+      "must_contain_any": ["eight", "8", "published"],
+      "must_not_contain": [],
+      "expected_output": "ArticleRepository::access() returns AccessResult::forbidden() when more than eight published articles exist (it counts published nodes of the article bundle); otherwise it is neutral."
+    },
+    {
+      "id": "typed_entity_example-bundleless-repo",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "On this running Drupal site, the typed_entity_example submodule registers a typed repository for a bundle-less entity type. Inspect the live repositories and name that entity type.",
+      "must_contain_any": ["user"],
+      "must_not_contain": [],
+      "expected_output": "The bundle-less repository is for the user entity (repository id 'user', wrapper User). Discover via \\Drupal::service(Drupal\\typed_entity\\RepositoryManager::class)->getAll() and read each repository's getEntityType()->id() / getBundle() (the one with a NULL bundle is user).",
+      "setup": "agent-module-documentation/evaluation/verify/typed_entity_example-bundleless-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/typed_entity_example-bundleless-cleanup.sh"
+    },
+    {
+      "id": "typed_entity_example-article-fallback-wrapper",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "On this running Drupal site, inspect the typed_entity_example repository for the article content type and give the class name of its default (fallback) wrapped-entity class.",
+      "must_contain_any": ["Article"],
+      "must_not_contain": [],
+      "expected_output": "The node.article repository's fallback wrapper is Drupal\\typed_entity_example\\WrappedEntities\\Article. Read it from the plugin definition: \\Drupal::service('plugin.manager.typed_entity_repository')->getDefinition('node.article')['wrappers']->getFallback().",
+      "setup": "agent-module-documentation/evaluation/verify/typed_entity_example-article-wrapper-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/typed_entity_example-article-wrapper-cleanup.sh"
+    },
+    {
+      "id": "typed_entity_example-wrap-article",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site (with typed_entity_example enabled), create and save a new Article node with the title 'TEE Article Probe'. The goal is that the Typed Entity system wraps this node into the example module's Article wrapped-entity class. Apply the change to the live site.",
+      "must_not_contain": [],
+      "expected_output": "Create an article node titled 'TEE Article Probe' (e.g. via the article repository's createEntity(['title' => 'TEE Article Probe']) then ->getEntity()->save(), or a plain Node::create). Because typed_entity_example registers the node.article repository, RepositoryManager::wrap() on it returns a Drupal\\typed_entity_example\\WrappedEntities\\Article.",
+      "reset": "agent-module-documentation/evaluation/verify/typed_entity_example-wrap-article-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/typed_entity_example-wrap-article-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/typed_entity_example-wrap-article-cleanup.sh"
+    },
+    {
+      "id": "typed_entity_example-wrap-user",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site (with typed_entity_example enabled), create and save a new active user account with the email 'tee_probe_user@example.com'. The goal is that the Typed Entity system wraps this user into the example module's User wrapped-entity class. Apply the change to the live site.",
+      "must_not_contain": [],
+      "expected_output": "Create the user (e.g. the user repository's createEntity(['name' => 'tee_probe_user', 'mail' => 'tee_probe_user@example.com', 'status' => 1]) then ->getEntity()->save(), or User::create). Because typed_entity_example registers the bundle-less user repository, RepositoryManager::wrap() on the account returns a Drupal\\typed_entity_example\\WrappedEntities\\User. (This site's email_registration module forces the username to equal the email, so the email is the identifier.)",
+      "reset": "agent-module-documentation/evaluation/verify/typed_entity_example-wrap-user-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/typed_entity_example-wrap-user-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/typed_entity_example-wrap-user-cleanup.sh"
+    }
+  ]
+}

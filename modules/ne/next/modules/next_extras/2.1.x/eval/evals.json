@@ -1,0 +1,80 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "next_extras",
+  "version": "2.1.x",
+  "note": "next_extras (depends on next) adds a computed content_translations node field and a DEPRECATED per-entity-type 'Revalidate' toggle stored as third-party settings next_extras.revalidate (bool) and next_extras.revalidate_paths (string) on the next_entity_type_config config entity (schema next.next_entity_type_config.*.third_party.next_extras). All medium/hard eval state is grounded in those third-party settings on a next_entity_type_config (ids node.article / node.page): introspection reads the flag/paths, execution sets them via setThirdPartySetting()->save() and verifies against the live config entity. The Next.js app itself is external.",
+  "evals": [
+    {
+      "id": "next-extras-what",
+      "mode": "recipe",
+      "prompt": "What does the next_extras submodule add on top of the Next.js (next) module?",
+      "must_contain_any": ["content_translations", "revalidate", "third party", "third-party"],
+      "must_not_contain": [],
+      "expected_output": "A computed content_translations base field on nodes (for exposing translations to the front end) and a deprecated experimental per-entity-type 'Revalidate' toggle stored as third-party settings next_extras.revalidate / next_extras.revalidate_paths on next_entity_type_config. It also ships a legacy NextCacheInvalidator service.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "next-extras-revalidate-storage",
+      "mode": "recipe",
+      "prompt": "In next_extras, where is the experimental 'Revalidate' setting stored for an entity type, and is it the recommended way to do revalidation now?",
+      "must_contain_any": ["third_party", "next_extras", "deprecated", "next_entity_type_config"],
+      "must_not_contain": [],
+      "expected_output": "It is stored as third-party settings next_extras.revalidate (bool) and next_extras.revalidate_paths (string) on the next_entity_type_config entity. It is DEPRECATED — the recommended approach is the parent module's on-demand revalidation (the path/cache_tag revalidator plugins).",
+      "difficulty": "easy"
+    },
+    {
+      "id": "next-extras-translations-field",
+      "mode": "recipe",
+      "prompt": "What field does next_extras add to nodes and what does it require to appear?",
+      "must_contain_any": ["content_translations"],
+      "must_not_contain": [],
+      "expected_output": "It adds a computed, unlimited base field 'content_translations' to nodes via hook_entity_base_field_info(), but only when the content_translation module is enabled. It is backed by the ContentTranslationsItem field plugin.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "next-extras-known-revalidate",
+      "mode": "introspection",
+      "prompt": "On this site the Article content type's Next.js entity-type config (node.article) has the experimental next_extras 'Revalidate' toggle enabled. Inspect the live configuration and report the additional revalidate path(s) configured in the next_extras settings for node.article.",
+      "must_contain_any": ["/blog"],
+      "must_not_contain": [],
+      "expected_output": "next_entity_type_config node.article has third-party settings next_extras.revalidate = true and next_extras.revalidate_paths = '/blog'. Read via $config->getThirdPartySetting('next_extras', 'revalidate_paths') or drush cget next.next_entity_type_config.node.article.",
+      "setup": "agent-module-documentation/evaluation/verify/next_extras-known-revalidate-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/next_extras-known-revalidate-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "next-extras-which-type",
+      "mode": "introspection",
+      "prompt": "Two content types on this site have Next.js entity-type configs: node.article and node.page. Exactly one of them has the deprecated next_extras 'revalidate' third-party setting enabled. Inspect the live configuration and name which one.",
+      "must_contain_any": ["node.article"],
+      "must_not_contain": [],
+      "expected_output": "node.article has next_extras.revalidate = true; node.page has it false (or unset). Discoverable by reading each next_entity_type_config's next_extras third-party settings.",
+      "setup": "agent-module-documentation/evaluation/verify/next_extras-which-type-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/next_extras-which-type-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "next-extras-enable-revalidate",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "The Article content type's Next.js entity-type config (node.article) exists but the next_extras experimental 'Revalidate' toggle is currently off. Using next_extras, turn that toggle ON for node.article (set the next_extras 'revalidate' third-party setting to true) and save it to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/next_extras-enable-revalidate-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/next_extras-enable-revalidate-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/next_extras-enable-revalidate-cleanup.sh",
+      "expected_output": "next_entity_type_config node.article has third-party setting next_extras.revalidate === TRUE (e.g. $c->setThirdPartySetting('next_extras', 'revalidate', TRUE)->save())."
+    },
+    {
+      "id": "next-extras-set-paths",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "For the Basic page content type's Next.js entity-type config (node.page), enable the next_extras experimental revalidate toggle AND set its additional revalidate paths to '/news'. Save both third-party settings to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/next_extras-set-paths-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/next_extras-set-paths-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/next_extras-set-paths-cleanup.sh",
+      "expected_output": "next_entity_type_config node.page has next_extras.revalidate === TRUE and next_extras.revalidate_paths === '/news' (set both third-party settings and save)."
+    }
+  ]
+}

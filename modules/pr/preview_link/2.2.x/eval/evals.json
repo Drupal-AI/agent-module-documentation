@@ -1,0 +1,84 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "preview_link",
+  "version": "2.2.x",
+  "note": "Preview Link defines a 'preview_link' content entity (UUID token + dynamic_entity_reference 'entities' + expiry) and grants token-based view access to unpublished content. Config object preview_link.settings holds enabled_entity_types (map entity_type => [bundles], empty list = all bundles), expiry_seconds (default 604800), multiple_entities (true), display_message (always/subsequent/never). Service preview_link.host answers hasPreviewLinks()/getPreviewLinks()/isToken(). Permissions: 'generate preview links', 'administer preview link settings'. Medium/hard grounded in the real settings config and in live preview_link entities created for a namespaced 'PL Hard Target' Article node.",
+  "evals": [
+    {
+      "id": "preview_link-how",
+      "mode": "recipe",
+      "prompt": "A client without a Drupal account needs to preview an unpublished article. Which module solves this and how does an editor produce the link the client can open?",
+      "must_contain_any": ["preview_token", "generate-preview-link", "Preview Link", "token"],
+      "must_not_contain": [],
+      "expected_output": "Preview Link. Enable the entity type in its settings, then on the entity use the 'Preview Link' tab (path <canonical>/generate-preview-link) to generate a unique tokenised URL. Opening the canonical URL with the valid preview_token grants view access to the unpublished entity even for anonymous users.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "preview_link-config",
+      "mode": "recipe",
+      "prompt": "In the Preview Link module, which configuration object and keys control which entity types can have preview links and how long a link stays valid? What is the default lifetime?",
+      "must_contain_any": ["enabled_entity_types", "expiry_seconds", "preview_link.settings", "604800"],
+      "must_not_contain": [],
+      "expected_output": "Config object preview_link.settings: enabled_entity_types (entity type => list of bundles; empty list means all bundles), expiry_seconds (link lifetime, default 604800 = 7 days), multiple_entities, display_message. Edited at /admin/config/content/preview_link.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "preview_link-permission",
+      "mode": "recipe",
+      "prompt": "Which Preview Link permission does an editorial role need in order to create preview links for content?",
+      "must_contain_any": ["generate preview links"],
+      "must_not_contain": [],
+      "expected_output": "The 'generate preview links' permission. ('administer preview link settings' is a separate admin permission for the settings form.) Viewing a previewed entity needs no permission — a valid preview_token grants access.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "preview_link-pl-expiry",
+      "mode": "introspection",
+      "prompt": "On this Drupal site, the Preview Link module's link lifetime has been customized. Inspect the live configuration and state how many seconds a preview link stays valid.",
+      "must_contain_any": ["3600"],
+      "must_not_contain": [],
+      "expected_output": "expiry_seconds is 3600 in preview_link.settings (read via `drush config:get preview_link.settings expiry_seconds`).",
+      "setup": "agent-module-documentation/evaluation/verify/preview_link-pl-expiry-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/preview_link-pl-expiry-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "preview_link-pl-enabled",
+      "mode": "introspection",
+      "prompt": "On this Drupal site, exactly one content type has been enabled for Preview Link. Inspect the live configuration and state which entity type and bundle are enabled for preview links.",
+      "must_contain_any": ["article"],
+      "must_not_contain": [],
+      "expected_output": "The node Article bundle is enabled: preview_link.settings enabled_entity_types = { node: [ article ] }.",
+      "setup": "agent-module-documentation/evaluation/verify/preview_link-pl-enabled-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/preview_link-pl-enabled-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "preview_link-pl-enable-article",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, configure the Preview Link module so that the Article (node) content type is enabled for preview links. Apply the change to the live configuration.",
+      "reset": "agent-module-documentation/evaluation/verify/preview_link-pl-enable-article-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/preview_link-pl-enable-article-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/preview_link-pl-enable-article-cleanup.sh",
+      "expected_output": "preview_link.settings enabled_entity_types.node includes 'article' (or is an empty list meaning all node bundles).",
+      "must_contain_any": [],
+      "must_not_contain": []
+    },
+    {
+      "id": "preview_link-pl-generate",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site there is an unpublished Article node titled 'PL Hard Target'. Using the Preview Link module, generate a preview link for that node so it can be previewed via a tokenised URL. Apply it to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/preview_link-pl-generate-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/preview_link-pl-generate-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/preview_link-pl-generate-cleanup.sh",
+      "expected_output": "A preview_link entity referencing the 'PL Hard Target' node exists and is unexpired, so preview_link.host->hasPreviewLinks($node) is TRUE. Create it via the preview_link entity storage (setEntities([$node]) then save).",
+      "must_contain_any": [],
+      "must_not_contain": []
+    }
+  ]
+}

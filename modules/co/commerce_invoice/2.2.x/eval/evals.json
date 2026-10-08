@@ -1,0 +1,80 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "commerce_invoice",
+  "version": "2.2.x",
+  "note": "Commerce Invoice adds the commerce_invoice content entity and its commerce_invoice_type bundle config entity to Drupal Commerce. Two invoice types ship: 'default' (Invoice, numberPattern invoice_default) and 'credit_memo' (Credit memo, numberPattern invoice_credit_memo); both use the invoice_default state-machine workflow (states draft, pending, paid, refund_pending, refunded, canceled). Invoice-type config keys: numberPattern, workflow, footerText, paymentTerms, dueDays, logo, sendConfirmation, confirmationBcc, privateSubdirectory. Invoices are created via the commerce_invoice.invoice_generator service (InvoiceGenerator::generate) or automatically by OrderPlacedSubscriber/OrderPaidSubscriber based on per-order-type third-party settings. Medium cases create a known invoice-type config and read a property back; hard cases create an invoice type config entity and verify it against live config. All eval scripts operate on the commerce_invoice_type config entity (no order/node fixtures needed).",
+  "evals": [
+    {
+      "id": "commerce_invoice-shipped-types",
+      "mode": "recipe",
+      "prompt": "Which invoice types does the Drupal Commerce Invoice module ship with out of the box, and what are their machine names?",
+      "must_contain_any": ["default", "credit_memo", "credit memo"],
+      "must_not_contain": [],
+      "expected_output": "It ships two commerce_invoice_type bundles: 'default' (labeled Invoice) and 'credit_memo' (labeled Credit memo).",
+      "difficulty": "easy"
+    },
+    {
+      "id": "commerce_invoice-workflow-states",
+      "mode": "recipe",
+      "prompt": "What are the states of the default invoice workflow (invoice_default) in the Commerce Invoice module?",
+      "must_contain_any": ["draft", "pending", "paid", "refunded", "canceled"],
+      "must_not_contain": [],
+      "expected_output": "The invoice_default workflow has states draft, pending, paid, refund_pending, refunded and canceled (transitions confirm, pay, refund, cancel).",
+      "difficulty": "easy"
+    },
+    {
+      "id": "commerce_invoice-generator-service",
+      "mode": "recipe",
+      "prompt": "In Drupal Commerce Invoice, how do I generate an invoice from an order programmatically? Name the service and method.",
+      "must_contain_any": ["commerce_invoice.invoice_generator", "InvoiceGenerator", "generate("],
+      "must_not_contain": [],
+      "expected_output": "Use the commerce_invoice.invoice_generator service (Drupal\\commerce_invoice\\InvoiceGeneratorInterface) and call generate($orders, $store, $profile, $values, $save).",
+      "difficulty": "easy"
+    },
+    {
+      "id": "commerce_invoice-known-footer",
+      "mode": "introspection",
+      "prompt": "This Commerce site has an invoice type with machine name 'ci_known'. Inspect the live configuration and give the exact footer text configured on that invoice type.",
+      "must_contain_any": ["Thank you for your business - CIKNOWN"],
+      "must_not_contain": [],
+      "expected_output": "The commerce_invoice_type 'ci_known' has footerText 'Thank you for your business - CIKNOWN' (config commerce_invoice.commerce_invoice_type.ci_known).",
+      "setup": "agent-module-documentation/evaluation/verify/commerce_invoice-known-footer-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/commerce_invoice-known-footer-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "commerce_invoice-known-pattern",
+      "mode": "introspection",
+      "prompt": "This Commerce site has an invoice type with machine name 'ci_known2'. Inspect the live configuration and state which number pattern that invoice type uses.",
+      "must_contain_any": ["invoice_credit_memo"],
+      "must_not_contain": [],
+      "expected_output": "The commerce_invoice_type 'ci_known2' uses numberPattern 'invoice_credit_memo'.",
+      "setup": "agent-module-documentation/evaluation/verify/commerce_invoice-known-pattern-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/commerce_invoice-known-pattern-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "commerce_invoice-create-type",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal Commerce site, create a new invoice type with machine name 'ci_proforma' and label 'Pro forma', using the existing 'invoice_default' number pattern and the 'invoice_default' workflow. Apply it to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/commerce_invoice-create-type-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/commerce_invoice-create-type-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/commerce_invoice-create-type-cleanup.sh",
+      "expected_output": "Create the commerce_invoice_type config entity ci_proforma, e.g. Drupal\\commerce_invoice\\Entity\\InvoiceType::create(['id'=>'ci_proforma','label'=>'Pro forma','numberPattern'=>'invoice_default','workflow'=>'invoice_default'])->save(); (or via /admin/commerce/config/invoice-types/add)."
+    },
+    {
+      "id": "commerce_invoice-create-duedays",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal Commerce site, create an invoice type with machine name 'ci_deposit' (label 'Deposit'), using the invoice_default number pattern and workflow, and set its due days to 14. Apply it to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/commerce_invoice-create-duedays-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/commerce_invoice-create-duedays-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/commerce_invoice-create-duedays-cleanup.sh",
+      "expected_output": "Create commerce_invoice_type ci_deposit with dueDays set to 14, e.g. InvoiceType::create(['id'=>'ci_deposit','label'=>'Deposit','numberPattern'=>'invoice_default','workflow'=>'invoice_default','dueDays'=>14])->save();"
+    }
+  ]
+}

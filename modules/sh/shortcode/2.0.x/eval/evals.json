@@ -1,0 +1,100 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "shortcode",
+  "version": "2.0.x",
+  "note": "Shortcode is a plugin type + text-format filter framework, not a fixed set of tags. It defines the `shortcode` plugin type (annotation @Shortcode, Plugin/Shortcode, plugin.manager.shortcode) and ships two filters: `shortcode` (parses [tag]...[/tag] markup using enabled plugins) and `shortcode_corrector` (fixes WYSIWYG <p>/<div> wrapping). No configure route, no permissions, no Drush. Per-format enablement of the filter and of each individual shortcode id lives in filter.format.<format>.filters.shortcode (status + settings, schema filter_settings.shortcode = boolean map keyed by shortcode id). All medium/hard cases are grounded in that real config on namespaced `shortcode_*` text formats; shortcode_basic_tags is enabled site-wide so quote/button/highlight/img ids are real, resolvable shortcode plugin ids used in the fixtures.",
+  "evals": [
+    {
+      "id": "shortcode-filter-and-corrector",
+      "mode": "recipe",
+      "prompt": "On a Drupal 11 site, I want body text to support WordPress-style `[tag]...[/tag]` shortcode markup. Name the text-format filter plugin id you must enable, and name the OTHER filter this module ships that fixes `<p>`/`<div>` wrapping WYSIWYG editors add around shortcode output.",
+      "must_contain_any": [
+        "shortcode_corrector",
+        "shortcode_text_corrector",
+        "html corrector",
+        "Shortcodes - html corrector"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Enable the `shortcode` filter (id `shortcode`) on the text format. The companion filter is `shortcode_corrector` (\"Shortcodes - html corrector\"; the 7.x-2.x id was `shortcode_text_corrector`), which strips invalid <p> wrapping WYSIWYG editors insert around block-level shortcode output.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "shortcode-id-vs-token",
+      "mode": "recipe",
+      "prompt": "In the Drupal `shortcode` module's `@Shortcode` plugin annotation, what's the difference between the `id` field and the `token` field? If a plugin's annotation omits `token` entirely, what token does the parser actually match in `[...]` markup?",
+      "must_contain_any": [
+        "defaults to the id",
+        "defaults to id",
+        "lowercased id",
+        "strtolower",
+        "lower-cased id",
+        "token defaults"
+      ],
+      "must_not_contain": [],
+      "expected_output": "`id` identifies the plugin internally (used by plugin.manager.shortcode, filter_settings.shortcode keys); `token` is what the parser matches inside [brackets]. If token is omitted, it defaults to the lowercased id (strtolower($id)), so most plugins never set it explicitly and id and token are the same string.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "shortcode-manager-and-per-format-toggle",
+      "mode": "recipe",
+      "prompt": "How does the Drupal `shortcode` module let a site enable a shortcode plugin on one text format but disable that same shortcode on another format? Which service manages the shortcode plugins, and where in a text format's configuration is per-shortcode enablement stored?",
+      "must_contain_any": [
+        "plugin.manager.shortcode",
+        "filter_settings.shortcode",
+        "filters.shortcode.settings"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Shortcode plugins are discovered/managed by the plugin.manager.shortcode service (ShortcodePluginManager). Per-format enablement of each shortcode id is stored in that format's filter config at filter.format.<format>.filters.shortcode.settings.<shortcode_id> (schema filter_settings.shortcode, a boolean map keyed by shortcode id) — so a shortcode can be TRUE on one format and FALSE/absent on another.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "shortcode-filter-weight",
+      "mode": "introspection",
+      "prompt": "On this Drupal site there's a text format called `shortcode_eval`. It has the `shortcode` filter enabled. Inspect the live filter configuration and tell me the numeric weight of the shortcode filter within this format's filter pipeline.",
+      "must_contain_any": [
+        "13"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The shortcode filter's weight on shortcode_eval is 13 (filter.format.shortcode_eval.filters.shortcode.weight: 13).",
+      "setup": "agent-module-documentation/evaluation/verify/shortcode-filter-weight-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/shortcode-filter-weight-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "shortcode-quote-vs-highlight",
+      "mode": "introspection",
+      "prompt": "On this Drupal site, the text format `shortcode_eval2` has the shortcode filter enabled with the `quote` and `highlight` shortcodes configured — exactly one of them is turned on. Inspect the live config and tell me which one (quote or highlight) is enabled.",
+      "must_contain_any": [
+        "quote"
+      ],
+      "must_not_contain": [],
+      "expected_output": "quote is enabled: filter.format.shortcode_eval2.filters.shortcode.settings.quote is true, while settings.highlight is false.",
+      "setup": "agent-module-documentation/evaluation/verify/shortcode-quote-vs-highlight-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/shortcode-quote-vs-highlight-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "shortcode-enable-filter",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, the text format `shortcode_task` exists but does not have the shortcode filter enabled at all. Turn on WordPress-style bracket-tag shortcode parsing (the `shortcode` filter) for this format. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/shortcode-enable-filter-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/shortcode-enable-filter-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/shortcode-enable-filter-cleanup.sh",
+      "expected_output": "filter.format.shortcode_task.filters.shortcode.status is set to true (e.g. via the format's Manage filters UI or FilterFormat::setFilterConfig('shortcode', [...'status' => TRUE]) and save)."
+    },
+    {
+      "id": "shortcode-toggle-highlight",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, the text format `shortcode_task2` has the shortcode filter enabled, but the `highlight` shortcode is turned off within it. Enable the highlight shortcode on this format so `[highlight]` tags are parsed. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/shortcode-toggle-highlight-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/shortcode-toggle-highlight-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/shortcode-toggle-highlight-cleanup.sh",
+      "expected_output": "filter.format.shortcode_task2.filters.shortcode.settings.highlight is set to true while the shortcode filter itself remains enabled (status true)."
+    }
+  ]
+}

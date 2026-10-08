@@ -1,0 +1,80 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "module_missing_message_fixer",
+  "version": "2.0.x",
+  "note": "Module Missing Message Fixer finds 'ghost' modules: rows in the key_value table, collection system.schema, whose name no longer resolves to an installed extension (extension.list.module getPathname throws). UI at /admin/config/system/module-missing-message-fixer (route module_missing_message_fixer.form, permission 'administer module missing message fixer'); Drush commands module-missing-message-fixer:list (alias mmmfl) and module-missing-message-fixer:fix (alias mmmff, name or --all). Fixing deletes the system.schema key_value row (and, via --all/UI, also <module>.* config). No config, no schema, no plugins. Medium/hard cases insert namespaced ghost schema rows (mmmf_*) into key_value collection system.schema and read/remove them; verify checks the row is gone.",
+  "evals": [
+    {
+      "id": "mmmf-drush-commands",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "On a Drupal 11 site with module_missing_message_fixer installed, which Drush commands list and fix leftover 'missing module' entries, and what are their aliases?",
+      "must_contain_any": ["mmmfl", "mmmff", "module-missing-message-fixer:list", "module-missing-message-fixer:fix", "--all"],
+      "must_not_contain": [],
+      "expected_output": "drush module-missing-message-fixer:list (alias mmmfl) lists ghost modules; drush module-missing-message-fixer:fix <name> (alias mmmff), or with --all, removes them."
+    },
+    {
+      "id": "mmmf-what-is-a-ghost",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "What exactly is a 'missing module' that module_missing_message_fixer cleans up, and where is the stale record stored (which table and collection)?",
+      "must_contain_any": ["key_value", "system.schema", "schema"],
+      "must_not_contain": [],
+      "expected_output": "A module whose code was removed from disk without a proper uninstall, leaving its schema version in the key_value table under the collection 'system.schema'. The fixer flags any system.schema name that no longer resolves to an installed extension."
+    },
+    {
+      "id": "mmmf-ui-access",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "Where is the Module Missing Message Fixer admin page, what permission is required, and what does the 'Remove These Errors!' button actually delete?",
+      "must_contain_any": ["administer module missing message fixer", "/admin/config/system/module-missing-message-fixer", "module_missing_message_fixer.form", "key_value", "system.schema"],
+      "must_not_contain": [],
+      "expected_output": "Path /admin/config/system/module-missing-message-fixer (route module_missing_message_fixer.form), permission 'administer module missing message fixer'. Submitting deletes the selected names' rows from key_value (collection system.schema) and any <module>.* config objects."
+    },
+    {
+      "id": "mmmf-detect-ghost",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "This Drupal site currently reports a leftover 'missing module' schema entry (a module whose files no longer exist). Using module_missing_message_fixer, inspect the live site and give the machine name of that ghost module.",
+      "must_contain_any": ["mmmf_ghost"],
+      "must_not_contain": [],
+      "expected_output": "The ghost module is mmmf_ghost: it has a row in key_value collection system.schema but no code on disk, so drush mmmfl (or the fixer UI) lists it.",
+      "setup": "agent-module-documentation/evaluation/verify/module_missing_message_fixer-detect-ghost-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/module_missing_message_fixer-detect-ghost-cleanup.sh"
+    },
+    {
+      "id": "mmmf-detect-orphan",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "A stale module schema record has been left on this site for a module that is no longer present. Use module_missing_message_fixer's listing to identify and name the missing module (its machine name starts with 'mmmf_').",
+      "must_contain_any": ["mmmf_orphan"],
+      "must_not_contain": [],
+      "expected_output": "The missing module is mmmf_orphan, reported by drush mmmfl / the fixer because its system.schema key_value entry has no matching installed extension.",
+      "setup": "agent-module-documentation/evaluation/verify/module_missing_message_fixer-detect-orphan-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/module_missing_message_fixer-detect-orphan-cleanup.sh"
+    },
+    {
+      "id": "mmmf-fix-ghost",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "This site has a ghost module schema entry named 'mmmf_task' (a system.schema key_value row for a module with no code). Using module_missing_message_fixer, remove that missing-module entry from the live site so it is no longer reported.",
+      "reset": "agent-module-documentation/evaluation/verify/module_missing_message_fixer-fix-ghost-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/module_missing_message_fixer-fix-ghost-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/module_missing_message_fixer-fix-ghost-cleanup.sh",
+      "expected_output": "Remove the mmmf_task row from key_value collection system.schema, e.g. drush mmmff mmmf_task (or via the fixer UI). After fixing, \\Drupal::keyValue('system.schema')->get('mmmf_task') is NULL."
+    },
+    {
+      "id": "mmmf-fix-orphan",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "site-owner",
+      "prompt": "My Drupal site keeps warning about a missing module called 'mmmf_gone' that I already deleted. Make that warning go away by clearing the leftover record for mmmf_gone, using the Module Missing Message Fixer tool. Apply it to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/module_missing_message_fixer-fix-orphan-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/module_missing_message_fixer-fix-orphan-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/module_missing_message_fixer-fix-orphan-cleanup.sh",
+      "expected_output": "Clear the mmmf_gone system.schema entry (drush mmmff mmmf_gone, or select it in the fixer UI and Remove These Errors!). Afterwards \\Drupal::keyValue('system.schema')->get('mmmf_gone') is NULL."
+    }
+  ]
+}

@@ -1,0 +1,80 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "user_csv_import",
+  "version": "2.0.x",
+  "note": "User CSV Import adds an 'Import users from CSV' form at /admin/people/import (route user_csv_import.admin_upload, permission 'administer users'), creating one user per CSV row. It has NO settings page; options are on the form and, when 'Save configuration' is ticked, persist to the simple config object user_csv_import.importconfig (keys roles, status, password, registration_email_type, config_fields). Its only shipped config schema/permissions are none. Medium/hard cases are grounded in that importconfig config object (read back saved options; write a saved import configuration). User-creation execution is intentionally avoided: creating User entities currently fails on this shared site due to an unrelated broken commerce_giftcard field, and it would not specifically prove the module.",
+  "evals": [
+    {
+      "id": "user_csv_import-where",
+      "mode": "recipe",
+      "prompt": "How do I bulk-import user accounts from a CSV file with the user_csv_import module - where is the form and what permission is needed?",
+      "must_contain_any": ["/admin/people/import", "administer users", "Import users from CSV", "People"],
+      "must_not_contain": [],
+      "expected_output": "Use the 'Import users from CSV' form at /admin/people/import (route user_csv_import.admin_upload; an action link also appears on the People page). It requires core's 'administer users' permission. Upload a CSV, choose roles/password/status/email and which fields to map, then Import users.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "user_csv_import-csv-structure",
+      "mode": "recipe",
+      "prompt": "What does the CSV file for user_csv_import need to look like, and which columns are mandatory?",
+      "must_contain_any": ["name", "mail", "machine name", "header", "first row"],
+      "must_not_contain": [],
+      "expected_output": "The first row holds the user field machine names as column headers; each following row is one user. name and mail are mandatory columns; other core fields (e.g. field_first_name, timezone, pass) can be added. Image and Taxonomy term fields are not supported. A 'Generate sample CSV' button produces a matching template.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "user_csv_import-password",
+      "mode": "recipe",
+      "prompt": "How are passwords set for users imported with user_csv_import, and where are import options saved if I want to reuse them?",
+      "must_contain_any": ["default password", "pass", "Save configuration", "user_csv_import.importconfig"],
+      "must_not_contain": [],
+      "expected_output": "Every imported user gets the form's Default password unless the CSV has a per-row 'pass' column, which overrides it. Ticking 'Save configuration' persists the options (roles, status, password, registration_email_type, config_fields) to the user_csv_import.importconfig config object so the form pre-fills next time.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "user_csv_import-known-password",
+      "mode": "introspection",
+      "prompt": "This site has a saved User CSV Import configuration. Inspect the live configuration and report the default password that imported users would receive.",
+      "must_contain_any": ["UcsvKnownPw123"],
+      "must_not_contain": [],
+      "expected_output": "The user_csv_import.importconfig config object has password = 'UcsvKnownPw123' (read with `drush cget user_csv_import.importconfig`).",
+      "setup": "agent-module-documentation/evaluation/verify/user_csv_import-known-pw-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/user_csv_import-known-pw-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "user_csv_import-known-email",
+      "mode": "introspection",
+      "prompt": "On this site, a saved User CSV Import configuration determines whether new users get a welcome email. Inspect the live configuration and state which registration email type is configured.",
+      "must_contain_any": ["register_admin_created"],
+      "must_not_contain": [],
+      "expected_output": "user_csv_import.importconfig registration_email_type = 'register_admin_created' (the 'Welcome (new user created by administrator)' email).",
+      "setup": "agent-module-documentation/evaluation/verify/user_csv_import-known-email-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/user_csv_import-known-email-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "user_csv_import-save-config",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "Configure and save a reusable User CSV Import configuration on this site so that future imports default to the password 'Ucsv_Task_Pw!' and create users with status Active. Persist it to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/user_csv_import-config-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/user_csv_import-config-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/user_csv_import-config-reset.sh",
+      "expected_output": "Save the user_csv_import.importconfig config object with password = 'Ucsv_Task_Pw!' and status = '1' (Active) - e.g. tick 'Save configuration' on the import form, or set the config object directly."
+    },
+    {
+      "id": "user_csv_import-welcome-email",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "Set up the saved User CSV Import configuration on this site so that imported users are sent the 'Welcome (new user created by administrator)' registration email. Apply it to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/user_csv_import-email-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/user_csv_import-email-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/user_csv_import-email-reset.sh",
+      "expected_output": "Save user_csv_import.importconfig with registration_email_type = 'register_admin_created'."
+    }
+  ]
+}

@@ -1,0 +1,90 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "drupal_cms_helper",
+  "version": "2.1.x",
+  "note": "drupal_cms_helper is the glue module bundled with Drupal CMS. Its stable (@api) runtime surface is small but real: the `site:export` Drush command + SiteExporter service (export the site as a recipe), a `--generic` option added to core `config:export` (strips _core/uuid), and two config-action plugins for recipes: `setDefaultImage` and `themeDevelopmentMode`. The module has NO config UI, NO config schema, NO permissions of its own, and defines NO new plugin types (only config-action instances), so there is no UI/settings introspection surface. Medium and hard cases therefore exercise the config actions (state readable/settable on the live site) and the generic config export. `site:export` itself is deliberately NOT used as a live verify target: on this cumulative documentation site it aborts because unrelated Canvas config carries content dependencies (a documented RuntimeException), which would make the check about the site's state, not the agent's work. All three tiers are present (3 easy, 2 medium, 3 hard).",
+  "evals": [
+    {
+      "id": "dch-what-is-site-export",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "On a Drupal 11 site with the drupal_cms_helper module, what does the `drush site:export` command do, and what are its command aliases?",
+      "must_contain_any": ["recipe", "site:export"],
+      "must_not_contain": [],
+      "expected_output": "drush site:export exports the running site's configuration and content as a Site-type recipe (recipe.yml, composer.json, config/, content/). Aliases: siex, six."
+    },
+    {
+      "id": "dch-config-actions",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "Which config-action plugins does drupal_cms_helper provide for use in recipes, and what does each one do (name at least the two public/@api ones)?",
+      "must_contain_any": ["setDefaultImage", "themeDevelopmentMode"],
+      "must_not_contain": [],
+      "expected_output": "setDefaultImage sets an image field's default image to a file UUID that need not exist yet; themeDevelopmentMode toggles Twig debug/cache development settings from system.theme. (Internal extras: grantPermissionsIfExist, overrideMenuLinks.)"
+    },
+    {
+      "id": "dch-generic-config-export",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "drupal_cms_helper adds a `--generic` option to Drupal's `config:export` Drush command. What does that option do to the exported configuration, and why?",
+      "must_contain_any": ["uuid", "_core"],
+      "must_not_contain": [],
+      "expected_output": "It removes the `_core` and `uuid` keys from exported config (except config entities whose ID is the UUID) so the output is recipe-ready, since those keys should never appear in recipe-provided configuration."
+    },
+    {
+      "id": "dch-default-image-introspect",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, drupal_cms_helper's setDefaultImage config action has been used to set a default image on the media image field (field.field.media.image.field_media_image). Inspect the running site (drush available) and tell me the exact file UUID configured as that field's default image.",
+      "setup": "agent-module-documentation/evaluation/verify/drupal_cms_helper-default-image-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/drupal_cms_helper-default-image-cleanup.sh",
+      "must_contain_any": ["aaaaaaaa-1111-2222-3333-444444444444"],
+      "must_not_contain": [],
+      "expected_output": "The default image UUID is aaaaaaaa-1111-2222-3333-444444444444, read from settings.default_image.uuid on the field.field.media.image.field_media_image config object."
+    },
+    {
+      "id": "dch-theme-dev-mode-introspect",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, drupal_cms_helper's themeDevelopmentMode config action was applied. Inspect the running site (drush available) and tell me whether Twig debugging is currently enabled.",
+      "setup": "agent-module-documentation/evaluation/verify/drupal_cms_helper-theme-dev-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/drupal_cms_helper-theme-dev-cleanup.sh",
+      "must_contain_any": ["enabled", "true", "twig_debug"],
+      "must_not_contain": [],
+      "expected_output": "Twig debugging is enabled: the development_settings key/value collection has twig_debug = TRUE (also twig_cache_disable = TRUE), set by the themeDevelopmentMode action."
+    },
+    {
+      "id": "dch-generic-export-build",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site (DDEV, drush available), use drupal_cms_helper to export the site's configuration in recipe-ready form (with UUIDs and _core metadata stripped) into the directory /var/www/html/web/sites/default/files/eval-generic-export. Give a one-line summary of the command you ran.",
+      "reset": "agent-module-documentation/evaluation/verify/drupal_cms_helper-generic-export-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/drupal_cms_helper-generic-export-verify.sh",
+      "expected_output": "Ran `drush config:export --destination=/var/www/html/web/sites/default/files/eval-generic-export --generic -y`. Verified live: node.type.article.yml exists in that directory with no uuid/_core keys (a plain config:export would leave the uuid and fail)."
+    },
+    {
+      "id": "dch-default-image-build",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site (drush available), use drupal_cms_helper's setDefaultImage config action to set the default image of the media image field (config: field.field.media.image.field_media_image) to the file UUID 12345678-90ab-cdef-1234-567890abcdef, even though no file with that UUID exists yet. Apply it to the running site, do not just describe it. State in one line what you changed.",
+      "reset": "agent-module-documentation/evaluation/verify/drupal_cms_helper-default-image-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/drupal_cms_helper-default-image-verify.sh",
+      "expected_output": "Applied the setDefaultImage config action (e.g. via \\Drupal::service('plugin.manager.config_action')->applyAction('setDefaultImage', 'field.field.media.image.field_media_image', '12345678-90ab-cdef-1234-567890abcdef')). Verified live: settings.default_image.uuid on that field equals the given UUID."
+    },
+    {
+      "id": "dch-theme-dev-mode-build",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site (drush available), use drupal_cms_helper's themeDevelopmentMode config action to enable theme development mode (Twig debug and Twig cache disabled) on the running site. Apply it, do not just describe it. Summarise in one line what you changed.",
+      "reset": "agent-module-documentation/evaluation/verify/drupal_cms_helper-theme-dev-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/drupal_cms_helper-theme-dev-verify.sh",
+      "expected_output": "Applied the themeDevelopmentMode config action on system.theme with value TRUE (e.g. \\Drupal::service('plugin.manager.config_action')->applyAction('themeDevelopmentMode', 'system.theme', TRUE)). Verified live: development_settings twig_debug === TRUE and twig_cache_disable === TRUE."
+    }
+  ]
+}

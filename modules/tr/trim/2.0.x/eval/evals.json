@@ -1,0 +1,100 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "trim",
+  "version": "2.0.x",
+  "note": "Trim is a configuration-free module (configure=null, no config dir, no permissions, no plugins, no Drush, no services). Its whole behavior is in trim.module: hook_form_alter() acts only on content-entity forms (form object entity is a ContentEntityType) and array_unshift()s the trim_form_values validation callback onto $form['#validate'], which recursively trim()s every string in $form_state. Its only durable live state is its module weight in core.extension (module.trim), set to 1001 by trim_install() so its hook_form_alter runs last and its validator ends up first. Because Trim only manifests through interactive Form API submissions (and this shared site's node forms are gated by a required Domain Access field, and headless submitForm() on other entity forms is unreliable), the medium/hard cases are grounded in that real, durable core.extension weight state rather than in form round-trips.",
+  "evals": [
+    {
+      "id": "trim-when-it-acts",
+      "mode": "recipe",
+      "prompt": "The Drupal contrib module 'trim' removes stray whitespace from text a user enters. At what point in the form lifecycle does it strip the whitespace, and why does that timing matter (what error does it prevent)?",
+      "must_contain_any": [
+        "before validation",
+        "prior to validation",
+        "validate",
+        "validation callback",
+        "#validate"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Trim strips whitespace before validation: hook_form_alter array_unshifts trim_form_values onto $form['#validate'] so it runs first, and it sets a high module weight (1001) so it validates first. Trimming before validation means a trailing space in e.g. a number/integer or required field no longer fails validation or blocks submission.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "trim-which-forms",
+      "mode": "recipe",
+      "prompt": "Does the 'trim' module strip whitespace from every Drupal form? Which forms does it act on and which does it deliberately leave alone, and does it affect values written through the REST API or a direct entity save?",
+      "must_contain_any": [
+        "content entity",
+        "ContentEntityType",
+        "config",
+        "Form API",
+        "REST"
+      ],
+      "must_not_contain": [],
+      "expected_output": "It only acts on content-entity forms (nodes, users, taxonomy terms, media, comments, custom content entities) - it checks the form object's entity is a ContentEntityType. Config-entity forms are skipped by design. It only affects Form API submissions, so it does NOT touch values written via the REST API, migrations, or a direct $entity->save().",
+      "difficulty": "easy"
+    },
+    {
+      "id": "trim-module-weight",
+      "mode": "recipe",
+      "prompt": "The 'trim' module needs its whitespace-trimming to run before any other validator. How does it guarantee that ordering, and what value does it set on install to achieve it?",
+      "must_contain_any": [
+        "weight",
+        "1001",
+        "module_set_weight"
+      ],
+      "must_not_contain": [],
+      "expected_output": "trim_install() calls module_set_weight('trim', 1001). Because hook_form_alter runs in module-weight order (heaviest last), Trim's alter runs last and its array_unshift leaves trim_form_values at the front of $form['#validate']. The weight lives in core.extension (module.trim).",
+      "difficulty": "easy"
+    },
+    {
+      "id": "trim-weight-known",
+      "mode": "introspection",
+      "prompt": "On this Drupal site, inspect the live configuration and tell me the exact module weight currently assigned to the 'trim' module. Where is that value stored?",
+      "must_contain_any": [
+        "1234"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Trim's current module weight is 1234, stored in the core.extension config under module.trim (readable with `drush cget core.extension module.trim`).",
+      "setup": "agent-module-documentation/evaluation/verify/trim-weight-known-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/trim-weight-known-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "trim-weight-misconfigured",
+      "mode": "introspection",
+      "prompt": "Trim relies on a high module weight so its whitespace trimming validates before everything else. Inspect this site's live core.extension configuration, report the module weight currently set for 'trim', and say whether that value would let it validate first (it should be a large positive number such as 1001).",
+      "must_contain_any": [
+        "-5"
+      ],
+      "must_not_contain": [],
+      "expected_output": "trim's weight is currently -5 in core.extension (module.trim). That is far too low - it would make Trim's hook_form_alter run early rather than last, so its validator is not guaranteed to run first. It should be a large positive value like the shipped default 1001.",
+      "setup": "agent-module-documentation/evaluation/verify/trim-weight-misconfigured-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/trim-weight-misconfigured-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "trim-weight-restore",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this site, the 'trim' module's weight has been reset to 0, so it is no longer guaranteed to trim whitespace before other validators run. Reconfigure Trim so that its hook_form_alter runs last (a large positive module weight) and apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/trim-weight-restore-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/trim-weight-restore-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/trim-weight-restore-cleanup.sh",
+      "expected_output": "Set Trim's module weight to a large positive value (>= 1000, its shipped default is 1001), e.g. `drush php:eval \"module_set_weight('trim', 1001);\"`. This writes module.trim in core.extension so Trim's hook_form_alter runs last and its trim_form_values validator ends up first."
+    },
+    {
+      "id": "trim-weight-default",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "A botched deployment left the 'trim' module at module weight 250 instead of the value its install hook sets. Restore Trim to the exact module weight it ships with by default, and apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/trim-weight-default-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/trim-weight-default-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/trim-weight-default-cleanup.sh",
+      "expected_output": "trim_install() sets the weight to 1001, so restore exactly that: `drush php:eval \"module_set_weight('trim', 1001);\"`. Verified by reading module.trim === 1001 in core.extension."
+    }
+  ]
+}

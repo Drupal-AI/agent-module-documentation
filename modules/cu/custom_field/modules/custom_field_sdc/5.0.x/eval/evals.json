@@ -1,0 +1,80 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "custom_field_sdc",
+  "version": "5.0.x",
+  "note": "custom_field_sdc renders an entity view mode through a Single Directory Component. Its state is a THIRD-PARTY SETTING on the entity_view_display config entity: provider `custom_field_sdc`, key `settings` = {enabled: bool, component: <sdc plugin id>, variant: string, props: sequence, slots: sequence}. hook_entity_view_alter() replaces the build with a #type=>component element when enabled+valid; the Manage-display UI (hook_form_entity_view_display_edit_form_alter) unsets the setting when disabled. Config schema key core.entity_view_display.*.*.*.third_party.custom_field_sdc. All live cases use a namespaced content type cfsdc_eval with a Custom Field field_cfsdc; the component ids used (navigation:badge, navigation:message, olivero:teaser) are real SDC plugins present on this site (verified via plugin.manager.sdc). setup/reset/cleanup create/remove only cfsdc_eval + field_cfsdc and the display third-party setting; no other module is touched. NOTE: the base field FORMATTER with id custom_field_sdc belongs to the parent custom_field module, not this submodule; these cases target the view-mode third-party setting this submodule actually owns.",
+  "evals": [
+    {
+      "id": "custom_field_sdc-what-and-where",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "What does the custom_field_sdc submodule do, and where does it store the choice of which Single Directory Component a view mode uses?",
+      "must_contain_any": ["third party", "third_party_settings", "entity_view_display", "custom_field_sdc"],
+      "must_not_contain": [],
+      "expected_output": "It renders an entity view mode through a Single Directory Component. The binding is stored as a third-party setting on the entity_view_display config entity under provider custom_field_sdc, key `settings` (enabled + component)."
+    },
+    {
+      "id": "custom_field_sdc-settings-keys",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "In custom_field_sdc's third-party settings on an entity view display, which keys control whether a component renders and which component/props/slots are used?",
+      "must_contain_any": ["enabled", "component", "props", "slots", "variant"],
+      "must_not_contain": [],
+      "expected_output": "Under third_party_settings.custom_field_sdc.settings: `enabled` (bool) turns rendering on, `component` (SDC plugin id), `variant`, `props` (column->prop mappings) and `slots` (slot->field mappings)."
+    },
+    {
+      "id": "custom_field_sdc-render-hook",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "How does custom_field_sdc actually render a view mode as a component at display time, and what happens if the sdc_display module is active?",
+      "must_contain_any": ["entity_view_alter", "#type", "component", "sdc_display"],
+      "must_not_contain": [],
+      "expected_output": "hook_entity_view_alter() replaces the built output with a '#type' => 'component' render element (mapping Custom Field columns to props and fields to slots) when enabled with a valid component; if the sdc_display module is enabled and controlling the display, custom_field_sdc defers to it."
+    },
+    {
+      "id": "custom_field_sdc-known-component",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "On this Drupal site, the default view display of the 'cfsdc_eval' content type is configured by custom_field_sdc to render through a Single Directory Component. Inspect the live entity_view_display configuration and name the SDC component it is bound to.",
+      "must_contain_any": ["navigation:badge", "navigation"],
+      "must_not_contain": [],
+      "expected_output": "core.entity_view_display.node.cfsdc_eval.default third_party_settings.custom_field_sdc.settings.component is 'navigation:badge' (with enabled: true).",
+      "setup": "agent-module-documentation/evaluation/verify/custom_field_sdc-known-component-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/custom_field_sdc-known-component-cleanup.sh"
+    },
+    {
+      "id": "custom_field_sdc-known-enabled",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "On this Drupal site, inspect the default view display of the 'cfsdc_eval' content type. Is custom_field_sdc component rendering enabled for it, and which component is set?",
+      "must_contain_any": ["navigation:message", "navigation"],
+      "must_not_contain": [],
+      "expected_output": "Yes, enabled is true; third_party_settings.custom_field_sdc.settings.component is 'navigation:message'.",
+      "setup": "agent-module-documentation/evaluation/verify/custom_field_sdc-known-enabled-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/custom_field_sdc-known-enabled-cleanup.sh"
+    },
+    {
+      "id": "custom_field_sdc-enable-component",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site there is a content type 'cfsdc_eval' with a Custom Field. Using custom_field_sdc, configure its default view display so the view mode is rendered through the Single Directory Component 'navigation:badge'. Apply the change to the live configuration.",
+      "reset": "agent-module-documentation/evaluation/verify/custom_field_sdc-enable-component-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/custom_field_sdc-enable-component-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/custom_field_sdc-enable-component-cleanup.sh",
+      "expected_output": "core.entity_view_display.node.cfsdc_eval.default third_party_settings.custom_field_sdc.settings has enabled === true and component === 'navigation:badge'."
+    },
+    {
+      "id": "custom_field_sdc-disable-component",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, the default view display of the 'cfsdc_eval' content type is currently rendered through a Single Directory Component via custom_field_sdc. Turn that component rendering OFF so the view mode renders normally again, and apply the change to the live configuration.",
+      "reset": "agent-module-documentation/evaluation/verify/custom_field_sdc-disable-component-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/custom_field_sdc-disable-component-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/custom_field_sdc-disable-component-cleanup.sh",
+      "expected_output": "In core.entity_view_display.node.cfsdc_eval.default the custom_field_sdc component rendering is no longer active: third_party_settings.custom_field_sdc.settings.enabled is not true (set to false, or the setting unset)."
+    }
+  ]
+}

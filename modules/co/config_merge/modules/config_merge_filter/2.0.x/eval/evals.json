@@ -1,0 +1,80 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "config_merge_filter",
+  "version": "2.0.x",
+  "note": "config_merge_filter is a submodule of config_merge. It ships one Config Filter plugin, MergeFilter (@ConfigFilter id 'config_merge', weight 1000, label 'Config Merge'), registered with plugin.manager.config_filter. filterRead($name,$data) returns ConfigMerger::mergeConfigItemStates($snapshot, $data, $active) where snapshot=config.storage.snapshot (previous), active=config.storage, and $data is the incoming import (current) - when all three exist, else passes $data through. Requires config_merge + config_filter. No config, no schema, no UI, no permissions, no Drush, no plugin types of its own. Medium/hard cases are grounded in the live plugin registry and in driving the plugin via createInstance('config_merge')->filterRead() against seeded snapshot+active storages; hard cases store the merged output in Drupal State, verified live. Behavior confirmed on the running site (customized kept, uncustomized adopts update).",
+  "evals": [
+    {
+      "id": "config_merge_filter-what-it-is",
+      "mode": "recipe",
+      "prompt": "What does the config_merge_filter submodule provide, and what is the id of the plugin it registers?",
+      "must_contain_any": ["config_merge", "ConfigFilter", "config filter", "MergeFilter"],
+      "must_not_contain": [],
+      "expected_output": "It provides a Config Filter plugin, MergeFilter, with @ConfigFilter id 'config_merge' (label 'Config Merge', weight 1000). During a config import it merges the incoming data with the site's active configuration using config_merge's three-way merge, instead of overwriting customizations.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "config_merge_filter-dependencies",
+      "mode": "recipe",
+      "prompt": "Which modules must be enabled for config_merge_filter to work, and why each?",
+      "must_contain_any": ["config_filter", "config_merge"],
+      "must_not_contain": [],
+      "expected_output": "It depends on config_filter (which provides the ConfigFilter plugin type the MergeFilter extends) and config_merge (which provides the ConfigMerger three-way merge algorithm the filter calls).",
+      "difficulty": "easy"
+    },
+    {
+      "id": "config_merge_filter-storages",
+      "mode": "recipe",
+      "prompt": "In the config_merge filter's filterRead(), which storages provide the 'previous' and 'active' states for the three-way merge, and what is the 'current' state?",
+      "must_contain_any": ["config.storage.snapshot", "snapshot", "config.storage", "active"],
+      "must_not_contain": [],
+      "expected_output": "previous = the config snapshot storage (config.storage.snapshot), active = the active storage (config.storage), and current = the incoming data ($data) being imported. filterRead returns ConfigMerger::mergeConfigItemStates(previous, current, active) when all three exist, else the incoming data unchanged.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "config_merge_filter-weight",
+      "mode": "introspection",
+      "prompt": "On this Drupal site, inspect the registered Config Filter plugins and report the weight of the config_merge filter plugin.",
+      "must_contain_any": ["1000"],
+      "must_not_contain": [],
+      "expected_output": "The config_merge plugin is registered with plugin.manager.config_filter at weight 1000 (so it runs late in the filter chain).",
+      "setup": "agent-module-documentation/evaluation/verify/config_merge_filter-weight-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/config_merge_filter-weight-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "config_merge_filter-behavior",
+      "mode": "introspection",
+      "prompt": "On this site, the config snapshot storage and the active storage both contain a config object 'config_merge_filter_eval.data'. Using the config_merge filter plugin, filter-read that object with incoming data {\"n\": 2, \"label\": \"base\"} and report the resulting value of 'n'.",
+      "must_contain_any": ["50"],
+      "must_not_contain": [],
+      "expected_output": "The snapshot (previous) has n=1 and the active storage has n=50 (a local customization). Because active (50) differs from previous (1), the merge keeps the customization, so the filtered value of n is 50. Drive it with plugin.manager.config_filter->createInstance('config_merge')->filterRead('config_merge_filter_eval.data', ['n'=>2,'label'=>'base']).",
+      "setup": "agent-module-documentation/evaluation/verify/config_merge_filter-behavior-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/config_merge_filter-behavior-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "config_merge_filter-merge-kept",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, the config snapshot storage and active storage both hold a config object 'config_merge_filter_eval.item' (snapshot n=1, active n=99). Using the config_merge Config Filter plugin, filter-read that object with incoming data {\"n\": 2, \"label\": \"base\"} and store the filter's merged result array into Drupal State under key 'config_merge_filter_eval_kept'. Apply it to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/config_merge_filter-merge-kept-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/config_merge_filter-merge-kept-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/config_merge_filter-merge-kept-cleanup.sh",
+      "expected_output": "$f = \\Drupal::service('plugin.manager.config_filter')->createInstance('config_merge'); \\Drupal::state()->set('config_merge_filter_eval_kept', $f->filterRead('config_merge_filter_eval.item', ['n'=>2,'label'=>'base'])); — because active (99) was customized vs snapshot (1), the merge keeps n=99."
+    },
+    {
+      "id": "config_merge_filter-merge-update",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, the config snapshot storage and active storage both hold a config object 'config_merge_filter_eval.item2' (snapshot n=1, active n=1). Using the config_merge Config Filter plugin, filter-read it with incoming data {\"n\": 2, \"label\": \"base\"} and store the merged result array into Drupal State under key 'config_merge_filter_eval_update'. Apply it to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/config_merge_filter-merge-update-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/config_merge_filter-merge-update-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/config_merge_filter-merge-update-cleanup.sh",
+      "expected_output": "Drive plugin.manager.config_filter->createInstance('config_merge')->filterRead('config_merge_filter_eval.item2', ['n'=>2,'label'=>'base']) and store the result in state config_merge_filter_eval_update. Because active (1) equals snapshot (1) - uncustomized - the merge adopts the incoming update, so n=2."
+    }
+  ]
+}

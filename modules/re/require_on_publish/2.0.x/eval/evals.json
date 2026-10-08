@@ -1,0 +1,80 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "require_on_publish",
+  "version": "2.0.x",
+  "note": "Require on Publish adds a 'Required on Publish' (and dependent 'Warning on Empty') checkbox to the field_config_edit_form for fields on publishable entity types (EntityPublishedInterface). Enabling stores third-party settings on the FieldConfig: require_on_publish.require_on_publish=true (+ optional warn_on_empty=true) at field.field.<entity>.<bundle>.<field>.third_party_settings.require_on_publish. Enforcement is an entity-level validation constraint id 'require_on_publish' added via hook_entity_type_alter to every publishable entity type; its validator adds a violation ('<label> field is required when publishing.') when a flagged field is empty AND the entity is published (boolean fields count as filled only when truthy); when unpublished it emits a non-blocking warning if warn_on_empty. No settings page, permission, service, or Drush. Medium reads back which Article field is flagged; hard1 enables the flag on a field (verified via the stored third-party setting); hard2 is behavioral - verify validates that a published node with the flagged field empty produces a violation while an unpublished one does not.",
+  "evals": [
+    {
+      "id": "require_on_publish-how",
+      "mode": "recipe",
+      "prompt": "Using the Require on Publish module, how do I make a field required only when the content is published (but still allow saving drafts)? Where do I set it?",
+      "must_contain_any": ["Required on Publish", "field config", "field configuration", "third party setting", "third_party_settings", "require_on_publish"],
+      "must_not_contain": [],
+      "expected_output": "There is no settings page. On the field's Field configuration edit form, tick 'Required on Publish' (and optionally 'Warning on Empty'). It is stored as a third-party setting on the FieldConfig (field.field.<entity>.<bundle>.<field> -> third_party_settings.require_on_publish.require_on_publish: true).",
+      "difficulty": "easy"
+    },
+    {
+      "id": "require_on_publish-constraint",
+      "mode": "recipe",
+      "prompt": "How does the Require on Publish module actually enforce that a flagged field is filled before an entity is published? What is the mechanism and its id?",
+      "must_contain_any": ["constraint", "require_on_publish", "validate", "validation"],
+      "must_not_contain": [],
+      "expected_output": "It adds an entity-level validation constraint (id require_on_publish) to every entity type implementing EntityPublishedInterface via hook_entity_type_alter. The validator adds a violation '<label> field is required when publishing.' when a flagged field is empty and the entity is published, blocking the save.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "require_on_publish-warn",
+      "mode": "recipe",
+      "prompt": "In the Require on Publish module, what does the 'Warning on Empty' option do, and when does it apply?",
+      "must_contain_any": ["warn", "warning", "unpublished", "not blocking", "non-blocking", "draft"],
+      "must_not_contain": [],
+      "expected_output": "'Warning on Empty' (warn_on_empty) shows a non-blocking warning message when the entity is unpublished (a draft) and the flagged field is empty. It only has effect when 'Required on Publish' is also enabled; on publish the requirement is still hard-enforced.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "require_on_publish-known-field",
+      "mode": "introspection",
+      "prompt": "On this Drupal site, one field on the Article content type is configured to be required only when a node is published (via the Require on Publish module). Inspect the live field configuration and give the machine name of that field.",
+      "must_contain_any": ["field_rop_known"],
+      "must_not_contain": [],
+      "expected_output": "The field is field_rop_known: its FieldConfig has third_party_settings.require_on_publish.require_on_publish = true.",
+      "setup": "agent-module-documentation/evaluation/verify/require_on_publish-known-field-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/require_on_publish-known-field-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "require_on_publish-warn-field",
+      "mode": "introspection",
+      "prompt": "On this Drupal site, one Article field is configured (via Require on Publish) to both require a value on publish AND warn the editor when it is left empty on a draft. Inspect the live field configuration and give the machine name of the field that has the 'Warning on Empty' option enabled.",
+      "must_contain_any": ["field_rop_warn"],
+      "must_not_contain": [],
+      "expected_output": "field_rop_warn: its FieldConfig has third_party_settings.require_on_publish.warn_on_empty = true (alongside require_on_publish = true).",
+      "setup": "agent-module-documentation/evaluation/verify/require_on_publish-warn-known-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/require_on_publish-warn-known-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "require_on_publish-enable",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, the Article content type has a field field_rop_task. Using the Require on Publish module, configure that field so it is required only when a node is published, and apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/require_on_publish-enable-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/require_on_publish-enable-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/require_on_publish-enable-cleanup.sh",
+      "expected_output": "Set the require_on_publish third-party setting on the field_rop_task FieldConfig to TRUE (e.g. $fc->setThirdPartySetting('require_on_publish','require_on_publish',TRUE)->save(), or tick 'Required on Publish' on the field edit form). Verify passes when that setting is TRUE."
+    },
+    {
+      "id": "require_on_publish-enforce",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-layman",
+      "prompt": "On this Drupal blog, editors keep publishing Article posts with the field_rop_enf field left blank. Make it so an Article cannot be published while that field is empty, but drafts can still be saved empty. Apply the change on the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/require_on_publish-enforce-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/require_on_publish-enforce-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/require_on_publish-enforce-cleanup.sh",
+      "expected_output": "Enable Require on Publish on field_rop_enf (require_on_publish third-party setting TRUE). Verify builds a published Article with field_rop_enf empty and validates it (expects a violation on that field) and an unpublished one (expects no violation)."
+    }
+  ]
+}

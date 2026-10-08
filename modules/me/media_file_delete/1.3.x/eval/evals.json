@@ -1,0 +1,73 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "media_file_delete",
+  "version": "1.3.x",
+  "note": "Media File Delete alters the media delete forms to optionally delete the underlying file, guarded by file access and file usage. Cases are `recipe` (response-graded), probing documented facts an agent would otherwise read source to answer; no site mutation.",
+  "evals": [
+    {
+      "id": "mfd-what-it-does",
+      "mode": "recipe",
+      "prompt": "On a Drupal 11 site, when I delete a media item the underlying file is left behind as an orphan. Which contrib module adds an option to also delete the associated file, and how does it hook into deletion?",
+      "must_contain_any": ["media_file_delete", "Media File Delete"],
+      "must_not_contain": [],
+      "expected_output": "Media File Delete. It alters the media entity type via hook_entity_type_alter to swap the media 'delete' and 'delete-multiple-confirm' form handlers (MediaDeleteForm / MediaDeleteMultipleForm), adding an 'Also delete the associated file?' checkbox."
+    },
+    {
+      "id": "mfd-default-checkbox",
+      "mode": "recipe",
+      "prompt": "Using Media File Delete, how do I make the 'Also delete the associated file?' checkbox default to on for editors? Give the config key and object.",
+      "must_contain_any": ["delete_file_default", "media_file_delete.settings"],
+      "must_not_contain": [],
+      "expected_output": "Set delete_file_default to true on the media_file_delete.settings config object (default false), e.g. drush cset media_file_delete.settings delete_file_default true."
+    },
+    {
+      "id": "mfd-hide-control",
+      "mode": "recipe",
+      "prompt": "With Media File Delete I want to enforce a fixed deletion policy and stop editors from changing whether the file is also deleted. Which setting hides the checkbox?",
+      "must_contain_any": ["disable_delete_control"],
+      "must_not_contain": [],
+      "expected_output": "Set disable_delete_control to true on media_file_delete.settings; the checkbox is hidden (#access = !disable_delete_control) and delete_file_default is applied silently."
+    },
+    {
+      "id": "mfd-permissions",
+      "mode": "recipe",
+      "prompt": "What two permissions does Media File Delete define, and which one lets a user delete a source file they do not own?",
+      "must_contain_any": ["delete any file", "administer media file delete"],
+      "must_not_contain": [],
+      "expected_output": "'delete any file' (restrict access) lets a user delete a file they do not own, enforced by a custom file access handler; 'administer media file delete' gates the settings form."
+    },
+    {
+      "id": "mfd-in-use-guard",
+      "mode": "recipe",
+      "prompt": "Does Media File Delete delete a file that is still used by other media or entities? How does it decide?",
+      "must_contain_any": ["usage", "ChainedFileUsageResolver", "file.usage", "in use", "used"],
+      "must_not_contain": [],
+      "expected_output": "No. It checks a chained file-usage resolver (media_file_delete.file_usage_resolver.chained), which sums usages from tagged resolvers (core file.usage by default). If the file is used elsewhere it is retained rather than deleted."
+    },
+    {
+      "id": "mfd-custom-resolver",
+      "mode": "recipe",
+      "prompt": "In a custom Drupal module, how do I contribute an extra source of file-usage information that Media File Delete should honor before deleting a file?",
+      "must_contain_any": ["media_file_delete_file_usage_resolver", "FileUsageResolverInterface", "getFileUsages"],
+      "must_not_contain": [],
+      "expected_output": "Create a service implementing FileUsageResolverInterface::getFileUsages() and tag it 'media_file_delete_file_usage_resolver'; the chained resolver sums it with the others."
+    },
+    {
+      "id": "mfd-entity-usage-submodule",
+      "mode": "recipe",
+      "prompt": "I use the Entity Usage module to track where media is referenced. Which Media File Delete submodule makes file deletion respect Entity Usage, so files still referenced by tracked entities are protected?",
+      "must_contain_any": ["media_file_delete_entity_usage", "Entity Usage"],
+      "must_not_contain": [],
+      "expected_output": "The media_file_delete_entity_usage submodule registers an EntityUsageResolver (tagged media_file_delete_file_usage_resolver) that counts sources via entity_usage.usage listSources(), so referenced files are retained."
+    },
+    {
+      "id": "mfd-source-scope",
+      "mode": "recipe",
+      "prompt": "For which media does Media File Delete offer the 'also delete file' option — does it try to delete files for every media type?",
+      "must_contain_any": ["FileItem", "file", "source field"],
+      "must_not_contain": [],
+      "expected_output": "Only file-based media: it checks the media source field's item class is a FileItem (image/document/audio/video). For non-file sources no file is found and no checkbox is added."
+    }
+  ]
+}

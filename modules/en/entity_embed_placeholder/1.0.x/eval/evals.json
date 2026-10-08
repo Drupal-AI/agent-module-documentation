@@ -1,0 +1,100 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "entity_embed_placeholder",
+  "version": "1.0.x",
+  "note": "Entity Embed Placeholder swaps Entity Embed's full in-CKEditor preview for a compact grey placeholder card (entity label + bundle). It is a pure theme-layer module with NO config, permissions, routes, services, Drush, or plugins (configure=null). It adds theme suggestions node__embed_preview / media__embed_preview on route embed.preview (templates node--embed-preview.html.twig / media--embed-preview.html.twig, class .embedded-entity-placeholder) and attaches its CSS library entity_embed_placeholder/common to entity_embed's entity_embed/entity_embed library via hook_library_info_alter. Easy cases test that documented behaviour. IMPORTANT GROUNDING NOTE: this shared site's THEME REGISTRY build currently throws (an unrelated module, ui_patterns_settings, references a missing Drupal\\ui_patterns\\UiPatterns class), so the module's runtime template effect cannot be rendered/verified here. Introspection is therefore grounded in (a) a planted Article node the placeholder would display and (b) the live library-discovery data (which works). Execution is grounded in the Entity Embed text-format pipeline that the placeholder decorates (filter_format config, verified live) — no external service and no custom module needed.",
+  "evals": [
+    {
+      "id": "eep-theme-hooks",
+      "mode": "recipe",
+      "prompt": "In the Drupal entity_embed_placeholder module, which theme hooks / suggestions and template files does it use to replace the CKEditor entity-embed preview, and on which route are those suggestions added?",
+      "must_contain_any": [
+        "node__embed_preview",
+        "media__embed_preview",
+        "embed.preview",
+        "node--embed-preview"
+      ],
+      "must_not_contain": [],
+      "expected_output": "It adds the theme suggestions node__embed_preview and media__embed_preview (only when the route is embed.preview) via hook_theme_suggestions_node_alter/_media_alter, registering the templates node--embed-preview.html.twig and media--embed-preview.html.twig which output a <div class=\"embedded-entity-placeholder\"> with the entity label and bundle.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "eep-customize",
+      "mode": "recipe",
+      "prompt": "How do I change the appearance of the entity_embed_placeholder card shown inside CKEditor? It provides no settings form — what are the ways to customize it?",
+      "must_contain_any": [
+        "override",
+        "template",
+        "embedded-entity-placeholder",
+        "theme_registry_alter",
+        "ckeditor5-stylesheets"
+      ],
+      "must_not_contain": [],
+      "expected_output": "There is no config (configure=null). Customize by overriding the templates (node--embed-preview.html.twig / media--embed-preview.html.twig) in your theme or module, repointing the theme hook via hook_theme_registry_alter(), or restyling the .embedded-entity-placeholder CSS (e.g. via the module's entity_embed_placeholder/common library or a theme ckeditor5-stylesheets entry).",
+      "difficulty": "easy"
+    },
+    {
+      "id": "eep-css-library",
+      "mode": "recipe",
+      "prompt": "How does the entity_embed_placeholder module get its placeholder CSS to load inside the Entity Embed editor UI, given it never defines a CKEditor plugin? Name the mechanism and the library.",
+      "must_contain_any": [
+        "hook_library_info_alter",
+        "library_info_alter",
+        "entity_embed_placeholder/common",
+        "dependencies"
+      ],
+      "must_not_contain": [],
+      "expected_output": "hook_library_info_alter() appends the entity_embed_placeholder/common library (css/entity_embed_placeholder.css) to the dependencies of Entity Embed's entity_embed/entity_embed library, so it loads wherever that library loads.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "eep-known-node",
+      "mode": "introspection",
+      "prompt": "On this site, an Article node has been created to test entity_embed_placeholder previews. The placeholder card shows the entity's title and content type. Inspect the live site and report the exact title of that node and its content type.",
+      "must_contain_any": [
+        "EEP Preview Node 9K2"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The node title is 'EEP Preview Node 9K2' and its content type is Article — this is the label + bundle the placeholder template (node--embed-preview.html.twig) would render.",
+      "setup": "agent-module-documentation/evaluation/verify/entity_embed_placeholder-known-node-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/entity_embed_placeholder-known-node-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "eep-library-dependency",
+      "mode": "introspection",
+      "prompt": "On this Drupal site, entity_embed_placeholder attaches its CSS to Entity Embed's asset library at runtime. Inspect the live library definitions and name the library that appears as a dependency of the entity_embed/entity_embed library because of this module.",
+      "must_contain_any": [
+        "entity_embed_placeholder/common"
+      ],
+      "must_not_contain": [],
+      "expected_output": "entity_embed_placeholder/common is added to entity_embed/entity_embed's dependencies (visible via \\Drupal::service('library.discovery')->getLibraryByName('entity_embed','entity_embed')['dependencies']).",
+      "setup": "agent-module-documentation/evaluation/verify/entity_embed_placeholder-library-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/entity_embed_placeholder-library-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "eep-embed-format",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "entity_embed_placeholder only does anything for text formats where Entity Embed is active. On this site, create a text format with machine name 'eep_fmt' (label your choice) that has the Entity Embed filter (filter plugin id 'entity_embed') enabled, and save it to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/entity_embed_placeholder-embed-format-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/entity_embed_placeholder-embed-format-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/entity_embed_placeholder-embed-format-cleanup.sh",
+      "expected_output": "Create a filter_format config entity 'eep_fmt' whose filters include entity_embed with status TRUE (e.g. FilterFormat::create(['format'=>'eep_fmt','name'=>'...','filters'=>['entity_embed'=>['status'=>TRUE]]])->save(); or via /admin/config/content/formats). Entity Embed's in-editor previews (styled by entity_embed_placeholder) then apply to this format."
+    },
+    {
+      "id": "eep-embed-align-format",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this site, create a text format with machine name 'eep_news' that has BOTH the Entity Embed filter ('entity_embed') and the core Align filter ('filter_align') enabled, and save it to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/entity_embed_placeholder-embed-align-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/entity_embed_placeholder-embed-align-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/entity_embed_placeholder-embed-align-cleanup.sh",
+      "expected_output": "Create filter_format 'eep_news' with filters entity_embed (status TRUE) and filter_align (status TRUE). E.g. FilterFormat::create(['format'=>'eep_news','name'=>'News','filters'=>['entity_embed'=>['status'=>TRUE],'filter_align'=>['status'=>TRUE]]])->save()."
+    }
+  ]
+}

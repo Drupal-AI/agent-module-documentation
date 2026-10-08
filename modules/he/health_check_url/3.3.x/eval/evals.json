@@ -1,0 +1,80 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "health_check_url",
+  "version": "3.3.x",
+  "note": "Health Check URL exposes a plain-text health endpoint (default /health) built dynamically from config. Its only persistent state is the config object health_check_url.settings with keys type, string, endpoint, maintainence_access. The endpoint route is registered via route_callbacks -> RouteService::routes(); the controller HealthCheckController::healthCheckUrl() returns one of five formats selected by type (timestamp, string, stringWithTimestamp, stringWithDateTime, stringWithDateTimestamp). Medium cases read back known settings; hard cases set the endpoint/string/type and verify the stored config the module uses to build the route and response. Verification is on config (not an HTTP hit) because changing the endpoint requires a router rebuild, and this shared site's route rebuild is currently fatal due to a pre-existing broken commerce_giftcard state; the config values are exactly what the module reads to serve the endpoint.",
+  "evals": [
+    {
+      "id": "health_check_url-default-endpoint",
+      "mode": "recipe",
+      "prompt": "After enabling the Drupal health_check_url module, at what URL path does the health endpoint respond by default, and how is that route registered?",
+      "must_contain_any": ["/health", "route_callbacks", "RouteService"],
+      "must_not_contain": [],
+      "expected_output": "By default the endpoint is /health. The route is registered dynamically: health_check_url.routing.yml uses route_callbacks -> RouteService::routes(), which reads the endpoint from health_check_url.settings and builds the route.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "health_check_url-response-types",
+      "mode": "recipe",
+      "prompt": "What response formats can the health_check_url endpoint return, and which config key selects the format?",
+      "must_contain_any": ["timestamp", "stringWithTimestamp", "stringWithDateTime", "stringWithDateTimestamp"],
+      "must_not_contain": [],
+      "expected_output": "The 'type' key in health_check_url.settings selects one of: timestamp, string, stringWithTimestamp, stringWithDateTime, stringWithDateTimestamp. The controller returns it as text/plain.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "health_check_url-config-keys",
+      "mode": "recipe",
+      "prompt": "Which config object holds health_check_url's settings and what keys does it contain?",
+      "must_contain_any": ["health_check_url.settings", "endpoint", "maintainence_access"],
+      "must_not_contain": [],
+      "expected_output": "health_check_url.settings holds type, string, endpoint, and maintainence_access (module's spelling).",
+      "difficulty": "easy"
+    },
+    {
+      "id": "health_check_url-known-endpoint",
+      "mode": "introspection",
+      "prompt": "On this Drupal site the health_check_url endpoint has been moved off its default path. Inspect the live configuration and give the endpoint path that is currently configured.",
+      "must_contain_any": ["/hcu-status", "hcu-status"],
+      "must_not_contain": [],
+      "expected_output": "health_check_url.settings has endpoint = /hcu-status (with string = HealthyHCU, type = string).",
+      "setup": "agent-module-documentation/evaluation/verify/health_check_url-known-endpoint-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/health_check_url-restore-defaults.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "health_check_url-known-type",
+      "mode": "introspection",
+      "prompt": "This site's health_check_url is configured to return a non-default response format. Inspect the live configuration and state the response 'type' currently set.",
+      "must_contain_any": ["stringWithTimestamp"],
+      "must_not_contain": [],
+      "expected_output": "health_check_url.settings has type = stringWithTimestamp (string = OK-HCU), i.e. the response is the configured string followed by ' - ' and the current unix timestamp.",
+      "setup": "agent-module-documentation/evaluation/verify/health_check_url-known-type-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/health_check_url-restore-defaults.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "health_check_url-set-healthz",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, configure the health_check_url module so its endpoint path is /healthz, the response type is the plain 'string' format, and the response text is 'HCU-OK'. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/health_check_url-restore-defaults.sh",
+      "verify": "agent-module-documentation/evaluation/verify/health_check_url-set-healthz-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/health_check_url-restore-defaults.sh",
+      "expected_output": "health_check_url.settings has endpoint=/healthz, type=string, string=HCU-OK (set via the Health Check URL settings form or the config keys)."
+    },
+    {
+      "id": "health_check_url-set-up-alive",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "site-owner",
+      "prompt": "I want a simple health-check page my uptime monitor can hit at /up, and it should just say the word Alive. Set that up on my Drupal site.",
+      "reset": "agent-module-documentation/evaluation/verify/health_check_url-restore-defaults.sh",
+      "verify": "agent-module-documentation/evaluation/verify/health_check_url-set-up-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/health_check_url-restore-defaults.sh",
+      "expected_output": "health_check_url.settings has endpoint=/up, type=string, string=Alive so the endpoint returns the plain text 'Alive'."
+    }
+  ]
+}

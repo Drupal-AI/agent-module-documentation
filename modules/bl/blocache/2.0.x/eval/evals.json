@@ -1,0 +1,80 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "blocache",
+  "version": "2.0.x",
+  "note": "Blocache adds a Cache Settings section (Override cacheability metadata + Max-Age/Contexts/Tags tabs) to every block config form, gated by the 'administer block cache' permission. It has no configure route; per-block settings are stored as block third-party settings under the blocache namespace: block.block.<id>.third_party_settings.blocache.overridden (bool) and .metadata ({max-age, contexts, tags}), schema block.block.*.third_party.blocache. max-age semantics: -1 permanent, 0 not cacheable (also fires page_cache_kill_switch), positive seconds. At render, hook_entity_type_build swaps the block view builder to BlocacheViewBuilder, which merges the override into #cache only when overridden is TRUE. Medium/hard cases use a namespaced block (blocache_eval/blocache_task) and read/write those third-party settings on the live block entity.",
+  "evals": [
+    {
+      "id": "blocache-where-stored",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "The Drupal blocache module lets you configure the cache of an individual block, but it has no admin settings page. Where does it store a block's overridden cache settings?",
+      "must_contain_any": ["third_party_settings", "third-party setting", "block.block", "blocache"],
+      "must_not_contain": [],
+      "expected_output": "As block third-party settings under the blocache namespace: block.block.<id>.third_party_settings.blocache.overridden (bool) and .metadata (max-age/contexts/tags). There is no configure route; the UI is on each block's own config form."
+    },
+    {
+      "id": "blocache-permission",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "Which permission does the blocache module define, and what does it control?",
+      "must_contain_any": ["administer block cache"],
+      "must_not_contain": [],
+      "expected_output": "It defines 'administer block cache'. Only users with it see the Cache Settings section (Override cacheability metadata + Max-Age/Contexts/Tags) on the block configuration form."
+    },
+    {
+      "id": "blocache-three-metadata",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "With the blocache module, which three pieces of cacheability metadata can you override on a single block, and what does a max-age of 0 mean?",
+      "must_contain_any": ["max-age", "contexts", "tags"],
+      "must_not_contain": [],
+      "expected_output": "Max-age, cache contexts, and cache tags. max-age 0 means the block is not cacheable (and blocache fires the page_cache_kill_switch so the containing page is not page-cached); -1 means cache permanently; a positive number is seconds."
+    },
+    {
+      "id": "blocache-known-max-age",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "On this Drupal site there is a block whose id is blocache_eval, and blocache has been used to override its cacheability. Inspect the live block configuration and state the overridden max-age (in seconds) that blocache applies to it.",
+      "must_contain_any": ["137"],
+      "must_not_contain": [],
+      "expected_output": "The block blocache_eval has third_party_settings.blocache.overridden = true and metadata.max-age = 137 (drush cget block.block.blocache_eval third_party_settings.blocache, or Block::load('blocache_eval')->getThirdPartySetting('blocache','metadata')).",
+      "setup": "agent-module-documentation/evaluation/verify/blocache-known-block-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/blocache-known-block-cleanup.sh"
+    },
+    {
+      "id": "blocache-make-noncacheable",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site there is a placed block with id blocache_task. Using the blocache module, override its cacheability so that the block is not cacheable (max-age 0). Apply the change to the live block configuration.",
+      "reset": "agent-module-documentation/evaluation/verify/blocache-override-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/blocache-override-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/blocache-override-cleanup.sh",
+      "expected_output": "Set the block's blocache third-party settings: overridden = TRUE and metadata.max-age = 0 (e.g. Block::load('blocache_task')->setThirdPartySetting('blocache','overridden',TRUE)->setThirdPartySetting('blocache','metadata',['max-age'=>0,'contexts'=>[],'tags'=>[]])->save()). Verified: overridden === true and metadata max-age === 0."
+    },
+    {
+      "id": "blocache-known-context",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "On this Drupal site the block with id blocache_ctx has had its cacheability overridden with blocache to add a cache context. Inspect the live block configuration and state which cache context blocache adds to it.",
+      "must_contain_any": ["url.path"],
+      "must_not_contain": [],
+      "expected_output": "The block blocache_ctx has third_party_settings.blocache.metadata.contexts containing 'url.path' (drush cget block.block.blocache_ctx third_party_settings.blocache).",
+      "setup": "agent-module-documentation/evaluation/verify/blocache-known-context-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/blocache-known-context-cleanup.sh"
+    },
+    {
+      "id": "blocache-add-cache-tag",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site there is a placed block with id blocache_tagtask. Using the blocache module, override its cacheability and add the cache tag `node_list` so the block is invalidated whenever the node list changes. Apply the change to the live block configuration.",
+      "reset": "agent-module-documentation/evaluation/verify/blocache-tag-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/blocache-tag-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/blocache-tag-cleanup.sh",
+      "expected_output": "Set the block's blocache third-party settings: overridden = TRUE and metadata.tags including 'node_list' (e.g. setThirdPartySetting('blocache','metadata',['max-age'=>-1,'contexts'=>[],'tags'=>['node_list']])). Verified: overridden === true and metadata.tags contains node_list."
+    }
+  ]
+}

@@ -1,0 +1,104 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "decorative_image_widget",
+  "version": "1.0.x",
+  "note": "Decorative Image Widget adds a per-widget 'Force image to be marked decorative if no alt text provided' option to core Image field widgets (ImageWidget / image_image), but only when the field's Alt text is enabled and NOT required. Enabling it stores a widget third-party setting decorative_image_widget.use_decorative_checkbox: true on the entity_form_display component. No settings form, no configure route. Medium/hard cases are grounded in that real config on namespaced image fields (field_diw_*) on the Article content type. IMPORTANT SITE QUIRK: lightning_media_image is installed and rewrites NEWLY-added image form-display components to its entity_browser image widget on save; the setup/reset scripts therefore save twice (first save adds the component, second save re-asserts the image_image widget so it survives) so the widget stays a real ImageWidget that decorative_image_widget targets. Verify reads the stored raw config. Fields are created idempotently; hard-case reset leaves the setting OFF (clean baseline).",
+  "evals": [
+    {
+      "id": "decorative-image-widget-what-it-adds",
+      "mode": "recipe",
+      "prompt": "What does the Drupal decorative_image_widget module add to an image field's edit form, and what problem does it solve?",
+      "must_contain_any": [
+        "Decorative",
+        "decorative",
+        "alt text",
+        "alt",
+        "screen reader",
+        "accessibility"
+      ],
+      "must_not_contain": [],
+      "expected_output": "It adds a 'Decorative' checkbox next to the alt text, so an editor must either enter alt text or explicitly tick Decorative (allowing an intentional empty alt=\"\" for screen readers). It prevents alt text being silently left blank.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "decorative-image-widget-prerequisite",
+      "mode": "recipe",
+      "prompt": "On a Drupal 11 site I enabled decorative_image_widget but I don't see its option on my image field's widget in Manage form display. What field setting must be true for the option to appear, and where is the option stored once enabled?",
+      "must_contain_any": [
+        "alt_field_required",
+        "not required",
+        "alt text",
+        "use_decorative_checkbox",
+        "third_party_settings",
+        "form display"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The option only appears when the image field has Alt text enabled but NOT required (alt_field_required is FALSE). Once ticked it is stored as a widget third-party setting: core.entity_form_display.<entity>.<bundle>.<mode> -> content.<field>.third_party_settings.decorative_image_widget.use_decorative_checkbox: true.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "decorative-image-widget-validation",
+      "mode": "recipe",
+      "prompt": "With decorative_image_widget's option enabled on an image field, what happens when an editor uploads an image, leaves alt text blank, and does not check Decorative?",
+      "must_contain_any": [
+        "error",
+        "validation",
+        "must provide",
+        "alternative text",
+        "decorative"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Validation fails with 'You must provide alternative text or indicate the image is decorative.' (the module's element validator on the alt field). The validation is skipped during the intermediate upload AJAX step and only fires on real save.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "decorative-image-widget-known-field",
+      "mode": "introspection",
+      "prompt": "On this Drupal site, the Article content type has an image field whose widget has decorative_image_widget's 'force decorative' option enabled. Inspect the live default form display for Article and report the machine name of that image field.",
+      "must_contain_any": [
+        "field_diw_known"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The field is field_diw_known: in core.entity_form_display.node.article.default its image_image widget component has third_party_settings.decorative_image_widget.use_decorative_checkbox: true.",
+      "setup": "agent-module-documentation/evaluation/verify/decorative_image_widget-known-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/decorative_image_widget-known-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "decorative-image-widget-on-vs-off",
+      "mode": "introspection",
+      "prompt": "The Article content type on this site has two image fields, field_diw_on and field_diw_off. Exactly one of them has decorative_image_widget's 'force decorative' checkbox enabled on its widget. Inspect the live form-display configuration and state which field has it enabled.",
+      "must_contain_any": [
+        "field_diw_on"
+      ],
+      "must_not_contain": [],
+      "expected_output": "field_diw_on has it enabled: its image_image widget component in core.entity_form_display.node.article.default has third_party_settings.decorative_image_widget.use_decorative_checkbox: true, whereas field_diw_off has no such setting.",
+      "setup": "agent-module-documentation/evaluation/verify/decorative_image_widget-on-vs-off-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/decorative_image_widget-on-vs-off-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "decorative-image-widget-enable",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, the Article content type has an image field field_diw_task using the standard Image widget (its alt text is enabled and not required). Using the decorative_image_widget module, configure the default form display so this field's widget forces the image to be marked decorative when no alt text is provided. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/decorative_image_widget-enable-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/decorative_image_widget-enable-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/decorative_image_widget-enable-cleanup.sh",
+      "expected_output": "In core.entity_form_display.node.article.default set the field_diw_task image widget component's third_party_settings.decorative_image_widget.use_decorative_checkbox to TRUE (e.g. getComponent, set the third-party setting, setComponent and save; or tick the option in Manage form display)."
+    },
+    {
+      "id": "decorative-image-widget-make-usable",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "The Article content type on this site has an image field field_diw_alt whose Alt text is currently set to REQUIRED, so decorative_image_widget's option is not even offered. Make it possible to mark images on this field as decorative: change the field so alt text is no longer required, then enable decorative_image_widget's 'force decorative' checkbox on its widget. Apply both changes to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/decorative_image_widget-alt-required-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/decorative_image_widget-alt-required-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/decorative_image_widget-alt-required-cleanup.sh",
+      "expected_output": "Set field.field.node.article.field_diw_alt alt_field_required to FALSE, and set its image widget component's third_party_settings.decorative_image_widget.use_decorative_checkbox to TRUE in core.entity_form_display.node.article.default."
+    }
+  ]
+}

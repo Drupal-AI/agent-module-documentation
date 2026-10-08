@@ -1,0 +1,99 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "workflow_cleanup",
+  "version": "2.2.x",
+  "note": "Workflow Clean Up (submodule of Workflow) is a maintenance form at /admin/config/workflow/workflow/cleanup that deletes ORPHANED workflow states (workflow_state config whose parent workflow is gone) and INACTIVE states (status=false) plus the transitions referencing them. It ships no config/schema/permissions/Drush. Fixtures write namespaced workflow.state.* config directly (integer weights): an orphaned state 'wc_orphan' (wid points to a non-existent workflow) and a workflow 'wc_wf' containing an inactive state 'wc_wf_old'. Introspection identifies which states cleanup would remove; execution deletes them, verified by the state config being gone. All fixtures torn down.",
+  "evals": [
+    {
+      "id": "workflow_cleanup-what",
+      "mode": "recipe",
+      "prompt": "What does the Workflow Clean Up submodule delete, and what two categories of workflow states does it distinguish?",
+      "must_contain_any": [
+        "orphaned",
+        "inactive",
+        "states",
+        "delete"
+      ],
+      "must_not_contain": [],
+      "expected_output": "It deletes leftover workflow states: 'Orphaned States' (whose parent workflow no longer exists) and 'Inactive (Deleted) States' (still belonging to a workflow but marked inactive), along with the transitions that reference them.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "workflow_cleanup-route",
+      "mode": "recipe",
+      "prompt": "Where is the Workflow Clean Up form and what route/permission does it use?",
+      "must_contain_any": [
+        "workflow.cleanup.settings",
+        "/admin/config/workflow/workflow/cleanup",
+        "administer workflow"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The form is at /admin/config/workflow/workflow/cleanup (route workflow.cleanup.settings), gated by the 'administer workflow' permission.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "workflow_cleanup-orphan-vs-inactive",
+      "mode": "recipe",
+      "prompt": "In Workflow Clean Up, how does it decide a state is 'orphaned' versus 'inactive'?",
+      "must_contain_any": [
+        "getWorkflow",
+        "isActive",
+        "no longer",
+        "does not exist",
+        "marked inactive"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Orphaned = the state's workflow no longer exists ($state->getWorkflow() is null). Inactive = the state belongs to an existing workflow but is not active (!$state->isActive(), i.e. status is false).",
+      "difficulty": "easy"
+    },
+    {
+      "id": "workflow_cleanup-orphan-state",
+      "mode": "introspection",
+      "prompt": "On this Drupal site there is a workflow state left over from a deleted workflow. Inspect the live workflow_state configuration and give the machine name (id) of the orphaned state (a state whose workflow no longer exists).",
+      "must_contain_any": [
+        "wc_orphan"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The orphaned state is wc_orphan (config workflow.state.wc_orphan): its wid points to workflow wc_ghost, which does not exist, so $state->getWorkflow() is null and Workflow Clean Up lists it under Orphaned States.",
+      "setup": "agent-module-documentation/evaluation/verify/workflow_cleanup-orphan-state-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/workflow_cleanup-orphan-state-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "workflow_cleanup-inactive-state",
+      "mode": "introspection",
+      "prompt": "On this Drupal site the workflow 'wc_wf' has an inactive (deleted) state. Inspect the live configuration and give the machine name (id) of the inactive state belonging to that workflow.",
+      "must_contain_any": [
+        "wc_wf_old"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The inactive state is wc_wf_old (config workflow.state.wc_wf_old with status=false / isActive() false), which Workflow Clean Up lists under Inactive (Deleted) States.",
+      "setup": "agent-module-documentation/evaluation/verify/workflow_cleanup-inactive-state-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/workflow_cleanup-inactive-state-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "workflow_cleanup-delete-orphan",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site there is an orphaned workflow state 'wc_orphan' left over from a deleted workflow. Using Workflow Clean Up, remove that orphaned state from the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/workflow_cleanup-delete-orphan-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/workflow_cleanup-delete-orphan-verify.sh",
+      "expected_output": "Delete the workflow.state.wc_orphan config entity (via the Workflow Clean Up form's Orphaned States checkbox + submit, or WorkflowState::load('wc_orphan')->delete()). Verified by the state config no longer existing.",
+      "cleanup": "agent-module-documentation/evaluation/verify/workflow_cleanup-delete-orphan-cleanup.sh"
+    },
+    {
+      "id": "workflow_cleanup-delete-inactive",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site the workflow 'wc_wf' has an inactive state 'wc_wf_old'. Remove that inactive state (but keep the wc_wf workflow itself) on the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/workflow_cleanup-delete-inactive-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/workflow_cleanup-delete-inactive-verify.sh",
+      "expected_output": "Delete the workflow.state.wc_wf_old config entity while leaving workflow.workflow.wc_wf in place (via the Workflow Clean Up form's Inactive States list, or WorkflowState::load('wc_wf_old')->delete()). Verified by wc_wf_old gone and wc_wf still present.",
+      "cleanup": "agent-module-documentation/evaluation/verify/workflow_cleanup-delete-inactive-cleanup.sh"
+    }
+  ]
+}

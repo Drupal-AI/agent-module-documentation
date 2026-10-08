@@ -1,0 +1,96 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "currency",
+  "version": "3.6.x",
+  "note": "Currency stores currencies as `currency` config entities (id key currencyCode, prefix currency.currency.<CODE>) and formatting locales as `currency_locale` entities. Only XXX and en_US ship enabled; real currencies are imported via the currency.config_importer service. Amounts are formatted by @CurrencyAmountFormatter plugins (default currency_basic) and Currency::formatAmount(); conversion by @CurrencyExchangeRateProvider plugins queried through the currency.exchange_rate_provider service. Fixed rates live in config currency.exchanger.fixed_rates (rates: [{currency_code_from,currency_code_to,rate}]). Two text filters exist: currency_exchange ([currency:FROM:TO:amount]) and currency_localize. Medium cases seed a fixed rate and a custom currency to read back; hard cases have the agent add a fixed rate and create a currency entity, both verified against live config.",
+  "evals": [
+    {
+      "id": "currency-exchange-filter",
+      "mode": "recipe",
+      "prompt": "Using the Drupal currency module, an editor wants to convert a money amount inside body text (e.g. 100 EUR shown in USD). Which text-format filter does this and what inline syntax does the editor type?",
+      "must_contain_any": [
+        "[currency:",
+        "currency_exchange",
+        "currency:from:to"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Enable the 'Currency exchange' filter (id currency_exchange) on the text format; the editor writes [currency:FROM:TO:amount], amount optional and defaulting to 1, e.g. [currency:EUR:USD:100].",
+      "difficulty": "easy"
+    },
+    {
+      "id": "currency-import-service",
+      "mode": "recipe",
+      "prompt": "A fresh install of the Drupal currency module only has the XXX 'No currency'. How do I get real currencies like USD onto the site programmatically, and which service/method does it?",
+      "must_contain_any": [
+        "importCurrency",
+        "config_importer",
+        "currency.config_importer"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Use the currency.config_importer service: $importer->importCurrency('USD') creates the currency.currency.USD entity from the bundled commercie/currency data library (getImportableCurrencies() lists what can be imported). There is also an import form at /admin/config/regional/currency/import.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "currency-fixed-rates-config",
+      "mode": "recipe",
+      "prompt": "In the Drupal currency module, where are manually-entered (fixed) exchange rates stored, and which exchange rate provider plugin manages them?",
+      "must_contain_any": [
+        "currency.exchanger.fixed_rates",
+        "currency_fixed_rates",
+        "fixed rates"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The currency_fixed_rates provider stores them in config currency.exchanger.fixed_rates under rates: [{currency_code_from, currency_code_to, rate}], edited at /admin/config/regional/currency-exchange/fixed.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "currency-known-fixed-rate",
+      "mode": "introspection",
+      "prompt": "This Drupal site has a fixed currency exchange rate configured from EUR to USD via the currency module. Inspect the live configuration and state that rate.",
+      "must_contain_any": [
+        "1.4"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The fixed EUR->USD rate is 1.4, stored in config currency.exchanger.fixed_rates rates entry {currency_code_from: EUR, currency_code_to: USD, rate: '1.4'}.",
+      "setup": "agent-module-documentation/evaluation/verify/cur-fixed-rate-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/cur-fixed-rate-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "currency-known-custom-currency",
+      "mode": "introspection",
+      "prompt": "A custom currency labelled 'Currency Doc Coin' has been added to this Drupal site through the currency module. Inspect the live currency configuration and give its 3-letter currency code.",
+      "must_contain_any": [
+        "QCU"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The currency code is QCU: config entity currency.currency.QCU with label 'Currency Doc Coin'.",
+      "setup": "agent-module-documentation/evaluation/verify/cur-custom-currency-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/cur-custom-currency-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "currency-add-fixed-rate",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, using the currency module's fixed-rates exchange provider, add a fixed exchange rate from GBP to USD of 1.30. Apply the change to the live site so the rate is stored in the module's configuration.",
+      "reset": "agent-module-documentation/evaluation/verify/cur-fixed-add-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/cur-fixed-add-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/cur-fixed-add-cleanup.sh",
+      "expected_output": "config currency.exchanger.fixed_rates gains a rates entry {currency_code_from: GBP, currency_code_to: USD, rate: '1.30'} - e.g. via the currency_fixed_rates plugin's save('GBP','USD','1.30') or the fixed-rate add form."
+    },
+    {
+      "id": "currency-create-currency",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "site-owner",
+      "prompt": "I run a rewards program on my Drupal site and want to add my own currency called 'Quest Coin' with the code QHC and the sign Q. Add it as an enabled currency using the currency module and save it to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/cur-create-currency-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/cur-create-currency-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/cur-create-currency-cleanup.sh",
+      "expected_output": "A currency config entity currency.currency.QHC exists and is enabled (status TRUE), e.g. Currency::create(['currencyCode'=>'QHC','label'=>'Quest Coin','sign'=>'Q','status'=>TRUE, ...])->save() or via /admin/config/regional/currency/add."
+    }
+  ]
+}

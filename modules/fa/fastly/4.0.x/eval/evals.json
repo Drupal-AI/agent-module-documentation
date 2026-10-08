@@ -1,0 +1,80 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "fastly",
+  "version": "4.0.x",
+  "note": "Fastly integrates a site with the Fastly CDN: cache-tags -> Surrogate Keys, instant/soft purging, stale content, image optimizer, edge modules, webhooks, VCL. All config in the fastly.settings object (api_key, service_id, site_id, purge_method instant/soft, purge_logging, cache_tag_hash_length, stale_while_revalidate(+_value), stale_if_error(+_value), image_optimization, webp, jpeg_quality, cookie_cache_bypass, webhook_*) plus fastly.edge_modules.*. Credentials also come from env FASTLY_API_TOKEN/FASTLY_API_SERVICE/FASTLY_SITE_ID. Permission administer fastly. Drush fastly:purge:all/url/key/service (fpall/fpurl/fpkey/fpservice). Actual purging needs real Fastly credentials + network, so medium/hard cases are grounded ONLY in the local fastly.settings config, never in live API calls.",
+  "evals": [
+    {
+      "id": "fastly-drush-purge",
+      "mode": "recipe",
+      "prompt": "Which Drush commands does the Fastly module provide to purge its CDN cache, and what are their aliases?",
+      "must_contain_any": ["fastly:purge:all", "fpall", "fastly:purge:url", "fpurl", "fastly:purge:key", "fpkey", "fastly:purge:service", "fpservice"],
+      "must_not_contain": [],
+      "expected_output": "fastly:purge:all (fpall), fastly:purge:url (fpurl), fastly:purge:key (fpkey) and fastly:purge:service (fpservice).",
+      "difficulty": "easy"
+    },
+    {
+      "id": "fastly-credentials",
+      "mode": "recipe",
+      "prompt": "Where does the Fastly Drupal module store the Fastly API token, and what environment variable can override it?",
+      "must_contain_any": ["fastly.settings", "api_key", "FASTLY_API_TOKEN", "/admin/config/services/fastly"],
+      "must_not_contain": [],
+      "expected_output": "The token is stored in fastly.settings:api_key (set on the form at /admin/config/services/fastly). The FASTLY_API_TOKEN environment variable overrides it when set (as do FASTLY_API_SERVICE / FASTLY_SITE_ID for service/site id).",
+      "difficulty": "easy"
+    },
+    {
+      "id": "fastly-purge-method",
+      "mode": "recipe",
+      "prompt": "The Fastly module supports two purge methods. What are they, and which config key selects between them?",
+      "must_contain_any": ["instant", "soft", "purge_method"],
+      "must_not_contain": [],
+      "expected_output": "Instant purge and soft purge, selected by fastly.settings:purge_method (values 'instant' [default] or 'soft').",
+      "difficulty": "easy"
+    },
+    {
+      "id": "fastly-known-purgemethod",
+      "mode": "introspection",
+      "prompt": "On this Drupal site, inspect the live Fastly configuration and report which purge method is currently configured (instant or soft).",
+      "must_contain_any": ["soft"],
+      "must_not_contain": [],
+      "expected_output": "fastly.settings:purge_method is 'soft' (drush cget fastly.settings purge_method).",
+      "setup": "agent-module-documentation/evaluation/verify/fastly-purgemethod-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/fastly-purgemethod-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "fastly-known-siteid",
+      "mode": "introspection",
+      "prompt": "This site's Fastly module has a Site ID configured (used to namespace cache tags). Inspect the live configuration and report the Site ID value.",
+      "must_contain_any": ["fastly_probe_site"],
+      "must_not_contain": [],
+      "expected_output": "fastly.settings:site_id is 'fastly_probe_site'.",
+      "setup": "agent-module-documentation/evaluation/verify/fastly-siteid-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/fastly-siteid-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "fastly-set-purgemethod",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "Configure the Fastly module on this site to use soft purge instead of instant purge. Apply the change to the live configuration. (Do not attempt any live purge against the Fastly API.)",
+      "reset": "agent-module-documentation/evaluation/verify/fastly-set-purgemethod-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/fastly-set-purgemethod-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/fastly-set-purgemethod-cleanup.sh",
+      "expected_output": "fastly.settings:purge_method is set to 'soft' (e.g. drush cset fastly.settings purge_method soft)."
+    },
+    {
+      "id": "fastly-enable-stale",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this site, configure the Fastly module to serve stale content while revalidating, with a stale-while-revalidate window of 3600 seconds. Apply the change to the live configuration.",
+      "reset": "agent-module-documentation/evaluation/verify/fastly-stale-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/fastly-stale-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/fastly-stale-cleanup.sh",
+      "expected_output": "fastly.settings:stale_while_revalidate is TRUE and stale_while_revalidate_value is 3600."
+    }
+  ]
+}

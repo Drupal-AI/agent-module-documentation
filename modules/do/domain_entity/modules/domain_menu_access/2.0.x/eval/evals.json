@@ -1,0 +1,80 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "domain_menu_access",
+  "version": "2.0.x",
+  "note": "Submodule of domain_entity. Adds a domain_access entity_reference field to menu_link_content (shipped in config/install). Per-menu opt-in is stored as third_party_settings.domain_menu_access.access_enabled = true on the system.menu.<id> config entity, set from the settings form at /admin/config/domain/menu/access/settings (permission 'administer domains'). Enabled menus get their block swapped to DomainMenuAccessMenuBlock and links filtered by DomainMenuLinkTreeManipulators::checkDomain(). Medium introspection enables control on the 'main' menu and the agent reports which menus are enabled; hard execution enables control on the 'footer' menu, verified by the menu's third-party setting. Fixtures only toggle a third-party setting on existing core menus and unset it afterwards.",
+  "evals": [
+    {
+      "id": "domain_menu_access-enable-where",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "With the domain_menu_access module, how do you turn on per-domain control for a particular menu, and what is stored on the menu to record that?",
+      "must_contain_any": ["/admin/config/domain/menu/access/settings", "access_enabled", "third_party", "third-party"],
+      "must_not_contain": [],
+      "expected_output": "At /admin/config/domain/menu/access/settings (route domain_menu_access.settings, permission 'administer domains') you tick the menu. That saves third_party_settings.domain_menu_access.access_enabled = true on the menu's system.menu.<id> config entity."
+    },
+    {
+      "id": "domain_menu_access-field",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "What field does domain_menu_access add to menu links, and what happens to a menu link that has no domain assigned?",
+      "must_contain_any": ["domain_access", "all domains", "menu_link_content"],
+      "must_not_contain": [],
+      "expected_output": "It installs a 'domain_access' entity_reference field (target domain, unlimited cardinality) on menu_link_content. A link with an empty domain_access value is treated as available on all domains; otherwise it only shows on the referenced domain(s)."
+    },
+    {
+      "id": "domain_menu_access-how-filtered",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "On a domain-enabled menu, how does domain_menu_access actually stop links from the wrong domain being shown?",
+      "must_contain_any": ["DomainMenuAccessMenuBlock", "checkDomain", "tree manipulator", "block_alter", "InaccessibleMenuLink"],
+      "must_not_contain": [],
+      "expected_output": "hook_block_alter swaps the menu's system_menu_block for DomainMenuAccessMenuBlock, whose DomainMenuLinkTreeManipulators::checkDomain() forbids any link whose domain_access does not include the active domain (turning it into an InaccessibleMenuLink). Access varies by the url.site cache context."
+    },
+    {
+      "id": "domain_menu_access-enabled-menu",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "On this site, per-domain menu control (domain_menu_access) has been switched on for exactly one menu. Inspect the live configuration and name the menu that has domain menu access enabled.",
+      "must_contain_any": ["main"],
+      "must_not_contain": [],
+      "expected_output": "The 'main' menu has access_enabled: in system.menu.main the third_party_settings.domain_menu_access.access_enabled is true (Menu::load('main')->getThirdPartySetting('domain_menu_access','access_enabled')).",
+      "setup": "agent-module-documentation/evaluation/verify/domain_menu_access-enabled-menu-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/domain_menu_access-enabled-menu-cleanup.sh"
+    },
+    {
+      "id": "domain_menu_access-enable-footer",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "Using domain_menu_access, enable per-domain access control on the 'Footer' menu (machine name footer) on this site, so its links can be scoped per domain. Apply it to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/domain_menu_access-enable-footer-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/domain_menu_access-enable-footer-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/domain_menu_access-enable-footer-cleanup.sh",
+      "expected_output": "system.menu.footer now has third_party_settings.domain_menu_access.access_enabled = true (via the settings form, or Menu::load('footer')->setThirdPartySetting('domain_menu_access','access_enabled',TRUE)->save())."
+    },
+    {
+      "id": "domain_menu_access-enabled-account",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "On this site, per-domain menu control (domain_menu_access) has been switched on for exactly one menu. Inspect the live configuration and name the menu that currently has domain menu access enabled.",
+      "must_contain_any": ["account"],
+      "must_not_contain": [],
+      "expected_output": "The 'account' menu has access_enabled true in system.menu.account (Menu::load('account')->getThirdPartySetting('domain_menu_access','access_enabled')).",
+      "setup": "agent-module-documentation/evaluation/verify/domain_menu_access-enabled-account-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/domain_menu_access-enabled-account-cleanup.sh"
+    },
+    {
+      "id": "domain_menu_access-enable-admin",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "Using domain_menu_access, enable per-domain access control on the 'Administration' menu (machine name admin) on this site, so its links can be scoped per domain. Apply it to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/domain_menu_access-enable-admin-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/domain_menu_access-enable-admin-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/domain_menu_access-enable-admin-cleanup.sh",
+      "expected_output": "system.menu.admin now has third_party_settings.domain_menu_access.access_enabled = true (Menu::load('admin')->setThirdPartySetting('domain_menu_access','access_enabled',TRUE)->save())."
+    }
+  ]
+}

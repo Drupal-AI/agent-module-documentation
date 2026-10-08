@@ -1,0 +1,97 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "config_delete",
+  "version": "2.0.x",
+  "note": "Config Delete adds one UI form (route config_delete.delete, /admin/config/development/configuration/delete, a Delete tab under Configuration synchronization) to delete a single configuration object - simple config or a config entity - optionally cascading to the object's declared config dependencies. Permission 'delete configuration' (restrict access: true). The form extends core ConfigSingleExportForm and deletes via \\Drupal::configFactory()->getEditable($name)->delete(); with 'Delete config dependencies' ticked it first deletes each name in the object's dependencies.config. The module has no config of its own and no drush command, so introspection cases are grounded in the config an admin would need to find/inspect before deleting (a marker value, a declared dependency), and execution cases exercise the module's core behavior: deleting a config object, and deleting a config object together with its dependency, verified against live config. All fixtures are namespaced config_delete_*.settings simple config objects.",
+  "evals": [
+    {
+      "id": "cd-path",
+      "mode": "recipe",
+      "prompt": "What does the Drupal config_delete module let an administrator do, and at what admin path?",
+      "must_contain_any": [
+        "/admin/config/development/configuration/delete",
+        "delete",
+        "configuration",
+        "config sync",
+        "Configuration synchronization"
+      ],
+      "must_not_contain": [],
+      "expected_output": "It lets you delete a single configuration object (simple config or config entity) from the UI, at /admin/config/development/configuration/delete (a Delete tab under Configuration synchronization).",
+      "difficulty": "easy"
+    },
+    {
+      "id": "cd-permission",
+      "mode": "recipe",
+      "prompt": "Which permission gates the config_delete delete form, and is it a sensitive permission?",
+      "must_contain_any": [
+        "delete configuration",
+        "restrict access"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The 'delete configuration' permission gates the form; it is defined with restrict access: true, so it is a sensitive/trusted-admin permission.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "cd-dependencies",
+      "mode": "recipe",
+      "prompt": "The config_delete delete form has a 'Delete config dependencies' checkbox. What does ticking it do when you delete a configuration item?",
+      "must_contain_any": [
+        "dependencies",
+        "dependent",
+        "dependencies.config"
+      ],
+      "must_not_contain": [],
+      "expected_output": "It also deletes each configuration object listed in the target object's dependencies.config (its declared config dependencies), in addition to the object itself.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "cd-known-config",
+      "mode": "introspection",
+      "prompt": "On this Drupal site there is a simple configuration object named config_delete_known.settings. Inspect the live configuration and report the value of its 'marker' key.",
+      "must_contain_any": [
+        "CD_EVAL_MARKER_42"
+      ],
+      "must_not_contain": [],
+      "expected_output": "config_delete_known.settings has marker = 'CD_EVAL_MARKER_42' (read it with drush cget config_delete_known.settings).",
+      "setup": "agent-module-documentation/evaluation/verify/config_delete-known-config-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/config_delete-known-config-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "cd-known-deps",
+      "mode": "introspection",
+      "prompt": "On this Drupal site there is a configuration object named config_delete_dep.settings. If you deleted it with config_delete's 'Delete config dependencies' option, which other configuration object would also be deleted? Inspect the live configuration to find out.",
+      "must_contain_any": [
+        "config_delete_child.settings"
+      ],
+      "must_not_contain": [],
+      "expected_output": "config_delete_dep.settings declares dependencies.config = [config_delete_child.settings], so that object would also be deleted.",
+      "setup": "agent-module-documentation/evaluation/verify/config_delete-known-deps-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/config_delete-known-deps-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "cd-delete-config",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site there is a leftover simple configuration object named config_delete_task.settings. Using the config_delete module's capability, delete that configuration object from the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/config_delete-delete-config-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/config_delete-delete-config-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/config_delete-delete-config-cleanup.sh",
+      "expected_output": "config_delete_task.settings no longer exists (delete it via the config_delete form, or equivalently \\Drupal::configFactory()->getEditable('config_delete_task.settings')->delete())."
+    },
+    {
+      "id": "cd-delete-with-deps",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site there is a configuration object config_delete_parent.settings that declares a config dependency on config_delete_dchild.settings. Using config_delete's 'delete with dependencies' behavior, delete config_delete_parent.settings AND its dependency so both are removed from the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/config_delete-delete-with-deps-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/config_delete-delete-with-deps-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/config_delete-delete-with-deps-cleanup.sh",
+      "expected_output": "Both config_delete_parent.settings and config_delete_dchild.settings are deleted (tick 'Delete config dependencies' on the form, or delete the object plus each name in its dependencies.config)."
+    }
+  ]
+}

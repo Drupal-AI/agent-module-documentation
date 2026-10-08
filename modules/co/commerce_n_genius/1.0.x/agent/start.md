@@ -1,0 +1,2 @@
+<!-- SPDX-License-Identifier: GPL-2.0-or-later -->
+Commerce N-Genius (v1.0.x): offsite Commerce payment gateway for Network International N-Genius. Single gateway plugin src/Plugin/Commerce/PaymentGateway/NgeniusPayment.php (id n_genius_payment); redirect form NgeniusPaymentRedirect. onReturn() reads $_GET['ref'], gets a client-credentials token, and GETs the N-Genius order to read the 3DS status. On success it creates no payment entity (logs only). Depends on commerce_payment.

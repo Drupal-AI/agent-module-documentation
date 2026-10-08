@@ -1,0 +1,96 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "media_gallery",
+  "version": "3.2.x",
+  "note": "Media Gallery defines a media_gallery content entity (single bundle media_gallery, base table media_gallery, data table media_gallery_field_data) that groups core media items and renders them as a PhotoSwipe lightbox. Base fields: title (required, label), description, images (unlimited entity_reference to media, media_library widget, photoswipe formatter), use_pager (default 1), items_per_page (default 12), reverse (default 0), uid, created, changed, status. Galleries are managed at /admin/content/media-gallery, viewed at /media_gallery/{id}, and listed by a shipped View (media_galleries) at /galleries. Config UI + Field UI base route is entity.media_gallery.settings (/admin/structure/media-gallery); the settings form itself is a stub. Ships config: image style media_gallery_image (300x180), view mode full_gallery, the default view display, and the media_galleries View. Nine permissions (administer / access overview / add / edit own / edit any / delete own / delete any / view published / view unpublished). One attribute-based plugin type MediaGalleryLayout (manager media_gallery.layout_manager, subdir Plugin/MediaGalleryLayout, alter hook media_gallery_layout_info) with layouts grid (default), featured_image_grid, horizontal, vertical, swiper. Two blocks: media_gallery_gallery and media_gallery_latest_items_all_galleries. Also a Pathauto AliasType (media_gallery) and services media_gallery.item_renderer / .layout_manager. No Drush. Medium/hard cases are grounded in real live state: introspection reads back a known gallery entity and a namespaced field on the gallery bundle; execution builds a gallery entity and adds a namespaced field via the field_ui_base_route, verified against the live site.",
+  "evals": [
+    {
+      "id": "media_gallery-entity-and-paths",
+      "mode": "recipe",
+      "prompt": "In the Drupal contrib module media_gallery, what kind of thing is a 'gallery' (what entity), where do site admins create and manage galleries, and at what path can visitors browse all galleries?",
+      "must_contain_any": [
+        "media_gallery",
+        "/admin/content/media-gallery",
+        "admin/content/media-gallery",
+        "/galleries"
+      ],
+      "must_not_contain": [],
+      "expected_output": "A gallery is a media_gallery content entity (single bundle media_gallery). Admins create/manage them at /admin/content/media-gallery (canonical view at /media_gallery/{id}). Visitors browse all galleries at /galleries, provided by the shipped View media_galleries. The config/Field UI base route is entity.media_gallery.settings at /admin/structure/media-gallery.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "media_gallery-layouts",
+      "mode": "recipe",
+      "prompt": "The media_gallery gallery blocks let you pick a layout. What are the built-in layout options, and how would a developer add a custom gallery layout?",
+      "must_contain_any": [
+        "grid",
+        "swiper",
+        "MediaGalleryLayout",
+        "Plugin/MediaGalleryLayout"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Built-in layouts are grid (default), featured_image_grid, horizontal, vertical and swiper. A developer adds one by creating a class in their module's src/Plugin/MediaGalleryLayout/ that extends MediaGalleryLayoutBase and carries the #[MediaGalleryLayout(id, label, description, preview_icon)] attribute; the media_gallery.layout_manager discovers it (alter hook media_gallery_layout_info).",
+      "difficulty": "easy"
+    },
+    {
+      "id": "media_gallery-create-permission",
+      "mode": "recipe",
+      "prompt": "On a Drupal site using media_gallery, which permission must a role have to be allowed to create new media gallery entities?",
+      "must_contain_any": [
+        "add media gallery entities"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The 'add media gallery entities' permission (defined in media_gallery.permissions.yml). Related permissions include 'edit own/any media gallery entities', 'delete own/any media gallery entities', 'view published/unpublished media gallery entities', 'access media gallery overview' and 'administer media gallery'.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "media_gallery-known-gallery",
+      "mode": "introspection",
+      "prompt": "This Drupal site has one media_gallery entity. Inspect the running site and report the exact title of that gallery.",
+      "must_contain_any": [
+        "MG Known Gallery"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The gallery's title is 'MG Known Gallery' (a published media_gallery entity). Discoverable via drush, e.g. loading the media_gallery storage / entity query on the title field.",
+      "setup": "agent-module-documentation/evaluation/verify/media_gallery-known-gallery-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/media_gallery-known-gallery-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "media_gallery-custom-field",
+      "mode": "introspection",
+      "prompt": "Someone added a custom field to the media_gallery entity type on this site. Inspect the live configuration and give the machine name of the field that has been attached to the media_gallery bundle.",
+      "must_contain_any": [
+        "field_mg_note"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The field is field_mg_note (a string field), attached to the media_gallery bundle of the media_gallery entity type via its field_ui_base_route. Discoverable from field.field.media_gallery.media_gallery.field_mg_note or FieldConfig::loadByName.",
+      "setup": "agent-module-documentation/evaluation/verify/media_gallery-custom-field-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/media_gallery-custom-field-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "media_gallery-build-gallery",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, use the media_gallery module to create a new, published media gallery with the exact title 'MG Task Gallery'. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/media_gallery-build-gallery-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/media_gallery-build-gallery-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/media_gallery-build-gallery-cleanup.sh",
+      "expected_output": "A media_gallery entity with title 'MG Task Gallery' and status = 1 now exists (e.g. created via the entity storage: media_gallery storage create(['title' => 'MG Task Gallery', 'status' => 1])->save(), or through /admin/content/media-gallery/add)."
+    },
+    {
+      "id": "media_gallery-add-field",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, add a plain-text (string) field named field_mg_caption to the media_gallery entity type (bundle media_gallery), so galleries can store a caption. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/media_gallery-add-field-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/media_gallery-add-field-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/media_gallery-add-field-cleanup.sh",
+      "expected_output": "A FieldStorageConfig field_mg_caption (type string, entity_type media_gallery) plus a FieldConfig on bundle media_gallery now exist, added via the entity's field_ui_base_route (Manage fields at /admin/structure/media-gallery/fields) or via config. Verified by FieldConfig::loadByName('media_gallery','media_gallery','field_mg_caption')."
+    }
+  ]
+}

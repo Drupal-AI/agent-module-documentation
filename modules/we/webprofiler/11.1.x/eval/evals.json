@@ -1,0 +1,80 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "webprofiler",
+  "version": "11.1.x",
+  "note": "WebProfiler is a Symfony-style profiler (part of Devel). Settings form at /admin/config/development/devel/webprofiler, config object webprofiler.settings with keys exclude_paths, exclude_toolbar, intercept_redirects (default false), purge_on_cache_clear (default true), active_toolbar_items, query_sort, query_highlight, query_detailed_output_threshold, ide (default phpstorm://open?file=%f&line=%l), ide_remote_path, ide_local_path. Permissions: access webprofiler (restrict access) and view webprofiler toolbar. Time metrics need $settings['tracer_plugin']=StopwatchTracer::class in settings.php. Medium introspection reads back a known ide setting; hard execution flips intercept_redirects on and purge_on_cache_clear off, verified against live config. Fixtures only touch webprofiler.settings keys and restore shipped defaults explicitly.",
+  "evals": [
+    {
+      "id": "webprofiler-what-and-where",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "What is the Drupal webprofiler module, where is its settings page, and why should it not be enabled in production?",
+      "must_contain_any": ["/admin/config/development/devel/webprofiler", "profiler", "toolbar", "not be used in production", "development"],
+      "must_not_contain": [],
+      "expected_output": "WebProfiler is a Symfony-style profiler that collects per-request data (queries, services, routes, time, memory, etc.) and shows it in a toolbar plus a dashboard under /admin/reports/profiler. Its settings form is at /admin/config/development/devel/webprofiler. It replaces core subsystems to collect data (overhead + surface), so it must not run in production."
+    },
+    {
+      "id": "webprofiler-permissions",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "Which permissions does webprofiler define, and which one guards the dashboard/reports and settings?",
+      "must_contain_any": ["access webprofiler", "view webprofiler toolbar"],
+      "must_not_contain": [],
+      "expected_output": "Two: 'access webprofiler' (restrict access: TRUE) guards the dashboard, saved-profile list, database explain and the settings form; 'view webprofiler toolbar' guards seeing the toolbar and panels."
+    },
+    {
+      "id": "webprofiler-time-metrics",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "How do you enable collection of time metrics (the Time panel / stopwatch) in webprofiler?",
+      "must_contain_any": ["tracer_plugin", "StopwatchTracer", "settings.php"],
+      "must_not_contain": [],
+      "expected_output": "Add to settings.php: $settings['tracer_plugin'] = \\Drupal\\webprofiler\\Plugin\\Tracer\\StopwatchTracer::class; (WebProfiler depends on the tracer module). Clear cache after."
+    },
+    {
+      "id": "webprofiler-known-ide",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "On this site the webprofiler IDE-link setting has been customized. Inspect the live configuration and report the IDE opener string webprofiler is configured to use.",
+      "must_contain_any": ["vscode://file/%f:%l"],
+      "must_not_contain": [],
+      "expected_output": "config webprofiler.settings has ide = vscode://file/%f:%l (drush cget webprofiler.settings ide).",
+      "setup": "agent-module-documentation/evaluation/verify/webprofiler-known-ide-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/webprofiler-known-ide-cleanup.sh"
+    },
+    {
+      "id": "webprofiler-configure-redirects",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "Configure webprofiler on this site so that it intercepts redirects (lets you inspect the profiler on redirect responses) and so that it does NOT purge stored profiles when the cache is cleared. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/webprofiler-configure-redirects-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/webprofiler-configure-redirects-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/webprofiler-configure-redirects-cleanup.sh",
+      "expected_output": "In config webprofiler.settings, intercept_redirects === true and purge_on_cache_clear === false (via the settings form or drush cset webprofiler.settings intercept_redirects true / purge_on_cache_clear false)."
+    },
+    {
+      "id": "webprofiler-known-highlight",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "On this site webprofiler's slow-query highlight threshold has been customized. Inspect the live configuration and report the millisecond threshold above which queries are highlighted as slow.",
+      "must_contain_any": ["37"],
+      "must_not_contain": [],
+      "expected_output": "config webprofiler.settings has query_highlight = 37 (drush cget webprofiler.settings query_highlight).",
+      "setup": "agent-module-documentation/evaluation/verify/webprofiler-known-highlight-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/webprofiler-known-highlight-cleanup.sh"
+    },
+    {
+      "id": "webprofiler-configure-query-log",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "Configure webprofiler on this site so that the database query log is sorted by query duration and queries slower than 20 ms are highlighted. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/webprofiler-configure-query-log-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/webprofiler-configure-query-log-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/webprofiler-configure-query-log-cleanup.sh",
+      "expected_output": "In config webprofiler.settings, query_sort === 'duration' and query_highlight === 20 (drush cset webprofiler.settings query_sort duration / query_highlight 20)."
+    }
+  ]
+}

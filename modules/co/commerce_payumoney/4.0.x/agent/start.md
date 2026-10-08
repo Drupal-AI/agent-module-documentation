@@ -1,0 +1,2 @@
+<!-- SPDX-License-Identifier: GPL-2.0-or-later -->
+Commerce PayUMoney (v4.0.x): offsite PayU gateway. Controller src/Controller/PayUMoneyController.php exposes notify/success/failure routes, all `_access: TRUE` (anonymous). Depends on commerce + commerce_payment.

@@ -1,0 +1,121 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "taxonomy_menu_ui",
+  "version": "3.0.x",
+  "note": "Taxonomy Menu UI is a pure form-alter module (no entity type, service, plugin, permission, Drush command, and configure=null). It has exactly two kinds of persistent state. (1) Per-vocabulary third-party settings stored under the provider name `menu_ui` — NOT `taxonomy_menu_ui` — namely available_menus (sequence of menu ids, code default ['main']) and parent (a '<menu_name>:<parent plugin id>' string, code default 'main:'); the schema id is taxonomy.vocabulary.*.third_party.menu_ui. (2) Ordinary menu_link_content entities whose link URI is internal:/taxonomy/term/<tid>, created/updated/deleted by the Menu settings group the module adds to the taxonomy term form. Access to that group requires 'administer menu' (or a menu_admin_per_menu grant), and an empty available_menus makes the form alter return early. It also registers a chained [term:menu-link:*] token and clears content.menu from taxonomy_term form displays on uninstall. All medium/hard cases are grounded in those two real storage locations.",
+  "evals": [
+    {
+      "id": "taxonomy_menu_ui-where-stored",
+      "mode": "recipe",
+      "prompt": "On a Drupal 11 site using the contrib module taxonomy_menu_ui, I ticked some menus under 'Available menus' on a taxonomy vocabulary's edit form. Where is that choice stored in configuration — which config object, and under which third-party settings provider and keys?",
+      "must_contain_any": [
+        "third_party_settings",
+        "menu_ui",
+        "available_menus",
+        "taxonomy.vocabulary"
+      ],
+      "must_not_contain": [],
+      "expected_output": "It is stored on the vocabulary config entity taxonomy.vocabulary.<vid> as third-party settings under the provider `menu_ui` (taxonomy_menu_ui deliberately reuses core menu_ui's provider name rather than its own): third_party_settings.menu_ui.available_menus (a sequence of menu machine names) and third_party_settings.menu_ui.parent (a '<menu_name>:<parent plugin id>' string). The schema is declared as taxonomy.vocabulary.*.third_party.menu_ui. When unset the code defaults are ['main'] and 'main:'.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "taxonomy_menu_ui-link-entity",
+      "mode": "recipe",
+      "prompt": "With the Drupal contrib module taxonomy_menu_ui, when an editor ticks 'Provide a menu link' on a taxonomy term form and saves, what entity is actually created and what does its link URI look like? How would I query for all term menu links afterwards?",
+      "must_contain_any": [
+        "menu_link_content",
+        "internal:/taxonomy/term/",
+        "link__uri"
+      ],
+      "must_not_contain": [],
+      "expected_output": "It creates an ordinary menu_link_content entity via _menu_ui_taxonomy_term_save(), with link.uri = 'internal:/taxonomy/term/<tid>', enabled 1, and the title/description/menu_name/parent/weight from the form. There is no custom storage. Query them with \\Drupal::entityTypeManager()->getStorage('menu_link_content')->loadByProperties(['link__uri' => 'internal:/taxonomy/term/' . $tid]). Unticking the checkbox deletes the link entity.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "taxonomy_menu_ui-access-and-disable",
+      "mode": "recipe",
+      "prompt": "An editor on my Drupal site reports that the 'Menu settings' section added by taxonomy_menu_ui does not appear on the taxonomy term edit form, even though the module is enabled. What are the reasons this module would hide that section?",
+      "must_contain_any": [
+        "administer menu",
+        "available_menus",
+        "menu_admin_per_menu"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Three reasons in taxonomy_menu_ui_form_taxonomy_term_form_alter(): (1) the group's #access is the 'administer menu' permission — unless the menu_admin_per_menu module is installed and the user holds 'administer <menu> menu items' for one of the available menus; (2) the vocabulary's third-party setting menu_ui.available_menus is empty, which makes the alter return early; (3) the menu.parent_form_selector produced no parent options. The module defines no permissions of its own.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "taxonomy_menu_ui-known-vocab-menus",
+      "mode": "introspection",
+      "prompt": "This Drupal site has the taxonomy_menu_ui module enabled and a vocabulary with the machine name `tmui_products` whose menu placement has already been configured. Inspect the live site and tell me which menu (machine name) terms in that vocabulary are allowed to be placed in.",
+      "must_contain_any": [
+        "tmui_catalog"
+      ],
+      "must_not_contain": [],
+      "expected_output": "taxonomy.vocabulary.tmui_products has third_party_settings.menu_ui.available_menus: [tmui_catalog] and parent: 'tmui_catalog:', so only the TMUI Catalog menu (tmui_catalog) is available. Read it with `drush config:get taxonomy.vocabulary.tmui_products third_party_settings.menu_ui`.",
+      "setup": "agent-module-documentation/evaluation/verify/taxonomy_menu_ui-vocab-menus-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/taxonomy_menu_ui-vocab-menus-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "taxonomy_menu_ui-known-term-link",
+      "mode": "introspection",
+      "prompt": "On this Drupal site the vocabulary `tmui_regions` is wired up with taxonomy_menu_ui and contains two terms. Exactly one of them has been given a menu link, and its menu link title is deliberately different from the term name. Inspect the running site and tell me the menu link title that was used.",
+      "must_contain_any": [
+        "Highlands Guide"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The term 'Northern Highlands' has a menu_link_content entity in the tmui_nav menu titled 'Highlands Guide', with link.uri = internal:/taxonomy/term/<tid of Northern Highlands>. The term 'Southern Lowlands' has no link.",
+      "setup": "agent-module-documentation/evaluation/verify/taxonomy_menu_ui-term-link-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/taxonomy_menu_ui-term-link-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "taxonomy_menu_ui-which-vocab-disabled",
+      "mode": "introspection",
+      "prompt": "This Drupal site has two vocabularies, `tmui_active` and `tmui_locked`. With the taxonomy_menu_ui module enabled, editors can add menu links to the terms of one of them but the 'Menu settings' section is suppressed entirely for the other. Inspect the live configuration and tell me which vocabulary cannot get term menu links, and why.",
+      "must_contain_any": [
+        "tmui_locked"
+      ],
+      "must_not_contain": [],
+      "expected_output": "tmui_locked cannot: its third_party_settings.menu_ui.available_menus is an empty list, and taxonomy_menu_ui_form_taxonomy_term_form_alter() returns early when available_menus is empty, so no Menu settings group is built. tmui_active has available_menus: [tmui_side].",
+      "setup": "agent-module-documentation/evaluation/verify/taxonomy_menu_ui-disabled-vocab-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/taxonomy_menu_ui-disabled-vocab-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "taxonomy_menu_ui-vocab-settings",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "This Drupal site has the taxonomy_menu_ui module enabled, a vocabulary `tmui_events` and a menu `tmui_events_menu`. Configure the vocabulary so that terms in it may ONLY be placed in the tmui_events_menu menu, and so that the default parent for a new term link is the root of that same menu. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/taxonomy_menu_ui-vocab-settings-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/taxonomy_menu_ui-vocab-settings-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/taxonomy_menu_ui-vocab-settings-cleanup.sh",
+      "expected_output": "The vocabulary taxonomy.vocabulary.tmui_events must carry third-party settings under the `menu_ui` provider with available_menus == ['tmui_events_menu'] and parent == 'tmui_events_menu:' (menu name, colon, empty parent = root). E.g. $v->setThirdPartySetting('menu_ui', 'available_menus', ['tmui_events_menu']); $v->setThirdPartySetting('menu_ui', 'parent', 'tmui_events_menu:'); $v->save(); or tick the menu on the vocabulary form's Menu settings tab."
+    },
+    {
+      "id": "taxonomy_menu_ui-term-menu-link-layman",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "layman",
+      "prompt": "On my Drupal site there is a 'TMUI Departments' category list (machine name tmui_depts) and a navigation menu for it called tmui_depts_menu. Please add a new category called 'Human Resources' and make it show up in that navigation menu — but in the menu it should read just 'HR', and it should sort at position 5 among its neighbours. Do it on the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/taxonomy_menu_ui-term-menu-link-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/taxonomy_menu_ui-term-menu-link-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/taxonomy_menu_ui-term-menu-link-cleanup.sh",
+      "expected_output": "A taxonomy term named 'Human Resources' in the tmui_depts vocabulary, plus the menu_link_content entity taxonomy_menu_ui creates for it: menu_name tmui_depts_menu, link.uri 'internal:/taxonomy/term/<tid>', title 'HR', weight 5, enabled. Either tick 'Provide a menu link' in the term form's Menu settings group, or create the menu_link_content entity directly with that URI."
+    },
+    {
+      "id": "taxonomy_menu_ui-nested-term-link",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site the vocabulary `tmui_shop` is configured for taxonomy_menu_ui against the `tmui_shop_menu` menu. That menu already has a top-level link titled 'Shop'. The vocabulary contains a term named 'Cameras' which currently has no menu link. Give that term a menu link in tmui_shop_menu nested directly underneath the existing 'Shop' link. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/taxonomy_menu_ui-nested-term-link-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/taxonomy_menu_ui-nested-term-link-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/taxonomy_menu_ui-nested-term-link-cleanup.sh",
+      "expected_output": "A menu_link_content entity in tmui_shop_menu with link.uri 'internal:/taxonomy/term/<Cameras tid>' whose parent is the plugin id of the existing Shop link, i.e. 'menu_link_content:<Shop uuid>'. On the term form this is the Menu settings 'Parent item' select, whose value 'tmui_shop_menu:menu_link_content:<uuid>' taxonomy_menu_ui explodes on the first colon into menu_name + parent."
+    }
+  ]
+}

@@ -1,0 +1,80 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "stripe",
+  "version": "2.0.x",
+  "note": "Stripe is a low-level integration. Config object stripe.settings holds environment (test|live) and apikey.<env>.public|secret|webhook. Admin form route stripe.settings at /admin/config/system/stripe (permission 'administer stripe'). Webhook POST /stripe/webhook dispatches StripeEvents::WEBHOOK ('stripe.webhook'); StripeEvents::PAYMENT ('stripe.payment') adjusts the amount before confirmation. Form elements: stripe (card) and stripe_paymentrequest. Requires stripe/stripe-php. Medium/hard cases read and write the real stripe.settings config keys via drush; baseline defaults are environment=test with empty keys, restored by cleanup.",
+  "evals": [
+    {
+      "id": "stripe-keys-config",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "In the Drupal Stripe module, where are the Stripe API keys stored and how do you switch between test and live keys? Name the config object and the keys.",
+      "must_contain_any": ["stripe.settings", "environment", "apikey"],
+      "must_not_contain": [],
+      "expected_output": "Keys live in the stripe.settings config object under apikey.test.public/secret/webhook and apikey.live.public/secret/webhook; the 'environment' key (test|live) selects which set is active. Set them on /admin/config/system/stripe or via drush config:set, and prefer providing secrets from settings.php."
+    },
+    {
+      "id": "stripe-webhook-endpoint",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "Using the Drupal Stripe module, what URL do incoming Stripe webhooks hit, and how does my custom module react to a webhook event (e.g. payment_intent.succeeded)?",
+      "must_contain_any": ["/stripe/webhook", "StripeEvents::WEBHOOK", "stripe.webhook", "event subscriber"],
+      "must_not_contain": [],
+      "expected_output": "Stripe posts to /stripe/webhook; the controller verifies the signature (using apikey.<env>.webhook) and dispatches the StripeEvents::WEBHOOK ('stripe.webhook') event carrying the Stripe Event. Subscribe to it with an event_subscriber service and inspect $event->getEvent()->type."
+    },
+    {
+      "id": "stripe-payment-element",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "With the Drupal Stripe module, which Form API element type do I add to collect a card payment, and how can I change the charge amount server-side before the payment is confirmed?",
+      "must_contain_any": ["stripe", "stripe_paymentrequest", "StripeEvents::PAYMENT", "setTotal"],
+      "must_not_contain": [],
+      "expected_output": "Add a '#type' => 'stripe' element (or 'stripe_paymentrequest' for Apple/Google Pay). To change the amount, subscribe to StripeEvents::PAYMENT ('stripe.payment') and call $event->setTotal($amount, $label) on the StripePaymentEvent before confirmation."
+    },
+    {
+      "id": "stripe-current-environment",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "On this Drupal site, which Stripe environment is currently active (test or live) according to the Stripe module configuration, and what is the configured live publishable key?",
+      "must_contain_any": ["live", "pk_live_MEDIUM_marker_001"],
+      "must_not_contain": [],
+      "expected_output": "environment is 'live' and apikey.live.public is pk_live_MEDIUM_marker_001 (read stripe.settings: environment and apikey.live.public).",
+      "setup": "agent-module-documentation/evaluation/verify/stripe-env-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/stripe-env-cleanup.sh"
+    },
+    {
+      "id": "stripe-current-test-key",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "This site's Stripe module has a test-mode publishable key configured. Inspect the live configuration and report the test publishable key value.",
+      "must_contain_any": ["pk_test_KNOWN_key_42"],
+      "must_not_contain": [],
+      "expected_output": "The test publishable key is pk_test_KNOWN_key_42 (stripe.settings apikey.test.public).",
+      "setup": "agent-module-documentation/evaluation/verify/stripe-key-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/stripe-key-cleanup.sh"
+    },
+    {
+      "id": "stripe-go-live",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "Configure the Drupal Stripe module on this site to run in LIVE mode with the live publishable key set to pk_live_GOLIVE_777. Apply the change to the live site configuration.",
+      "reset": "agent-module-documentation/evaluation/verify/stripe-golive-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/stripe-golive-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/stripe-golive-cleanup.sh",
+      "expected_output": "Set stripe.settings environment=live and apikey.live.public=pk_live_GOLIVE_777 (drush config:set stripe.settings ... or via the settings form). verify checks both values."
+    },
+    {
+      "id": "stripe-set-webhook-secret",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "Set the Stripe module's TEST webhook signing secret to whsec_TASK_secret on this site so incoming webhooks are validated by signature. Apply it to the live configuration.",
+      "reset": "agent-module-documentation/evaluation/verify/stripe-webhook-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/stripe-webhook-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/stripe-webhook-cleanup.sh",
+      "expected_output": "Set stripe.settings apikey.test.webhook = whsec_TASK_secret (drush config:set stripe.settings apikey.test.webhook whsec_TASK_secret). verify reads it back."
+    }
+  ]
+}

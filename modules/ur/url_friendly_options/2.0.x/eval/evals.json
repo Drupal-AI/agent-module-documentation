@@ -1,0 +1,101 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "url_friendly_options",
+  "version": "2.0.x",
+  "note": "URL-friendly Options has no config, no configure route, no permissions, no Drush, no plugins. It alters field_config_edit_form for options-list fields: adds an #element_validate that rejects allowed-values keys not matching ^[a-zA-Z0-9-]*[a-zA-Z0-9]+$, and overrides the machine-name element to use hyphens. hook_requirements() (runtime) flags existing list_string field storages with non-compliant keys. hook_url_friendly_options_bypass_field_validation($field_name,$entity_type_id) exempts a field. It never rewrites existing values. Medium/hard cases create namespaced list_string fields (field_ufo_*) on node.article (programmatic creation bypasses the form validation) and read/assert their allowed_values keys against the module's URL-friendly rule.",
+  "evals": [
+    {
+      "id": "url_friendly_options-what-it-enforces",
+      "mode": "recipe",
+      "prompt": "What does the Drupal url_friendly_options module enforce on option-list (select/list) fields, and what characters are allowed in the option keys?",
+      "must_contain_any": [
+        "hyphen",
+        "alphanumeric",
+        "alpha-numeric",
+        "URL-friendly",
+        "url-friendly"
+      ],
+      "must_not_contain": [],
+      "expected_output": "It enforces that option-list field keys (allowed_values keys) are URL-friendly: only alphanumeric characters and hyphens (regex ^[a-zA-Z0-9-]*[a-zA-Z0-9]+$), so they work as clean URL segments / Views contextual-filter arguments. It also makes the machine-name helper suggest hyphens instead of underscores.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "url_friendly_options-bypass-hook",
+      "mode": "recipe",
+      "prompt": "A developer needs one specific field to be exempt from url_friendly_options validation. Which hook do they implement, and what should it return?",
+      "must_contain_any": [
+        "hook_url_friendly_options_bypass_field_validation",
+        "url_friendly_options_bypass_field_validation"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Implement hook_url_friendly_options_bypass_field_validation($field_name, $entity_type_id) and return TRUE for the field to exempt (FALSE otherwise). It bypasses both the field-form validation and the status-report requirements check.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "url_friendly_options-existing-values",
+      "mode": "recipe",
+      "prompt": "If I enable url_friendly_options on a site that already has option-list fields with underscore keys, does it rewrite the existing keys? How would I find out which fields are non-compliant?",
+      "must_contain_any": [
+        "does not change",
+        "won't change",
+        "will not change",
+        "not change existing",
+        "status report",
+        "requirements",
+        "hook_requirements"
+      ],
+      "must_not_contain": [],
+      "expected_output": "No - it never changes existing stored values. It blocks adding/editing values while non-compliant keys exist (the field form won't validate), and its hook_requirements() adds a status-report error at /admin/reports/status listing the entity_type.field_name of any list_string storage with non-URL-friendly keys.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "url_friendly_options-noncompliant-field",
+      "mode": "introspection",
+      "prompt": "This site has an option-list field named field_ufo_known on the Article content type. Inspect its live allowed-values and identify which option key is NOT URL-friendly according to url_friendly_options' rules.",
+      "must_contain_any": [
+        "bad_key"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The key 'bad_key' is not URL-friendly (underscore is not allowed). field.storage.node.field_ufo_known allowed_values has keys bad_key and good-key; only bad_key fails the ^[a-zA-Z0-9-]*[a-zA-Z0-9]+$ rule.",
+      "setup": "agent-module-documentation/evaluation/verify/url_friendly_options-noncompliant-field-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/url_friendly_options-noncompliant-field-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "url_friendly_options-which-field",
+      "mode": "introspection",
+      "prompt": "The Article content type on this site has two option-list fields, field_ufo_ok and field_ufo_bad. Inspect their live allowed-values and state which field would fail url_friendly_options' URL-friendly key check.",
+      "must_contain_any": [
+        "field_ufo_bad"
+      ],
+      "must_not_contain": [],
+      "expected_output": "field_ufo_bad fails: its allowed_values include the key 'light_grey' (underscore), which is not URL-friendly. field_ufo_ok uses red and dark-blue, which are both valid.",
+      "setup": "agent-module-documentation/evaluation/verify/url_friendly_options-which-field-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/url_friendly_options-which-field-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "url_friendly_options-create-compliant",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this site, add an option-list (list_string) field named field_ufo_task to the Article content type with at least two allowed values, choosing option keys that satisfy url_friendly_options (URL-friendly: only letters, numbers and hyphens). Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/url_friendly_options-create-compliant-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/url_friendly_options-create-compliant-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/url_friendly_options-create-compliant-cleanup.sh",
+      "expected_output": "Create a list_string field storage field_ufo_task on node with allowed_values whose keys are all URL-friendly (e.g. ['first-value' => 'First value', 'second-value' => 'Second value']) and a FieldConfig on article. Every key must match ^[a-zA-Z0-9-]*[a-zA-Z0-9]+$ and there must be >= 2 options."
+    },
+    {
+      "id": "url_friendly_options-fix-keys",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "The Article content type has an option-list field field_ufo_fix whose allowed-values keys currently use underscores (bad_key_1, bad_key_2) and therefore violate url_friendly_options. Rename the option keys so they are URL-friendly (letters, numbers and hyphens only), keeping the two options, and apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/url_friendly_options-fix-keys-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/url_friendly_options-fix-keys-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/url_friendly_options-fix-keys-cleanup.sh",
+      "expected_output": "Update field.storage.node.field_ufo_fix allowed_values so both keys are URL-friendly, e.g. ['bad-key-1' => 'First', 'bad-key-2' => 'Second'] (or 'first'/'second'). Every key must match ^[a-zA-Z0-9-]*[a-zA-Z0-9]+$ and there must still be >= 2 options."
+    }
+  ]
+}

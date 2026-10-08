@@ -1,0 +1,99 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "searchstax",
+  "version": "1.12.x",
+  "note": "SearchStax integrates Drupal with the SearchStax hosted Solr / SearchStudio Site Search product: it adds a search_api_solr connector plugin (id 'searchstax', 'SearchStax Cloud with Token Auth'), front-end search tracking/analytics, auto-suggest, and per-IP flood protection, all driven by the searchstax.settings config object at /admin/config/search/searchstax. LIMITATION: real indexing, analytics delivery, auto-suggest and the version-check form require a SearchStax subscription plus network access to SearchStax, which this environment does not have. So medium/hard cases are grounded ONLY in config that can be built and verified WITHOUT contacting SearchStax — the searchstax.settings keys (flood_protection.*, searches_via_searchstudio, analytics_url/analytics_key, untracked_roles). Easy cases are response-graded (no site changes). Medium cases stage a known searchstax.settings value and ask the agent to read it back (cleanup restores install defaults). Hard cases have the agent write searchstax.settings config, verified against live config (exit 0 = pass). The bundled submodule solr_to_searchstax_ss_migration is documented separately with recipe-only evals.",
+  "evals": [
+    {
+      "id": "searchstax-connector-plugin",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "On a Drupal 11 site using SearchStax with Search API Solr, what is the Solr connector plugin that SearchStax provides, what is its plugin id, and how does it authenticate to the hosted cluster?",
+      "must_contain_any": ["searchstax", "token"],
+      "must_not_contain": [],
+      "expected_output": "SearchStax provides a search_api_solr SolrConnector plugin with id 'searchstax' (labelled 'SearchStax Cloud with Token Auth'). It authenticates to the SearchStax-hosted Solr cluster with a short-lived auth token rather than basic auth. Wire it up as the connector of a search_api.server that uses the search_api_solr backend."
+    },
+    {
+      "id": "searchstax-configure-route",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "Where is the SearchStax admin settings page, which config object stores its site-wide settings, and what permission protects the form?",
+      "must_contain_any": ["/admin/config/search/searchstax", "searchstax.settings"],
+      "must_not_contain": [],
+      "expected_output": "The settings form is at /admin/config/search/searchstax (route searchstax.admin_settings), it edits the searchstax.settings config object, and it is protected by the core 'administer site configuration' permission. SearchStax defines no permissions of its own."
+    },
+    {
+      "id": "searchstax-flood-keys",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "SearchStax can rate-limit search and update requests per IP address. Which config key toggles that feature, and which keys set the search request limit and its time window? Give the config object.",
+      "must_contain_any": ["flood_protection", "search_limit"],
+      "must_not_contain": [],
+      "expected_output": "In searchstax.settings, flood_protection.enabled toggles per-IP flood protection; flood_protection.search_limit / flood_protection.search_window set the search request cap and its window (seconds), and flood_protection.update_limit / flood_protection.update_window do the same for index updates. Defaults: disabled, 15 searches / 10s, 50 updates / 60s."
+    },
+    {
+      "id": "searchstax-flood-known",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "This Drupal 11 site already has SearchStax flood protection turned on. Inspect the live configuration and report: is flood protection enabled, and what is the per-IP search request limit and its time window (in seconds)?",
+      "setup": "agent-module-documentation/evaluation/verify/searchstax-flood-known-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/searchstax-flood-known-cleanup.sh",
+      "must_contain_any": ["7"],
+      "must_not_contain": [],
+      "expected_output": "flood_protection.enabled is true; flood_protection.search_limit is 7 and flood_protection.search_window is 45 seconds (so 7 searches per IP per 45s)."
+    },
+    {
+      "id": "searchstax-studio-known",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "On this live site, is SearchStax configured to route live search queries through SearchStudio, and what analytics URL is it pointed at? State the config keys and their current values.",
+      "setup": "agent-module-documentation/evaluation/verify/searchstax-studio-known-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/searchstax-studio-known-cleanup.sh",
+      "must_contain_any": ["https://known-studio.eval.searchstax.com"],
+      "must_not_contain": [],
+      "expected_output": "searchstax.settings:searches_via_searchstudio is true and searchstax.settings:analytics_url is https://known-studio.eval.searchstax.com (the install default is https://app.searchstax.com)."
+    },
+    {
+      "id": "searchstax-untracked-known",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "This site excludes some user roles from SearchStax search analytics tracking. Inspect the live configuration and report which role machine names are currently in the untracked list.",
+      "setup": "agent-module-documentation/evaluation/verify/searchstax-untracked-known-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/searchstax-untracked-known-cleanup.sh",
+      "must_contain_any": ["administrator"],
+      "must_not_contain": [],
+      "expected_output": "searchstax.settings:untracked_roles currently contains administrator and editor (the install default is an empty list)."
+    },
+    {
+      "id": "searchstax-flood-build-layman",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "Bots are hammering our SearchStax search and overloading it. Please make SearchStax block anyone who runs more than 5 searches every 30 seconds from the same IP address. Turn that protection on and don't change anything else.",
+      "reset": "agent-module-documentation/evaluation/verify/searchstax-flood-build-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/searchstax-flood-build-verify.sh",
+      "expected_output": "searchstax.settings:flood_protection.enabled is set to true with flood_protection.search_limit = 5 and flood_protection.search_window = 30."
+    },
+    {
+      "id": "searchstax-flood-build-expert",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "Configure SearchStax flood protection in searchstax.settings: set flood_protection.enabled to true, flood_protection.search_limit to 5 and flood_protection.search_window to 30. Leave the update_* limits and everything else at their defaults.",
+      "reset": "agent-module-documentation/evaluation/verify/searchstax-flood-build-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/searchstax-flood-build-verify.sh",
+      "expected_output": "searchstax.settings:flood_protection.enabled == true, search_limit == 5, search_window == 30."
+    },
+    {
+      "id": "searchstax-studio-reroute-expert",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "Set SearchStax up to serve live searches through SearchStudio: in searchstax.settings set searches_via_searchstudio to true and set the global analytics_key to AK-EVAL-9000. Don't touch the other keys. (No need to reach the SearchStax service — just get the config right.)",
+      "reset": "agent-module-documentation/evaluation/verify/searchstax-studio-reroute-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/searchstax-studio-reroute-verify.sh",
+      "expected_output": "searchstax.settings:searches_via_searchstudio is true and searchstax.settings:analytics_key is AK-EVAL-9000."
+    }
+  ]
+}

@@ -1,0 +1,99 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "x_frame_options_configuration",
+  "version": "1.5.x",
+  "note": "Project x_frame_options; the enabled module machine name is x_frame_options_configuration. All state is the config object x_frame_options_configuration.settings with NESTED keys x_frame_options_configuration.directive (DENY|SAMEORIGIN|ALLOW-FROM|ALLOW-ALL) and x_frame_options_configuration.allow-from-uri. There is no config schema or default config, so at baseline the object is absent; cleanup deletes it to restore baseline. Medium cases write a known directive/uri and the agent reads it via drush cget; hard cases set a baseline directive and the agent must change it, verified against the live config object. XframeSubscriber (RESPONSE priority -20) applies the header; ALLOW-ALL removes it.",
+  "evals": [
+    {
+      "id": "xfo-config-and-directives",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "On a Drupal site using the x_frame_options (X-frame-options Configuration) module, which config object stores its settings and what directive values can the X-Frame-Options header be set to?",
+      "must_contain_any": [
+        "x_frame_options_configuration.settings",
+        "DENY",
+        "SAMEORIGIN",
+        "ALLOW-FROM"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Settings live in x_frame_options_configuration.settings (nested key x_frame_options_configuration.directive). The directive can be DENY, SAMEORIGIN, ALLOW-FROM (with an allow-from-uri), or ALLOW-ALL."
+    },
+    {
+      "id": "xfo-allow-all",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "In the x_frame_options module, what does choosing the 'ALLOW-ALL' directive do to the X-Frame-Options response header?",
+      "must_contain_any": [
+        "remove",
+        "removes",
+        "no header",
+        "not set"
+      ],
+      "must_not_contain": [],
+      "expected_output": "ALLOW-ALL makes the response subscriber REMOVE the X-Frame-Options header entirely (so the page can be framed by anyone)."
+    },
+    {
+      "id": "xfo-mechanism",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "How does the x_frame_options module add the X-Frame-Options header to responses on a Drupal site, and what is the actual enabled module machine name?",
+      "must_contain_any": [
+        "x_frame_options_configuration",
+        "subscriber",
+        "response",
+        "XframeSubscriber"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The enabled module machine name is x_frame_options_configuration. It registers a kernel RESPONSE event subscriber (XframeSubscriber, priority -20) that sets X-Frame-Options on every response based on the configured directive."
+    },
+    {
+      "id": "xfo-known-directive",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "On this Drupal site, the X-Frame-Options directive has been configured. Inspect the live configuration and tell me which directive is currently set.",
+      "must_contain_any": [
+        "SAMEORIGIN"
+      ],
+      "must_not_contain": [],
+      "expected_output": "x_frame_options_configuration.settings has x_frame_options_configuration.directive = SAMEORIGIN (read with: drush cget x_frame_options_configuration.settings).",
+      "setup": "agent-module-documentation/evaluation/verify/x_frame_options-known-directive-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/x_frame_options-known-directive-cleanup.sh"
+    },
+    {
+      "id": "xfo-known-uri",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "On this Drupal site, the X-Frame-Options directive is set to ALLOW-FROM. Inspect the live configuration and tell me which URI is allowed to frame the site.",
+      "must_contain_any": [
+        "xfo-partner.example.com"
+      ],
+      "must_not_contain": [],
+      "expected_output": "x_frame_options_configuration.settings has x_frame_options_configuration.allow-from-uri = https://xfo-partner.example.com/ (with directive ALLOW-FROM).",
+      "setup": "agent-module-documentation/evaluation/verify/x_frame_options-known-uri-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/x_frame_options-known-uri-cleanup.sh"
+    },
+    {
+      "id": "xfo-set-deny",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, configure the x_frame_options module so that every page sends the header 'X-Frame-Options: DENY' (the site must never be embeddable in a frame). Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/x_frame_options-set-deny-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/x_frame_options-set-deny-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/x_frame_options-set-deny-cleanup.sh",
+      "expected_output": "Set x_frame_options_configuration.settings key x_frame_options_configuration.directive to 'DENY' (via the settings form or configFactory getEditable set save)."
+    },
+    {
+      "id": "xfo-change-to-sameorigin",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, the x_frame_options module is currently set to DENY all framing, but the team now needs same-origin pages to be embeddable. Change the X-Frame-Options directive to SAMEORIGIN. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/x_frame_options-change-to-sameorigin-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/x_frame_options-change-to-sameorigin-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/x_frame_options-change-to-sameorigin-cleanup.sh",
+      "expected_output": "Change x_frame_options_configuration.settings key x_frame_options_configuration.directive from DENY to 'SAMEORIGIN'."
+    }
+  ]
+}

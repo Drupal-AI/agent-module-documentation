@@ -1,0 +1,92 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "url_embed",
+  "version": "3.0.x",
+  "note": "url_embed renders plain URLs pasted into rich text (or Link fields) as oEmbed/Open Graph embeds via the `embed/embed` PHP library. Its two text filter plugin ids are `url_embed_convert_links` (bare URL -> <drupal-url data-embed-url=\"...\"> tag) and `url_embed` (tag -> rendered embed HTML), both configured per text format under filter.format.<id>.filters.<plugin_id>.settings. The only global config object is url_embed.settings (keys facebook_app_id, facebook_app_secret), not shipped by default. The admin form route is url_embed.admin, gated by permission `administer url_embed`. A `url_embed` Link field formatter (LinkEmbedFormatter) renders Link field values the same way, with its own enable_responsive/default_ratio settings on the view-display component. Medium cases read back a known url_embed.settings value and a known filter setting on a namespaced url_embed_test text format; hard cases enable both filters on a namespaced url_embed_task text format, and switch a Link field's default-display formatter to url_embed with responsive wrapping, both verified against live config.",
+  "evals": [
+    {
+      "id": "url_embed-filter-ids",
+      "mode": "recipe",
+      "prompt": "The Drupal 11 contrib module url_embed lets editors paste a bare URL into a rich text field and have it render as an embed. Which of its two text filter plugins converts a plain pasted URL into a <drupal-url> embed tag in the first place, and what is that filter's exact plugin id?",
+      "must_contain_any": [
+        "url_embed_convert_links"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The url_embed_convert_links filter (class ConvertUrlToEmbedFilter) scans the text for bare URLs and rewrites each one into a <drupal-url data-embed-url=\"...\"></drupal-url> element. That tag is then rendered into actual embed markup by the separate url_embed filter, so both must be enabled (convert_links must run before url_embed in filter order).",
+      "difficulty": "easy"
+    },
+    {
+      "id": "url_embed-required-library",
+      "mode": "recipe",
+      "prompt": "A Drupal 11 site has the url_embed module's code present but embeds are not rendering, and the module's install requirements check is failing. What third-party PHP library (give the Composer package name) does url_embed require to fetch oEmbed/Open Graph data, and which class does it check for?",
+      "must_contain_any": [
+        "embed/embed",
+        "oscarotero/embed",
+        "Embed\\Embed"
+      ],
+      "must_not_contain": [],
+      "expected_output": "url_embed requires the embed/embed (oscarotero/embed) Composer library. Both UrlEmbedInstallRequirements::getRequirements() and the legacy url_embed_requirements() hook check class_exists('\\\\Embed\\\\Embed') and raise an error requirement if it's missing; the url_embed service (Drupal\\url_embed\\UrlEmbed) wraps Embed\\Embed::get() to perform the actual fetch.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "url_embed-permission",
+      "mode": "recipe",
+      "prompt": "What Drupal permission does url_embed define, and what does it actually gate on the site?",
+      "must_contain_any": [
+        "administer url_embed"
+      ],
+      "must_not_contain": [],
+      "expected_output": "url_embed defines exactly one permission, administer url_embed ('Administer the Url Embed module'). It gates the url_embed.admin route (/admin/config/media/url_embed), the settings form where the Facebook/Instagram App ID and App Secret used for oEmbed authentication are stored (config object url_embed.settings). It does not gate use of the filters or the CKEditor 5 embed dialog, which are controlled separately.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "url_embed-facebook-app-id",
+      "mode": "introspection",
+      "prompt": "This Drupal site already has a Facebook App ID configured for url_embed's oEmbed authentication (used for Facebook/Instagram embeds). Inspect the live url_embed.settings configuration and report the facebook_app_id value.",
+      "must_contain_any": [
+        "url_embed_known_fb_app_5551234"
+      ],
+      "must_not_contain": [],
+      "expected_output": "url_embed.settings.facebook_app_id is url_embed_known_fb_app_5551234 (readable via `drush cget url_embed.settings facebook_app_id`).",
+      "setup": "agent-module-documentation/evaluation/verify/url_embed-facebook-app-id-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/url_embed-facebook-app-id-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "url_embed-format-ratio",
+      "mode": "introspection",
+      "prompt": "On this Drupal site there is a text format called url_embed_test with the url_embed filter enabled. Inspect its live configuration and report the configured default_ratio (the fallback embed aspect ratio percentage) for that filter.",
+      "must_contain_any": [
+        "42.5"
+      ],
+      "must_not_contain": [],
+      "expected_output": "filter.format.url_embed_test.filters.url_embed.settings.default_ratio is 42.5 (readable via `drush cget filter.format.url_embed_test filters.url_embed`).",
+      "setup": "agent-module-documentation/evaluation/verify/url_embed-format-ratio-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/url_embed-format-ratio-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "url_embed-enable-filters",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site there is a text format url_embed_task that has both url_embed filter plugins present (url_embed_convert_links and url_embed) but disabled. Enable both filters on that text format so pasted URLs are converted to embeds and rendered. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/url_embed-enable-filters-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/url_embed-enable-filters-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/url_embed-enable-filters-cleanup.sh",
+      "expected_output": "In filter.format.url_embed_task, both the url_embed_convert_links and url_embed filter plugins have status: true (e.g. via the format's Manage filters UI, or FilterFormat::setFilterConfig('url_embed_convert_links', ['status' => TRUE, ...]) and the same for 'url_embed', then ->save())."
+    },
+    {
+      "id": "url_embed-link-formatter",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, the Article content type has a Link field field_url_embed_task whose default display currently uses the plain 'Link' formatter. Change its default display to use url_embed's 'Embedded URL' formatter with responsive wrapping (enable_responsive) turned on, and apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/url_embed-link-formatter-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/url_embed-link-formatter-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/url_embed-link-formatter-cleanup.sh",
+      "expected_output": "In core.entity_view_display.node.article.default the field_url_embed_task component has type: url_embed and settings.enable_responsive: true (e.g. set via Manage display, or EntityViewDisplay::setComponent('field_url_embed_task', ['type' => 'url_embed', 'settings' => ['enable_responsive' => TRUE, 'default_ratio' => '66.669']])->save())."
+    }
+  ]
+}

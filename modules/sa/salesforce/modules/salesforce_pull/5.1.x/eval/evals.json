@@ -1,0 +1,100 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "salesforce_pull",
+  "version": "5.1.x",
+  "note": "Salesforce Pull imports Salesforce records into Drupal, driven by each salesforce_mapping's pull sync-triggers (pull_create/pull_update/pull_delete) and per-mapping scope (pull_where_clause, pull_trigger_date, pull_record_type_filter), through a QueueHandler + cron queue workers, capped by salesforce.settings.pull_max_queue_size. Querying needs a Salesforce connection, so all medium/hard cases are grounded in LOCAL config (mapping pull triggers, pull_max_queue_size), created/read/modified with no connection and verified by pure reads. Namespaced sfl_* mappings removed on cleanup; pull_max_queue_size restored to 100000.",
+  "evals": [
+    {
+      "id": "salesforce_pull-triggers",
+      "mode": "recipe",
+      "prompt": "How does Salesforce Pull decide which Salesforce changes to import into Drupal - what controls create/update/delete on the Drupal side?",
+      "must_contain_any": [
+        "sync_triggers",
+        "pull_create",
+        "pull_update",
+        "pull_delete"
+      ],
+      "must_not_contain": [],
+      "expected_output": "It is driven by the salesforce_mapping's sync_triggers: pull_create, pull_update and pull_delete. For each mapping with a matching pull trigger, changed Salesforce records are queried and the corresponding Drupal entities created/updated/deleted.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "salesforce_pull-scope",
+      "mode": "recipe",
+      "prompt": "How can I limit which Salesforce records Salesforce Pull imports for a given mapping (e.g. an extra filter or a date field)?",
+      "must_contain_any": [
+        "pull_where_clause",
+        "pull_trigger_date",
+        "pull_record_type_filter"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Per mapping: pull_where_clause adds an extra SOQL filter, pull_trigger_date sets the Salesforce date field used to detect changes, and pull_record_type_filter restricts by record type.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "salesforce_pull-queue",
+      "mode": "recipe",
+      "prompt": "How is the Salesforce pull queue processed, and which setting caps how many items can be enqueued at once?",
+      "must_contain_any": [
+        "cron",
+        "pull_max_queue_size",
+        "queue",
+        "standalone"
+      ],
+      "must_not_contain": [],
+      "expected_output": "A QueueHandler builds the pull queue (capped by salesforce.settings.pull_max_queue_size) and cron queue workers (CronPull / SalesforcePullQueueWorker) process it on cron; with standalone enabled it can be triggered via the pull endpoints.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "salesforce_pull-known-trigger",
+      "mode": "introspection",
+      "prompt": "On this Drupal site there is a Salesforce mapping sfl_med. Inspect its live configuration and say whether it imports newly-created Salesforce records into Drupal.",
+      "must_contain_any": [
+        "pull_create",
+        "yes",
+        "create"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Yes: sfl_med has sync_triggers.pull_create = true, so new Salesforce records are pulled in and created in Drupal.",
+      "setup": "agent-module-documentation/evaluation/verify/salesforce_pull-known-trigger-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/salesforce_pull-known-trigger-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "salesforce_pull-known-queue",
+      "mode": "introspection",
+      "prompt": "On this Drupal site, what is the maximum Salesforce pull queue size configured? Inspect the live Salesforce settings and give the number.",
+      "must_contain_any": [
+        "750"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The pull queue max size is 750: salesforce.settings pull_max_queue_size = 750.",
+      "setup": "agent-module-documentation/evaluation/verify/salesforce_pull-known-queue-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/salesforce_pull-known-queue-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "salesforce_pull-enable-update",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site there is a Salesforce mapping sfl_task that imports new Salesforce records but not updates. Configure it so that updates to the Salesforce record are also pulled into Drupal (enable the pull-on-update trigger). Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/salesforce_pull-enable-update-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/salesforce_pull-enable-update-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/salesforce_pull-enable-update-cleanup.sh",
+      "expected_output": "salesforce_mapping sfl_task has sync_triggers.pull_update = true."
+    },
+    {
+      "id": "salesforce_pull-set-queue",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, limit the Salesforce pull queue so that at most 1000 items can be enqueued for pull at any time. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/salesforce_pull-set-queue-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/salesforce_pull-set-queue-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/salesforce_pull-set-queue-cleanup.sh",
+      "expected_output": "salesforce.settings pull_max_queue_size is set to 1000."
+    }
+  ]
+}

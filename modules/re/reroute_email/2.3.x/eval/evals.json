@@ -1,0 +1,73 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "reroute_email",
+  "version": "2.3.x",
+  "note": "Reroute Email exposes a single config object (reroute_email.settings), a hook_mail_alter interception mechanism, a RerouteEmailHandler plugin type, and one submodule. Cases are `recipe` (response-graded): they probe documented config keys and mechanisms an agent would otherwise read source to answer; no site mutation.",
+  "evals": [
+    {
+      "id": "reroute-enable-and-address",
+      "mode": "recipe",
+      "prompt": "On a Drupal 11 staging site I want to reroute all outgoing email to qa@example.com. Which config object and which two keys do I set, and give a drush command.",
+      "must_contain_any": ["reroute_email.settings", "enable", "address"],
+      "must_not_contain": [],
+      "expected_output": "Set enable=true and address='qa@example.com' on reroute_email.settings, e.g. drush config:set --input-format=yaml reroute_email.settings enable true -y and drush config:set reroute_email.settings address \"qa@example.com\" -y."
+    },
+    {
+      "id": "reroute-abort-all",
+      "mode": "recipe",
+      "prompt": "With Reroute Email enabled, how do I make the site abort all outgoing emails instead of sending them anywhere?",
+      "must_contain_any": ["empty", "address", "abort"],
+      "must_not_contain": [],
+      "expected_output": "Leave the address setting as an empty string (enable rerouting with address=''); when the rerouting address resolves to empty the mail is aborted rather than sent."
+    },
+    {
+      "id": "reroute-allowlist",
+      "mode": "recipe",
+      "prompt": "I want emails to my own domain example.com to still be delivered normally while everything else is rerouted. Which Reroute Email setting do I use and what value?",
+      "must_contain_any": ["allowed", "allowlist"],
+      "must_not_contain": [],
+      "expected_output": "Use the allowed (allowlist) key on reroute_email.settings with a pattern like *@example.com; allowlisted addresses/domains/patterns pass through un-rerouted."
+    },
+    {
+      "id": "reroute-dev-only-settings-php",
+      "mode": "recipe",
+      "prompt": "How do I make sure Reroute Email is on for the test environment but hard-off in production, driven per environment rather than by shared config?",
+      "must_contain_any": ["settings.php", "$config['reroute_email.settings']"],
+      "must_not_contain": [],
+      "expected_output": "Override in each environment's settings.php: on test set $config['reroute_email.settings']['enable'] = TRUE; (and ['address']), on live set $config['reroute_email.settings']['enable'] = FALSE;."
+    },
+    {
+      "id": "reroute-mailkeys-filter",
+      "mode": "recipe",
+      "prompt": "I only want Reroute Email to reroute messages from one specific module, leaving all other outgoing mail untouched. Which setting controls this?",
+      "must_contain_any": ["mailkeys"],
+      "must_not_contain": [],
+      "expected_output": "Use the mailkeys key (list of module names / mail keys to reroute); only those are rerouted. The inverse is mailkeys_skip, which exempts listed keys."
+    },
+    {
+      "id": "reroute-force-header",
+      "mode": "recipe",
+      "prompt": "In a custom Drupal module I want one specific email to always be rerouted regardless of the global Reroute Email settings. What mechanism does the module provide?",
+      "must_contain_any": ["X-Rerouted-Force"],
+      "must_not_contain": [],
+      "expected_output": "Add the X-Rerouted-Force header to the message (TRUE forces rerouting, FALSE forces skipping), overriding the global reroute_email.settings for that message."
+    },
+    {
+      "id": "reroute-mechanism-hook",
+      "mode": "recipe",
+      "prompt": "How does Reroute Email actually intercept outgoing mail in Drupal, and how does it ensure it runs after other modules?",
+      "must_contain_any": ["hook_mail_alter", "mail_alter"],
+      "must_not_contain": [],
+      "expected_output": "It implements hook_mail_alter() to rewrite recipients, and uses hook_module_implements_alter() to force its implementation to run last (keeping queue_mail after it)."
+    },
+    {
+      "id": "reroute-permission",
+      "mode": "recipe",
+      "prompt": "Which permission gates the Reroute Email settings and test email forms?",
+      "must_contain_any": ["administer reroute email"],
+      "must_not_contain": [],
+      "expected_output": "The 'administer reroute email' permission (restrict access: true) gates both the settings form and the test email form."
+    }
+  ]
+}

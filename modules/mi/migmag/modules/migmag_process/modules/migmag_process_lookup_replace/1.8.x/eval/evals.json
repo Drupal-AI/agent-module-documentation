@@ -1,0 +1,91 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "migmag_process_lookup_replace",
+  "version": "1.8.x",
+  "note": "Glue submodule: a single hook_migrate_process_info_alter() that sets core migration_lookup's class to MigMagLookup (from migmag_process). No config/UI/permissions/Drush/plugins. Verified via the core process plugin manager (works on this site; the migration plugin manager is broken by pathauto but is not needed). Baseline: this module DISABLED (migration_lookup = core MigrationLookup). Introspection reads migration_lookup's class with the override on; execution toggles the override on (class -> MigMagLookup) and off (class -> core MigrationLookup).",
+  "evals": [
+    {
+      "id": "migmag_lr-what",
+      "mode": "recipe",
+      "prompt": "What does the Drupal module migmag_process_lookup_replace do, and which core migrate process plugin does it affect?",
+      "must_contain_any": [
+        "migration_lookup",
+        "MigMagLookup"
+      ],
+      "must_not_contain": [],
+      "expected_output": "It implements hook_migrate_process_info_alter() to set core's migration_lookup process plugin class to Drupal\\migmag_process\\Plugin\\migrate\\process\\MigMagLookup, so every migration using migration_lookup gets the improved lookup without editing YAML.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "migmag_lr-dependency",
+      "mode": "recipe",
+      "prompt": "Which module provides the MigMagLookup class that migmag_process_lookup_replace forces core's migration_lookup to use, i.e. what is its dependency?",
+      "must_contain_any": [
+        "migmag_process"
+      ],
+      "must_not_contain": [],
+      "expected_output": "migmag_process_lookup_replace depends on migmag_process, which provides the MigMagLookup class (the migmag_lookup process plugin).",
+      "difficulty": "easy"
+    },
+    {
+      "id": "migmag_lr-alternative",
+      "mode": "recipe",
+      "prompt": "If I only want ONE specific migration to use Migrate Magician's improved lookup instead of overriding migration_lookup globally, what should I do instead of enabling migmag_process_lookup_replace?",
+      "must_contain_any": [
+        "migmag_lookup"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Don't enable migmag_process_lookup_replace; instead set that migration's process step to 'plugin: migmag_lookup' directly. The lookup_replace module is only for a global override of core migration_lookup.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "migmag_lr-active-class",
+      "mode": "introspection",
+      "prompt": "On this Drupal site, migmag_process_lookup_replace has been enabled. Inspect the migrate process plugin manager and report the implementing class of the migration_lookup process plugin.",
+      "must_contain_any": [
+        "MigMagLookup"
+      ],
+      "must_not_contain": [],
+      "expected_output": "migration_lookup's class is Drupal\\migmag_process\\Plugin\\migrate\\process\\MigMagLookup (read via plugin.manager.migrate.process getDefinition('migration_lookup')['class']).",
+      "setup": "agent-module-documentation/evaluation/verify/migmag-lookupreplace-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/migmag-lookupreplace-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "migmag_lr-provider",
+      "mode": "introspection",
+      "prompt": "On this Drupal site the forced-lookup override is active. Inspecting the running site, which Migrate Magician module provides the class that migration_lookup now uses (i.e. what is enabled alongside it)?",
+      "must_contain_any": [
+        "migmag_process"
+      ],
+      "must_not_contain": [],
+      "expected_output": "migmag_process provides the MigMagLookup class; it is enabled as a dependency of migmag_process_lookup_replace (the enabled override module).",
+      "setup": "agent-module-documentation/evaluation/verify/migmag-lookupreplace-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/migmag-lookupreplace-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "migmag_lr-enable-override",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, force core's migration_lookup process plugin to use Migrate Magician's MigMagLookup implementation globally (no YAML edits). Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/migmag-lookupreplace-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/migmag-lookupreplace-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/migmag-lookupreplace-cleanup.sh",
+      "expected_output": "Enable migmag_process_lookup_replace (drush en migmag_process_lookup_replace -y). migration_lookup's class becomes Drupal\\migmag_process\\Plugin\\migrate\\process\\MigMagLookup."
+    },
+    {
+      "id": "migmag_lr-remove-override",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site the global forced-lookup override is currently active (migration_lookup uses MigMagLookup). Remove the override so that core's migration_lookup process plugin uses core's own MigrationLookup class again. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/migmag-lookupreplace-remove-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/migmag-lookupreplace-remove-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/migmag-lookupreplace-cleanup.sh",
+      "expected_output": "Uninstall migmag_process_lookup_replace (drush pmu migmag_process_lookup_replace -y). migration_lookup's class returns to Drupal\\migrate\\Plugin\\migrate\\process\\MigrationLookup."
+    }
+  ]
+}

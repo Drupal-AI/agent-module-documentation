@@ -1,0 +1,99 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "glossify",
+  "version": "3.1.x",
+  "note": "Glossify is an API/base module: the abstract GlossifyBase filter plugin (parseTooltipMatch engine) plus two theme hooks (glossify_link -> <a class=\"glossify-tooltip-link\">, glossify_tooltip -> <abbr tabindex=\"0\" class=\"glossify-tooltip-tip\">) and templates. It has no filter of its own; you enable a submodule (glossify_node/glossify_taxonomy/glossify_commerce) filter on a text format. Shared engine features: display type tooltips|links|tooltips_links, urlpattern with an [id] token, first-only matching, case sensitivity, ignore_tags, tooltip truncation to 300 chars, synonyms from a chosen plain-text field, and skipping any element with class glossify-exclude and existing <a>/<abbr>. Filter settings live in the text-format config entity (filter.format.<format> -> filters.<id>.settings). NOTE: rendered-output evals are avoided because on this shared site rendering a themed element via drush hits a core theme-registry PCRE 'regular expression is too large' error (too many modules); the medium/hard cases below exercise the engine's shared settings through the glossify_taxonomy filter and are graded on real config (introspection reads it, execution writes it), which is what actually configures the engine. Fixtures create/tear down their own namespaced gl_p_* text formats.",
+  "evals": [
+    {
+      "id": "glossify-output-markup",
+      "mode": "recipe",
+      "prompt": "When a Glossify filter matches a term, what HTML does it output in 'tooltips' mode versus 'links' mode, and what CSS classes does it use?",
+      "must_contain_any": [
+        "glossify-tooltip-tip",
+        "glossify-tooltip-link",
+        "abbr"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Tooltips mode wraps the term in <abbr tabindex=\"0\" class=\"glossify-tooltip-tip\" title=\"...\"> (theme glossify_tooltip). Links mode wraps it in <a class=\"glossify-tooltip-link\" href=\"...\"> (theme glossify_link); tooltips_links adds a title to the link.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "glossify-exclude",
+      "mode": "recipe",
+      "prompt": "Using Glossify, how can an editor stop a particular occurrence of a term in the text from being turned into a link or tooltip, without disabling the filter?",
+      "must_contain_any": [
+        "glossify-exclude"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Wrap the text in an element with the class glossify-exclude (e.g. <span class=\"glossify-exclude\">Term</span>). The parseTooltipMatch engine skips any node inside an element with that class (and also skips existing <a>/<abbr> and any configured ignore_tags).",
+      "difficulty": "easy"
+    },
+    {
+      "id": "glossify-architecture",
+      "mode": "recipe",
+      "prompt": "The Glossify module by itself doesn't glossify anything. How do you actually use it, and what does its GlossifyBase class provide to the pieces that do?",
+      "must_contain_any": [
+        "GlossifyBase",
+        "glossify_node",
+        "glossify_taxonomy",
+        "glossify_commerce",
+        "submodule"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Glossify provides the abstract GlossifyBase filter (the matching engine parseTooltipMatch, synonyms, first-only, case sensitivity, exclude/ignore handling) plus theme hooks. You enable one of its submodules' filters - glossify_node, glossify_taxonomy, or glossify_commerce - on a text format; each subclasses GlossifyBase and supplies its term source.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "glossify-known-format",
+      "mode": "introspection",
+      "prompt": "A text format 'gl_p_known' on this site has a Glossify filter enabled. Inspect its configuration and report which display type it uses (tooltips, links, or both) and the URL pattern it links matched terms to.",
+      "must_contain_any": [
+        "tooltips_links",
+        "/gloss/[id]"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The gl_p_known format has the glossify_taxonomy filter enabled with type 'tooltips_links' and urlpattern '/gloss/[id]'. Read via drush cget filter.format.gl_p_known filters.glossify_taxonomy.",
+      "setup": "agent-module-documentation/evaluation/verify/glossify-parent-known-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/glossify-parent-known-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "glossify-ignore-tags",
+      "mode": "introspection",
+      "prompt": "The text format 'gl_p_ignore' has a Glossify filter. Inspect it and list which HTML tags the filter is configured to ignore (skip when glossifying).",
+      "must_contain_any": [
+        "gl_marker",
+        "h1",
+        "h2"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The glossify_taxonomy filter on gl_p_ignore has ignore_tags 'h1,h2,gl_marker' - matches inside those tags are skipped.",
+      "setup": "agent-module-documentation/evaluation/verify/glossify-parent-ignore-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/glossify-parent-ignore-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "glossify-enable-tooltips",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this site there is a text format 'gl_p_build'. Using the Glossify module, configure it so that taxonomy terms from the 'tags' vocabulary are automatically turned into hover tooltips in text using this format. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/glossify-parent-tooltip-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/glossify-parent-tooltip-verify.sh",
+      "expected_output": "Enable the glossify_taxonomy filter on filter.format.gl_p_build with glossify_taxonomy_type = 'tooltips' and glossify_taxonomy_vocabs including 'tags'.",
+      "cleanup": "agent-module-documentation/evaluation/verify/glossify-parent-tooltip-cleanup.sh"
+    },
+    {
+      "id": "glossify-enable-links",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this site there is a text format 'gl_p_link_build'. Using Glossify, configure it so that matched taxonomy terms (from the 'tags' vocabulary) become links using the URL pattern /glossary/[id]. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/glossify-parent-link-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/glossify-parent-link-verify.sh",
+      "expected_output": "Enable glossify_taxonomy on filter.format.gl_p_link_build with glossify_taxonomy_type = 'links' (or 'tooltips_links'), glossify_taxonomy_vocabs including 'tags', and glossify_taxonomy_urlpattern = '/glossary/[id]'.",
+      "cleanup": "agent-module-documentation/evaluation/verify/glossify-parent-link-cleanup.sh"
+    }
+  ]
+}

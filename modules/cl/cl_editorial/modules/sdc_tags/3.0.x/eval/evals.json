@@ -1,0 +1,93 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "sdc_tags",
+  "version": "3.0.x",
+  "note": "sdc_tags (submodule of cl_editorial) defines the component_tag plugin type (YAML discovery of MODULE.component_tags.yml, manager plugin.manager.sdc_tags.component_tag, alter hook component_tag_info, default class ComponentTagDefault). Tagging rules live in the sdc_tags.settings config object under component_tags.<tag_id> = {tag_id, statuses[], allowed[], forbidden[]}; the admin UI is /admin/config/user-interface/sdc/component-tagging (+ /auto/{tag}). No configure info.yml key, no permissions of its own, no Drush. Medium cases write a known rule to sdc_tags.settings and read it back; hard cases require the agent to write a real tagging rule (allow-list vs forbid) verified against that config. All tag keys are namespaced sdct_* and only that key is touched.",
+  "evals": [
+    {
+      "id": "sdc_tags-define-tag",
+      "mode": "recipe",
+      "prompt": "Using the sdc_tags module, how do I declare a new component tag called 'hero' so that Single Directory Components can be tagged with it? Which file and what shape?",
+      "must_contain_any": [
+        "component_tags.yml",
+        "component_tags"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Add a MODULE.component_tags.yml (or THEME.component_tags.yml) file with a top-level key per tag, e.g. `hero:\\n  label: 'Hero components'\\n  description: '...'`. The ComponentTagPluginManager discovers it as a component_tag plugin; rebuild caches and it appears on the tagging admin page.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "sdc_tags-config-object",
+      "mode": "recipe",
+      "prompt": "Where does sdc_tags store the tagging rules (allowed/forbidden components and statuses) for each tag, and what is the config structure?",
+      "must_contain_any": [
+        "sdc_tags.settings",
+        "component_tags"
+      ],
+      "must_not_contain": [],
+      "expected_output": "In the sdc_tags.settings config object under component_tags.<tag_id> = {tag_id, statuses[], allowed[], forbidden[]}. You can also fetch a tag's resolved rule with sdc_tags_get_tag_filters($tag_name).",
+      "difficulty": "easy"
+    },
+    {
+      "id": "sdc_tags-plugin-type",
+      "mode": "recipe",
+      "prompt": "What plugin type does sdc_tags define, and which service is its plugin manager?",
+      "must_contain_any": [
+        "component_tag",
+        "plugin.manager.sdc_tags.component_tag"
+      ],
+      "must_not_contain": [],
+      "expected_output": "It defines the component_tag plugin type. The manager is the plugin.manager.sdc_tags.component_tag service (Drupal\\sdc_tags\\ComponentTagPluginManager), using YAML discovery of *.component_tags.yml, default class ComponentTagDefault, alter hook component_tag_info.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "sdc_tags-configured-tag",
+      "mode": "introspection",
+      "prompt": "On this site, sdc_tags has a tagging rule configured for a tag named 'sdct_known'. Inspect the live sdc_tags configuration and name the specific SDC component that this tag explicitly allow-lists.",
+      "must_contain_any": [
+        "cl_editorial:component-card"
+      ],
+      "must_not_contain": [],
+      "expected_output": "cl_editorial:component-card. In sdc_tags.settings, component_tags.sdct_known.allowed contains 'cl_editorial:component-card'.",
+      "setup": "agent-module-documentation/evaluation/verify/sdc_tags-configured-tag-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/sdc_tags-configured-tag-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "sdc_tags-tag-statuses",
+      "mode": "introspection",
+      "prompt": "The sdc_tags tag 'sdct_status' on this site restricts which component lifecycle statuses are permitted. Inspect the live configuration and state which status(es) it allows.",
+      "must_contain_any": [
+        "stable"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Only 'stable'. In sdc_tags.settings, component_tags.sdct_status.statuses is ['stable'].",
+      "setup": "agent-module-documentation/evaluation/verify/sdc_tags-tag-statuses-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/sdc_tags-tag-statuses-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "sdc_tags-create-rule",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "Using the sdc_tags module on this site, configure a tagging rule for the tag 'sdct_task' that allow-lists only the cl_editorial:component-card component and permits the 'stable' status. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/sdc_tags-create-rule-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/sdc_tags-create-rule-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/sdc_tags-create-rule-cleanup.sh",
+      "expected_output": "Set sdc_tags.settings component_tags.sdct_task to {tag_id: sdct_task, statuses: ['stable'], allowed: ['cl_editorial:component-card'], forbidden: []} and save (e.g. via configFactory()->getEditable('sdc_tags.settings')->set('component_tags.sdct_task', [...])->save())."
+    },
+    {
+      "id": "sdc_tags-forbid-rule",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "Configure the sdc_tags tag 'sdct_forbid' so that it applies to all stable components EXCEPT cl_editorial:component-card (i.e. use the forbidden list, keep the allow-list empty, permit the stable status). Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/sdc_tags-forbid-rule-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/sdc_tags-forbid-rule-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/sdc_tags-forbid-rule-cleanup.sh",
+      "expected_output": "Set sdc_tags.settings component_tags.sdct_forbid to {tag_id: sdct_forbid, statuses: ['stable'], allowed: [], forbidden: ['cl_editorial:component-card']} and save. Empty allowed + a forbidden entry means 'all stable components except the forbidden ones'."
+    }
+  ]
+}

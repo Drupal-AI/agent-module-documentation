@@ -1,0 +1,80 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "config_provider",
+  "version": "3.0.x",
+  "note": "Configuration Provider defines a ConfigProvider plugin type (Plugin/ConfigProvider, manager plugin.manager.config_provider.processor, annotation @ConfigProvider, base ConfigProviderBase) and two shipped plugins: config/install (weight -10) and config/optional (weight 10). The config_provider.collector service (ConfigCollector::addInstallableConfig($extensions)) runs all providers and writes the union of provided config into config_provider.storage (a core MemoryStorage, request-scoped). It also decorates core config.installer. No configure route, no permissions, no Drush, no config entity of its own. Medium cases require running the live collector service for a real enabled module (deterministic real output: node -> node.settings + views/actions; user -> user.settings + user.role.* ). Hard cases require the agent to collect a module's installable config via config_provider and store the resulting config names in Drupal State, verified against live State.",
+  "evals": [
+    {
+      "id": "config_provider-two-plugins",
+      "mode": "recipe",
+      "prompt": "The Drupal contrib module config_provider defines a ConfigProvider plugin type and ships two default plugins that mirror core's install storages. What are the two plugins (their ids / directories)?",
+      "must_contain_any": ["config/install", "config/optional"],
+      "must_not_contain": [],
+      "expected_output": "It ships ConfigProviderInstall with id config/install (weight -10) and ConfigProviderOptional with id config/optional (weight 10), corresponding to an extension's config/install and config/optional directories.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "config_provider-collector-service",
+      "mode": "recipe",
+      "prompt": "Programmatically, how do you use config_provider to find out what configuration is installable for the enabled extensions? Name the service, the method, and where the collected result is stored.",
+      "must_contain_any": ["config_provider.collector", "addInstallableConfig", "config_provider.storage", "MemoryStorage"],
+      "must_not_contain": [],
+      "expected_output": "Call \\Drupal::service('config_provider.collector')->addInstallableConfig() (optionally passing an Extension array to limit it). It runs every provider plugin and writes the union into the config_provider.storage service, a core MemoryStorage you then read with listAll()/read().",
+      "difficulty": "easy"
+    },
+    {
+      "id": "config_provider-implement-plugin",
+      "mode": "recipe",
+      "prompt": "How do you add a custom configuration provider to config_provider? Name the base class, the annotation, and the main method you implement.",
+      "must_contain_any": ["ConfigProviderBase", "@ConfigProvider", "addInstallableConfig", "ConfigProvider"],
+      "must_not_contain": [],
+      "expected_output": "Create a plugin class under src/Plugin/ConfigProvider/ extending ConfigProviderBase with a @ConfigProvider annotation (id/weight/label), and implement addInstallableConfig() to write provided config into $this->providerStorage (addConfigToCreate() is often a no-op).",
+      "difficulty": "easy"
+    },
+    {
+      "id": "config_provider-collect-node",
+      "mode": "introspection",
+      "prompt": "On this Drupal site, use the config_provider collector to find out what configuration the node module provides for installation. Name one specific configuration object it collects for node.",
+      "must_contain_any": ["node.settings", "views.view.content", "views.view.frontpage", "core.entity_view_mode.node.teaser"],
+      "must_not_contain": [],
+      "expected_output": "Run \\Drupal::service('config_provider.collector')->addInstallableConfig(['node' => \\Drupal::service('extension.list.module')->get('node')]) then read config_provider.storage->listAll(); it includes node.settings, the node view modes (e.g. core.entity_view_mode.node.teaser), node system actions, and views such as views.view.content and views.view.frontpage.",
+      "setup": "agent-module-documentation/evaluation/verify/config_provider-collect-node-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/config_provider-collect-node-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "config_provider-collect-user",
+      "mode": "introspection",
+      "prompt": "Using config_provider on this live site, determine the configuration the user module provides. Name a config object among the user roles or settings that the collector reports for the user module.",
+      "must_contain_any": ["user.role.anonymous", "user.role.authenticated", "user.settings", "user.mail", "user.flood"],
+      "must_not_contain": [],
+      "expected_output": "Collecting for the user module (config_provider.collector->addInstallableConfig(['user' => ...])) yields user.settings, user.mail, user.flood, and the roles user.role.anonymous and user.role.authenticated (plus user view modes, actions and views).",
+      "setup": "agent-module-documentation/evaluation/verify/config_provider-collect-user-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/config_provider-collect-user-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "config_provider-collect-to-state",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, use config_provider's collector service to collect the installable configuration for the node module, then store the resulting list of configuration object names (an array) into Drupal State under the key 'config_provider_eval_node'. Apply this to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/config_provider-collect-to-state-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/config_provider-collect-to-state-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/config_provider-collect-to-state-cleanup.sh",
+      "expected_output": "e.g. drush php:eval: $c=\\Drupal::service('config_provider.collector'); $c->addInstallableConfig(['node'=>\\Drupal::service('extension.list.module')->get('node')]); \\Drupal::state()->set('config_provider_eval_node', \\Drupal::service('config_provider.storage')->listAll()); — the stored array must include node.settings."
+    },
+    {
+      "id": "config_provider-collect-user-state",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "Using config_provider, collect the installable configuration for the user module on this site and save the array of collected config object names into Drupal State under the key 'config_provider_eval_user'. Apply it to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/config_provider-collect-user-state-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/config_provider-collect-user-state-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/config_provider-collect-user-state-cleanup.sh",
+      "expected_output": "Collect for the user module via config_provider.collector->addInstallableConfig(['user'=>...]) and store config_provider.storage->listAll() into state key config_provider_eval_user; the stored array must include user.role.authenticated (and user.settings)."
+    }
+  ]
+}

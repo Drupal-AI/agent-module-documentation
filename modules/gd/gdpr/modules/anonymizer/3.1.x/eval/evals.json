@@ -1,0 +1,58 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "anonymizer",
+  "version": "3.1.x",
+  "note": "GDPR submodule that defines an Anonymizer PLUGIN TYPE (manager plugin.manager.anonymizer, namespace Plugin/Anonymizer, annotation @Anonymizer, interface AnonymizerInterface, base AnonymizerBase) plus 10 built-in plugins (email_anonymizer, username_anonymizer, text_anonymizer, long_text_anonymizer, random_text_anonymizer, number_anonymizer, date_anonymizer, password_anonymizer, uri_anonymizer, clear_anonymizer) and services anonymizer.faker + anonymizer.anonymizer_factory. It has NO config, UI, routes, permissions or Drush - it is a plugin library. Because it stores no config, the medium case is a live-plugin-manager introspection (no config to write); the hard case exercises the real extension point by adding a custom @Anonymizer plugin (a small custom module) and checking the plugin manager discovers it. HARD teardown uninstalls the test module before deleting its directory (an orphaned enabled module fatals the kernel).",
+  "evals": [
+    {
+      "id": "anonymizer-plugin-type",
+      "mode": "recipe",
+      "prompt": "The Drupal GDPR 'anonymizer' submodule lets you add your own anonymization strategy. What plugin type does it define - the manager service, plugin namespace, annotation, and base class?",
+      "must_contain_any": ["plugin.manager.anonymizer", "Plugin/Anonymizer", "@Anonymizer", "AnonymizerBase", "AnonymizerInterface"],
+      "must_not_contain": [],
+      "expected_output": "An Anonymizer plugin type: manager service plugin.manager.anonymizer, plugin namespace Plugin/Anonymizer, annotation @Anonymizer, interface AnonymizerInterface, base class AnonymizerBase. Plugins implement anonymize($input, $field=NULL).",
+      "difficulty": "easy"
+    },
+    {
+      "id": "anonymizer-builtin-ids",
+      "mode": "recipe",
+      "prompt": "Which anonymizer plugin does the GDPR anonymizer module provide for email addresses, and name a few other built-in anonymizers. Which library generates the fake values?",
+      "must_contain_any": ["email_anonymizer", "username_anonymizer", "clear_anonymizer", "Faker", "faker"],
+      "must_not_contain": [],
+      "expected_output": "email_anonymizer (returns faker->unique()->safeEmail). Others include username_anonymizer, text_anonymizer, long_text_anonymizer, random_text_anonymizer, number_anonymizer, date_anonymizer, password_anonymizer, uri_anonymizer and clear_anonymizer. Values come from the Faker library via the anonymizer.faker service.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "anonymizer-services",
+      "mode": "recipe",
+      "prompt": "In the GDPR anonymizer module, how do I get a Faker generator and how do I instantiate a specific anonymizer by id programmatically?",
+      "must_contain_any": ["anonymizer.faker", "anonymizer.anonymizer_factory", "plugin.manager.anonymizer"],
+      "must_not_contain": [],
+      "expected_output": "Use the anonymizer.faker service (FakerService::generator() returns a Faker\\Generator) and the anonymizer.anonymizer_factory service (AnonymizerFactory::get($plugin_id) returns an anonymizer instance); the plugin manager is plugin.manager.anonymizer.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "anonymizer-list-plugins",
+      "mode": "introspection",
+      "prompt": "On this Drupal site, inspect the anonymizer plugin manager and state which anonymizer plugin id would be used to anonymize an email address.",
+      "must_contain_any": ["email_anonymizer"],
+      "must_not_contain": [],
+      "expected_output": "email_anonymizer - listed by plugin.manager.anonymizer->getDefinitions() on the live site (it returns a fake safeEmail).",
+      "setup": "agent-module-documentation/evaluation/verify/anonymizer-list-plugins-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/anonymizer-list-plugins-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "anonymizer-add-plugin",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, add a custom anonymizer to the GDPR anonymizer system: create and enable a small module providing an @Anonymizer plugin with id 'anonymizer_eval_static' (extending AnonymizerBase) whose anonymize() returns a fixed string, so it is discoverable by plugin.manager.anonymizer.",
+      "reset": "agent-module-documentation/evaluation/verify/anonymizer-add-plugin-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/anonymizer-add-plugin-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/anonymizer-add-plugin-cleanup.sh",
+      "expected_output": "A custom module (e.g. under web/modules/custom) with src/Plugin/Anonymizer/StaticAnonymizer.php annotated @Anonymizer(id = \"anonymizer_eval_static\", ...) extending AnonymizerBase, enabled so plugin.manager.anonymizer->hasDefinition('anonymizer_eval_static') is TRUE. (Uninstall the module before deleting its directory.)"
+    }
+  ]
+}

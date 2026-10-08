@@ -1,0 +1,99 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "drupical",
+  "version": "1.0.x",
+  "note": "Drupical displays upcoming Drupal.org community events in a single block plugin `events_block` (admin label 'Events Feed'), gated by the `access events` permission, with three integer settings in the `drupical.settings` config object (max_age=86400, cron_interval=21600, limit=5) and no admin settings form. Cases span three tiers grounded in the source: `easy`/recipe (facts from 1.0.x/agent/ — the block, the permission, the config keys, the services/Event object), `medium`/introspection (a setup script puts a KNOWN state on the live site — settings values, then a placed block instance — the agent inspects via drush to answer, a cleanup script restores baseline), and `hard`/execution (a reset script clears state, the agent builds it on the live site — place the block, set the three config keys, grant the permission — a verify script checks live state, reset -> model -> verify). The module defines no Drush commands and no admin form, so easy cases lean on the block + config + service surface.",
+  "evals": [
+    {
+      "id": "drupical-block-and-permission",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "On a Drupal 11 site with the Drupical module enabled, what block does it provide (give the plugin id and admin label) and which permission controls who can see it?",
+      "must_contain_any": ["events_block", "access events"],
+      "must_not_contain": [],
+      "expected_output": "Drupical provides one block, plugin id `events_block` with admin label 'Events Feed' (default instance label 'Drupal Events and User Groups'). Visibility is gated by the `access events` permission."
+    },
+    {
+      "id": "drupical-settings-keys",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "Drupical has no admin settings form. Which config object holds its settings, what are the three keys, and what are their default values?",
+      "must_contain_any": ["drupical.settings", "max_age", "cron_interval", "limit"],
+      "must_not_contain": [],
+      "expected_output": "Settings live in the `drupical.settings` config object with three integer keys: max_age (default 86400, cache lifetime in seconds), cron_interval (default 21600, seconds between cron re-fetches), and limit (default 5, number of events displayed)."
+    },
+    {
+      "id": "drupical-data-source",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "Where does Drupical get its event data, and how does a user browse past the first few events shown in the block?",
+      "must_contain_any": ["drupal.org", "api-d7", "load-more", "/events-feed/load-more", "Load More", "AJAX"],
+      "must_not_contain": [],
+      "expected_output": "It fetches events from the Drupal.org events API (drupal.org/api-d7/node.json?type=event) via the drupical.fetcher service, and users load additional events through an AJAX 'Load More' button backed by the drupical.load_more route at /events-feed/load-more."
+    },
+    {
+      "id": "drupical-services-api",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "In a custom Drupal 11 module I want to fetch the list of upcoming Drupal community events that Drupical loads. Which service do I call and what does it return?",
+      "must_contain_any": ["drupical.fetcher", "EventsFetcher", "getEvents", "fetch"],
+      "must_not_contain": [],
+      "expected_output": "Call the `drupical.fetcher` service (Drupal\\drupical\\EventsFetcher); fetch() / getEvents($offset,$limit) return an array of immutable Drupal\\drupical\\Event objects (id, title, url, date_start, date_end, location, type, featured)."
+    },
+    {
+      "id": "drupical-introspect-limit",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "persona": "drupal-expert",
+      "prompt": "This Drupal site has Drupical installed and its settings have been customised (drush available). Inspect the running site and tell me how many events the feed is configured to display, and how long event data is cached for.",
+      "setup": "agent-module-documentation/evaluation/verify/drupical-settings-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/drupical-settings-cleanup.sh",
+      "must_contain_any": ["12", "7200"],
+      "must_not_contain": [],
+      "expected_output": "Read from drupical.settings: limit=12 events are displayed and event data is cached for max_age=7200 seconds (cron_interval=10800)."
+    },
+    {
+      "id": "drupical-introspect-block-region",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site the Drupical 'Events Feed' block has been placed (drush available). Inspect the running site and tell me which theme region the events_block instance is in.",
+      "setup": "agent-module-documentation/evaluation/verify/drupical-block-region-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/drupical-block-region-cleanup.sh",
+      "must_contain_any": ["sidebar"],
+      "must_not_contain": [],
+      "expected_output": "The events_block instance (block config entity `eval_drupical_block`) is placed in the `sidebar` region of the default theme."
+    },
+    {
+      "id": "drupical-place-block",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site (drush available), place Drupical's 'Events Feed' block so it renders in a visible region of the default theme. Create the block config entity on the live site; don't just describe it. One-line summary.",
+      "reset": "agent-module-documentation/evaluation/verify/drupical-place-block-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/drupical-place-block-verify.sh",
+      "expected_output": "An enabled block config entity using plugin events_block exists in a real region of the default theme. Verified against live site state."
+    },
+    {
+      "id": "drupical-configure-settings",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site (drush available), configure Drupical to display 10 events, cache event data for 1 hour, and re-fetch on cron no more than once an hour. Apply the change to the live site's drupical.settings config; don't just describe it. One-line summary.",
+      "reset": "agent-module-documentation/evaluation/verify/drupical-configure-settings-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/drupical-configure-settings-verify.sh",
+      "expected_output": "drupical.settings has limit=10, max_age=3600, and cron_interval=3600. Verified against live site state."
+    },
+    {
+      "id": "drupical-grant-permission",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site (drush available), make it so all logged-in users can see the Drupal community events that Drupical displays. Apply the permission change to the live site; don't just describe it. One-line summary.",
+      "reset": "agent-module-documentation/evaluation/verify/drupical-grant-permission-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/drupical-grant-permission-verify.sh",
+      "expected_output": "The authenticated role holds the `access events` permission. Verified against live site state."
+    }
+  ]
+}

@@ -1,0 +1,80 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "views_tree",
+  "version": "3.0.x",
+  "note": "Views Tree provides three Views style plugins (tree, tree_table, tree_entity_reference_selection) that render rows as a nested hierarchy using the adjacency model. It has no settings form, no configure route (configure=null), no permissions, no Drush, and defines no new plugin TYPES. All state lives in the view's own config entity views.view.<id> under display.<display>.display_options.style (type + options main_field/parent_field, plus collapsible_tree for the list style and display_hierarchy_column for the table style). Runtime tree building is done by the views_tree.tree service (TreeHelper) reading views_tree_main/views_tree_parent off result rows. Medium/hard cases are grounded in that real view config: introspection reads back a view's tree style + fields; execution switches a view display to the tree/tree_table style and sets the required field options, verified against the live views.view config.",
+  "evals": [
+    {
+      "id": "views_tree-style-ids",
+      "mode": "recipe",
+      "prompt": "I want a Drupal View to output its rows as a nested hierarchy (tree) instead of a flat list, using the views_tree module. Which Views style plugin(s) does views_tree provide for this, and what two settings must I fill in to tell it the parent/child structure?",
+      "must_contain_any": ["tree", "tree_table", "main_field", "parent_field", "Main field", "Parent field"],
+      "must_not_contain": [],
+      "expected_output": "views_tree adds the style plugins 'tree' (Tree list), 'tree_table' (Tree table) and 'tree_entity_reference_selection'. Choose one as the view's Format/style, then set Main field (main_field = the row's unique id) and Parent field (parent_field = the id of that row's parent). It uses the adjacency model; roots have parent 0.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "views_tree-collapsible",
+      "mode": "recipe",
+      "prompt": "Using the views_tree module's Tree (list) style, how do I make the rendered tree collapsible/expandable, and what are the available options for that setting?",
+      "must_contain_any": ["collapsible_tree", "collapsible", "expanded", "collapsed"],
+      "must_not_contain": [],
+      "expected_output": "The Tree (list) style has a 'Collapsible view' option (collapsible_tree) with values Off (0), 'expanded', or 'collapsed'. When not Off it attaches the views_tree/views_tree library (jQuery collapsible.js) and passes the view id + mode in drupalSettings.views_tree_settings.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "views_tree-adjacency-runtime",
+      "mode": "recipe",
+      "prompt": "In the views_tree module, how does it actually turn a flat Views result into a nested tree at render time, and what values must the main/parent fields share? Mention the service or the row properties it uses.",
+      "must_contain_any": ["TreeHelper", "views_tree.tree", "views_tree_main", "views_tree_parent", "adjacency", "group"],
+      "must_not_contain": [],
+      "expected_output": "The views_tree.tree service (TreeHelper) via ViewsResultTreeValues copies the configured main_field/parent_field onto each ResultRow as views_tree_main/views_tree_parent, groups rows by parent starting from group '0' (roots), and recursively builds a TreeItem render tree. The parent field must hold ids in the same id space as the main field, and roots use 0.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "views_tree-known-view",
+      "mode": "introspection",
+      "prompt": "On this Drupal site there is a View with the machine id 'views_tree_intro' that uses the views_tree module to display its rows as a tree. Inspect the live view configuration and tell me which views_tree style it uses and the machine names configured as its Main field and Parent field.",
+      "must_contain_any": ["tree", "nid", "field_parent_target_id", "main_field", "parent_field"],
+      "must_not_contain": [],
+      "expected_output": "In views.view.views_tree_intro the default display's style.type is 'tree' with style.options.main_field = nid and style.options.parent_field = field_parent_target_id (collapsible_tree = collapsed).",
+      "setup": "agent-module-documentation/evaluation/verify/views_tree-known-view-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/views_tree-known-view-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "views_tree-known-table",
+      "mode": "introspection",
+      "prompt": "On this Drupal site there is a View with machine id 'views_tree_table_intro' that uses the views_tree module's tree table style. Inspect the live view configuration and tell me which table column is configured to display the hierarchy (the display_hierarchy_column).",
+      "must_contain_any": ["title"],
+      "must_not_contain": [],
+      "expected_output": "In views.view.views_tree_table_intro the default display uses style.type 'tree_table' with style.options.display_hierarchy_column = title (main_field nid, parent_field field_parent_target_id).",
+      "setup": "agent-module-documentation/evaluation/verify/views_tree-known-table-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/views_tree-known-table-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "views_tree-make-tree-list",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site there is a View with machine id 'views_tree_task' whose default display currently uses the plain 'Unformatted list' (default) style. Using the views_tree module, change the default display so it renders as a nested tree list: set its style to the Views Tree list style and configure the Main field to 'nid' and the Parent field to 'field_parent_target_id'. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/views_tree-make-tree-list-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/views_tree-make-tree-list-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/views_tree-make-tree-list-cleanup.sh",
+      "expected_output": "In views.view.views_tree_task the default display's display_options.style.type becomes 'tree' with style.options.main_field = nid and style.options.parent_field = field_parent_target_id (e.g. via drush cset on those keys or by loading the View entity and saving)."
+    },
+    {
+      "id": "views_tree-make-tree-table",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site the View with machine id 'views_tree_table_task' currently uses the core 'Table' style. Using the views_tree module, convert its default display into a hierarchical tree table: set its style to the Views Tree table style, set the Main field to 'nid' and Parent field to 'field_parent_target_id', and choose 'title' as the column that displays the hierarchy. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/views_tree-make-tree-table-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/views_tree-make-tree-table-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/views_tree-make-tree-table-cleanup.sh",
+      "expected_output": "In views.view.views_tree_table_task the default display's display_options.style.type becomes 'tree_table' with style.options.main_field = nid, style.options.parent_field = field_parent_target_id and style.options.display_hierarchy_column = title."
+    }
+  ]
+}

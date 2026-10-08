@@ -1,0 +1,95 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "bp_contact",
+  "version": "5.0.x",
+  "note": "bp_contact is a submodule of bootstrap_paragraphs 5.0.x and is NOT installable on this Drupal 11 site: its info.yml declares core_version_requirement '^8 || ^9 || ^10' and it depends on the separate contrib project contact_formatter, which is not present (drush en bp_contact fails with \"missing its dependency module contact_formatter\"). It was therefore documented from its shipped source. Structurally it is the simplest bundle in the suite: no PHP classes, services, plugins, permissions, Drush commands, config schema, Twig template or CSS, and configure=null; bp_contact.module implements only hook_help(). Uniquely in the suite its config lives in config/install/ rather than config/optional/. It creates paragraphs.paragraphs_type.bp_contact plus three fields: bp_contact, an entity_reference (cardinality 1) to core's contact_form config entity with handler 'default:contact_form' and target_bundles null, plus the shared bp_background and bp_width list fields. Its view display renders bp_contact with the contact_field_formatter formatter from contact_formatter, which is the sole reason that module is required. Because the module cannot be enabled here, the medium and hard cases deliberately exercise the SAME structure using stand-in paragraph bundles the scripts build themselves (bpcontact_eval / bpcontact_probe / bpcontact_task / bpcontact_place) - deliberately not named bp_contact so they can never collide with the real bundle. Nothing in these cases invents module API.",
+  "evals": [
+    {
+      "id": "bp_contact-d11-compatibility",
+      "mode": "recipe",
+      "prompt": "I am upgrading a Drupal site to Drupal 11 and it uses the bp_contact submodule of Bootstrap Paragraphs. Will bp_contact work on Drupal 11? Explain exactly what blocks it.",
+      "must_contain_any": [
+        "contact_formatter",
+        "^10",
+        "not compatible",
+        "core_version_requirement"
+      ],
+      "must_not_contain": [],
+      "expected_output": "No. Two blockers: bp_contact.info.yml declares core_version_requirement '^8 || ^9 || ^10', which excludes Drupal 11; and it depends on the contrib module contact_formatter, a separate project that drupal/bootstrap_paragraphs does not require. Enabling it fails with 'Unable to install modules: module bp_contact is missing its dependency module contact_formatter.'",
+      "difficulty": "easy"
+    },
+    {
+      "id": "bp_contact-reference-target",
+      "mode": "recipe",
+      "prompt": "What does the bp_contact field on the Bootstrap Paragraphs Contact Form bundle actually store a reference to, what is its cardinality, and which contact forms can an editor choose from by default?",
+      "must_contain_any": [
+        "contact_form",
+        "entity_reference"
+      ],
+      "must_not_contain": [],
+      "expected_output": "bp_contact is an entity_reference field with cardinality 1 whose target_type is contact_form - core's Contact form config entity. The instance sets handler 'default:contact_form' with handler_settings.target_bundles = null and auto_create false, so every contact form on the site (including core's 'personal' form) is selectable.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "bp_contact-formatter",
+      "mode": "recipe",
+      "prompt": "Why does the bp_contact Bootstrap Paragraphs submodule need the contact_formatter contrib module? Name the formatter involved and where it is configured.",
+      "must_contain_any": [
+        "contact_field_formatter",
+        "contact_formatter"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Its view display core.entity_view_display.paragraph.bp_contact.default renders the bp_contact field with the contact_field_formatter formatter, which is provided by the contact_formatter project and renders the referenced contact form as a real submittable form. That config file lists contact_formatter in its module dependencies. Without it the field would render only a label. bp_contact ships no Twig template of its own.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "bp_contact-known-form",
+      "mode": "introspection",
+      "prompt": "This Drupal site has a paragraph bundle called bpcontact_eval that mirrors what the bp_contact module ships: it has a field referencing a core contact form. Inspect the running site and tell me the machine id of the contact form that the existing bpcontact_eval paragraph references.",
+      "must_contain_any": [
+        "bpcontact_eval_form"
+      ],
+      "must_not_contain": [],
+      "expected_output": "bpcontact_eval_form (label 'BP Contact Eval Form'). The bpcontact_eval paragraph's field_bpcontact_form is an entity_reference to the contact_form entity type and its target_id is bpcontact_eval_form.",
+      "setup": "agent-module-documentation/evaluation/verify/bp_contact-known-form-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/bp_contact-known-form-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "bp_contact-target-type",
+      "mode": "introspection",
+      "prompt": "This Drupal site has a paragraph bundle bpcontact_probe carrying two entity_reference fields, field_bpcontact_ref and field_bpcontact_node. Inspect the live field storage configuration and tell me which of the two references core Contact forms, the way the bp_contact module's field does.",
+      "must_contain_any": [
+        "field_bpcontact_ref"
+      ],
+      "must_not_contain": [],
+      "expected_output": "field_bpcontact_ref - its field storage has settings.target_type = contact_form (handler 'default:contact_form'), matching how bp_contact's own bp_contact field is defined. field_bpcontact_node targets node instead.",
+      "setup": "agent-module-documentation/evaluation/verify/bp_contact-target-type-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/bp_contact-target-type-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "bp_contact-build-bundle",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "The bp_contact submodule of Bootstrap Paragraphs cannot be installed on this Drupal 11 site. Recreate the structure it ships in its config/install directory, using these names: a paragraph bundle with machine id bpcontact_task, carrying a single-value entity_reference field named field_bpcontact_task whose target entity type is core's contact_form. Apply it to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/bp_contact-build-bundle-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/bp_contact-build-bundle-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/bp_contact-build-bundle-reset.sh",
+      "expected_output": "A paragraphs_type entity bpcontact_task exists, plus a FieldStorageConfig field_bpcontact_task on the paragraph entity type of type entity_reference with settings.target_type = contact_form and cardinality 1, and a matching FieldConfig on the bpcontact_task bundle (handler 'default:contact_form')."
+    },
+    {
+      "id": "bp_contact-place-form",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "site-owner",
+      "prompt": "This site has a paragraph type 'BP Contact Place' (bpcontact_place) with a field for choosing a contact form, and two contact forms exist: 'BP Contact Support' and 'BP Contact Sales'. Create one paragraph of that type set to show the support contact form, and save it to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/bp_contact-place-form-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/bp_contact-place-form-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/bp_contact-place-form-cleanup.sh",
+      "expected_output": "A paragraph entity of bundle bpcontact_place whose field_bpcontact_place has target_id 'bpcontact_support' (not bpcontact_sales)."
+    }
+  ]
+}

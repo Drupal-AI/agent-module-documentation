@@ -1,0 +1,80 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "plupload",
+  "version": "2.2.x",
+  "note": "Plupload provides one Form API element (#type 'plupload', class \\Drupal\\plupload\\Element\\PlUploadFile). No configure route (configure=null), no permissions of its own, no Drush, no plugin types. Its only persistent config is plupload.settings:temporary_uri (default 'temporary://'), the scheme where in-progress chunks are staged. Uploads hit the CSRF-protected route plupload.upload (/plupload-handle-uploads, permission 'access content'). The element does NOT create file entities; after submit $form_state->getValue() returns descriptors [name, tmpname, status, tmppath]. Medium cases set a known temporary_uri and read it back. Hard cases: (1) repoint temporary_uri via config, verified against live config; (2) build a custom module whose form uses the plupload element, verified by building the form and finding an element of #type plupload.",
+  "evals": [
+    {
+      "id": "plupload-submit-value",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "In Drupal, a custom form has a `#type => 'plupload'` element named 'upload'. After the form is submitted, what does $form_state->getValue('upload') return, and which key on each item gives the location of the finished temporary file so I can move/save it?",
+      "must_contain_any": ["tmppath", "tmpname", "status"],
+      "must_not_contain": [],
+      "expected_output": "It returns an array of file descriptors, one per uploaded file, each with keys name, tmpname, status and a convenience tmppath (the full temporary:// URI of the finished file). Use tmppath to move/copy the file in your submit handler; the plupload element does not create File entities itself. Check status === 'done'."
+    },
+    {
+      "id": "plupload-temp-uri",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "The Drupal plupload module has no admin settings page. What single configuration value can I set to control where in-progress upload chunks are stored, and why would I change it on a load-balanced / HA site?",
+      "must_contain_any": ["temporary_uri", "plupload.settings", "temporary://"],
+      "must_not_contain": [],
+      "expected_output": "Set plupload.settings:temporary_uri (default 'temporary://'). On a load-balanced/HA site, point it at a shared stream (e.g. a mounted NFS scheme) so every chunk of a file lands in the same place before reassembly. Set with: drush cset plupload.settings temporary_uri '<scheme>://...'."
+    },
+    {
+      "id": "plupload-restrict-extensions",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "How do I restrict a Drupal `#type => 'plupload'` form element so that, server-side, it only accepts .zip files?",
+      "must_contain_any": ["#upload_validators", "upload_validators", "FileExtension"],
+      "must_not_contain": [],
+      "expected_output": "Set the element's #upload_validators with a FileExtension entry, e.g. '#upload_validators' => ['FileExtension' => ['extensions' => 'zip']]. These validators are enforced server-side via core's file.validator service, independent of any client-side filters."
+    },
+    {
+      "id": "plupload-known-tmpuri",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "On this Drupal site, plupload has been configured to stage in-progress upload chunks somewhere other than the default. Inspect the live configuration and report the exact temporary upload URI that is currently set.",
+      "must_contain_any": ["private://plupload_pl_tmp"],
+      "must_not_contain": [],
+      "expected_output": "plupload.settings:temporary_uri is set to 'private://plupload_pl_tmp' (read it with: drush cget plupload.settings temporary_uri).",
+      "setup": "agent-module-documentation/evaluation/verify/plupload-tmpuri-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/plupload-tmpuri-cleanup.sh"
+    },
+    {
+      "id": "plupload-scheme-in-use",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "On this site, plupload's chunk staging location has been repointed. Inspect the running configuration and state which stream scheme (temporary, public, or private) plupload is currently using to stage uploads.",
+      "must_contain_any": ["public"],
+      "must_not_contain": [],
+      "expected_output": "It is using the public stream: plupload.settings:temporary_uri is 'public://plupload_pl_shared'.",
+      "setup": "agent-module-documentation/evaluation/verify/plupload-scheme-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/plupload-scheme-cleanup.sh"
+    },
+    {
+      "id": "plupload-set-tmpuri",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, configure plupload so that in-progress upload chunks are staged at the URI 'private://plupload_pl_hard' instead of the default. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/plupload-tmpuri-set-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/plupload-tmpuri-set-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/plupload-tmpuri-set-cleanup.sh",
+      "expected_output": "Set plupload.settings:temporary_uri to 'private://plupload_pl_hard' (e.g. drush cset plupload.settings temporary_uri 'private://plupload_pl_hard' -y, or via config API)."
+    },
+    {
+      "id": "plupload-build-form",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, create and enable a small custom module named plupload_demo_eval that exposes a form at /plupload-demo-eval. The form must use the plupload module's upload element (`#type => 'plupload'`) and be provided by the class Drupal\\plupload_demo_eval\\Form\\DemoForm. Enable the module so the form is live.",
+      "reset": "agent-module-documentation/evaluation/verify/plupload-demo-form-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/plupload-demo-form-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/plupload-demo-form-cleanup.sh",
+      "expected_output": "A custom module plupload_demo_eval is enabled providing Drupal\\plupload_demo_eval\\Form\\DemoForm; building that form yields a render element whose '#type' is 'plupload' (with appropriate #upload_validators). Route plupload_demo_eval.form at /plupload-demo-eval targets the form."
+    }
+  ]
+}

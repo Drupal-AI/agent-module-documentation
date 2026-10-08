@@ -1,0 +1,80 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "akamai",
+  "version": "5.1.x",
+  "note": "All cases are grounded in the akamai.settings config object (config/schema/akamai.schema.yml) and the module's routes/permissions/plugins. No case makes a real call to Akamai's API; medium/hard cases only read/write local Drupal config, so they are safe offline. Baseline (config/install/akamai.settings.yml): disabled=FALSE, storage_method=file, timeout=5, domain={production:TRUE,staging:FALSE}, action_v3={delete:TRUE,invalidate:FALSE}, edge_cache_tag_header=FALSE.",
+  "evals": [
+    {
+      "id": "akamai-killswitch",
+      "mode": "recipe",
+      "prompt": "On a Drupal site using the akamai module, how do I temporarily stop the site from sending any cache-clear/purge calls to Akamai without uninstalling the module? Name the setting and where it lives.",
+      "must_contain_any": ["disabled", "akamai.settings", "killswitch", "kill switch"],
+      "must_not_contain": [],
+      "expected_output": "Set the 'disabled' key in the akamai.settings config to TRUE (the 'Disable all calls to Akamai' killswitch on /admin/config/akamai/config), e.g. `drush config:set akamai.settings disabled 1`.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "akamai-credential-storage",
+      "mode": "recipe",
+      "prompt": "The akamai module can store its API credentials (client token, client secret, access token) in two different ways. What are they, and which config key selects between them?",
+      "must_contain_any": ["storage_method", "edgerc", "Key module", "key"],
+      "must_not_contain": [],
+      "expected_output": "The storage_method setting is either 'file' (an .edgerc file referenced by edgerc_path/edgerc_section) or 'key' (the Key module, where client_token/client_secret/access_token hold Key entity IDs). The 'key' option only appears when the key module is enabled.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "akamai-tag-purger",
+      "mode": "recipe",
+      "prompt": "Using the akamai module with the Purge module, which purger plugin clears content from Akamai by cache tag rather than by URL, and what response header does the module emit so Akamai indexes Drupal's cache tags?",
+      "must_contain_any": ["akamai_tag", "Edge-Cache-Tag", "tag purger", "edge_cache_tag_header"],
+      "must_not_contain": [],
+      "expected_output": "The akamai_tag purger (AkamaiTagPurger) purges by cache tag; enabling edge_cache_tag_header makes the CacheableResponseSubscriber send the Edge-Cache-Tag response header carrying Drupal cache tags.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "akamai-which-network",
+      "mode": "introspection",
+      "prompt": "On this Drupal site the akamai module is configured. Which Akamai network is it currently set to purge against — production or staging? Inspect the live configuration to answer.",
+      "must_contain_any": ["staging"],
+      "must_not_contain": [],
+      "expected_output": "staging: in akamai.settings the domain mapping has staging=TRUE and production=FALSE.",
+      "setup": "agent-module-documentation/evaluation/verify/akamai-which-network-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/akamai-which-network-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "akamai-timeout-value",
+      "mode": "introspection",
+      "prompt": "On this Drupal site, inspect the akamai module configuration and tell me the API request timeout (in seconds) that is currently configured.",
+      "must_contain_any": ["17"],
+      "must_not_contain": [],
+      "expected_output": "17 seconds: akamai.settings:timeout is 17.",
+      "setup": "agent-module-documentation/evaluation/verify/akamai-timeout-value-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/akamai-timeout-value-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "akamai-enable-edge-cache-tag",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, configure the akamai module so that responses include the Edge-Cache-Tag header (exposing Drupal cache tags to Akamai). Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/akamai-enable-edge-cache-tag-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/akamai-enable-edge-cache-tag-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/akamai-enable-edge-cache-tag-cleanup.sh",
+      "expected_output": "akamai.settings:edge_cache_tag_header is set to TRUE (e.g. `drush config:set akamai.settings edge_cache_tag_header 1 -y`)."
+    },
+    {
+      "id": "akamai-switch-to-staging",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, configure the akamai module to purge against the Akamai STAGING network instead of production. Apply the change to the live configuration.",
+      "reset": "agent-module-documentation/evaluation/verify/akamai-switch-to-staging-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/akamai-switch-to-staging-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/akamai-switch-to-staging-cleanup.sh",
+      "expected_output": "In akamai.settings the domain mapping is {staging: TRUE, production: FALSE}."
+    }
+  ]
+}

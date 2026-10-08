@@ -1,0 +1,95 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "simplei",
+  "version": "3.0.x",
+  "note": "Simple Environment Indicator is configured ONLY via $settings['simple_environment_indicator'] in settings.php (plus $settings['simple_environment_anonymous']); there is no config API, form, permission, route, or Drush. Its core logic is the pure service Drupal\\simplei\\IndicatorParser::parse($str) -> [foreground, background, environment]. @<env> picks predefined colors by the first two letters (pr/li->FireBrick|#8b0000, st/te->GoldenRod|#59590d, de->#0057ad|#005b94, else DodgerBlue|#4a0080; #access selects the darker set). Rendering: a core-navigation TopBarItem plugin 'simplei_environment_indicator' or the classic toolbar via hook_page_attachments. Because the indicator string lives in settings.php (not safely per-eval writable on a shared site), the medium cases introspect the live IndicatorParser service directly, and the hard cases have the agent use that service and persist the result to a namespaced Drupal State key (safe, avoids settings.php and the unrelated commerce_giftcard entity-update site issue).",
+  "evals": [
+    {
+      "id": "simplei-where-config",
+      "mode": "recipe",
+      "prompt": "How do I configure the Simple Environment Indicator (simplei) module to show a 'DEV' badge, and where does that configuration live? Is there an admin settings form?",
+      "must_contain_any": [
+        "simple_environment_indicator",
+        "settings.php",
+        "$settings"
+      ],
+      "must_not_contain": [],
+      "expected_output": "There is no settings form. Set $settings['simple_environment_indicator'] in settings.php/settings.local.php, e.g. '#1E90FF DEV' or 'DodgerBlue DEV'; the string is 'color(s) label' or '@environment'.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "simplei-at-colors",
+      "mode": "recipe",
+      "prompt": "In simplei, what does an indicator string starting with '@' (like '@production' or '@staging') do, and how does it decide the color?",
+      "must_contain_any": [
+        "predefined",
+        "first two",
+        "FireBrick",
+        "GoldenRod"
+      ],
+      "must_not_contain": [],
+      "expected_output": "'@<env>' uses a predefined background color chosen by the first two letters of the name: pr/li (production/live) -> FireBrick, st/te (staging/test) -> GoldenRod, de (development) -> a blue, otherwise DodgerBlue; appending #access selects a darker high-contrast palette.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "simplei-anonymous",
+      "mode": "recipe",
+      "prompt": "By default simplei only shows the environment indicator to users who can see the toolbar/navigation. How do I make it show for anonymous users too?",
+      "must_contain_any": [
+        "simple_environment_anonymous"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Set $settings['simple_environment_anonymous'] = TRUE (or a CSS string for a custom banner) in settings.php; it injects a <style> banner for anonymous users.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "simplei-parse-prod",
+      "mode": "introspection",
+      "prompt": "Using this Drupal site's installed simplei module (its IndicatorParser service), determine which background color it would apply to a '@production' environment indicator. Report the color.",
+      "must_contain_any": [
+        "FireBrick"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Calling \\Drupal::service(\\Drupal\\simplei\\IndicatorParser::class)->parse('@production') returns background 'FireBrick' (foreground #ffffff, environment 'production').",
+      "setup": "agent-module-documentation/evaluation/verify/simplei-parse-prod-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/simplei-parse-prod-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "simplei-parse-access",
+      "mode": "introspection",
+      "prompt": "Using this site's simplei IndicatorParser service, what background color does the accessible production indicator '@prod#access' produce? Give the exact value.",
+      "must_contain_any": [
+        "#8b0000"
+      ],
+      "must_not_contain": [],
+      "expected_output": "\\Drupal::service(\\Drupal\\simplei\\IndicatorParser::class)->parse('@prod#access') returns background '#8b0000' (the darker, higher-contrast production color).",
+      "setup": "agent-module-documentation/evaluation/verify/simplei-parse-access-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/simplei-parse-access-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "simplei-store-staging",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "Using this site's simplei module IndicatorParser service, parse the indicator string '@staging' and store the resulting background color into the Drupal State key 'simplei_eval_bg'. Apply it on the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/simplei-store-staging-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/simplei-store-staging-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/simplei-store-staging-cleanup.sh",
+      "expected_output": "Drupal State key simplei_eval_bg equals 'GoldenRod' (i.e. \\Drupal::state()->set('simplei_eval_bg', \\Drupal::service(\\Drupal\\simplei\\IndicatorParser::class)->parse('@staging')[1]))."
+    },
+    {
+      "id": "simplei-store-env",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "Using this site's simplei module IndicatorParser service, parse the indicator string 'Black/Cyan Local' and store the environment label it extracts into the Drupal State key 'simplei_eval_env'. Apply it on the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/simplei-store-env-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/simplei-store-env-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/simplei-store-env-cleanup.sh",
+      "expected_output": "Drupal State key simplei_eval_env equals 'Local' (the third element of IndicatorParser::parse('Black/Cyan Local'), which is [Black, Cyan, Local])."
+    }
+  ]
+}

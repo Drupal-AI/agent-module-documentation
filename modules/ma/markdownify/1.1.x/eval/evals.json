@@ -1,0 +1,80 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "markdownify",
+  "version": "1.1.x",
+  "note": "Markdownify serves a Markdown version of supported entities (default node + taxonomy_term) by rendering to HTML and converting via league/html-to-markdown wrapped in the html_to_markdown_converter plugin type (shipped 'league' plugin). Config object markdownify.settings (keys: supported_entities, default_converter, noindex, converters) at /admin/config/services/markdownify, permission 'administer markdownify'. Six access methods (.md, /markdownify/ prefix, ?_format=markdown, Accept/Content-Type text/markdown headers, plus alias .md via markdownify_path). supported_entities bundle/language uses include/exclude semantics: default:false = only 'selected'. Medium/hard cases are grounded in that real config; all verified against markdownify.settings on the live site.",
+  "evals": [
+    {
+      "id": "markdownify-access-methods",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "On a Drupal site with the markdownify module enabled, how can a client request the Markdown version of the node at /node/1? List the ways.",
+      "must_contain_any": [".md", "_format=markdown", "text/markdown", "/markdownify/"],
+      "must_not_contain": [],
+      "expected_output": "Six ways: append .md (/node/1.md), the /markdownify/node/1 path prefix, ?_format=markdown, an Accept: text/markdown header, a Content-Type: text/markdown header, and (with markdownify_path) .md on the path alias. All return a text/markdown response."
+    },
+    {
+      "id": "markdownify-library-plugin",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "Which PHP library and plugin type does markdownify use to turn rendered HTML into Markdown, and what is the id of the converter plugin that ships with it?",
+      "must_contain_any": ["league/html-to-markdown", "html-to-markdown", "league"],
+      "must_not_contain": [],
+      "expected_output": "It uses the league/html-to-markdown library via the html_to_markdown_converter plugin type (manager plugin.manager.html_to_markdown_converter). The shipped plugin id is 'league' (LeagueHtmlToMarkdown), selected by markdownify.settings:default_converter."
+    },
+    {
+      "id": "markdownify-config-route",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "Where do you configure markdownify, what config object stores its settings, and what does the 'noindex' setting do?",
+      "must_contain_any": ["markdownify.settings", "/admin/config/services/markdownify", "noindex"],
+      "must_not_contain": [],
+      "expected_output": "Settings form markdownify.settings at /admin/config/services/markdownify (permission 'administer markdownify'); settings are stored in the markdownify.settings config object. noindex (default true) adds an X-Robots-Tag: noindex header to Markdown responses so they stay out of search indexes."
+    },
+    {
+      "id": "markdownify-noindex-value",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "On this Drupal site, are markdownify's Markdown responses currently set to be excluded from search engines (the 'noindex' behaviour)? Inspect the live markdownify configuration and give the value of the noindex setting.",
+      "must_contain_any": ["false", "FALSE", "not", "indexable", "disabled"],
+      "must_not_contain": [],
+      "expected_output": "markdownify.settings:noindex is false on this site, so Markdown responses do NOT get the X-Robots-Tag: noindex header (they are indexable).",
+      "setup": "agent-module-documentation/evaluation/verify/markdownify-noindex-value-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/markdownify-noindex-value-cleanup.sh"
+    },
+    {
+      "id": "markdownify-node-bundle",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "On this Drupal site, markdownify has been restricted so that only one node content type (bundle) gets a Markdown version. Inspect the live markdownify configuration and name that content type.",
+      "must_contain_any": ["page", "Basic page"],
+      "must_not_contain": [],
+      "expected_output": "Only the 'page' bundle: markdownify.settings:supported_entities.node.bundles is default:false with selected:['page'] (include-only semantics), so Markdown is enabled solely for Basic page nodes.",
+      "setup": "agent-module-documentation/evaluation/verify/markdownify-node-bundle-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/markdownify-node-bundle-cleanup.sh"
+    },
+    {
+      "id": "markdownify-make-indexable",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, markdownify currently adds a noindex header to its Markdown responses. Reconfigure markdownify so that its Markdown responses are allowed to be indexed by search engines (turn the noindex behaviour off). Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/markdownify-make-indexable-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/markdownify-make-indexable-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/markdownify-make-indexable-cleanup.sh",
+      "expected_output": "Set markdownify.settings:noindex to false (e.g. `drush cset markdownify.settings noindex 0 -y` or via the settings form), so MarkdownifyNoIndexSubscriber no longer adds X-Robots-Tag: noindex."
+    },
+    {
+      "id": "markdownify-restrict-bundle",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, markdownify currently produces Markdown for all node content types. Restrict it so that Markdown versions are only generated for the 'article' content type (no other node bundles). Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/markdownify-restrict-bundle-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/markdownify-restrict-bundle-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/markdownify-restrict-bundle-cleanup.sh",
+      "expected_output": "Set markdownify.settings:supported_entities.node.bundles to {default: false, selected: ['article']} — include-only semantics restricting Markdown to the article bundle."
+    }
+  ]
+}

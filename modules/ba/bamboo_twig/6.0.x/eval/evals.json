@@ -1,0 +1,80 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "bamboo_twig",
+  "version": "6.0.x",
+  "note": "Bamboo Twig is a parent module plus 9 topic submodules. The PARENT registers no Twig function; it only ships the private base service bamboo_twig.twig.base (TwigExtensionBase, an AbstractExtension with lazy service getters) that each submodule's twig.extension service declares as parent. No config UI, permissions, Drush, or routes. Medium cases seed a namespaced State value read back via Bamboo Twig (bamboo_state_get) / drush; hard cases have the agent write a Twig template (fixed path under web/sites/default/files/) that a verify script renders through Drupal's twig service, checking the output against live state (site name / module path). Fixtures use bamboo_parent_* names.",
+  "evals": [
+    {
+      "id": "bamboo_twig-parent-provides",
+      "mode": "recipe",
+      "prompt": "In the Bamboo Twig project, what does the top-level bamboo_twig module itself provide, and where do the actual Twig functions like bamboo_render_entity live?",
+      "must_contain_any": ["bamboo_twig.twig.base", "TwigExtensionBase", "base service", "submodule"],
+      "must_not_contain": [],
+      "expected_output": "The parent bamboo_twig registers no Twig function; it only provides the private base service bamboo_twig.twig.base (TwigExtensionBase) for lazy service injection. The actual functions live in the topic submodules (e.g. bamboo_render_entity is in bamboo_twig_loader).",
+      "difficulty": "easy"
+    },
+    {
+      "id": "bamboo_twig-wiring",
+      "mode": "recipe",
+      "prompt": "How is a Bamboo Twig submodule's Twig extension wired to the parent, in its *.services.yml?",
+      "must_contain_any": ["parent: bamboo_twig.twig.base", "bamboo_twig.twig.base", "twig.extension"],
+      "must_not_contain": [],
+      "expected_output": "Each submodule service is tagged { name: twig.extension } and declares parent: bamboo_twig.twig.base, so it inherits the lazy service getters from TwigExtensionBase.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "bamboo_twig-which-submodule",
+      "mode": "recipe",
+      "prompt": "Using Bamboo Twig, which submodule do I enable to get the functions that render a block, region, entity or menu in a Twig template, and which for reading a Drupal config value?",
+      "must_contain_any": ["bamboo_twig_loader", "bamboo_twig_config"],
+      "must_not_contain": [],
+      "expected_output": "bamboo_twig_loader provides the bamboo_render_* / bamboo_load_* functions; bamboo_twig_config provides bamboo_config_get / bamboo_settings_get / bamboo_state_get.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "bamboo_twig-known-state-marker",
+      "mode": "introspection",
+      "prompt": "On this Drupal site a value has been stored in Drupal's State API under the key bamboo_parent_marker. Using Bamboo Twig (or drush), read the live site and tell me that value.",
+      "must_contain_any": ["PANDA-7731"],
+      "must_not_contain": [],
+      "expected_output": "State key bamboo_parent_marker holds 'PANDA-7731' (readable in Twig via bamboo_state_get('bamboo_parent_marker'), or drush state:get bamboo_parent_marker).",
+      "setup": "agent-module-documentation/evaluation/verify/bamboo_twig-state-marker-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/bamboo_twig-state-marker-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "bamboo_twig-known-state-count",
+      "mode": "introspection",
+      "prompt": "Inspect this live Drupal site: what integer value is stored in the State API under the key bamboo_parent_count? (Bamboo Twig's bamboo_state_get exposes it in templates.)",
+      "must_contain_any": ["4242"],
+      "must_not_contain": [],
+      "expected_output": "State key bamboo_parent_count = 4242 (bamboo_state_get('bamboo_parent_count') / drush state:get bamboo_parent_count).",
+      "setup": "agent-module-documentation/evaluation/verify/bamboo_twig-state-count-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/bamboo_twig-state-count-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "bamboo_twig-render-sitename",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "Using Bamboo Twig, create a Twig template file at web/sites/default/files/bamboo_parent_sitename.html.twig (absolute: <drupal-root>/sites/default/files/bamboo_parent_sitename.html.twig) whose rendered output prints this site's name by reading it from Drupal config with a Bamboo Twig function (do not hard-code the name).",
+      "reset": "agent-module-documentation/evaluation/verify/bamboo_twig-render-sitename-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/bamboo_twig-render-sitename-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/bamboo_twig-render-sitename-cleanup.sh",
+      "expected_output": "Write a template containing e.g. {{ bamboo_config_get('system.site', 'name') }} to web/sites/default/files/bamboo_parent_sitename.html.twig; when rendered it outputs the live site name (requires bamboo_twig_config enabled)."
+    },
+    {
+      "id": "bamboo_twig-render-modulepath",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "Using Bamboo Twig, create a Twig template at web/sites/default/files/bamboo_parent_modulepath.html.twig whose rendered output contains the filesystem path to the bamboo_twig module, obtained with a Bamboo Twig function.",
+      "reset": "agent-module-documentation/evaluation/verify/bamboo_twig-render-modulepath-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/bamboo_twig-render-modulepath-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/bamboo_twig-render-modulepath-cleanup.sh",
+      "expected_output": "Write {{ bamboo_path_system('module', 'bamboo_twig') }} into the template; rendered output includes modules/contrib/bamboo_twig (requires bamboo_twig_path enabled)."
+    }
+  ]
+}

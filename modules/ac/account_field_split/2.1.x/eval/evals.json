@@ -1,0 +1,106 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "account_field_split",
+  "version": "2.1.x",
+  "note": "Account Field Split has a deliberately thin surface: no settings form, no configure route (configure=null), no permissions, no config schema, no plugins, no Drush commands. Its entire persistent state is the core user form-display config entity core.entity_form_display.user.user.default, where the module exposes seven core account elements (name, mail, pass, current_pass, roles, status, notify) as independently manageable pseudo-fields. All medium/hard cases are therefore grounded in that real config entity: introspection reads component weights/regions, execution reorders/hides those components and verifies the live config.",
+  "evals": [
+    {
+      "id": "account_field_split-split-fields",
+      "mode": "recipe",
+      "prompt": "The Drupal contrib module account_field_split breaks core's single bundled 'User name and password' element on the account form into separate manageable fields. Name at least four of the individual account fields it exposes as separate pseudo-fields.",
+      "must_contain_any": [
+        "mail",
+        "e-mail",
+        "email",
+        "username",
+        "current password",
+        "roles",
+        "notify"
+      ],
+      "must_not_contain": [],
+      "expected_output": "It exposes seven: name (Username), mail (E-mail address), pass (Password), current_pass (Current password), roles (Roles), status (Status) and notify (Notify user about new account).",
+      "difficulty": "easy"
+    },
+    {
+      "id": "account_field_split-where-to-configure",
+      "mode": "recipe",
+      "prompt": "I installed account_field_split on a Drupal 11 site. It has no settings form of its own. Where do I go to reorder or hide the account fields it splits out, and which config entity stores that arrangement?",
+      "must_contain_any": [
+        "form display",
+        "form-display",
+        "Manage form display",
+        "core.entity_form_display.user.user.default",
+        "admin/config/people/accounts/form-display"
+      ],
+      "must_not_contain": [],
+      "expected_output": "There is no bespoke config page (configure route is null). You use the core user Manage form display at /admin/config/people/accounts/form-display (route entity.entity_form_display.user.default); the arrangement is stored in the config entity core.entity_form_display.user.user.default.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "account_field_split-how-it-works",
+      "mode": "recipe",
+      "prompt": "How does the account_field_split module make the individual account fields appear as separate rows on the user Manage form display, and how does it make the reordering actually take effect on the rendered form? Name the Drupal hooks / mechanism it uses.",
+      "must_contain_any": [
+        "hook_entity_extra_field_info",
+        "extra field",
+        "extra_field",
+        "hook_form_alter",
+        "pseudo",
+        "hook_entity_extra_field_info_alter"
+      ],
+      "must_not_contain": [],
+      "expected_output": "hook_entity_extra_field_info() declares the seven inner elements as extra (pseudo) fields; hook_entity_extra_field_info_alter() removes the bundled 'account' element; and hook_form_alter() promotes the real widgets out of $form['account'] to the top level so the form-display weights/regions apply. Logic lives in the ExtraFieldManager service.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "account_field_split-field-order",
+      "mode": "introspection",
+      "prompt": "On this Drupal site the user account form has been customised using the fields exposed by account_field_split. Among the split account fields, which one is configured to appear FIRST on the form: the Username, the E-mail address, or the Password? Inspect the live user form-display configuration to answer.",
+      "must_contain_any": [
+        "e-mail",
+        "email",
+        "mail"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The E-mail address (mail) field appears first: in core.entity_form_display.user.user.default it has weight -5, ahead of name (-4) and pass (-3).",
+      "setup": "agent-module-documentation/evaluation/verify/account_field_split-field-order-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/account_field_split-field-order-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "account_field_split-hidden-field",
+      "mode": "introspection",
+      "prompt": "This site splits the account form fields with account_field_split. One of those split fields has been disabled (hidden) on the user Manage form display so it no longer renders on the account form. Which field is it? Inspect the live form-display configuration.",
+      "must_contain_any": [
+        "roles",
+        "role"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The Roles field (component key `roles`) has been moved to the disabled/hidden region of core.entity_form_display.user.user.default, so it is not shown on the account form.",
+      "setup": "agent-module-documentation/evaluation/verify/account_field_split-hidden-field-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/account_field_split-hidden-field-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "account_field_split-mail-first",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, account_field_split is enabled so the account form's identity fields are individually manageable. Configure the user default form display (core.entity_form_display.user.user.default) so that the E-mail address field (mail) is ordered ABOVE the Username field (name) on the account form. Both must remain visible. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/account_field_split-mail-first-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/account_field_split-mail-first-verify.sh",
+      "expected_output": "In core.entity_form_display.user.user.default both `mail` and `name` are in the content region and mail's weight is strictly less than name's, so E-mail renders above Username."
+    },
+    {
+      "id": "account_field_split-hide-current-pass",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site with account_field_split enabled, configure the user default form display (core.entity_form_display.user.user.default) so that the 'Current password' field (current_pass) exposed by the module is disabled/hidden — it must no longer appear on the account edit form. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/account_field_split-hide-current-pass-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/account_field_split-hide-current-pass-verify.sh",
+      "expected_output": "In core.entity_form_display.user.user.default the `current_pass` component is no longer in the content region (moved to the hidden/disabled region), so it is not rendered on the account form."
+    }
+  ]
+}

@@ -1,0 +1,80 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "context_advanced_datalayer",
+  "version": "2.1.x",
+  "note": "context_advanced_datalayer adds one Context reaction (@ContextReaction id=context_advanced_datalayer) that lets you set Advanced Datalayer tag values inside a Context, so datalayer variables can be applied conditionally (path/role/entity). Values are stored at context.context.<name>.reactions.context_advanced_datalayer as a tag_id => value map. hook_advanced_datalayer_alter() merges every ACTIVE reaction's values into the datalayer before it is pushed (via context.manager->getActiveReactions). Depends on context + advanced_datalayer; no routes/permissions/services/config schema of its own. Medium cases create a Context with the reaction carrying a known tag value and read it back; hard cases build a Context with the reaction, verified against the context config entity. Tag ids come from advanced_datalayer tag plugins (example_advanced_datalayer is enabled, providing site_Name, event, etc.).",
+  "evals": [
+    {
+      "id": "context_adl-what",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "What does the context_advanced_datalayer submodule add on top of Advanced Datalayer, and what does it let a site builder do that the base module's per-page-type defaults do not?",
+      "must_contain_any": ["context reaction", "ContextReaction", "reaction", "conditional"],
+      "must_not_contain": [],
+      "expected_output": "It adds a Context reaction (context_advanced_datalayer) so you can set dataLayer tag values inside a Context and apply them conditionally (by path, role, entity type, etc.), rather than only per page type."
+    },
+    {
+      "id": "context_adl-deps",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "Which two Drupal modules must be enabled for context_advanced_datalayer to work?",
+      "must_contain_any": ["context", "advanced_datalayer"],
+      "must_not_contain": [],
+      "expected_output": "It depends on both context and advanced_datalayer (and you need datalayer tags to exist, e.g. from example_advanced_datalayer or your own tag plugins)."
+    },
+    {
+      "id": "context_adl-how-merged",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "How do the tag values configured in a context_advanced_datalayer Context reaction actually end up in the page's dataLayer?",
+      "must_contain_any": ["hook_advanced_datalayer_alter", "advanced_datalayer_alter", "getActiveReactions", "alter"],
+      "must_not_contain": [],
+      "expected_output": "Via hook_advanced_datalayer_alter(): the module asks context.manager->getActiveReactions('context_advanced_datalayer') for all currently-active reactions, executes each, and merges their tag_id => value maps into the datalayer array before it is pushed."
+    },
+    {
+      "id": "context_adl-sitename",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "On this Drupal site there is a Context named cadl_eval that uses the Advanced Datalayer context reaction. Inspect its live configuration and report the value it sets for the site_Name dataLayer tag.",
+      "must_contain_any": ["CTXMARK"],
+      "must_not_contain": [],
+      "expected_output": "context.context.cadl_eval -> reactions.context_advanced_datalayer.site_Name = 'CTXMARK' (drush cget context.context.cadl_eval reactions.context_advanced_datalayer).",
+      "setup": "agent-module-documentation/evaluation/verify/context_adl-sitename-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/context_adl-eval-cleanup.sh"
+    },
+    {
+      "id": "context_adl-event",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "On this Drupal site, the Context cadl_eval uses the Advanced Datalayer context reaction to set an 'event' dataLayer value. Inspect the live configuration and report the event value it sets.",
+      "must_contain_any": ["ctxview"],
+      "must_not_contain": [],
+      "expected_output": "context.context.cadl_eval -> reactions.context_advanced_datalayer.event = 'ctxview'.",
+      "setup": "agent-module-documentation/evaluation/verify/context_adl-event-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/context_adl-eval-cleanup.sh"
+    },
+    {
+      "id": "context_adl-build",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, create a Context named cadl_hard that uses the Advanced Datalayer context reaction (context_advanced_datalayer) to set the site_Name dataLayer tag to the value 'HardCtx'. Apply it to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/context_adl-build-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/context_adl-build-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/context_adl-build-cleanup.sh",
+      "expected_output": "A Context 'cadl_hard' exists whose reactions.context_advanced_datalayer.site_Name = 'HardCtx'. E.g. Context::create(['name'=>'cadl_hard','label'=>'...'])->save(); then $c->addReaction(['id'=>'context_advanced_datalayer','site_Name'=>'HardCtx'])->save()."
+    },
+    {
+      "id": "context_adl-build-event",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, create a Context named cadl_hard2 that uses the context_advanced_datalayer reaction to set the 'event' dataLayer tag to 'ctxbuild'. Apply it to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/context_adl-build2-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/context_adl-build2-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/context_adl-build2-cleanup.sh",
+      "expected_output": "A Context 'cadl_hard2' exists whose reactions.context_advanced_datalayer.event = 'ctxbuild'."
+    }
+  ]
+}

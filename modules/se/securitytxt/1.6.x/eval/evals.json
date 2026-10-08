@@ -1,0 +1,89 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "securitytxt",
+  "version": "1.6.x",
+  "note": "Security.txt serves a standards-compliant /.well-known/security.txt (security.txt draft RFC / RFC 9116) from one settings form. All state is the single config object securitytxt.settings; a SecuritytxtController + SecuritytxtSerializer render it as text/plain. The file is only served when securitytxt.settings:enabled is TRUE (otherwise the /.well-known/* routes throw NotFoundHttpException -> 404), and viewing is gated by the 'view securitytxt' permission while editing needs 'administer securitytxt'. Configure route is securitytxt.configure at /admin/config/system/securitytxt. There are no plugins, entities, hooks-for-others, or Drush commands, so no plugin/hook/drush tier. All tiers are grounded in securitytxt.settings and the served file. Hard verify scripts assert live config (configure-verify) and the actual serialized file body (serve-file-verify), not curl'd headers, so grading does not depend on the anonymous 'view securitytxt' grant.",
+  "evals": [
+    {
+      "id": "securitytxt-file-path",
+      "difficulty": "easy",
+      "mode": "recipe",
+      "prompt": "On a Drupal 11 site using the Security.txt module, at what URL path is the security.txt file served, and what content type does it use?",
+      "must_contain_any": ["/.well-known/security.txt"],
+      "must_not_contain": [],
+      "expected_output": "It is served at /.well-known/security.txt (route securitytxt.securitytxt_file) as text/plain; the detached signature is at /.well-known/security.txt.sig. The routes 404 unless securitytxt.settings:enabled is TRUE."
+    },
+    {
+      "id": "securitytxt-config-fields",
+      "difficulty": "easy",
+      "mode": "recipe",
+      "prompt": "Where do I configure the Security.txt module, and which config object and keys hold the contact, expiry date and encryption-key values?",
+      "must_contain_any": ["securitytxt.settings", "/admin/config/system/securitytxt", "securitytxt.configure"],
+      "must_not_contain": [],
+      "expected_output": "Configure at Admin -> Configuration -> System -> Security.txt (route securitytxt.configure, path /admin/config/system/securitytxt). All values live in the securitytxt.settings config object, including contact_email/contact_phone/contact_page_url, expiry_date (a Unix timestamp), and encryption_key_url."
+    },
+    {
+      "id": "securitytxt-view-permission",
+      "difficulty": "easy",
+      "mode": "recipe",
+      "prompt": "The Security.txt module defines its own permissions. Which permission lets anonymous users actually read /.well-known/security.txt, and which permission is needed to edit the disclosure details?",
+      "must_contain_any": ["view securitytxt", "administer securitytxt"],
+      "must_not_contain": [],
+      "expected_output": "Reading /.well-known/security.txt (and .sig) requires the 'view securitytxt' permission, which you grant to Anonymous and Authenticated. Editing the config/sign forms requires 'administer securitytxt' (restrict access: TRUE)."
+    },
+    {
+      "id": "securitytxt-current-contact",
+      "difficulty": "medium",
+      "mode": "introspection",
+      "prompt": "This site already has Security.txt configured. What contact email address is currently published in the security.txt file? Inspect the live configuration to answer.",
+      "must_contain_any": ["security@known-example.com"],
+      "must_not_contain": [],
+      "setup": "agent-module-documentation/evaluation/verify/securitytxt-known-contact-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/securitytxt-known-contact-cleanup.sh",
+      "expected_output": "contact_email is security@known-example.com, readable with `drush config:get securitytxt.settings contact_email`. It is emitted as the 'Contact: mailto:security@known-example.com' line."
+    },
+    {
+      "id": "securitytxt-current-expiry",
+      "difficulty": "medium",
+      "mode": "introspection",
+      "prompt": "Security.txt is configured on this site. The expiry_date is stored as a Unix timestamp in securitytxt.settings. What is that timestamp value currently set to? Inspect the live configuration.",
+      "must_contain_any": ["1893456000"],
+      "must_not_contain": [],
+      "setup": "agent-module-documentation/evaluation/verify/securitytxt-known-contact-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/securitytxt-known-contact-cleanup.sh",
+      "expected_output": "expiry_date is 1893456000 (2030-01-01 UTC). Read it with `drush config:get securitytxt.settings expiry_date`; it renders in the file as the ISO-8601 'Expires:' line."
+    },
+    {
+      "id": "securitytxt-current-policy",
+      "difficulty": "medium",
+      "mode": "introspection",
+      "prompt": "This site's Security.txt is enabled. Which security policy URL is currently published, and which preferred languages are advertised? Inspect the live configuration.",
+      "must_contain_any": ["https://known-example.com/security-policy"],
+      "must_not_contain": [],
+      "setup": "agent-module-documentation/evaluation/verify/securitytxt-known-policy-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/securitytxt-known-policy-cleanup.sh",
+      "expected_output": "policy_url is https://known-example.com/security-policy (the 'Policy:' line) and preferred_languages is 'en, nl' (the 'Preferred-Languages:' line). Read via `drush config:get securitytxt.settings`."
+    },
+    {
+      "id": "securitytxt-configure-enable",
+      "difficulty": "hard",
+      "mode": "execution",
+      "persona": "drupal-expert",
+      "prompt": "Configure and enable the Security.txt module on this Drupal site: in securitytxt.settings set enabled TRUE, a contact email of security@example.com, an expiry_date (a Unix timestamp) in the future, and a policy_url of https://example.com/security-policy. Clear caches when done.",
+      "reset": "agent-module-documentation/evaluation/verify/securitytxt-configure-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/securitytxt-configure-verify.sh",
+      "expected_output": "securitytxt.settings has enabled = TRUE, contact_email containing an @, expiry_date > 0, and policy_url starting with https://, so /.well-known/security.txt serves Contact/Expires/Policy lines."
+    },
+    {
+      "id": "securitytxt-serve-file",
+      "difficulty": "hard",
+      "mode": "execution",
+      "persona": "drupal-expert",
+      "prompt": "Make the Security.txt module actually serve a valid security.txt file: enable it in securitytxt.settings with a contact email (security@example.com) and an encryption key URL (https://example.com/pgp-key.txt), then clear caches so the file at /.well-known/security.txt renders both a 'Contact: mailto:' and an 'Encryption:' line.",
+      "reset": "agent-module-documentation/evaluation/verify/securitytxt-serve-file-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/securitytxt-serve-file-verify.sh",
+      "expected_output": "securitytxt.settings is enabled with contact_email security@example.com and encryption_key_url https://example.com/pgp-key.txt, so the securitytxt.serializer renders a body containing 'Contact: mailto:security@example.com' and 'Encryption: https://example.com/pgp-key.txt'."
+    }
+  ]
+}

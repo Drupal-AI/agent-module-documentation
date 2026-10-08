@@ -1,0 +1,80 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "search_api_html_element_filter",
+  "version": "1.0.x",
+  "note": "The module ships exactly one Search API processor plugin, id `html_element_filter` (class HtmlElementFilter extends FieldsProcessorPluginBase). It removes DOM elements matching CSS selectors from field markup before indexing (stage preprocess_index) and optionally from result item fields (stage postprocess_query, controlled by boolean enable_postprocess_query, default TRUE). Settings live only on the host index config entity: search_api.index.<id> -> processor_settings.html_element_filter.{css_selectors (newline-separated string), enable_postprocess_query}. No configure route, no permissions, no Drush, no config of its own. Medium/hard cases are grounded in a real namespaced index (sahef_*) whose processor_settings are read/written on the live site.",
+  "evals": [
+    {
+      "id": "search_api_html_element_filter-plugin-id",
+      "mode": "recipe",
+      "prompt": "I want a Search API processor that deletes certain HTML elements from content before it gets indexed. What is the machine name (plugin id) of the processor that the search_api_html_element_filter module provides, and what does it do?",
+      "must_contain_any": ["html_element_filter"],
+      "must_not_contain": [],
+      "expected_output": "The processor plugin id is html_element_filter (class HtmlElementFilter, extends FieldsProcessorPluginBase). Add it to an index and give it CSS selectors; it removes matching elements from field markup before indexing.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "search_api_html_element_filter-settings",
+      "mode": "recipe",
+      "prompt": "How do I tell the search_api_html_element_filter processor which elements to strip, and how are multiple selectors entered? Name the setting keys it stores.",
+      "must_contain_any": ["css_selectors", "one per line", "new line", "newline", "enable_postprocess_query"],
+      "must_not_contain": [],
+      "expected_output": "It stores css_selectors (a textarea of CSS selectors, one per line, split on \\r\\n) and enable_postprocess_query (boolean, default TRUE). Enter each selector such as .sidebar-filters or .advert on its own line.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "search_api_html_element_filter-stages",
+      "mode": "recipe",
+      "prompt": "At which Search API processing stages does the html_element_filter processor act, what library does it use to parse and remove the HTML, and what does the 'Enable post-process query' option change?",
+      "must_contain_any": ["preprocess_index", "postprocess_query", "DomCrawler", "dom crawler"],
+      "must_not_contain": [],
+      "expected_output": "It runs at preprocess_index (strip before indexing) and, when Enable post-process query (enable_postprocess_query) is on, at postprocess_query (strip the same elements from returned result item fields). Parsing/removal uses Symfony DomCrawler with CssSelector.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "search_api_html_element_filter-known-selector",
+      "mode": "introspection",
+      "prompt": "This site has a Search API index named sahef_index that uses the HTML Element Filter processor. Inspect the live index configuration and state the CSS selector it is configured to strip from content.",
+      "must_contain_any": [".sidebar-filters"],
+      "must_not_contain": [],
+      "expected_output": "search_api.index.sahef_index processor_settings.html_element_filter.css_selectors is '.sidebar-filters'. Read with `drush cget search_api.index.sahef_index processor_settings.html_element_filter`.",
+      "setup": "agent-module-documentation/evaluation/verify/search_api_html_element_filter-known-selector-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/search_api_html_element_filter-known-selector-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "search_api_html_element_filter-postprocess-off",
+      "mode": "introspection",
+      "prompt": "This site has a Search API index named sahef_pp that uses the HTML Element Filter processor. Inspect the live index configuration and state whether the processor's 'Enable post-process query' option (which also strips the elements from returned search results) is turned on or off for that index.",
+      "must_contain_any": ["off", "false", "disabled", "not enabled", "no"],
+      "must_not_contain": [],
+      "expected_output": "It is OFF: in search_api.index.sahef_pp, processor_settings.html_element_filter.enable_postprocess_query is FALSE, so the elements are stripped only at index time, not from result items. Read with `drush cget search_api.index.sahef_pp processor_settings.html_element_filter`.",
+      "setup": "agent-module-documentation/evaluation/verify/search_api_html_element_filter-postprocess-off-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/search_api_html_element_filter-postprocess-off-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "search_api_html_element_filter-add-processor",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "This site has a Search API index with machine name sahef_task that currently does NOT use the HTML Element Filter processor. Enable the search_api_html_element_filter processor (html_element_filter) on that index and configure it to strip elements matching the CSS selector .advert. Apply the change to the live index configuration.",
+      "reset": "agent-module-documentation/evaluation/verify/search_api_html_element_filter-add-processor-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/search_api_html_element_filter-add-processor-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/search_api_html_element_filter-add-processor-cleanup.sh",
+      "expected_output": "In search_api.index.sahef_task, processor_settings.html_element_filter is present with css_selectors containing .advert (e.g. via the Processors UI, $index->addProcessor(), or editing processor_settings in config)."
+    },
+    {
+      "id": "search_api_html_element_filter-strip-selector",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "site-owner",
+      "prompt": "On my search index (machine name sahef_task), the little filter widget boxes that use the CSS class 'sidebar-filters' keep showing up in my search results text. Make the search stop indexing anything inside elements with the class sidebar-filters, and save it to the site.",
+      "reset": "agent-module-documentation/evaluation/verify/search_api_html_element_filter-strip-selector-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/search_api_html_element_filter-strip-selector-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/search_api_html_element_filter-strip-selector-cleanup.sh",
+      "expected_output": "In search_api.index.sahef_task, processor_settings.html_element_filter is present with css_selectors containing .sidebar-filters (add the HTML Element Filter processor and set the selector to .sidebar-filters)."
+    }
+  ]
+}

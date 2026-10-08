@@ -1,0 +1,102 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "media_download",
+  "version": "1.3.x",
+  "note": "Media Download has no configure route (configure=null), no settings, no schema, no permissions, no Drush and no plugins. It replaces core's entity.media.canonical route with DownloadController::save so /media/{id} serves the source file (inline, or ?dl=1 for attachment), forces media.settings:standalone_url TRUE via a config.factory.override, and denies page-caching of binary responses. Evals are grounded in that: recipe questions cover the URL/route/override; introspection reads the effective overridden config and the canonical route controller on the live site; execution creates a document media entity and verifies its /media/{id} response via an internal http_kernel sub-request run as uid 1 (needs 'view media'). Fixtures use namespaced media named mdl_* and are deleted on cleanup/reset.",
+  "evals": [
+    {
+      "id": "media_download-download-url",
+      "mode": "recipe",
+      "prompt": "With the media_download module enabled, what URL downloads a media entity's file, and how do I make the browser force a 'Save as' download rather than displaying the file inline?",
+      "must_contain_any": [
+        "/media/",
+        "dl=1",
+        "?dl",
+        "canonical"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Visit the media's canonical path /media/{id}: by default it serves the file inline (Content-Disposition: inline). Append ?dl=1 (i.e. /media/{id}?dl=1) to force an attachment download. DownloadController::save() sets attachment when the request query dl === '1'.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "media_download-standalone-url",
+      "mode": "recipe",
+      "prompt": "Media Download's canonical /media/{id} URLs depend on core Media's 'standalone media URL' setting. What does the module do about that setting, and can I turn it off on the media settings form while the module is installed?",
+      "must_contain_any": [
+        "standalone_url",
+        "standalone media URL",
+        "override",
+        "TRUE"
+      ],
+      "must_not_contain": [],
+      "expected_output": "It ships a config.factory.override (MediaSettingsOverride) that forces media.settings:standalone_url to TRUE at runtime, so the effective value is always TRUE regardless of the stored value. The media settings form shows a warning that changing the toggle has no effect while Media Download is installed.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "media_download-route-override",
+      "mode": "recipe",
+      "prompt": "How does media_download change what happens when you visit a media entity's canonical page? Name the route it alters and the controller that now handles it.",
+      "must_contain_any": [
+        "entity.media.canonical",
+        "DownloadController",
+        "RouteSubscriber"
+      ],
+      "must_not_contain": [],
+      "expected_output": "RouteSubscriber removes core's entity.media.canonical route and re-registers /media/{media} pointing at Drupal\\media_download\\DownloadController::save (requirement _entity_access: media.view). So the canonical page returns the file instead of the rendered media entity page.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "media_download-effective-standalone",
+      "mode": "introspection",
+      "prompt": "On this running Drupal site, what is the EFFECTIVE value of media.settings standalone_url as seen by the application, and which module is responsible for that value? Note the stored config value may differ from the effective one.",
+      "must_contain_any": [
+        "media_download",
+        "override",
+        "overridden"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The effective value \\Drupal::config('media.settings')->get('standalone_url') is TRUE, forced by media_download's MediaSettingsOverride (a config.factory.override), even though the stored value (getEditable) may be FALSE.",
+      "setup": "agent-module-documentation/evaluation/verify/media_download-standalone-override-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/media_download-standalone-override-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "media_download-known-media-controller",
+      "mode": "introspection",
+      "prompt": "This site has a document media entity named 'mdl_known'. If a user with access visits that media's canonical /media/{id} page, will they see a rendered media page or a file download, and which controller handles it? Inspect the running site's routing to answer.",
+      "must_contain_any": [
+        "DownloadController",
+        "download",
+        "media_download"
+      ],
+      "must_not_contain": [],
+      "expected_output": "They get a direct file download/response, not the rendered media page: the entity.media.canonical route (/media/{media}) is handled by Drupal\\media_download\\DownloadController::save. Inspect with e.g. drush php:eval reading \\Drupal::service('router.route_provider')->getRouteByName('entity.media.canonical')->getDefault('_controller').",
+      "setup": "agent-module-documentation/evaluation/verify/media_download-known-media-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/media_download-known-media-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "media_download-serve-file",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site (media_download is installed), create a Media entity of type 'document' named 'mdl_task' whose source field references a real file that exists on disk, so that the media's canonical path /media/{id} serves that file directly as a download. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/media_download-serve-file-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/media_download-serve-file-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/media_download-serve-file-cleanup.sh",
+      "expected_output": "A document media named 'mdl_task' exists with field_media_document referencing an on-disk file; requesting /media/{id} (as a user with 'view media') returns HTTP 200 with a Drupal\\media_download\\CacheableBinaryFileResponse (Content-Disposition: inline), served by DownloadController."
+    },
+    {
+      "id": "media_download-force-download",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this site, create a downloadable 'document' Media entity named 'mdl_dl' (source field referencing a real on-disk file) such that visiting /media/{id}?dl=1 forces the browser to save the file (attachment), while /media/{id} shows it inline. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/media_download-force-download-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/media_download-force-download-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/media_download-force-download-cleanup.sh",
+      "expected_output": "A document media named 'mdl_dl' exists referencing an on-disk file; via media_download's DownloadController /media/{id}?dl=1 returns Content-Disposition: attachment and /media/{id} returns inline (HTTP 200). No module code change is needed - the ?dl=1 behaviour is built in."
+    }
+  ]
+}

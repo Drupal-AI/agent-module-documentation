@@ -1,0 +1,38 @@
+#!/usr/bin/env bash
+# Backstop: refuse to PUSH any commit that contains a private security artifact
+# (module-root security.md / SECURITY-FINDINGS.md / scripts/sec-scan/*).
+# Does NOT scan public-doc prose here (existing committed notes are intentionally
+# left in place); the pre-commit hook is where new public leak pointers are caught.
+# Bypass (only if you are 100% sure) with:  git push --no-verify
+set -u
+HERE="$(cd "$(dirname "$0")" && pwd)"
+. "$HERE/_leak-guard.sh"
+
+ZERO='0000000000000000000000000000000000000000'
+fail=0
+
+while read -r local_ref local_sha remote_ref remote_sha; do
+  [ -z "${local_sha:-}" ] && continue
+  [ "$local_sha" = "$ZERO" ] && continue           # branch deletion, nothing to scan
+  if [ "$remote_sha" = "$ZERO" ]; then
+    # new ref on the remote: scan the full tip tree
+    paths="$(git ls-tree -r --name-only "$local_sha")"
+  else
+    paths="$(git diff --name-only "$remote_sha".."$local_sha")"
+  fi
+  while IFS= read -r p; do
+    [ -z "$p" ] && continue
+    if is_private_artifact "$p"; then
+      echo "BLOCKED: push contains PRIVATE security artifact: $p ($local_ref)" >&2
+      fail=1
+    fi
+  done <<< "$paths"
+done
+
+if [ "$fail" -ne 0 ]; then
+  echo "" >&2
+  echo "Push aborted by leak-guard: a private security file would be published." >&2
+  echo "Remove it from history / unstage it. To override intentionally: git push --no-verify" >&2
+  exit 1
+fi
+exit 0

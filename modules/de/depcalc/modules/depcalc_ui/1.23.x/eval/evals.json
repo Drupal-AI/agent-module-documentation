@@ -1,0 +1,58 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "depcalc_ui",
+  "version": "1.23.x",
+  "note": "depcalc_ui is a trivial glue submodule of depcalc: a single .module file implementing hook_form_system_performance_settings_alter() to add a 'Clear depcalc cache' submit button to /admin/config/development/performance; its handler calls \\Drupal::service('cache.depcalc')->deleteAllPermanent(). No routes/permissions/config/services/plugins. Trivial tier split 3 easy / 1 medium / 1 hard. Hard case = clearing the depcalc cache (the button's effect), verified via cache_depcalc row count.",
+  "evals": [
+    {
+      "id": "depcalc_ui-what",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "What does the depcalc_ui module add, and on which admin page?",
+      "must_contain_any": ["Clear depcalc cache", "performance", "/admin/config/development/performance"],
+      "must_not_contain": [],
+      "expected_output": "It adds a 'Clear depcalc cache' button to the core Performance settings page (/admin/config/development/performance) via hook_form_system_performance_settings_alter()."
+    },
+    {
+      "id": "depcalc_ui-mechanism",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "When you click depcalc_ui's 'Clear depcalc cache' button, what does it actually do, and what is the CLI equivalent?",
+      "must_contain_any": ["deleteAllPermanent", "cache.depcalc", "depcalc:clear-cache"],
+      "must_not_contain": [],
+      "expected_output": "The submit handler calls \\Drupal::service('cache.depcalc')->deleteAllPermanent(), emptying the depcalc cache bin. The CLI equivalent is drush depcalc:clear-cache (alias dep-cc)."
+    },
+    {
+      "id": "depcalc_ui-why",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "Why does depcalc_ui exist as a separate button instead of relying on the normal 'Clear all caches'? What does it depend on?",
+      "must_contain_any": ["does not", "not clear", "depcalc", "survives"],
+      "must_not_contain": [],
+      "expected_output": "The depcalc cache bin intentionally survives a normal cache rebuild ('Clear all caches' does not clear depcalc cache), so depcalc_ui adds a dedicated button. It only depends on the depcalc module."
+    },
+    {
+      "id": "depcalc_ui-enabled",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "On this Drupal site, is the depcalc_ui module enabled, and which module does it depend on? Inspect the live site to answer.",
+      "must_contain_any": ["depcalc"],
+      "must_not_contain": [],
+      "expected_output": "depcalc_ui is enabled and depends on the depcalc module (drush pm:list shows both enabled; its .info.yml lists dependency drupal:depcalc).",
+      "setup": "agent-module-documentation/evaluation/verify/depcalc_ui-enabled-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/depcalc_ui-enabled-cleanup.sh"
+    },
+    {
+      "id": "depcalc_ui-clear-cache",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "The depcalc cache currently has data. Perform the action depcalc_ui's 'Clear depcalc cache' button performs so the depcalc cache bin ends up empty, and apply it to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/depcalc_ui-clear-cache-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/depcalc_ui-clear-cache-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/depcalc_ui-clear-cache-cleanup.sh",
+      "expected_output": "Empty the depcalc bin as the button does: \\Drupal::service('cache.depcalc')->deleteAllPermanent() (or drush depcalc:clear-cache). Afterwards cache_depcalc has 0 rows."
+    }
+  ]
+}

@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+# Execution RESET: delete any real_estate term named 'SGM Task Type' so verify FAILS. Exit 0.
+set -uo pipefail
+cd /var/www/html
+drush php:eval '
+  use Drupal\taxonomy\Entity\Term;
+  $ids = \Drupal::entityQuery("taxonomy_term")->accessCheck(FALSE)->condition("vid","real_estate")->condition("name","SGM Task Type")->execute();
+  foreach ($ids as $id) { if ($t = Term::load($id)) { $t->delete(); } }
+' >/dev/null 2>&1
+echo "reset: no real_estate term named 'SGM Task Type'"

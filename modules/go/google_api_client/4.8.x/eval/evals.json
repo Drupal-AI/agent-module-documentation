@@ -1,0 +1,80 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "google_api_client",
+  "version": "4.8.x",
+  "note": "Google API PHP Client is an integration layer over google/apiclient. It has NO live Google credentials on this site, so every medium/hard case is grounded in the module's account entities + config, never in real API calls. Two account types: google_api_client (CONTENT entity, base_table google_api_client; OAuth accounts with client_id/client_secret/developer_key/services/scopes; access token kept in State) and google_api_service_client (CONFIG entity, config prefix google_api_client.google_api_service_client.<id>, keys id/label/auth_config/services/scopes; server-to-server service accounts). One permission: administer google api settings. Services google_api_client.client / google_api_service_client.client expose setGoogleApiClient() + getServiceObjects(). Easy cases quiz the account model, admin route/permission, and the service API; medium cases read back a seeded service-account config entity's services and scopes; hard cases build a service-account config entity and an OAuth account content entity, verified against live entity/config state (no Google call required to create them).",
+  "evals": [
+    {
+      "id": "google_api_client-account-types",
+      "mode": "recipe",
+      "prompt": "The Drupal google_api_client module provides two kinds of Google accounts. What is the difference between a 'google_api_client' account and a 'google_api_service_client' account, and which one is used for server-to-server access without user consent?",
+      "must_contain_any": ["service account", "google_api_service_client", "service_client"],
+      "must_not_contain": [],
+      "expected_output": "google_api_client is an OAuth2 (three-legged) account requiring interactive user consent; google_api_service_client is a service account (server-to-server) that authenticates from a JSON key (auth_config) with no user interaction. The service account (google_api_service_client) is used for server-to-server access.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "google_api_client-admin-location",
+      "mode": "recipe",
+      "prompt": "On a Drupal site with google_api_client enabled, where do I manage Google OAuth accounts and what permission is required to administer them?",
+      "must_contain_any": ["admin/config/services/google_api_client", "administer google api settings"],
+      "must_not_contain": [],
+      "expected_output": "Manage accounts at /admin/config/services/google_api_client (service accounts at /admin/config/services/google_api_service_client; settings/Scan Library at /admin/structure/google_api_client_settings). All of it requires the 'administer google api settings' permission.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "google_api_client-get-service-object",
+      "mode": "recipe",
+      "prompt": "Using the google_api_client module programmatically, how do I obtain a usable Google service object (for example Google Calendar) for a configured account so I can make API calls?",
+      "must_contain_any": ["getServiceObjects", "google_api_client.client", "setGoogleApiClient"],
+      "must_not_contain": [],
+      "expected_output": "Get the google_api_client.client service, call setGoogleApiClient($account) to load and authenticate the account, then getServiceObjects() returns [service_name => Google\\Service\\* object] (e.g. a Google\\Service\\Calendar). Real API calls still require valid Google credentials and a completed OAuth flow.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "google_api_client-inspect-services",
+      "mode": "introspection",
+      "prompt": "This site has a google_api_client service account (google_api_service_client config entity) with the id 'gapi_probe'. Inspect the live configuration and list which Google services it is configured to use.",
+      "must_contain_any": ["drive", "calendar"],
+      "must_not_contain": [],
+      "expected_output": "Reading config google_api_client.google_api_service_client.gapi_probe: its services are drive and calendar.",
+      "setup": "agent-module-documentation/evaluation/verify/google_api_client-service-account-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/google_api_client-service-account-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "google_api_client-inspect-scope",
+      "mode": "introspection",
+      "prompt": "On this site, the google_api_client service account with id 'gapi_scope' is configured with a single OAuth scope. Read the live configuration and tell me exactly which scope it is.",
+      "must_contain_any": ["https://www.googleapis.com/auth/spreadsheets.readonly", "spreadsheets.readonly"],
+      "must_not_contain": [],
+      "expected_output": "Config google_api_client.google_api_service_client.gapi_scope has scopes: [https://www.googleapis.com/auth/spreadsheets.readonly].",
+      "setup": "agent-module-documentation/evaluation/verify/google_api_client-scope-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/google_api_client-scope-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "google_api_client-build-service-account",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, use the google_api_client module to create a Google service account (a google_api_service_client config entity) with the machine name 'gapi_task', a non-empty auth_config (service-account JSON), and the 'drive' service enabled. Apply it to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/google_api_client-build-service-account-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/google_api_client-build-service-account-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/google_api_client-build-service-account-cleanup.sh",
+      "expected_output": "Create a google_api_service_client config entity gapi_task, e.g. GoogleApiServiceClient::create(['id'=>'gapi_task','label'=>'...','auth_config'=>'{...}','services'=>['drive'],'scopes'=>[...]])->save(), so config google_api_client.google_api_service_client.gapi_task exists with the drive service and a non-empty auth_config."
+    },
+    {
+      "id": "google_api_client-build-oauth-account",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, use the google_api_client module to create an OAuth2 Google API Client account (a google_api_client content entity) named 'gapi_oauth' with a client_id and client_secret set. Apply it to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/google_api_client-build-oauth-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/google_api_client-build-oauth-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/google_api_client-build-oauth-cleanup.sh",
+      "expected_output": "Create a google_api_client content entity with name 'gapi_oauth' and a non-empty client_id and client_secret, e.g. GoogleApiClient::create(['name'=>'gapi_oauth','client_id'=>'...apps.googleusercontent.com','client_secret'=>'...','services'=>[...]])->save(). The account then exists in the google_api_client table with those credentials (it need not be authenticated with Google)."
+    }
+  ]
+}

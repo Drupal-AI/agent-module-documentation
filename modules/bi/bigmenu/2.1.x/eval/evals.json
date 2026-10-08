@@ -1,0 +1,102 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "bigmenu",
+  "version": "2.1.x",
+  "note": "Big Menu (bigmenu) is a thin, single-purpose module: it swaps the `menu` entity's `edit` form class for `BigMenuForm` via hook_entity_type_alter(), so core's menu overview at /admin/structure/menu/manage/{menu} renders a depth-limited tree instead of the whole thing. Its ENTIRE configuration surface is one key — `max_depth` (integer 0-10, default 1) in the `bigmenu.settings` config object, edited at /admin/config/bigmenu (route bigmenu.settings, permission 'administer site configuration'). It defines no permissions, plugins, services, or Drush commands. Because the config is this thin, all three tiers are grounded in max_depth and the form-override facts (no fabrication): easy/recipe asks response-graded facts from 2.1.x/agent/ (the overridden route, the form-class swap, the setting/default/range); medium/introspection sets a KNOWN max_depth on the live site (4, 3, and the 0->fallback-1 edge) and has the agent read it back via drush, then restores baseline 1; hard/execution resets max_depth to a non-target value and has the agent configure bigmenu to a requested depth, verified against live config (exit 0 = pass). Limitation noted: with a one-key config, the tiers necessarily vary the same key rather than exercising many settings.",
+  "evals": [
+    {
+      "id": "bigmenu-overridden-route",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "On a Drupal 11 site with the Big Menu (bigmenu) module enabled, which core menu-management screen does it replace, and by what mechanism does it take over that screen?",
+      "must_contain_any": ["/admin/structure/menu/manage", "entity.menu.edit_form", "BigMenuForm", "hook_entity_type_alter", "setFormClass"],
+      "must_not_contain": [],
+      "expected_output": "It replaces core's menu overview/edit form at /admin/structure/menu/manage/{menu} (route entity.menu.edit_form). bigmenu_entity_type_alter() calls setFormClass('edit', BigMenuForm::class) on the `menu` entity type, so that route renders \\Drupal\\bigmenu\\BigMenuForm (a subclass of menu_ui's MenuForm) instead of the core form."
+    },
+    {
+      "id": "bigmenu-setting-key",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "What is the only configurable setting the Big Menu (bigmenu) module provides, what is its default value and allowed range, and at which admin path / config object is it stored?",
+      "must_contain_any": ["max_depth", "/admin/config/bigmenu", "bigmenu.settings"],
+      "must_not_contain": [],
+      "expected_output": "The only setting is `max_depth` (integer, default 1, allowed 0-10 via the form's #min/#max), which controls how many levels of the menu tree render at once. It is edited at /admin/config/bigmenu (route bigmenu.settings, permission 'administer site configuration') and stored in the `bigmenu.settings` config object."
+    },
+    {
+      "id": "bigmenu-drilldown-behavior",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "With Big Menu (bigmenu) installed, how do you edit menu links that are deeper than the configured max_depth, and which core module does bigmenu depend on?",
+      "must_contain_any": ["Edit child items", "menu_link", "drill", "child"],
+      "must_not_contain": [],
+      "expected_output": "Big Menu renders only the top levels (up to max_depth); each parent that has children shows an 'Edit child items' link that reloads the same edit form rooted at that link (?menu_link=<plugin_id>), with a breadcrumb back to the top, so you drill into one branch at a time. It depends on core menu_ui."
+    },
+    {
+      "id": "bigmenu-known-depth",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "persona": "drupal-expert",
+      "prompt": "This Drupal site has the Big Menu (bigmenu) module configured (drush available). Inspect the running site and tell me the exact value its `max_depth` setting is currently set to.",
+      "setup": "agent-module-documentation/evaluation/verify/bigmenu-known-depth-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/bigmenu-known-depth-cleanup.sh",
+      "must_contain_any": ["4"],
+      "must_not_contain": [],
+      "expected_output": "bigmenu.settings:max_depth is currently 4 (read from the live config, e.g. `drush config:get bigmenu.settings max_depth`)."
+    },
+    {
+      "id": "bigmenu-levels-shown",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site the Big Menu (bigmenu) module is active (drush available). Based on its current configuration, how many levels of a menu will the menu edit form show at once right now?",
+      "setup": "agent-module-documentation/evaluation/verify/bigmenu-levels-shown-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/bigmenu-levels-shown-cleanup.sh",
+      "must_contain_any": ["3"],
+      "must_not_contain": [],
+      "expected_output": "It will show 3 levels at once, because bigmenu.settings:max_depth is currently 3 (the value BigMenuForm passes as the tree depth)."
+    },
+    {
+      "id": "bigmenu-zero-fallback",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site the Big Menu (bigmenu) module is enabled (drush available). Its `max_depth` config value is currently 0. Given how BigMenuForm reads that value, what depth will the menu edit form actually render?",
+      "setup": "agent-module-documentation/evaluation/verify/bigmenu-zero-fallback-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/bigmenu-zero-fallback-cleanup.sh",
+      "must_contain_any": ["1"],
+      "must_not_contain": [],
+      "expected_output": "It renders a depth of 1 (top level only). BigMenuForm reads the setting as `$config->get('max_depth') ?: 1`, so a stored 0 is falsy and falls back to 1."
+    },
+    {
+      "id": "bigmenu-set-depth-three",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site (drush available), configure the Big Menu (bigmenu) module so its menu edit form displays 3 levels of the menu tree at once. Apply the change to the live site; don't just describe it. One-line summary.",
+      "reset": "agent-module-documentation/evaluation/verify/bigmenu-depth-three-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/bigmenu-depth-three-verify.sh",
+      "expected_output": "bigmenu.settings:max_depth is set to 3 on the live site (e.g. `drush config:set bigmenu.settings max_depth 3 -y`). Verified against live config state."
+    },
+    {
+      "id": "bigmenu-set-depth-five",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site (drush available), set up the Big Menu (bigmenu) module so that editing a menu shows five levels deep at a time. Persist the setting to the live site; don't just describe it. One-line summary.",
+      "reset": "agent-module-documentation/evaluation/verify/bigmenu-depth-five-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/bigmenu-depth-five-verify.sh",
+      "expected_output": "bigmenu.settings:max_depth is set to 5 on the live site. Verified against live config state."
+    },
+    {
+      "id": "bigmenu-top-level-only",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site (drush available), configure the Big Menu (bigmenu) module to its shallowest setting so the menu edit screen loads only the top level of each menu (children reached via the 'Edit child items' links). Apply it to the live site; don't just describe it. One-line summary.",
+      "reset": "agent-module-documentation/evaluation/verify/bigmenu-top-level-only-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/bigmenu-top-level-only-verify.sh",
+      "expected_output": "bigmenu.settings:max_depth is set to 1 (top level only) on the live site. Verified against live config state."
+    }
+  ]
+}

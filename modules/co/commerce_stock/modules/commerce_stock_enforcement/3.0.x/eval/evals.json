@@ -1,0 +1,100 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "commerce_stock_enforcement",
+  "version": "3.0.x",
+  "note": "Commerce Stock Enforcement blocks over-selling by validating stock on the add-to-cart form, the cart page (commerce_cart_form view) and checkout, using commerce_stock.service_manager for levels (so real enforcement needs commerce_stock_local). Its configurable surface is the commerce_stock_enforcement.settings config object with three message strings: insufficient_stock_cart (%name, %qty), insufficient_stock_add_to_cart_zero_in_cart (%qty, %qty_asked), insufficient_stock_add_to_cart_quantity_in_cart (%qty, %qty_o), edited at /admin/commerce/config/stock/enforcement/settings (route commerce_stock_enforcement.settings). Medium/hard cases are grounded in that real local config, verified by pure reads. Cleanup/reset restore the shipped default messages explicitly.",
+  "evals": [
+    {
+      "id": "commerce_stock_enforcement-what",
+      "mode": "recipe",
+      "prompt": "What does the Commerce Stock Enforcement submodule do, and at which points in the purchase flow does it stop a customer buying out-of-stock products?",
+      "must_contain_any": [
+        "add to cart",
+        "add-to-cart",
+        "cart",
+        "checkout",
+        "out of stock"
+      ],
+      "must_not_contain": [],
+      "expected_output": "It blocks over-selling by validating available stock at three points: the add-to-cart form (disables the button, shows 'Out of stock'), the cart page (validates quantities), and checkout (redirects back to cart if anything is out of stock). Levels come from the configured stock service, so it needs commerce_stock_local to enforce real limits.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "commerce_stock_enforcement-messages",
+      "mode": "recipe",
+      "prompt": "Where does Commerce Stock Enforcement store its out-of-stock messages, and what are the config keys / placeholders for the cart and add-to-cart messages?",
+      "must_contain_any": [
+        "commerce_stock_enforcement.settings",
+        "insufficient_stock_cart",
+        "insufficient_stock_add_to_cart_zero_in_cart",
+        "%qty"
+      ],
+      "must_not_contain": [],
+      "expected_output": "They live in commerce_stock_enforcement.settings (form at /admin/commerce/config/stock/enforcement/settings): insufficient_stock_cart (%name, %qty), insufficient_stock_add_to_cart_zero_in_cart (%qty, %qty_asked) and insufficient_stock_add_to_cart_quantity_in_cart (%qty, %qty_o).",
+      "difficulty": "easy"
+    },
+    {
+      "id": "commerce_stock_enforcement-needs-local",
+      "mode": "recipe",
+      "prompt": "If I enable Commerce Stock Enforcement but products use the 'always in stock' service, will it block anything? What is required for enforcement to actually limit purchases?",
+      "must_contain_any": [
+        "always_in_stock",
+        "local_stock",
+        "commerce_stock_local",
+        "local"
+      ],
+      "must_not_contain": [],
+      "expected_output": "No - with always_in_stock the stock service reports effectively infinite stock, so nothing is blocked. Enforcement only limits purchases for variations using a finite stock service, i.e. local_stock from commerce_stock_local with real stock levels.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "commerce_stock_enforcement-known-cart-msg",
+      "mode": "introspection",
+      "prompt": "On this Drupal site, Commerce Stock Enforcement has a customized cart out-of-stock message. Inspect the live configuration and give the exact insufficient_stock_cart message string.",
+      "must_contain_any": [
+        "CSE only %qty of %name remain in stock."
+      ],
+      "must_not_contain": [],
+      "expected_output": "The message is 'CSE only %qty of %name remain in stock.': commerce_stock_enforcement.settings insufficient_stock_cart is set to that string.",
+      "setup": "agent-module-documentation/evaluation/verify/commerce_stock_enforcement-known-msg-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/commerce_stock_enforcement-known-msg-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "commerce_stock_enforcement-known-atc-msg",
+      "mode": "introspection",
+      "prompt": "On this Drupal site, Commerce Stock Enforcement has a customized add-to-cart out-of-stock message (used when the cart is empty). Inspect the live configuration and give the exact insufficient_stock_add_to_cart_zero_in_cart message string.",
+      "must_contain_any": [
+        "CSE sorry, just %qty left (you asked for %qty_asked)."
+      ],
+      "must_not_contain": [],
+      "expected_output": "The message is 'CSE sorry, just %qty left (you asked for %qty_asked).': commerce_stock_enforcement.settings insufficient_stock_add_to_cart_zero_in_cart is set to that string.",
+      "setup": "agent-module-documentation/evaluation/verify/commerce_stock_enforcement-known-msg-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/commerce_stock_enforcement-known-msg-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "commerce_stock_enforcement-set-cart-msg",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, change the Commerce Stock Enforcement cart out-of-stock message (insufficient_stock_cart) to exactly: Only %qty of %name left in our warehouse. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/commerce_stock_enforcement-set-cart-msg-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/commerce_stock_enforcement-set-cart-msg-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/commerce_stock_enforcement-set-cart-msg-cleanup.sh",
+      "expected_output": "commerce_stock_enforcement.settings insufficient_stock_cart is set to 'Only %qty of %name left in our warehouse.' (via the enforcement settings form or config)."
+    },
+    {
+      "id": "commerce_stock_enforcement-set-atc-msg",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-layman",
+      "prompt": "On this store, when a shopper tries to add more of an item to an empty cart than we have, I want the message to read exactly: Only %qty available, you asked for %qty_asked. Set that add-to-cart out-of-stock message for Commerce Stock Enforcement on the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/commerce_stock_enforcement-set-atc-msg-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/commerce_stock_enforcement-set-atc-msg-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/commerce_stock_enforcement-set-atc-msg-cleanup.sh",
+      "expected_output": "commerce_stock_enforcement.settings insufficient_stock_add_to_cart_zero_in_cart is set to 'Only %qty available, you asked for %qty_asked.'"
+    }
+  ]
+}

@@ -1,0 +1,102 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "views_simple_math_field",
+  "version": "3.0.x",
+  "note": "Views Simple Math Field registers (via hook_views_data) a #global table 'views_simple_math_field' exposing the field handler field_views_simple_math_field (SimpleMathField extends NumericField) and a sort views_simple_math_field_sort. No configure route, no permissions, no Drush, no plugin types. Per-field options are stored inside the view config under display_options.fields.<id>.fieldset_one.data_field (fields feeding the formula), fieldset_one.formula (the expression using @<field_id> tokens), and mute_logs (silence DivisionByZeroException logging). Values are computed in PHP at render time (getValue()) via the andileco/eval-math library; the sort runs in postExecute(). Medium/hard cases build namespaced views (vsmf_*) on the node base and read/write that real field config.",
+  "evals": [
+    {
+      "id": "views_simple_math_field-add-column",
+      "mode": "recipe",
+      "prompt": "In a Drupal view I want a column that is computed from two other numeric fields (e.g. a subtotal). Which field does the views_simple_math_field module add, and where do I find it when adding a field to the view?",
+      "must_contain_any": [
+        "Simple Math Field",
+        "field_views_simple_math_field",
+        "Global"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Add the 'Global: Simple Math Field' field (handler id field_views_simple_math_field). It appears under the Global group. Tick the numeric fields to use and enter a formula; it outputs the computed value as a column.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "views_simple_math_field-formula-syntax",
+      "mode": "recipe",
+      "prompt": "How do I reference other view fields inside a views_simple_math_field formula? Give an example expression.",
+      "must_contain_any": [
+        "@",
+        "formula",
+        "token"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Reference each selected field by an @<field_id> token shown beside its checkbox, e.g. (@field_price + @field_tax) / @field_qty. The expression is evaluated with the EvalMath (andileco/eval-math) library.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "views_simple_math_field-division-zero",
+      "mode": "recipe",
+      "prompt": "What external library does views_simple_math_field use to evaluate formulas, and what setting stops it logging a database error when a formula divides by zero?",
+      "must_contain_any": [
+        "eval-math",
+        "EvalMath",
+        "mute_logs"
+      ],
+      "must_not_contain": [],
+      "expected_output": "It uses the andileco/eval-math (EvalMath) PHP library. The per-field 'Mute database logs for this field' checkbox (mute_logs) suppresses the watchdog log a DivisionByZeroException would otherwise write.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "views_simple_math_field-formula",
+      "mode": "introspection",
+      "prompt": "This site has a view with the machine name vsmf_known that uses a Simple Math Field. Inspect the live view configuration and report the exact formula configured on that Simple Math Field.",
+      "must_contain_any": [
+        "(@nid + @vid) / 2",
+        "@nid + @vid"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The formula is (@nid + @vid) / 2 - stored at views.view.vsmf_known display.default.display_options.fields.field_views_simple_math_field.fieldset_one.formula.",
+      "setup": "agent-module-documentation/evaluation/verify/views_simple_math_field-formula-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/views_simple_math_field-formula-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "views_simple_math_field-mute-logs",
+      "mode": "introspection",
+      "prompt": "The view vsmf_mute on this site has a Simple Math Field. Inspect the live configuration: is database logging of division-by-zero errors muted for that field?",
+      "must_contain_any": [
+        "muted",
+        "mute_logs",
+        "yes",
+        "enabled",
+        "true",
+        "1"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Yes, it is muted: the Simple Math Field's mute_logs option is 1 in views.view.vsmf_mute (display.default.display_options.fields.field_views_simple_math_field.mute_logs).",
+      "setup": "agent-module-documentation/evaluation/verify/views_simple_math_field-mute-logs-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/views_simple_math_field-mute-logs-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "views_simple_math_field-add-field",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "The view with machine name vsmf_task on this site has no computed math column yet. Add a views_simple_math_field 'Simple Math Field' to its default display with a working formula, and apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/views_simple_math_field-add-field-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/views_simple_math_field-add-field-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/views_simple_math_field-add-field-cleanup.sh",
+      "expected_output": "Add a field keyed field_views_simple_math_field (plugin_id field_views_simple_math_field, table views_simple_math_field) to views.view.vsmf_task display.default.display_options.fields, with fieldset_one.data_field selecting at least one field and a non-empty fieldset_one.formula (e.g. '@nid * 2'). Save the view."
+    },
+    {
+      "id": "views_simple_math_field-set-formula",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "The view vsmf_calc already has a Simple Math Field but its formula is empty. Configure that field's formula so it multiplies the node id (nid) by 100, and apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/views_simple_math_field-set-formula-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/views_simple_math_field-set-formula-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/views_simple_math_field-set-formula-cleanup.sh",
+      "expected_output": "Set views.view.vsmf_calc display.default.display_options.fields.field_views_simple_math_field.fieldset_one.formula to '@nid * 100' (must reference @nid and include 100), keeping nid in fieldset_one.data_field, and save the view."
+    }
+  ]
+}

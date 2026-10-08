@@ -1,0 +1,78 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "warmer",
+  "version": "2.0.x",
+  "note": "Warmer is a cache-warming framework: it defines the `warmer` plugin type (@Warmer annotation, plugin.manager.warmer manager, Plugin/warmer discovery dir, WarmerPluginBase base class) and stores every warmer's settings in one config object, warmer.settings (key `warmers`, keyed by plugin id, each with frequency + batchSize plus plugin-specific keys). It ships no warmers itself — concrete ones come from warmer_entity (id `entity`) and warmer_cdn (ids `cdn`, `sitemap`). Easy cases are response-graded (no site changes). Medium cases stage a known warmer config in warmer.settings and ask the agent to read it back live (cleanup restores warmers: []). Hard cases have the agent configure the entity warmer's frequency/batchSize, verified against live config (exit 0 = pass). Config is empty by default so reset just clears warmer.settings:warmers.",
+  "evals": [
+    {
+      "id": "warmer-plugin-type",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "In the Drupal Warmer module, what plugin type does it define for cache warmers? Name the annotation, the plugin manager service, the discovery directory, and the base class a warmer should extend.",
+      "must_contain_any": ["@Warmer", "WarmerPluginBase", "plugin.manager.warmer", "Plugin/warmer"],
+      "must_not_contain": [],
+      "expected_output": "Warmer defines the `warmer` plugin type: annotation @Warmer (Drupal\\warmer\\Annotation\\Warmer), manager service plugin.manager.warmer (WarmerPluginManager), discovery directory src/Plugin/warmer/, interface WarmerInterface, and base class WarmerPluginBase (which a plugin should extend)."
+    },
+    {
+      "id": "warmer-drush-warm",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "On a Drupal site with the Warmer module, which Drush command warms the caches for a given warmer, and how do you make it populate the cache immediately instead of waiting for cron?",
+      "must_contain_any": ["warmer:enqueue", "warmer-enqueue"],
+      "must_not_contain": [],
+      "expected_output": "drush warmer:enqueue <ids> (alias warmer-enqueue) enqueues the named warmers (comma-separated plugin IDs). Add --run-queue to drain the `warmer` queue right away so items land in cache immediately; otherwise they are processed later by the queue worker on cron (drush queue:run warmer)."
+    },
+    {
+      "id": "warmer-config",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "Where does the Warmer module store each warmer's configuration, and what two settings does every warmer share? Give the config object name and the keys.",
+      "must_contain_any": ["warmer.settings"],
+      "must_not_contain": [],
+      "expected_output": "All warmers share one config object, warmer.settings, under the key `warmers` (a sequence keyed by plugin id). Every warmer has `frequency` (seconds between automatic re-enqueues; default 300) and `batchSize` (items per batch; default 50), e.g. warmer.settings:warmers.entity.frequency."
+    },
+    {
+      "id": "warmer-known-entity-config",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "This Drupal site already has the Warmer module's Entity warmer configured. Inspect the live configuration and report its frequency (in seconds) and its batch size.",
+      "setup": "agent-module-documentation/evaluation/verify/warmer-entity-frequency-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/warmer-entity-frequency-cleanup.sh",
+      "must_contain_any": ["900"],
+      "must_not_contain": [],
+      "expected_output": "warmer.settings:warmers.entity has frequency 900 and batchSize 25 (it also warms node:article, published only)."
+    },
+    {
+      "id": "warmer-known-cdn-config",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "The Warmer module's CDN warmer is configured on this site. Inspect the live configuration and report which URL(s) it will warm and how often (frequency in seconds).",
+      "setup": "agent-module-documentation/evaluation/verify/warmer-cdn-urls-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/warmer-cdn-urls-cleanup.sh",
+      "must_contain_any": ["https://example.com/warm-me"],
+      "must_not_contain": [],
+      "expected_output": "warmer.settings:warmers.cdn is set to warm https://example.com/warm-me (and /about) with frequency 600 and batchSize 10."
+    },
+    {
+      "id": "warmer-configure-entity-layman",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, I want the Warmer module's Entity cache warmer to refresh only once an hour instead of every few minutes, and to process 100 items at a time. Set that up.",
+      "reset": "agent-module-documentation/evaluation/verify/warmer-configure-entity-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/warmer-configure-entity-verify.sh",
+      "expected_output": "warmer.settings:warmers.entity.frequency is set to 3600 and warmers.entity.batchSize is set to 100."
+    },
+    {
+      "id": "warmer-configure-entity-expert",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "Configure the Warmer module's entity warmer on this site: set warmer.settings warmers.entity.frequency to 3600 and warmers.entity.batchSize to 100. Leave the other warmers alone.",
+      "reset": "agent-module-documentation/evaluation/verify/warmer-configure-entity-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/warmer-configure-entity-verify.sh",
+      "expected_output": "warmer.settings:warmers.entity.frequency == 3600 and warmers.entity.batchSize == 100."
+    }
+  ]
+}

@@ -1,0 +1,94 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "bootstrap_library",
+  "version": "2.0.x",
+  "note": "Bootstrap Library is a single config object (bootstrap_library.settings) plus hook_page_attachments() and hook_library_info_build(). Real keys: url.visibility (0 = all pages except the list, 1 = only the list), url.pages, theme.visibility, theme.themes, minimized.options (0 source / 1 minified / 2 composer), cdn.bootstrap (0 = local, else a version string) and cdn.options (a JSON blob only the form writes). Libraries: bootstrap_library/bootstrap (min), /bootstrap-dev (source), /bootstrap-composer (dist/ layout) and /bootstrap-cdn (generated). Config route bootstrap_library.admin at /admin/config/development/bootstrap_library, gated on core's 'administer site configuration'. All medium/hard cases read or write bootstrap_library.settings on the live site; none of them touch cdn.bootstrap, because setting it without also writing cdn.options makes hook_library_info_build() json_decode a NULL.",
+  "evals": [
+    {
+      "id": "bootstrap_library-file-layout",
+      "mode": "recipe",
+      "prompt": "I enabled the Drupal contrib module bootstrap_library but Bootstrap is not loading from local files. Where exactly must the Bootstrap files be placed on disk, and what are the machine names of the asset libraries the module declares?",
+      "must_contain_any": [
+        "libraries/bootstrap",
+        "bootstrap.min.js",
+        "bootstrap_library/bootstrap"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Unpack Bootstrap into the web root's libraries directory: /libraries/bootstrap/css/bootstrap.css + bootstrap.min.css and /libraries/bootstrap/js/bootstrap.js + bootstrap.min.js (the Composer twbs/bootstrap layout instead uses /libraries/bootstrap/dist/{css,js}/bootstrap.{css,js}). The libraries are bootstrap_library/bootstrap (minified), bootstrap_library/bootstrap-dev (source), bootstrap_library/bootstrap-composer and the runtime-generated bootstrap_library/bootstrap-cdn.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "bootstrap_library-minimized-key",
+      "mode": "recipe",
+      "prompt": "In the bootstrap_library module's configuration, which key decides whether Drupal loads the minified Bootstrap build, the non-minified source build, or the Composer-installed copy? Give the config object name, the key and what each value means.",
+      "must_contain_any": [
+        "minimized.options",
+        "minimized"
+      ],
+      "must_not_contain": [],
+      "expected_output": "bootstrap_library.settings, key minimized.options: 0 = non-minified source (library bootstrap_library/bootstrap-dev), 1 = minified (bootstrap_library/bootstrap), 2 = Composer-installed layout (bootstrap_library/bootstrap-composer). It is ignored entirely when cdn.bootstrap is set to a version, because that switches to the bootstrap-cdn library.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "bootstrap_library-config-path",
+      "mode": "recipe",
+      "prompt": "Where is the bootstrap_library settings form in the Drupal admin UI, which permission does it require, and is there a way to switch Bootstrap off for a single page request without changing configuration?",
+      "must_contain_any": [
+        "/admin/config/development/bootstrap_library",
+        "bootstrap=no"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The form is at /admin/config/development/bootstrap_library (route bootstrap_library.admin, listed under Configuration > Development) and requires core's 'administer site configuration' permission. For a one-off request, append ?bootstrap=no to the URL - _bootstrap_library_check_url() returns FALSE immediately when $_GET['bootstrap'] === 'no'.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "bootstrap_library-listed-pages",
+      "mode": "introspection",
+      "prompt": "On this Drupal site the bootstrap_library module has been configured with a non-default page rule. Inspect the running site and describe on which pages Bootstrap is loaded, quoting the exact paths that are configured.",
+      "must_contain_any": [
+        "bl-eval-landing"
+      ],
+      "must_not_contain": [],
+      "expected_output": "bootstrap_library.settings has url.visibility: 1 ('only the listed pages') with url.pages set to /bl-eval-landing and /bl-eval-landing/*, so Bootstrap is attached only on that landing page and its children.",
+      "setup": "agent-module-documentation/evaluation/verify/bootstrap_library-listed-pages-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/bootstrap_library-listed-pages-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "bootstrap_library-theme-source",
+      "mode": "introspection",
+      "prompt": "Inspect this Drupal site's bootstrap_library configuration: which theme (or themes) does it load Bootstrap for, and is it serving the minified or the non-minified build?",
+      "must_contain_any": [
+        "olivero"
+      ],
+      "must_not_contain": [],
+      "expected_output": "bootstrap_library.settings has theme.visibility: 1 with theme.themes containing olivero, so Bootstrap loads only when Olivero is the active theme; minimized.options is 0, i.e. the non-minified source build (library bootstrap_library/bootstrap-dev, /libraries/bootstrap/css/bootstrap.css and /libraries/bootstrap/js/bootstrap.js).",
+      "setup": "agent-module-documentation/evaluation/verify/bootstrap_library-theme-source-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/bootstrap_library-theme-source-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "bootstrap_library-landing-only",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "site-owner-layman",
+      "prompt": "On this Drupal site Bootstrap is currently loaded almost everywhere and it is fighting with our theme. I only want it on our campaign landing page at /bl-eval-landing and on any page underneath it (/bl-eval-landing/*) - nowhere else. Change the Bootstrap Library configuration on the live site so that is the case.",
+      "reset": "agent-module-documentation/evaluation/verify/bootstrap_library-landing-only-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/bootstrap_library-landing-only-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/bootstrap_library-landing-only-cleanup.sh",
+      "expected_output": "bootstrap_library.settings has url.visibility set to 1 ('Only the listed pages') and url.pages listing /bl-eval-landing and /bl-eval-landing/* (leading slashes optional)."
+    },
+    {
+      "id": "bootstrap_library-dev-olivero",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "Configure bootstrap_library on this Drupal site so that it serves the locally installed, non-minified (development) Bootstrap build, and only when the Olivero theme is the active theme. Do not switch to a CDN. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/bootstrap_library-dev-olivero-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/bootstrap_library-dev-olivero-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/bootstrap_library-dev-olivero-cleanup.sh",
+      "expected_output": "bootstrap_library.settings: minimized.options = 0 (source build -> bootstrap_library/bootstrap-dev), cdn.bootstrap still falsy (0 / 'Load locally'), theme.visibility = 1 and theme.themes containing 'olivero'."
+    }
+  ]
+}

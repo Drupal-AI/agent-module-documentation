@@ -1,0 +1,99 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "multivalue_form_element",
+  "version": "1.0.x",
+  "note": "Multi-value form element ships ONE Form API render element, #type => 'multivalue' (class Drupal\\multivalue_form_element\\Element\\MultiValue, a FormElementBase). It has no config, no settings form, no configure route (configure=null), no permissions, no Drush, and no config schema, so it has no admin/config state to introspect. Its real, testable surface is the runtime element used from a custom form's buildForm(): properties (#cardinality default CARDINALITY_UNLIMITED=-1, #add_more_label default 'Add another item'), children declared inside the element and repeated per delta, #default_value keyed by delta (single-child scalar shorthand), first-delta-only #required, and a submit-time cleanup that drops empty deltas, weight-sorts and re-keys rows. Because the shipped tests/modules/multivalue_form_element_test module is not discoverable on a normal (non-test) site, the medium and hard cases build small custom helper modules under web/modules/custom that use the element, then inspect (medium) or verify (hard) the live built form via \\Drupal::formBuilder()->buildForm(). Every reset/cleanup uninstalls the helper module BEFORE deleting its directory (an enabled module with no directory makes the kernel fatal).",
+  "evals": [
+    {
+      "id": "multivalue_form_element-element-type",
+      "mode": "recipe",
+      "prompt": "In Drupal, the multivalue_form_element module provides a reusable Form API render element for building an 'add another item' repeater inside a custom form. What is the element's #type id, and how do you declare the child input(s) that get repeated for each row?",
+      "must_contain_any": [
+        "'#type' => 'multivalue'",
+        "#type => 'multivalue'",
+        "multivalue"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The element id is 'multivalue' (class Drupal\\multivalue_form_element\\Element\\MultiValue). You declare the child form elements directly inside the multivalue element array (e.g. 'title' => ['#type' => 'textfield', ...] or several named children like 'name' and 'mail'); each 'delta'/row repeats all of those children.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "multivalue_form_element-cardinality",
+      "mode": "recipe",
+      "prompt": "With the multivalue_form_element `multivalue` element, how do I limit how many rows a user can add, and what is the default? How does the 'add another item' button appear, and how do I change its label?",
+      "must_contain_any": [
+        "#cardinality",
+        "CARDINALITY_UNLIMITED",
+        "-1",
+        "#add_more_label"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Set #cardinality to a positive integer to cap the number of rows; the default is MultiValue::CARDINALITY_UNLIMITED (-1) = unlimited. The AJAX 'add another item' button is only rendered for unlimited cardinality; its label defaults to 'Add another item' and is overridden with #add_more_label.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "multivalue_form_element-defaults-and-submit",
+      "mode": "recipe",
+      "prompt": "For the multivalue_form_element `multivalue` element, where do I set default values and in what shape? What does the value in the form state look like after submission, and how does #required behave across rows?",
+      "must_contain_any": [
+        "#default_value",
+        "delta",
+        "first delta",
+        "empty"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Set #default_value on the wrapper element (never on the children), keyed by numeric delta, e.g. [0 => ['name' => 'Bob'], 1 => ['name' => 'Ted']]; a single-child element accepts the scalar shorthand ['Foo','Bar']. After validateMultiValue runs, the form-state value is a clean, consecutively re-keyed array of rows keyed by child name, with empty deltas dropped and rows sorted by their per-row weight. #required on the wrapper applies only to the first delta (like an entity field); later deltas force children to not required.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "multivalue_form_element-intro-add-more-label",
+      "mode": "introspection",
+      "prompt": "A custom module on this Drupal site exposes a form that uses the multivalue_form_element `multivalue` element for a field named `teammates`. Inspect the running site and report the exact label text shown on that element's 'add another item' button.",
+      "must_contain_any": [
+        "Add a teammate"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The teammates multivalue element sets #add_more_label to 'Add a teammate', so its AJAX add-more button reads 'Add a teammate'. Discover it by building the form (\\Drupal::formBuilder()->buildForm() on the module's form class) and reading $form['teammates']['add_more']['#value'].",
+      "setup": "agent-module-documentation/evaluation/verify/multivalue_form_element-intro-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/multivalue_form_element-intro-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "multivalue_form_element-intro-skills-shape",
+      "mode": "introspection",
+      "prompt": "On this Drupal site a custom form uses the multivalue_form_element `multivalue` element for a field named `skills`. Inspect the live form and report the maximum number of rows it allows and the machine names of the child inputs inside each row.",
+      "must_contain_any": [
+        "label",
+        "level"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The skills multivalue element has #cardinality 3 (max 3 rows, so no add-more button) and two children per row: 'label' (a textfield) and 'level' (a number). Discover it by building the form and reading $form['skills']['#cardinality'] and the child keys under $form['skills'][0].",
+      "setup": "agent-module-documentation/evaluation/verify/multivalue_form_element-intro-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/multivalue_form_element-intro-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "multivalue_form_element-build-form",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, create and enable a custom module named `mfe_demo` that exposes a form (form id `mfe_demo_form`, class Drupal\\mfe_demo\\Form\\MfeDemoForm) at the route path `/mfe-demo`. Using the multivalue_form_element module's `multivalue` element, the form must contain a field named `contacts` with unlimited cardinality holding two child inputs per row — a `name` textfield and a `mail` email element — plus a submit button. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/multivalue_form_element-build-form-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/multivalue_form_element-build-form-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/multivalue_form_element-build-form-cleanup.sh",
+      "expected_output": "A custom module mfe_demo is enabled with MfeDemoForm::buildForm() defining $form['contacts'] = ['#type' => 'multivalue', '#cardinality' => MultiValue::CARDINALITY_UNLIMITED, 'name' => ['#type' => 'textfield', ...], 'mail' => ['#type' => 'email', ...]]. When the form is built, contacts is a processed multivalue element with an add_more button and delta 0 containing the name and mail children."
+    },
+    {
+      "id": "multivalue_form_element-capped-defaults",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, create and enable a custom module named `mfe_caps_demo` that exposes a form (form id `mfe_caps_demo_form`, class Drupal\\mfe_caps_demo\\Form\\MfeCapsDemoForm) at route path `/mfe-caps-demo`. Using the multivalue_form_element `multivalue` element, add a field named `aliases` with a maximum cardinality of 2 (so no 'add more' button) and a single child `value` textfield, pre-populated with two default rows: 'Alpha' and 'Beta'. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/multivalue_form_element-capped-defaults-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/multivalue_form_element-capped-defaults-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/multivalue_form_element-capped-defaults-cleanup.sh",
+      "expected_output": "A custom module mfe_caps_demo is enabled whose form defines $form['aliases'] = ['#type' => 'multivalue', '#cardinality' => 2, 'value' => ['#type' => 'textfield', ...], '#default_value' => ['Alpha', 'Beta']]. When built, aliases is a multivalue element with NO add_more button (capped cardinality) and two default rows whose child `value` #default_value are 'Alpha' and 'Beta' (single-child scalar shorthand)."
+    }
+  ]
+}

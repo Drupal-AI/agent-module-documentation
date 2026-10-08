@@ -1,0 +1,80 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "toolbar_menu",
+  "version": "3.1.x",
+  "note": "Toolbar Menu adds a custom menu (Structure > Menu) to the Drupal admin Toolbar as its own tab. Each tab is a `toolbar_menu_element` config entity (config prefix `toolbar_menu.toolbar_menu_element.<id>`) with fields id, label, menu, weight, rewrite_label, rendered by hook_toolbar(); managed at /admin/config/user-interface/toolbar-menu/elements (route entity.toolbar_menu_element.collection) under the `administer toolbar menu` permission. Cases span three tiers: easy/recipe (response-graded facts from 3.1.x/agent/), medium/introspection (a setup script installs a KNOWN toolbar_menu_element entity, the agent inspects the live site via drush to answer, a cleanup script removes it), and hard/execution (a reset script deletes matching elements, the agent creates a toolbar_menu_element linking a specific menu on the live site, a verify script checks live state — reset -> model -> verify). Grounded in module source (src/Entity/ToolbarMenuElement.php, config/schema, *.routing.yml).",
+  "evals": [
+    {
+      "id": "toolbar_menu-config-entity",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "On a Drupal 11 site with the Toolbar Menu (`toolbar_menu`) module, a menu I want in the admin toolbar is stored as which config entity type, and which fields identify the target menu and the tab ordering?",
+      "must_contain_any": ["toolbar_menu_element", "menu", "weight"],
+      "must_not_contain": [],
+      "expected_output": "Each toolbar tab is a `toolbar_menu_element` config entity (config object toolbar_menu.toolbar_menu_element.<id>). The `menu` field holds the target menu's machine name and `weight` orders the tab; other fields are id, label, and rewrite_label."
+    },
+    {
+      "id": "toolbar_menu-become-tab",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "On a Drupal 11 site using the Toolbar Menu module, how does a custom menu (Structure > Menu) actually become a tab in the admin Toolbar? What renders it?",
+      "must_contain_any": ["hook_toolbar", "toolbar_menu_element", "tray"],
+      "must_not_contain": [],
+      "expected_output": "You create a `toolbar_menu_element` config entity referencing the menu; the module's hook_toolbar() implementation then renders one toolbar_item (a tab plus a tray) per element, ordered by weight, with the referenced menu's link tree pre-rendered into the tray."
+    },
+    {
+      "id": "toolbar_menu-route-permission",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "On a Drupal 11 site with the Toolbar Menu module, at what admin path do you manage the toolbar menu elements, and which permission is required to reach it?",
+      "must_contain_any": ["/admin/config/user-interface/toolbar-menu/elements", "administer toolbar menu", "entity.toolbar_menu_element.collection"],
+      "must_not_contain": [],
+      "expected_output": "Manage elements at /admin/config/user-interface/toolbar-menu/elements (route entity.toolbar_menu_element.collection, the module's configure route), gated by the `administer toolbar menu` permission."
+    },
+    {
+      "id": "toolbar_menu-introspect-menu",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "persona": "drupal-expert",
+      "prompt": "This Drupal site has a Toolbar Menu element configured with the id `eval_tb_admin` (drush available). Inspect the running site and tell me which menu it puts into the toolbar and what its label is.",
+      "setup": "agent-module-documentation/evaluation/verify/toolbar_menu-introspect-menu-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/toolbar_menu-introspect-menu-cleanup.sh",
+      "must_contain_any": ["admin", "Admin Shortcuts"],
+      "must_not_contain": [],
+      "expected_output": "The `eval_tb_admin` toolbar_menu_element references the `admin` menu (Administration) and its label is `Admin Shortcuts` (read from its config: menu=admin, label='Admin Shortcuts')."
+    },
+    {
+      "id": "toolbar_menu-introspect-rewrite",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site a Toolbar Menu element with id `eval_tb_main` is configured (drush available). Inspect the running site and tell me whether it is set to display the underlying menu's own label instead of the element label (the rewrite_label setting), and which menu it targets.",
+      "setup": "agent-module-documentation/evaluation/verify/toolbar_menu-introspect-rewrite-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/toolbar_menu-introspect-rewrite-cleanup.sh",
+      "must_contain_any": ["rewrite_label", "true", "main"],
+      "must_not_contain": [],
+      "expected_output": "The `eval_tb_main` element targets the `main` menu and has rewrite_label = TRUE, so the toolbar tab shows the menu's own label (Main navigation) instead of the element label."
+    },
+    {
+      "id": "toolbar_menu-create-main",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site (drush available), use the Toolbar Menu module to add the Main navigation menu (machine name `main`) to the admin toolbar as its own tab labeled `Site Menu`. Apply it to the live site as a toolbar_menu_element config entity; don't just describe it. One-line summary.",
+      "reset": "agent-module-documentation/evaluation/verify/toolbar_menu-create-main-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/toolbar_menu-create-main-verify.sh",
+      "expected_output": "A `toolbar_menu_element` config entity exists with menu = main and label = Site Menu. Verified against live site state."
+    },
+    {
+      "id": "toolbar_menu-create-admin",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site (drush available), use the Toolbar Menu module to add the Administration menu (machine name `admin`) to the admin toolbar as its own tab, and configure it to display the underlying menu's own label instead of the element label (rewrite_label enabled). Save it as a toolbar_menu_element config entity on the live site; don't just describe it. One-line summary.",
+      "reset": "agent-module-documentation/evaluation/verify/toolbar_menu-create-admin-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/toolbar_menu-create-admin-verify.sh",
+      "expected_output": "A `toolbar_menu_element` config entity exists with menu = admin and rewrite_label = TRUE. Verified against live site state."
+    }
+  ]
+}

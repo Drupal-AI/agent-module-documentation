@@ -1,0 +1,80 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "commerce_add_to_wishlist_link",
+  "version": "2.1.x",
+  "note": "Submodule of commerce_add_to_cart_link. It renders an add-to-wishlist LINK (GET /add-to-wishlist/{product}/{variation}/{token}) via an 'add_to_wishlist_link' pseudo/extra field on Commerce product & variation view displays. AddToWishlistLink extends the parent AddToCartLink; it has NO settings/config of its own and reuses the parent's commerce_add_to_cart_link.settings (csrf_token.roles, redirect_back) and the shared commerce_add_to_cart_link.token service. Route requires the 'access wishlist' permission and it depends on commerce_wishlist. IMPORTANT for this campaign: commerce_wishlist is NOT installed on this site, so the submodule cannot be enabled. Easy cases are grounded in the submodule source. Medium/hard cases are grounded in what IS present and what the wishlist controller actually consumes: the shared parent config commerce_add_to_cart_link.settings (redirect_back and csrf_token.roles) which directly governs the wishlist link's redirect and token protection. Shipped baseline: csrf_token.roles=[], redirect_back=false.",
+  "evals": [
+    {
+      "id": "catwl-enable-field",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "Using commerce_add_to_wishlist_link, how do I make an 'Add to wishlist' link appear on a Commerce product listing view mode? What is the field called?",
+      "must_contain_any": ["add_to_wishlist_link", "Manage display", "pseudo", "extra field", "view mode", "view display"],
+      "must_not_contain": [],
+      "expected_output": "Enable the 'add_to_wishlist_link' pseudo/extra field on the product (or product variation) view mode via Manage display (drag it out of Disabled). hook_entity_extra_field_info() adds it, hidden by default, to every commerce_product and commerce_product_variation bundle."
+    },
+    {
+      "id": "catwl-shared-settings",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "Does commerce_add_to_wishlist_link have its own settings form for CSRF token protection and redirect behaviour? If not, what config and service control those for the wishlist link?",
+      "must_contain_any": ["commerce_add_to_cart_link.settings", "commerce_add_to_cart_link.token", "csrf_token", "redirect_back", "parent"],
+      "must_not_contain": [],
+      "expected_output": "No, it has no settings of its own. It reuses the parent module's commerce_add_to_cart_link.settings (csrf_token.roles and redirect_back) and the shared commerce_add_to_cart_link.token service. AddToWishlistController reads redirect_back from that config and validates tokens from that service, so you configure wishlist links at /admin/commerce/config/add-to-cart-link."
+    },
+    {
+      "id": "catwl-route-and-deps",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "What route does an add-to-wishlist link hit, what permission does it require, and what modules must be enabled for commerce_add_to_wishlist_link to work?",
+      "must_contain_any": ["access wishlist", "commerce_wishlist", "/add-to-wishlist", "commerce_add_to_wishlist_link.page", "commerce_add_to_cart_link"],
+      "must_not_contain": [],
+      "expected_output": "The link hits commerce_add_to_wishlist_link.page at /add-to-wishlist/{commerce_product}/{commerce_product_variation}/{token}, which requires the 'access wishlist' permission. The submodule depends on both commerce_add_to_cart_link and commerce_wishlist being enabled."
+    },
+    {
+      "id": "catwl-redirect-value",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "The add-to-wishlist link's after-add redirect is governed by the same shared config as the cart link. Inspect the live configuration that AddToWishlistController reads for its redirect-back behaviour and tell me whether it is currently enabled.",
+      "must_contain_any": ["true", "enabled", "redirect_back"],
+      "must_not_contain": [],
+      "expected_output": "redirect-back is enabled: commerce_add_to_cart_link.settings:redirect_back is true, so after adding to the wishlist the shopper is sent back to the referring page (if valid) instead of the wishlist page.",
+      "setup": "agent-module-documentation/evaluation/verify/commerce_add_to_wishlist_link-redirect-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/commerce_add_to_wishlist_link-redirect-cleanup.sh"
+    },
+    {
+      "id": "catwl-protected-role",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "Add-to-wishlist links are CSRF-protected using the same shared token config as the cart link. Inspect the live configuration and tell me which user role currently has its links protected with a token.",
+      "must_contain_any": ["content_editor"],
+      "must_not_contain": [],
+      "expected_output": "The 'content_editor' role: commerce_add_to_cart_link.settings:csrf_token.roles = ['content_editor'], and the shared commerce_add_to_cart_link.token service applies that protection to add-to-wishlist links as well.",
+      "setup": "agent-module-documentation/evaluation/verify/commerce_add_to_wishlist_link-roles-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/commerce_add_to_wishlist_link-roles-cleanup.sh"
+    },
+    {
+      "id": "catwl-enable-redirect",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, configure things so that after a shopper clicks an add-to-wishlist link (commerce_add_to_wishlist_link) they are returned to the page they came from instead of the wishlist page. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/commerce_add_to_wishlist_link-redirect-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/commerce_add_to_wishlist_link-redirect-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/commerce_add_to_wishlist_link-redirect-cleanup2.sh",
+      "expected_output": "Set commerce_add_to_cart_link.settings:redirect_back to true (e.g. drush cset commerce_add_to_cart_link.settings redirect_back true). AddToWishlistController::action() reads this shared key; when true and the referer is a valid internal URL it redirects there instead of to commerce_wishlist.page."
+    },
+    {
+      "id": "catwl-protect-content-editor",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, make add-to-wishlist links (commerce_add_to_wishlist_link) CSRF-token-protected for users in the 'content_editor' role. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/commerce_add_to_wishlist_link-protect-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/commerce_add_to_wishlist_link-protect-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/commerce_add_to_wishlist_link-protect-cleanup.sh",
+      "expected_output": "Add 'content_editor' to commerce_add_to_cart_link.settings:csrf_token.roles (e.g. drush cset commerce_add_to_cart_link.settings csrf_token.roles.0 content_editor). The shared commerce_add_to_cart_link.token service then appends a CSRF token to that role's wishlist links, validated by AddToWishlistController::access()."
+    }
+  ]
+}

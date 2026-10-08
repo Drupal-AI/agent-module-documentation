@@ -1,0 +1,95 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "create_user_permission",
+  "version": "2.0.x",
+  "note": "Create User Permission adds one permission, 'create users', and enforces it via a route subscriber that rewrites the core user.admin_create route requirement (/admin/people/create) and via hook_entity_create_access() for the user entity type. It also alters the register form for delegated creators. There is no configure route, no settings, no config schema, no Drush commands and no plugins. The only persistent state is which roles hold 'create users' (in user.role.<id> config). Medium cases seed roles with/without the permission and read them back; hard cases have the agent grant the permission to an empty role, verified against live role config.",
+  "evals": [
+    {
+      "id": "cup-what-permission",
+      "mode": "recipe",
+      "prompt": "In Drupal, what problem does the create_user_permission module solve, and what is the machine name of the permission it adds that lets a role create new accounts without full user administration?",
+      "must_contain_any": [
+        "create users",
+        "administer users"
+      ],
+      "must_not_contain": [],
+      "expected_output": "It lets you grant account creation without granting 'administer users'. It adds one permission with machine name 'create users' (title 'Create users'); a holder can create accounts but cannot edit, block, delete, or assign roles to existing users.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "cup-which-route",
+      "mode": "recipe",
+      "prompt": "Which core route/path does create_user_permission make reachable with its 'create users' permission instead of 'administer users', and how does it change that route?",
+      "must_contain_any": [
+        "user.admin_create",
+        "/admin/people/create",
+        "admin/people/create"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Its RouteSubscriber::alterRoutes() rewrites the core user.admin_create route (path /admin/people/create) requirement to _permission: 'create users', so the Add user form opens for holders of that permission.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "cup-programmatic-access",
+      "mode": "recipe",
+      "prompt": "Besides the admin Add user form, how does create_user_permission make sure that programmatic or REST creation of a user entity also honours the 'create users' permission? Which hook does it use?",
+      "must_contain_any": [
+        "hook_entity_create_access",
+        "entity_create_access",
+        "create users"
+      ],
+      "must_not_contain": [],
+      "expected_output": "It implements hook_entity_create_access(): for the 'user' entity type it returns AccessResult::allowedIfHasPermission($account, 'create users'), so any user-entity create path (UI, programmatic, REST) is governed by the permission, not just the route.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "cup-known-role",
+      "mode": "introspection",
+      "prompt": "On this Drupal site, exactly one custom role has been granted the create_user_permission 'create users' permission. Inspect the live role configuration and give the machine name (id) of that role.",
+      "must_contain_any": [
+        "cup_known_creator"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The role is cup_known_creator: its user.role.cup_known_creator config lists 'create users' under permissions.",
+      "setup": "agent-module-documentation/evaluation/verify/cup-known-role-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/cup-known-role-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "cup-two-roles",
+      "mode": "introspection",
+      "prompt": "This site has two custom roles, cup_role_on and cup_role_off. Exactly one of them can create new user accounts via the create_user_permission module. Inspect the live role configuration and state which role has that ability.",
+      "must_contain_any": [
+        "cup_role_on"
+      ],
+      "must_not_contain": [],
+      "expected_output": "cup_role_on can create users: its role config includes the 'create users' permission, whereas cup_role_off does not.",
+      "setup": "agent-module-documentation/evaluation/verify/cup-two-roles-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/cup-two-roles-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "cup-grant-role",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site there is a role with machine name cup_task_role. Using the create_user_permission module, grant that role the 'create users' permission so its members can create accounts without 'administer users'. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/cup-grant-role-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/cup-grant-role-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/cup-grant-role-cleanup.sh",
+      "expected_output": "The role cup_task_role holds the 'create users' permission (e.g. via `drush role:perm:add cup_task_role 'create users'` or by adding it to user.role.cup_task_role permissions)."
+    },
+    {
+      "id": "cup-editor-role",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "site-owner",
+      "prompt": "I have a role called cup_editor_role on my Drupal site. I want people in that role to be able to add brand-new user accounts, but they must NOT be able to administer (edit, block, or delete) existing users. Set that up on the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/cup-editor-role-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/cup-editor-role-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/cup-editor-role-cleanup.sh",
+      "expected_output": "cup_editor_role is granted 'create users' (from create_user_permission) and is NOT granted 'administer users', so it can create accounts but cannot manage existing ones."
+    }
+  ]
+}

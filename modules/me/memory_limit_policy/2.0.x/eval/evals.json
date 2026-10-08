@@ -1,0 +1,80 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "memory_limit_policy",
+  "version": "2.0.x",
+  "note": "Memory Limit Policy overrides PHP memory_limit per request via memory_limit_policy config entities. Each policy has a string memory value (e.g. 256M), a weight, a status, and an ordered policy_constraints sequence of MemoryLimitConstraint plugin instances. A KernelEvents::REQUEST subscriber (priority -1) loads status=TRUE policies, sorts by weight ascending, and for each policy that evaluate()s TRUE calls ini_set('memory_limit', memory); the loop does not break so the last matching policy wins. MemoryLimitPolicy::evaluate() ANDs the constraints with per-constraint negate. The base module ships no constraint plugins (they come from submodules). Settings key memory_limit_policy.settings:header toggles X-Memory-Limit-* debug response headers. All cases are grounded in the real config entity, the real settings key, and the real evaluation/plugin mechanics; hard/medium scripts use mlp_-prefixed policies and the path constraint from the enabled memory_limit_policy_path submodule.",
+  "evals": [
+    {
+      "id": "memory_limit_policy-how-applied",
+      "mode": "recipe",
+      "prompt": "How does the Drupal memory_limit_policy module actually change PHP's memory limit for a matching request? Name the PHP function it calls and the ini setting it changes.",
+      "must_contain_any": ["ini_set", "memory_limit"],
+      "must_not_contain": [],
+      "expected_output": "Its request event subscriber (MemoryLimitPolicySubscriber, on KernelEvents::REQUEST at priority -1) calls ini_set('memory_limit', $policy->getMemory()) for each enabled policy whose constraints all match, applying the policy's memory value (e.g. 256M).",
+      "difficulty": "easy"
+    },
+    {
+      "id": "memory_limit_policy-constraint-logic",
+      "mode": "recipe",
+      "prompt": "In the memory_limit_policy module, a policy can have several constraints. Does a policy apply when ANY constraint matches or only when ALL of them match, and what does the per-constraint 'negate' option do? If two enabled policies both match a request, which one's memory value is used?",
+      "must_contain_any": ["all", "AND", "every", "weight", "negate"],
+      "must_not_contain": [],
+      "expected_output": "A policy applies only when ALL its constraints pass (logical AND); MemoryLimitPolicy::evaluate() returns FALSE on the first failing constraint. 'negate' reverses a single constraint (a negated constraint must evaluate FALSE for the policy to apply). Policies are sorted by weight ascending and the subscriber does not break the loop, so the last (highest-weight) matching policy's memory value wins.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "memory_limit_policy-plugin-type",
+      "mode": "recipe",
+      "prompt": "I want to add my own condition to the memory_limit_policy module. What plugin type do I implement, what annotation and base class do I use, and where do the built-in conditions (role, path, HTTP method, etc.) come from?",
+      "must_contain_any": ["MemoryLimitConstraint", "MemoryLimitConstraintBase", "Plugin/MemoryLimitConstraint", "submodule"],
+      "must_not_contain": [],
+      "expected_output": "Implement a MemoryLimitConstraint plugin in src/Plugin/MemoryLimitConstraint/, annotated with @MemoryLimitConstraint (id/title/description), extending MemoryLimitConstraintBase, managed by plugin.manager.memory_limit_policy.memory_limit_constraint. The built-in conditions ship as separate submodules (memory_limit_policy_role, _path, _route, _http_method, _http_header, _query_param, _domain, _env_variable, _drush).",
+      "difficulty": "easy"
+    },
+    {
+      "id": "memory_limit_policy-known-memory",
+      "mode": "introspection",
+      "prompt": "This site has a memory limit policy with the machine id 'mlp_known_policy'. Inspect the live configuration and state the memory limit value it applies.",
+      "must_contain_any": ["384M", "384"],
+      "must_not_contain": [],
+      "expected_output": "The policy mlp_known_policy sets memory to 384M (config memory_limit_policy.memory_limit_policy.mlp_known_policy, key 'memory'). It also carries a path constraint for /admin/reports/*.",
+      "setup": "agent-module-documentation/evaluation/verify/memory_limit_policy-known-memory-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/memory_limit_policy-known-memory-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "memory_limit_policy-enabled-vs-disabled",
+      "mode": "introspection",
+      "prompt": "This site has two memory limit policies, mlp_active and mlp_inactive. Only enabled policies are ever evaluated by the module. Inspect the live configuration and state which of the two would actually be evaluated on a request.",
+      "must_contain_any": ["mlp_active"],
+      "must_not_contain": [],
+      "expected_output": "mlp_active is the one evaluated: its status is TRUE, whereas mlp_inactive has status FALSE and the subscriber only loads policies with status = TRUE (loadByProperties(['status' => TRUE])).",
+      "setup": "agent-module-documentation/evaluation/verify/memory_limit_policy-enabled-vs-disabled-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/memory_limit_policy-enabled-vs-disabled-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "memory_limit_policy-create-policy",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, create an enabled memory limit policy with machine id 'mlp_exec_policy' that sets the memory limit to 512M, with weight 10, and a single Path constraint matching '/admin/*'. Apply it to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/memory_limit_policy-create-policy-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/memory_limit_policy-create-policy-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/memory_limit_policy-create-policy-cleanup.sh",
+      "expected_output": "Create the memory_limit_policy config entity mlp_exec_policy with memory '512M', status TRUE, weight 10 and policy_constraints [['id' => 'path', 'negate' => FALSE, 'paths' => '/admin/*']] (e.g. via the entity storage or the add form at /admin/config/performance/memory-limit-policy/add)."
+    },
+    {
+      "id": "memory_limit_policy-debug-header",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "Turn on the memory_limit_policy debug response headers on this site, so responses include the X-Memory-Limit-* headers reporting which policy applied. Apply the change to the live configuration.",
+      "reset": "agent-module-documentation/evaluation/verify/memory_limit_policy-debug-header-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/memory_limit_policy-debug-header-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/memory_limit_policy-debug-header-cleanup.sh",
+      "expected_output": "Set memory_limit_policy.settings:header to TRUE (e.g. drush config:set memory_limit_policy.settings header true, or via the settings form at /admin/config/performance/memory-limit-policy/settings). onResponse then emits X-Memory-Limit-Memory / X-Memory-Limit-Override / X-Memory-Limit-Policy-Name."
+    }
+  ]
+}

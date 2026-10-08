@@ -1,0 +1,65 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "variationcache",
+  "version": "1.0.x",
+  "note": "VariationCache is a redirect-aware cache backend wrapper that adds cache-context support; it is a backport that was merged into Drupal core 10.2 and now ships mainly as a class_alias compatibility shim. Cases are `recipe` (response-graded) probing documented facts an agent would otherwise read source to answer; no site mutation.",
+  "evals": [
+    {
+      "id": "vc-service-name",
+      "mode": "recipe",
+      "prompt": "In Drupal I need a cache that varies by cache context (like user.permissions) without building context-specific cache IDs myself. Which service does VariationCache expose and how do I get a bin wrapper from it?",
+      "must_contain_any": ["variation_cache_factory"],
+      "must_not_contain": [],
+      "expected_output": "Use the variation_cache_factory service; call ->get($bin) on it to get a VariationCacheInterface object that wraps the named cache bin and adds cache-context awareness."
+    },
+    {
+      "id": "vc-set-signature",
+      "mode": "recipe",
+      "prompt": "What are the arguments to VariationCacheInterface::set() and what is the difference between the two cacheability arguments?",
+      "must_contain_any": ["initial_cacheability", "pre-bubbling", "initial cacheability"],
+      "must_not_contain": [],
+      "expected_output": "set(array $keys, $data, CacheableDependencyInterface $cacheability, CacheableDependencyInterface $initial_cacheability). $cacheability is the full/folded cache metadata after bubbling; $initial_cacheability is the pre-bubbling metadata known before other systems adjusted it. Keys is an array of cache keys, not a single cid."
+    },
+    {
+      "id": "vc-set-logicexception",
+      "mode": "recipe",
+      "prompt": "Under what condition does VariationCache::set() throw a LogicException, and when does it silently store nothing?",
+      "must_contain_any": ["LogicException", "superset", "contain"],
+      "must_not_contain": [],
+      "expected_output": "It throws \\LogicException when the initial (pre-bubbling) cache contexts are not fully contained in the full cacheability's contexts (the full set must be a superset). It silently stores nothing when the cacheability's max-age is 0 (uncacheable)."
+    },
+    {
+      "id": "vc-delete-scope",
+      "mode": "recipe",
+      "prompt": "If I call delete() or invalidate() on a VariationCache item, does it remove every context variation of that item or just one?",
+      "must_contain_any": ["active variation", "only the active", "not all"],
+      "must_not_contain": [],
+      "expected_output": "Only the active variation for the current request is affected, to stay consistent with get(); other context variations of the same keys are not deleted or invalidated."
+    },
+    {
+      "id": "vc-core-merge",
+      "mode": "recipe",
+      "prompt": "Is the VariationCache contrib module still needed on Drupal 11 / 10.2, and what does the module actually do on those core versions?",
+      "must_contain_any": ["class_alias", "core 10.2", "merged into core", "class alias"],
+      "must_not_contain": [],
+      "expected_output": "It is deprecated because the code was merged into Drupal core 10.2+. On those versions the module only registers class_alias() entries mapping \\Drupal\\variationcache\\Cache\\* to the core \\Drupal\\Core\\Cache\\* classes; you can uninstall it and reference the core classes directly."
+    },
+    {
+      "id": "vc-factory-args",
+      "mode": "recipe",
+      "prompt": "I want to decorate VariationCacheFactory. Which interface do I implement, what single method must it provide, and what services does the core factory take?",
+      "must_contain_any": ["VariationCacheFactoryInterface", "get($bin)", "get("],
+      "must_not_contain": [],
+      "expected_output": "Implement VariationCacheFactoryInterface, which defines get($bin) returning a VariationCacheInterface. The bundled factory is constructed from request_stack, cache_factory, and cache_contexts_manager; decorate the variation_cache_factory service and wrap those calls."
+    },
+    {
+      "id": "vc-no-ui",
+      "mode": "recipe",
+      "prompt": "Does VariationCache add any admin UI, config form, permissions, or Drush commands I need to configure?",
+      "must_contain_any": ["no UI", "no configuration", "no config", "purely", "developer"],
+      "must_not_contain": [],
+      "expected_output": "No. VariationCache has no UI, no config, no permissions, no routes, and no Drush commands. It is purely a developer/API dependency providing the variation_cache_factory service and related classes."
+    }
+  ]
+}

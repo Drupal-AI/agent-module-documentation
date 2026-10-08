@@ -1,0 +1,96 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "block_classes",
+  "version": "1.0.x",
+  "note": "Block Classes has no settings form and no configure route. Its entire persistent state is three optional third-party settings on a block config entity: block.block.<id> -> third_party_settings.block_classes.{block_class,title_class,content_class} (space-separated class strings, max 255 chars). block_classes_form_block_form_alter() only adds the fields for users with the 'administer block css classes' permission; block_classes_block_presave() unsets empty values; block_classes_preprocess_block() appends each class (through Html::cleanCssIdentifier) to attributes / title_attributes / content_attributes. Medium cases therefore place real blocks with known third-party settings and ask the agent to read them back from the live config; hard cases place a block with no classes and require the agent to write them, verified against the live block entity.",
+  "evals": [
+    {
+      "id": "block_classes-where-stored",
+      "mode": "recipe",
+      "prompt": "On a Drupal 11 site with the block_classes contrib module enabled, I want to add a CSS class to one specific block placement. There is no settings page for the module - where do I enter the class, and where does Drupal store it?",
+      "must_contain_any": [
+        "third_party_settings",
+        "third-party setting",
+        "block_class",
+        "Block layout",
+        "block.block."
+      ],
+      "must_not_contain": [],
+      "expected_output": "There is no configure route. Go to Structure > Block layout, click Configure on the block placement, and fill in 'Block CSS class(es)'. The value is stored as a third-party setting on the block config entity: block.block.<block_id> -> third_party_settings.block_classes.block_class.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "block_classes-three-keys",
+      "mode": "recipe",
+      "prompt": "The Drupal block_classes module adds more than one CSS class field to the block configuration form. Name all of the keys it can store under third_party_settings.block_classes and say which part of the rendered block each one targets.",
+      "must_contain_any": [
+        "title_class",
+        "content_class",
+        "block_class"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Three keys: block_class (appended to the block wrapper via the 'attributes' variable), title_class (appended to 'title_attributes', i.e. the block title), and content_class (appended to 'content_attributes', the content wrapper). Each is a space-separated string, max 255 characters, and empty values are unset on presave.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "block_classes-permission",
+      "mode": "recipe",
+      "prompt": "A site builder on a Drupal 11 site can edit blocks but does not see the CSS class fields that the block_classes module is supposed to add to the block configuration form. Which permission controls whether those fields appear?",
+      "must_contain_any": [
+        "administer block css classes"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The 'administer block css classes' permission (the only one block_classes defines). block_classes_form_block_form_alter() checks it before adding the three textfields; without it the fields are simply not added, though already-saved classes still render.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "block_classes-known-block",
+      "mode": "introspection",
+      "prompt": "This Drupal site has a block placement with the machine id 'block_classes_known'. It has CSS classes assigned through the block_classes module. Inspect the live site and tell me exactly which class is set for the block wrapper (the 'Block CSS class(es)' value).",
+      "must_contain_any": [
+        "bc-known-wrapper"
+      ],
+      "must_not_contain": [],
+      "expected_output": "bc-known-wrapper. In block.block.block_classes_known the third-party settings are third_party_settings.block_classes.block_class: bc-known-wrapper (and title_class: bc-known-title).",
+      "setup": "agent-module-documentation/evaluation/verify/block_classes-known-block-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/block_classes-known-block-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "block_classes-which-block",
+      "mode": "introspection",
+      "prompt": "Two blocks are placed on this Drupal site: 'block_classes_alpha' and 'block_classes_beta'. Exactly one of them has a Content CSS class configured through the block_classes module. Inspect the running site and tell me which block it is and what the class value is.",
+      "must_contain_any": [
+        "bc-alpha-content"
+      ],
+      "must_not_contain": [],
+      "expected_output": "block_classes_alpha, with content_class 'bc-alpha-content' (block.block.block_classes_alpha -> third_party_settings.block_classes.content_class). block_classes_beta has no block_classes third-party settings at all.",
+      "setup": "agent-module-documentation/evaluation/verify/block_classes-which-block-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/block_classes-which-block-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "block_classes-wrapper-class",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "This Drupal site has a block placement with the machine id 'block_classes_task'. Using the block_classes module, give that block's wrapper the two CSS classes 'promo-card' and 'is-highlighted'. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/block_classes-wrapper-class-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/block_classes-wrapper-class-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/block_classes-wrapper-class-cleanup.sh",
+      "expected_output": "block.block.block_classes_task gets third_party_settings.block_classes.block_class: 'promo-card is-highlighted' - e.g. $block->setThirdPartySetting('block_classes', 'block_class', 'promo-card is-highlighted')->save(), or by typing it into 'Block CSS class(es)' on the block configure form."
+    },
+    {
+      "id": "block_classes-title-content",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "site-builder-layman",
+      "prompt": "On my Drupal site there is a block called 'BC Split Block' (its machine id is block_classes_split). I need its heading to be hidden from sighted users with the class 'visually-hidden', and the block's inner content area to get the classes 'grid' and 'grid--3col' so my theme can lay it out in three columns. Please set that up on the live site - the block_classes module is already installed.",
+      "reset": "agent-module-documentation/evaluation/verify/block_classes-title-content-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/block_classes-title-content-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/block_classes-title-content-cleanup.sh",
+      "expected_output": "block.block.block_classes_split gets third_party_settings.block_classes.title_class: 'visually-hidden' and third_party_settings.block_classes.content_class: 'grid grid--3col' (the 'Title CSS class(es)' and 'Content CSS class(es)' fields on the block configure form)."
+    }
+  ]
+}

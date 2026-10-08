@@ -1,0 +1,98 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "file_delete_ui",
+  "version": "1.x",
+  "note": "File delete (file_delete_ui) adds a Delete operation for core file entities, which Drupal core lacks. It has no settings form (configure=null). hook_entity_type_alter adds a delete-form link template /file/{file}/delete, a delete form class (FileEntityDeleteForm), a generic EntityListBuilder, and overrides the file access handler with FileAccessControlHandler; the route entity.file.delete_form (guarded by _entity_access: file.delete) exposes the confirm form. Access = has 'delete any file' (a restrict-access permission) OR owns the file. hook_install adds an operations field to the core views.view.files view. It deletes files even with non-zero usage. Medium/hard cases are grounded in the real permission, the delete route, and actually deleting a file: introspection reads which role holds 'delete any file' and looks up a file's delete URL; execution grants the permission to a role and deletes a target file (verified against live state).",
+  "evals": [
+    {
+      "id": "file_delete_ui-permission",
+      "mode": "recipe",
+      "prompt": "The file_delete_ui module lets admins delete files. What permission does it add, and under what condition can a user delete a file without that permission?",
+      "must_contain_any": [
+        "delete any file",
+        "owner",
+        "owns"
+      ],
+      "must_not_contain": [],
+      "expected_output": "It adds the 'delete any file' permission (flagged restrict access: true). Its FileAccessControlHandler grants delete access if the user has 'delete any file' OR is the owner of the file (the file's uid equals the current user).",
+      "difficulty": "easy"
+    },
+    {
+      "id": "file_delete_ui-route",
+      "mode": "recipe",
+      "prompt": "With file_delete_ui enabled, what is the URL/route and form used to delete a single file entity in Drupal?",
+      "must_contain_any": [
+        "/file/",
+        "entity.file.delete_form",
+        "delete-form"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The route entity.file.delete_form at path /file/{file}/delete shows a confirm form (FileEntityDeleteForm, a ContentEntityDeleteForm subclass). The module adds this via a delete-form link template on the file entity type; the route requires _entity_access: file.delete.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "file_delete_ui-files-view",
+      "mode": "recipe",
+      "prompt": "How does the Delete link show up in the admin Files listing (/admin/content/files) after installing file_delete_ui, and does it refuse to delete a file that is still in use?",
+      "must_contain_any": [
+        "views.view.files",
+        "operations",
+        "hook_install",
+        "usage"
+      ],
+      "must_not_contain": [],
+      "expected_output": "file_delete_ui_install() edits the core views.view.files config to add an Operations field, so the Delete operation appears at /admin/content/files. It does NOT refuse in-use files: it deletes even when file usage is non-zero, and core removes the dangling references from referencing entities.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "file_delete_ui-which-role",
+      "mode": "introspection",
+      "prompt": "On this Drupal site, which user role has been granted the file_delete_ui 'delete any file' permission? Inspect the live permission configuration and give the role's machine name.",
+      "must_contain_any": [
+        "file_delete_ui_editor"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The role file_delete_ui_editor has the 'delete any file' permission (visible in user.role.file_delete_ui_editor permissions, or via Role::load('file_delete_ui_editor')->hasPermission('delete any file')).",
+      "setup": "agent-module-documentation/evaluation/verify/file_delete_ui-perm-role-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/file_delete_ui-perm-role-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "file_delete_ui-file-delete-url",
+      "mode": "introspection",
+      "prompt": "This site has a managed file whose filename is fdu_eval_lookup.txt. Using the delete capability file_delete_ui adds, what is the URL that would delete that specific file? Inspect the live site to find the file and give its delete URL.",
+      "must_contain_any": [
+        "/file/",
+        "delete"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Load the file by filename to get its file id, then its delete URL is /file/{fid}/delete (from the delete-form link template file_delete_ui adds), e.g. /file/54/delete. The route is entity.file.delete_form.",
+      "setup": "agent-module-documentation/evaluation/verify/file_delete_ui-target-file-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/file_delete_ui-target-file-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "file_delete_ui-grant-permission",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this site there is a role with machine name file_delete_ui_deleter. Give that role the file_delete_ui permission that allows deleting any file on the site, and apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/file_delete_ui-grant-perm-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/file_delete_ui-grant-perm-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/file_delete_ui-grant-perm-cleanup.sh",
+      "expected_output": "Grant the 'delete any file' permission to the file_delete_ui_deleter role, e.g. drush role:perm:add file_delete_ui_deleter 'delete any file' (or Role::load('file_delete_ui_deleter')->grantPermission('delete any file')->save()). Role::hasPermission('delete any file') then returns TRUE."
+    },
+    {
+      "id": "file_delete_ui-delete-target-file",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "This site has a managed file entity with filename fdu_eval_target.txt that is no longer needed. Using the file-deletion capability file_delete_ui provides, delete that file so it is removed from the site.",
+      "reset": "agent-module-documentation/evaluation/verify/file_delete_ui-delete-file-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/file_delete_ui-delete-file-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/file_delete_ui-delete-file-cleanup.sh",
+      "expected_output": "Find the file entity named fdu_eval_target.txt and delete it (via /file/{fid}/delete, or File::load($fid)->delete()). Afterwards no managed file with that filename remains. file_delete_ui is what makes the file entity deletable (it adds the delete route/form and permissive access)."
+    }
+  ]
+}

@@ -1,0 +1,96 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "fieldblock",
+  "version": "2.3.x",
+  "note": "Field as Block provides one block plugin (id 'fieldblock') with a deriver that yields fieldblock:<entity_type> derivatives for the entity types listed in fieldblock.settings:enabled_entity_types (the module ships no config/install, so the config object does not exist until saved and the fallback is node/user/taxonomy_term). Each placement stores label_from_field / field_name / formatter_id / formatter_settings on the ordinary block.block.* config entity. Medium cases install a real block placement and a real non-default enabled_entity_types list; hard cases require building block entities (one node body block, one media block that also needs the media entity type enabled and the derivative rebuilt) and are verified against live config. The default theme on this site is olivero, whose sidebar region is called 'sidebar'.",
+  "evals": [
+    {
+      "id": "fieldblock-plugin-ids",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "I installed the Drupal contrib module fieldblock (Field as Block). What block plugin ids does it make available in Block layout, and how are they derived?",
+      "must_contain_any": [
+        "fieldblock:node",
+        "fieldblock:",
+        "deriver"
+      ],
+      "must_not_contain": [],
+      "expected_output": "A single block plugin 'fieldblock' with the deriver Drupal\\fieldblock\\Plugin\\Derivative\\FieldBlockDeriver, which creates one derivative per enabled entity type: fieldblock:node, fieldblock:user and fieldblock:taxonomy_term by default (admin labels 'Content field', 'User field', 'Taxonomy term field')."
+    },
+    {
+      "id": "fieldblock-settings-key",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "With the Drupal fieldblock module, which configuration object and key decide which entity types can be used as field blocks, and what happens if that config has never been saved?",
+      "must_contain_any": [
+        "enabled_entity_types",
+        "fieldblock.settings"
+      ],
+      "must_not_contain": [],
+      "expected_output": "fieldblock.settings, key enabled_entity_types (a sequence of entity type ids), edited at /admin/config/fieldblock/fieldblockconfig with the 'administer fieldblock' permission. The module ships no config/install, so until the form is saved the config object does not exist and FieldBlockController::getEnabledEntityTypes() falls back to node, user and taxonomy_term."
+    },
+    {
+      "id": "fieldblock-not-rendering",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "I placed a Field as Block (fieldblock) block in a region on a Drupal site but nothing renders on most pages. What determines whether the block appears?",
+      "must_contain_any": [
+        "empty",
+        "canonical",
+        "route",
+        "blockAccess"
+      ],
+      "must_not_contain": [],
+      "expected_output": "FieldBlock::getEntity() looks at the current route's entity:* parameters and only uses one whose entity type matches the derivative, that has a canonical link template and that has the configured field — so effectively the entity's canonical page. blockAccess() then returns forbidden when there is no such entity, when the field is empty, or when field 'view' access is denied. Cache contexts are ['route'] and cache tags are the entity's."
+    },
+    {
+      "id": "fieldblock-known-block",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "This Drupal site has a Field as Block (fieldblock) block placed in the Olivero theme. Inspect the live configuration and report which entity type it targets, which field it renders and which field formatter it uses.",
+      "must_contain_any": [
+        "text_summary_or_trimmed"
+      ],
+      "must_not_contain": [],
+      "expected_output": "block.block.fieldblock_eval_body uses plugin fieldblock:node (so the node on the current route), settings.field_name = body and settings.formatter_id = text_summary_or_trimmed (trim_length 300), with label_from_field FALSE, placed in Olivero's sidebar region.",
+      "setup": "agent-module-documentation/evaluation/verify/fieldblock-known-block-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/fieldblock-known-block-cleanup.sh"
+    },
+    {
+      "id": "fieldblock-enabled-types",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "On this Drupal site, which entity types are currently exposed as Field as Block (fieldblock) blocks? Inspect the running site — do not assume the module defaults — and list the fieldblock block plugin ids that exist right now.",
+      "must_contain_any": [
+        "fieldblock:media"
+      ],
+      "must_not_contain": [],
+      "expected_output": "fieldblock.settings:enabled_entity_types has been saved as node + media, so the live block plugin definitions contain only fieldblock:node and fieldblock:media — user and taxonomy_term are switched off and their derivatives are gone.",
+      "setup": "agent-module-documentation/evaluation/verify/fieldblock-enabled-types-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/fieldblock-enabled-types-cleanup.sh"
+    },
+    {
+      "id": "fieldblock-body-block",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, use the Field as Block (fieldblock) module to place a block with the machine id fieldblock_task_body in the Olivero theme's 'sidebar' region. It must render the node's body field with the 'text_default' formatter and take its block title from the field label. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/fieldblock-body-block-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/fieldblock-body-block-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/fieldblock-body-block-reset.sh",
+      "expected_output": "block.block.fieldblock_task_body with plugin fieldblock:node, theme olivero, region sidebar and settings field_name=body, formatter_id=text_default, label_from_field=true."
+    },
+    {
+      "id": "fieldblock-media-block",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "This Drupal site only offers Field as Block blocks for content, users and taxonomy terms. Make the Media entity type available as a field block too, then place a block with the machine id fieldblock_task_media in the Olivero theme's 'sidebar' region that renders the media item's Name field ('name') with the plain-text 'string' formatter. Apply everything to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/fieldblock-media-block-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/fieldblock-media-block-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/fieldblock-media-block-reset.sh",
+      "expected_output": "fieldblock.settings:enabled_entity_types includes media (saved at /admin/config/fieldblock/fieldblockconfig or via config), the block plugin definitions were rebuilt so fieldblock:media exists, and block.block.fieldblock_task_media has plugin fieldblock:media, theme olivero, region sidebar, settings field_name=name and formatter_id=string."
+    }
+  ]
+}

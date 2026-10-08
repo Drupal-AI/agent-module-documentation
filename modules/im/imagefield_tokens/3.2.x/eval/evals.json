@@ -1,0 +1,84 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "imagefield_tokens",
+  "version": "3.2.x",
+  "note": "Image Field Tokens extends the core Image field with token-aware widgets/formatters (no field type, no settings, no permission, no config schema). Code-grounded facts: widget 'imagefield_tokens' (extends core image_image) shows a token-tree link and lets editors put tokens like [node:title] into Alt/Title; widget 'imagefield_tokens_widget_crop' only exists when image_widget_crop is enabled; formatter 'imagefield_tokens' (extends core image formatter) runs token->replace() on alt/title at render with BubbleableMetadata cache info; formatter 'imagefield_tokens_colorbox' only when colorbox is enabled; depends on token, image, media_library. IMPORTANT (verified live on this Drupal 11.4 site): the imagefield_tokens FORMATTER is currently incompatible - ImageFieldTokensFormatter::create() passes the pre-11.4 argument list to core ImageFormatter::__construct() (which gained an 11th arg $imageDerivativeUtilities in 11.4), so selecting the formatter throws ArgumentCountError. The WIDGET works fine. Therefore all medium/hard cases here exercise the working WIDGET (selecting it on Manage form display and its preview_image_style setting), not the formatter. Fixtures namespaced field_ift_*.",
+  "evals": [
+    {
+      "id": "imagefield_tokens-what-it-adds",
+      "mode": "recipe",
+      "prompt": "I want editors to be able to put tokens like [node:title] into the Alt and Title text of a core Image field, using the imagefield_tokens module. Which field widget do I select, and what does it add to the image widget?",
+      "must_contain_any": ["imagefield_tokens", "token", "widget"],
+      "must_not_contain": [],
+      "expected_output": "Select the 'imagefield_tokens' field widget on the Image field's Manage form display. It extends the core image_image widget and adds a token-tree link so editors can insert entity tokens (e.g. [node:title]) into the Alt and Title fields; the module also provides an imagefield_tokens formatter that replaces those tokens on display.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "imagefield_tokens-conditional",
+      "mode": "recipe",
+      "prompt": "The imagefield_tokens module provides an extra crop widget and a Colorbox formatter, but they don't always appear. What controls whether imagefield_tokens_widget_crop and imagefield_tokens_colorbox are available?",
+      "must_contain_any": ["image_widget_crop", "colorbox", "imagefield_tokens_widget_crop", "imagefield_tokens_colorbox"],
+      "must_not_contain": [],
+      "expected_output": "The imagefield_tokens_widget_crop widget is only available when the image_widget_crop module is enabled (hook_field_widget_info_alter removes it otherwise), and the imagefield_tokens_colorbox formatter is only available when the colorbox module is enabled (hook_field_formatter_info_alter removes it otherwise).",
+      "difficulty": "easy"
+    },
+    {
+      "id": "imagefield_tokens-replacement",
+      "mode": "recipe",
+      "prompt": "In the imagefield_tokens module, where are the tokens that an editor types into an image's Alt/Title actually stored, and when/how are they turned into real text?",
+      "must_contain_any": ["token", "replace", "viewElements", "render"],
+      "must_not_contain": [],
+      "expected_output": "The raw token text is stored verbatim in the core image field item's alt/title values (no new columns). The imagefield_tokens formatter's viewElements() runs the token service ($this->tokenService->replace()) against the host entity at render time (also merging BubbleableMetadata for cache correctness); the widget likewise previews the replacement using \\Drupal::token()->replace().",
+      "difficulty": "easy"
+    },
+    {
+      "id": "imagefield_tokens-known-widget",
+      "mode": "introspection",
+      "prompt": "On this Drupal site, one Image field on the Article content type uses the imagefield_tokens (token-aware) widget on its default form display. Inspect the live configuration and give the machine name of that field.",
+      "must_contain_any": ["field_ift_wid"],
+      "must_not_contain": [],
+      "expected_output": "field_ift_wid: in core.entity_form_display.node.article.default its component uses widget type 'imagefield_tokens'.",
+      "setup": "agent-module-documentation/evaluation/verify/imagefield_tokens-known-widget-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/imagefield_tokens-known-widget-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "imagefield_tokens-known-style",
+      "mode": "introspection",
+      "prompt": "On this Drupal site, the Article content type has an Image field (field_ift_style) whose imagefield_tokens widget has a preview image style configured. Inspect the live form-display configuration and give the image style machine name used for the widget preview.",
+      "must_contain_any": ["medium"],
+      "must_not_contain": [],
+      "expected_output": "The field_ift_style component's imagefield_tokens widget has settings.preview_image_style = 'medium' (readable via `drush cget core.entity_form_display.node.article.default content.field_ift_style`).",
+      "setup": "agent-module-documentation/evaluation/verify/imagefield_tokens-known-style-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/imagefield_tokens-known-style-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "imagefield_tokens-set-widget",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site the Article content type has an Image field field_ift_task whose form display currently uses the plain core image widget. Using the imagefield_tokens module, switch that field's widget to the token-aware imagefield_tokens widget so editors can enter tokens in Alt/Title. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/imagefield_tokens-set-widget-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/imagefield_tokens-set-widget-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/imagefield_tokens-set-widget-cleanup.sh",
+      "expected_output": "In core.entity_form_display.node.article.default the field_ift_task component's widget type is 'imagefield_tokens' (set via Manage form display or the entity_form_display config).",
+      "must_contain_any": [],
+      "must_not_contain": []
+    },
+    {
+      "id": "imagefield_tokens-set-widget-style",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site the Article content type has an Image field field_ift_disp using the plain core image widget. Using the imagefield_tokens module, change its form-display widget to the imagefield_tokens widget and set the widget's preview image style to 'thumbnail'. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/imagefield_tokens-set-widget2-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/imagefield_tokens-set-widget2-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/imagefield_tokens-set-widget2-cleanup.sh",
+      "expected_output": "In core.entity_form_display.node.article.default the field_ift_disp component has widget type 'imagefield_tokens' and settings.preview_image_style 'thumbnail'.",
+      "must_contain_any": [],
+      "must_not_contain": []
+    }
+  ]
+}

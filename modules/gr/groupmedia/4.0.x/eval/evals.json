@@ -1,0 +1,103 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "groupmedia",
+  "version": "4.0.x",
+  "note": "Group Media integrates core Media with the Group module. It has no global settings form (configure=null). Media becomes group content via a derived group_media relation plugin (group_media:<media_type>) installed on a group type, which creates a config entity group.relationship_type.<group_type>-group_media-<bundle> whose plugin_config.tracking_enabled (0/1) toggles automatic attachment. It defines a media_finder plugin type (manager plugin.manager.groupmedia.finder), a groupmedia.attach_group service (AttachMediaToGroup: attach(), assignMediaToGroups()), and Action plugins assign_media_to_group / remove_media_from_group. All medium/hard cases are grounded in the real group_relationship_type config: introspection reads plugin_config.tracking_enabled back; execution installs a group_media relation with a known tracking flag, verified via the live group_relationship_type entity. NOTE for fixtures: creating a group type auto-installs a group_membership relation, so teardown must remove ALL group.relationship_type.<gt>-* configs before the group.type, else an orphaned relationship type breaks site-wide entity bundle info.",
+  "evals": [
+    {
+      "id": "groupmedia-enable-as-group-content",
+      "mode": "recipe",
+      "prompt": "On a Drupal 11 site with the groupmedia module enabled, there is no dedicated settings page. How do I make an Image media type available as group content for a specific group type, and where does groupmedia store the per-relation 'automatic media tracking' toggle?",
+      "must_contain_any": [
+        "Set available content",
+        "group_media",
+        "group_media:image",
+        "tracking_enabled",
+        "group_relationship_type",
+        "relation"
+      ],
+      "must_not_contain": [],
+      "expected_output": "There is no configure route (configure=null). You install the derived group_media relation plugin (group_media:<bundle>, e.g. group_media:image) on the group type via the group type's 'Set available content' overview. That creates a group.relationship_type.<group_type>-group_media-<bundle> config entity; its plugin_config.tracking_enabled (0/1) toggles automatic attachment of referenced/embedded media to the group.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "groupmedia-media-finder-plugin",
+      "mode": "recipe",
+      "prompt": "The groupmedia module can automatically attach media that is referenced or embedded inside group content. What pluggable mechanism decides which media items are found inside an entity, and what plugin type / manager service would I extend to support a custom field or embed syntax?",
+      "must_contain_any": [
+        "media_finder",
+        "MediaFinder",
+        "plugin.manager.groupmedia.finder",
+        "MediaFinderBase"
+      ],
+      "must_not_contain": [],
+      "expected_output": "groupmedia defines a media_finder plugin type managed by plugin.manager.groupmedia.finder (MediaFinderManager). Plugins live in Plugin/MediaFinder, use the MediaFinder attribute/annotation with field_types (and optional element), extend MediaFinderBase, and return the media items found on a saved entity. Core finders: media_reference, groupmedia_media_embed, groupmedia_entity_embed.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "groupmedia-attach-service",
+      "mode": "recipe",
+      "prompt": "I want to programmatically relate a media item to a group with the groupmedia module, and also offer editors a bulk operation to do the same from a media view. Which service and which action plugins does groupmedia provide for this?",
+      "must_contain_any": [
+        "groupmedia.attach_group",
+        "AttachMediaToGroup",
+        "assignMediaToGroups",
+        "assign_media_to_group",
+        "remove_media_from_group"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Use the groupmedia.attach_group service (AttachMediaToGroup): assignMediaToGroups([$media], [$group]) relates media directly, and attach($entity) is the auto-track entry point. For bulk UI use the Action plugins assign_media_to_group and remove_media_from_group (type media), each storing a fixed group_id; the groupmedia_vbo submodule adds VBO variants that pick the group at run time.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "groupmedia-installed-bundle",
+      "mode": "introspection",
+      "prompt": "On this Drupal site a group type has been configured with groupmedia. Inspect the live group relationship-type configuration and tell me which media bundle is available as group content on the 'gm_med' group type, and whether automatic media tracking is enabled for it.",
+      "must_contain_any": [
+        "image",
+        "group_media:image"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The gm_med group type has the group_media:image relation installed (config group.relationship_type.gm_med-group_media-image, content_plugin group_media:image), and its plugin_config.tracking_enabled is 1 (automatic tracking on).",
+      "setup": "agent-module-documentation/evaluation/verify/groupmedia-installed-bundle-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/groupmedia-installed-bundle-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "groupmedia-which-tracks",
+      "mode": "introspection",
+      "prompt": "The 'gm_med2' group type on this site has two media types available as group content via groupmedia. Exactly one of them has automatic media tracking enabled. Inspect the live configuration and state which media bundle auto-tracks its media.",
+      "must_contain_any": [
+        "remote_video"
+      ],
+      "must_not_contain": [],
+      "expected_output": "remote_video auto-tracks: group.relationship_type.gm_med2-group_media-remote_video has plugin_config.tracking_enabled = 1, whereas the group_media:document relation has tracking_enabled = 0.",
+      "setup": "agent-module-documentation/evaluation/verify/groupmedia-which-tracks-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/groupmedia-which-tracks-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "groupmedia-enable-image",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site there is a group type with id 'gm_hard'. Using the groupmedia module, make the Image media type available as group content on this group type AND turn on automatic media tracking for it. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/groupmedia-enable-image-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/groupmedia-enable-image-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/groupmedia-enable-image-cleanup.sh",
+      "expected_output": "Install the group_media:image relation plugin on the gm_hard group type with plugin_config.tracking_enabled = 1, e.g. \\Drupal::entityTypeManager()->getStorage('group_relationship_type')->createFromPlugin(GroupType::load('gm_hard'), 'group_media:image', ['group_cardinality'=>0,'entity_cardinality'=>1,'use_creation_wizard'=>FALSE,'tracking_enabled'=>1])->save(); Result: config group.relationship_type.gm_hard-group_media-image with tracking_enabled=1."
+    },
+    {
+      "id": "groupmedia-enable-document",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site there is a group type with id 'gm_hard2'. Using the groupmedia module, make the Document media type available as group content on this group type, but leave automatic media tracking DISABLED for it. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/groupmedia-enable-document-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/groupmedia-enable-document-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/groupmedia-enable-document-cleanup.sh",
+      "expected_output": "Install the group_media:document relation plugin on gm_hard2 with plugin_config.tracking_enabled = 0, e.g. createFromPlugin(GroupType::load('gm_hard2'), 'group_media:document', ['group_cardinality'=>0,'entity_cardinality'=>1,'use_creation_wizard'=>FALSE,'tracking_enabled'=>0])->save(); Result: config group.relationship_type.gm_hard2-group_media-document with tracking_enabled=0."
+    }
+  ]
+}

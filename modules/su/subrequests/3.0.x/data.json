@@ -1,0 +1,74 @@
+{
+  "name": "Subrequests",
+  "data_name": "subrequests",
+  "description": "Add a front controller that you can use to make subrequests.",
+  "version": "3.0.x",
+  "package": "Web services",
+  "composer_namespace": "drupal/subrequests",
+  "composer_requirements": {
+    "drupal/core": "^10 || ^11",
+    "galbar/jsonpath": "^1.0"
+  },
+  "dependent_modules": [
+    "drupal:serialization"
+  ],
+  "configure": null,
+  "core_version_requirement": "^10 || ^11",
+  "active_installs": 4723,
+  "list_position": 664,
+  "project_url": "https://www.drupal.org/project/subrequests",
+  "license": "GPL-2.0+",
+  "php_requirement": null,
+  "library_dependencies": [
+    "galbar/jsonpath"
+  ],
+  "suggests": {},
+  "submodules": [],
+  "provides_permissions": true,
+  "provides_drush_commands": false,
+  "provides_config_schema": false,
+  "provides_plugin_types": [],
+  "categories": [
+    "Content editing experience",
+    "Decoupled"
+  ],
+  "subcategories": [
+    "REST / web services"
+  ],
+  "keywords": [
+    "subrequests",
+    "bulk requests",
+    "blueprint",
+    "front controller",
+    "multi-response",
+    "batch API",
+    "JSONPath",
+    "waitFor",
+    "sequential requests",
+    "parallel requests",
+    "chained requests",
+    "multipart/related",
+    "207 multi-status",
+    "issue subrequests",
+    "decoupled",
+    "REST",
+    "API gateway",
+    "request bundling",
+    "waterfall requests"
+  ],
+  "project_description": "Tell the system to execute several requests in a single bootstrap. Then return all the things.\n\n NOTE: Version 2 has been released and will unleash much more power thanks to JSON Path replacements. I will allow replacements to generate multiple responses for a single request.\n\n node.js: If you are looking for Subrequests without blocking I/O consider installing the node.js implementation instead.\n\n See this article explaining why you need this module, and how to use it.\n\n \n \n \n Read the article \n \n \n \n Back to top \n\n Installation \n Subrequests relies on external PHP libraries. To install the drupal module and all the dependencies:\n\n \ncomposer require drupal/subrequests:^3.0\n Back to top \n\n Usage example \n The following example will create a tag and an article using the JSON API module in a single request . (The request would be almost identical when using core's RESTful Web Services).\n\n Issue a POST request against /subrequests with the following body:\n\n \n\n[\n\n {\n\n \"requestId\": \"req-1\",\n\n \"uri\": \"/jsonapi/taxonomy_term/tags\",\n\n \"action\": \"create\",\n\n \"body\": \"{\\\"data\\\":{\\\"type\\\":\\\"taxonomy_term--tags\\\",\\\"attributes\\\":{\\\"name\\\":\\\"My custom tag!\\\",\\\"description\\\":{\\\"value\\\":\\\"description of my custom tag.\\\"},\\\"weight\\\":8}}}\",\n\n \"headers\": {\n\n \"Accept\": \"application/vnd.api+json\",\n\n \"Content-Type\": \"application/vnd.api+json\",\n\n \"Authorization\": \"Basic YWRtaW46YWRtaW4=\"\n\n }\n\n },\n\n {\n\n \"requestId\": \"req-2\",\n\n \"waitFor\": [\"req-1\"],\n\n \"uri\": \"/jsonapi/node/article\",\n\n \"action\": \"create\",\n\n \"body\": \"{\\\"data\\\":{\\\"type\\\":\\\"node--article\\\",\\\"attributes\\\":{\\\"title\\\":\\\"My custom title\\\",\\\"status\\\":\\\"1\\\",\\\"promote\\\":\\\"1\\\",\\\"sticky\\\":\\\"0\\\",\\\"default_langcode\\\":\\\"1\\\",\\\"body\\\":{\\\"value\\\":\\\"Custom value\\\",\\\"format\\\":\\\"plain_text\\\",\\\"summary\\\":\\\"Custom summary\\\"}},\\\"relationships\\\":{\\\"field_tags\\\":{\\\"data\\\":[{\\\"type\\\":\\\"taxonomy_term--tags\\\",\\\"id\\\":\\\"{{req-1.body@$.data.id}}\\\"}]}}}}\",\n\n \"headers\": {\n\n \"Accept\": \"application/vnd.api+json\",\n\n \"Content-Type\": \"application/vnd.api+json\",\n\n \"Authorization\": \"Basic YWRtaW46YWRtaW4=\"\n\n }\n\n }\n\n]\n\n \n\nNote that you can generate the \"body\": \"{\\\"data\\\":…\\\"id\\\":\\\"0a4526df-8241-40f9-ada0-3ac0593d6e11\\\"}}}}}\" by doing:\n\n<?php\n\n$body = json_encode([\n\n \"data\" => [\n\n \"id\" => \"0a4526df-8241-40f9-ada0-3ac0593d6e11\",\n\n …\n\n ],\n\n]);\n\n$blueprint = json_encode([\n\n 'requestId' => 'req-1',\n\n 'uri': '/jsonapi/taxonomy_term/tags',\n\n 'body': $body,\n\n …\n\n]);\n\n?>\n\n You can also do the same in JavaScript using JSON.stringify instead of PHP's json_encode \n\n See SPECIFICATION.md for a more up to date version of the request blueprint request/response formats. \n\n Back to top \n\n \nRequest blueprint format \n \nBasic requests \n A request blueprint is a document containing a list of HTTP requests that a\n\n client can send to a server. Once the server receives the request blueprint, it\n\n MUST process all the HTTP requests in the blueprint to produce a\n\n single response containing the information of the responses to the blueprint\n\nrequests.\n\n The request that sends the request blueprint is referenced as the master request\n\nor the root request.\n\n An example of a blueprint could look like this:\n\n \n [\n {\n \"requestId\": \"req-1\",\n \"uri\": \"/restaurants/886e3b86-fa53-4bb3-b2c2-3ed544f1cd51?fields=title\",\n \"action\": \"view\",\n \"headers\": {\n \"Accept\": \"application/json\"\n }\n },\n {\n \"requestId\": \"req-2\",\n \"uri\": \"/deals?page[limit]=5\",\n \"action\": \"view\",\n \"headers\": {\n \"Accept\": \"application/vnd.api+json\"\n }\n },\n {\n \"requestId\": \"req-3\",\n \"uri\": \"/stats\",\n \"action\": \"create\",\n \"body\": \"{\\\"visitor\\\":\\\"anonymoys\\\"}\",\n \"headers\": {\n \"Accept\": \"application/json\",\n \"Content-Type\": \"application/json\"\n }\n }\n] \n The blueprint above represents three different requests that may be run in\n\n parallel by the server. These requests could transform into the following\n\nparallel HTTP requests.\n\n \n GET /restaurants/886e3b86-fa53-4bb3-b2c2-3ed544f1cd51 HTTP/1.1\nHost: example.org\nAccept: application/vnd.api+json\n \n \n GET /restaurants/886e3b86-fa53-4bb3-b2c2-3ed544f1cd51 …",
+  "maintenance_status": "Actively maintained",
+  "development_status": "Under active development",
+  "security_advisory_coverage": "covered",
+  "project_created": "2017-03-18",
+  "project_changed": "2026-08-18",
+  "core_semver_minimum": 8000000,
+  "core_semver_maximum": 12000000,
+  "tooling": {
+    "provides_tool_plugins": false,
+    "tool_plugins": [],
+    "provides_agent_skills": false,
+    "agent_skills": []
+  },
+  "contributor_count": 20
+}

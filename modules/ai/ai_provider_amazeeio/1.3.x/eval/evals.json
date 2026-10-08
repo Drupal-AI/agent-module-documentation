@@ -1,0 +1,81 @@
+{
+  "name": "amazee.ai AI Provider",
+  "data_name": "ai_provider_amazeeio",
+  "module": "ai_provider_amazeeio",
+  "version": "1.3.x",
+  "skill_name": "drupal-module-docs",
+  "note": "ai_provider_amazeeio registers the 'amazeeio' AiProvider plugin (AmazeeioAiProvider, extending AI Core's OpenAiBasedProviderClientBase) plus an 'amazeeio_vector_db' AiVdbProvider over Postgres/pgvector, for the AI (AI Core) module. It defines no plugin types, no permissions, no drush. LIMITATION: live chat/embeddings calls require a provisioned amazee.ai key (via the multi-step trial/email settings form), so medium/hard cases are grounded entirely in ai_provider_amazeeio.settings config that builds and verifies WITHOUT calling the amazee.ai API. easy = recipe (response-graded, no mutation); medium = introspection (setup writes known config, agent reads it back, cleanup restores); hard = execution (reset clears config, agent writes the config, verify reads live config, exit 0 = pass).",
+  "evals": [
+    {
+      "id": "aipamazeeio-what-it-is",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "On a Drupal 11 site running the AI (AI Core) module, what does the ai_provider_amazeeio module add, and what is the machine id of the AiProvider plugin it registers?",
+      "must_contain_any": ["amazeeio", "AiProvider", "amazee.ai", "provider"],
+      "must_not_contain": [],
+      "expected_output": "It registers the 'amazeeio' AiProvider plugin (AmazeeioAiProvider, extending AI Core's OpenAiBasedProviderClientBase) that adapts amazee.ai's OpenAI-compatible LiteLLM gateway (default https://api.amazee.ai) to AI Core. It also registers an 'amazeeio_vector_db' AiVdbProvider over Postgres/pgvector. Depends on the ai and key modules."
+    },
+    {
+      "id": "aipamazeeio-operation-types",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "Which AI Core operation types does the amazee.ai provider (ai_provider_amazeeio) support?",
+      "must_contain_any": ["chat", "embeddings", "chat_with_tools", "chat_with_image_vision"],
+      "must_not_contain": [],
+      "expected_output": "getSupportedOperationTypes() returns chat, chat_with_complex_json, chat_with_image_vision, chat_with_structured_response, chat_with_tools, and embeddings. Capabilities: StreamChatOutput and ChatFiberSupport."
+    },
+    {
+      "id": "aipamazeeio-key-and-config",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "How is the amazee.ai API key set up for ai_provider_amazeeio, where is the settings form, and what config object holds its settings?",
+      "must_contain_any": ["amazeeio_ai", "Key", "/admin/config/ai/providers/amazeeio", "ai_provider_amazeeio.settings", "ai_provider_amazeeio.settings_form"],
+      "must_not_contain": [],
+      "expected_output": "You authenticate via the multi-step amazee.ai AI Authentication form at /admin/config/ai/providers/amazeeio (route ai_provider_amazeeio.settings_form, permission 'administer ai providers'), which starts a free trial or verifies your email and provisions the token into the auto-created 'amazeeio_ai' Key entity (and a 'amazeeio_ai_database' Key for the VectorDB). Settings live in the ai_provider_amazeeio.settings config object; only the Key ids are stored (api_key, postgres_password), never raw secrets."
+    },
+    {
+      "id": "aipamazeeio-vdb-host-introspect",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "persona": "drupal-expert",
+      "prompt": "This site's amazee.ai provider already has its VectorDB Postgres connection configured. Inspect the live configuration and tell me the Postgres host, port, database name, and username it will use for the amazee.ai vector store.",
+      "setup": "agent-module-documentation/evaluation/verify/ai_provider_amazeeio-vdb-host-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/ai_provider_amazeeio-vdb-host-cleanup.sh",
+      "must_contain_any": ["vdb.eval.amazee.internal", "6543", "eval_vectors", "eval_reader"],
+      "must_not_contain": [],
+      "expected_output": "Reading ai_provider_amazeeio.settings (e.g. `drush cget ai_provider_amazeeio.settings`): postgres_host = vdb.eval.amazee.internal, postgres_port = 6543, postgres_default_database = eval_vectors, postgres_username = eval_reader. (The password comes from the amazeeio_ai_database Key entity.)"
+    },
+    {
+      "id": "aipamazeeio-llm-endpoint-introspect",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "persona": "drupal-expert",
+      "prompt": "Which LLM gateway endpoint (host) is the amazee.ai provider currently pointed at on this site, and is pre-request moderation enabled? Inspect the live configuration.",
+      "setup": "agent-module-documentation/evaluation/verify/ai_provider_amazeeio-llm-endpoint-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/ai_provider_amazeeio-llm-endpoint-cleanup.sh",
+      "must_contain_any": ["https://eval-gateway.amazee.test/v1", "eval-gateway.amazee.test"],
+      "must_not_contain": [],
+      "expected_output": "Reading ai_provider_amazeeio.settings: host = https://eval-gateway.amazee.test/v1 and moderation = true. The host key is the LLM (LiteLLM/OpenAI-compatible) endpoint used for chat/embeddings; moderation TRUE means a moderation request runs before each request."
+    },
+    {
+      "id": "aipamazeeio-configure-endpoint",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, repoint the amazee.ai AI provider at our self-hosted, OpenAI-compatible gateway at https://litellm.acme.example/v1 and turn on the module's pre-request moderation. Make the change in the ai_provider_amazeeio.settings configuration (host and moderation) — do not call the amazee.ai API.",
+      "reset": "agent-module-documentation/evaluation/verify/ai_provider_amazeeio-configure-endpoint-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/ai_provider_amazeeio-configure-endpoint-verify.sh",
+      "expected_output": "Set ai_provider_amazeeio.settings host to https://litellm.acme.example/v1 and moderation to TRUE, e.g. `drush cset ai_provider_amazeeio.settings host https://litellm.acme.example/v1 -y` and `drush cset ai_provider_amazeeio.settings moderation true -y`. Verify: `drush cget ai_provider_amazeeio.settings`."
+    },
+    {
+      "id": "aipamazeeio-configure-vectordb",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "Configure the amazee.ai provider's VectorDB Postgres connection on this site: host pg.acme.example, port 5432, database acme_vectors, username acme_app. Write these into the ai_provider_amazeeio.settings configuration (the postgres_* keys) — do not open a live DB connection.",
+      "reset": "agent-module-documentation/evaluation/verify/ai_provider_amazeeio-configure-vectordb-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/ai_provider_amazeeio-configure-vectordb-verify.sh",
+      "expected_output": "Set the postgres_* keys in ai_provider_amazeeio.settings: postgres_host=pg.acme.example, postgres_port=5432, postgres_default_database=acme_vectors, postgres_username=acme_app (e.g. via `drush cset ai_provider_amazeeio.settings postgres_host pg.acme.example -y`, etc.). Verify: `drush cget ai_provider_amazeeio.settings`."
+    }
+  ]
+}

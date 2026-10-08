@@ -1,0 +1,58 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "gdpr_dump",
+  "version": "3.1.x",
+  "note": "GDPR submodule that adds the Drush command gdpr:sql:dump (alias gdpr-sql-dump) to export the DB as SQL with configured columns anonymized (via anonymizer plugins) and configured tables emptied. Settings form at /admin/config/gdpr/dump-settings (configure route gdpr_dump.settings, permission administer site configuration). Config object gdpr_dump.table_map: mapping[<table>][<column>] = <anonymizer_plugin_id>, empty_tables[<table>] = 1. Services gdpr_dump.sql_dump / gdpr_dump.sanitize / gdpr_dump.database_manager use anonymizer.anonymizer_factory. Requires gdpr + anonymizer. No permissions of its own, no plugin types. Medium/hard ground in the gdpr_dump.table_map config: introspection reads which anonymizer is mapped to users_field_data.mail; execution maps that column to email_anonymizer and verifies it.",
+  "evals": [
+    {
+      "id": "gdpr_dump-drush-command",
+      "mode": "recipe",
+      "prompt": "Which Drush command does the gdpr_dump module add to export an anonymized SQL dump, and what does it do to the data?",
+      "must_contain_any": ["gdpr:sql:dump", "gdpr-sql-dump"],
+      "must_not_contain": [],
+      "expected_output": "drush gdpr:sql:dump (alias gdpr-sql-dump) dumps the database as SQL but first runs each column configured in gdpr_dump.table_map through its Anonymizer plugin and empties the configured tables, producing a sanitized dump. Options include --result-file, --gzip, --data-only.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "gdpr_dump-config-object",
+      "mode": "recipe",
+      "prompt": "Where does gdpr_dump store which table columns get anonymized and which tables get emptied, and what is the structure?",
+      "must_contain_any": ["gdpr_dump.table_map", "mapping", "empty_tables"],
+      "must_not_contain": [],
+      "expected_output": "In config gdpr_dump.table_map: mapping[<table>][<column>] = <anonymizer_plugin_id> for anonymized columns, and empty_tables[<table>] = 1 for tables emptied in the dump. Configured on /admin/config/gdpr/dump-settings (route gdpr_dump.settings).",
+      "difficulty": "easy"
+    },
+    {
+      "id": "gdpr_dump-uses-anonymizer",
+      "mode": "recipe",
+      "prompt": "How does gdpr_dump decide the replacement values for an anonymized column, e.g. an email column - what provides the fake value?",
+      "must_contain_any": ["anonymizer", "email_anonymizer", "anonymizer_factory", "plugin"],
+      "must_not_contain": [],
+      "expected_output": "It uses the anonymizer module's plugins: each mapped column's plugin id (e.g. email_anonymizer) is resolved via the anonymizer.anonymizer_factory service and its anonymize() output replaces the value at dump time.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "gdpr_dump-known-map",
+      "mode": "introspection",
+      "prompt": "On this Drupal site, gdpr_dump has been configured to anonymize a column of the users_field_data table. Inspect the live gdpr_dump configuration and state which anonymizer plugin is applied to the users_field_data.mail column.",
+      "must_contain_any": ["email_anonymizer"],
+      "must_not_contain": [],
+      "expected_output": "In config gdpr_dump.table_map, mapping.users_field_data.mail = email_anonymizer.",
+      "setup": "agent-module-documentation/evaluation/verify/gdpr_dump-known-map-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/gdpr_dump-known-map-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "gdpr_dump-map-column",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, configure gdpr_dump so that the users_field_data table's 'mail' column is anonymized with the email_anonymizer when an obfuscated SQL dump is produced. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/gdpr_dump-map-column-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/gdpr_dump-map-column-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/gdpr_dump-map-column-cleanup.sh",
+      "expected_output": "Config gdpr_dump.table_map has mapping.users_field_data.mail = 'email_anonymizer'. Set it via the SQL Dump settings form (/admin/config/gdpr/dump-settings) or by saving the gdpr_dump.table_map config's mapping."
+    }
+  ]
+}

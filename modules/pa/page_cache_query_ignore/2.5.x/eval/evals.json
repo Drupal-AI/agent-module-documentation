@@ -1,0 +1,101 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "page_cache_query_ignore",
+  "version": "2.5.x",
+  "note": "Page Cache Query Ignore replaces core's http_middleware.page_cache service with a PageCacheIgnore subclass that strips (or keeps only) configured query parameters before computing the anonymous page-cache key. Its entire persistent state is the config object page_cache_query_ignore.settings with three keys: query_parameters (sequence of names), ignore_action ('exclude' | 'include'), ignore_redirects (bool). Config UI route is page_cache_query_ignore.admin at /admin/config/development/performance/page_cache_query_ignore (permission administer site configuration). Runtime extension points: hook_page_cache_query_ignore_parameters_alter() and the events PageCacheQueryIgnoreEvents::PARAMETERS and ::QUERY. Medium/hard cases are grounded in that real config object; setup/reset write known values via the config factory and verify reads them back.",
+  "evals": [
+    {
+      "id": "page_cache_query_ignore-config-keys",
+      "mode": "recipe",
+      "prompt": "On a Drupal 11 site with the page_cache_query_ignore module, I want the anonymous page cache to treat ?gclid=... links the same as the plain URL. Which config object and key hold the list of query parameters, and what is the difference between the module's 'exclude' and 'include' actions?",
+      "must_contain_any": [
+        "query_parameters",
+        "ignore_action",
+        "exclude",
+        "include",
+        "page_cache_query_ignore.settings"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The list lives in the config object page_cache_query_ignore.settings under the key query_parameters (a sequence of parameter names). The ignore_action key chooses behaviour: 'exclude' strips the listed parameters from the cache key (keeps everything else), while 'include' keeps ONLY the listed parameters and drops all others. Adding 'gclid' with action exclude makes ?gclid=... share the plain URL's cache entry.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "page_cache_query_ignore-where-configured",
+      "mode": "recipe",
+      "prompt": "Where in the Drupal admin UI (which route/path) do I configure page_cache_query_ignore, and what permission gates that form?",
+      "must_contain_any": [
+        "page_cache_query_ignore.admin",
+        "admin/config/development/performance",
+        "Performance",
+        "administer site configuration"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The settings form is the route page_cache_query_ignore.admin at /admin/config/development/performance/page_cache_query_ignore, shown under Configuration > Development > Performance. It is gated by core's 'administer site configuration' permission (the module defines no permission of its own).",
+      "difficulty": "easy"
+    },
+    {
+      "id": "page_cache_query_ignore-extend-runtime",
+      "mode": "recipe",
+      "prompt": "A custom module needs to add query parameters to page_cache_query_ignore's ignore list dynamically at runtime instead of via the settings form. Which hook or events let it do that?",
+      "must_contain_any": [
+        "hook_page_cache_query_ignore_parameters_alter",
+        "PageCacheQueryIgnoreEvents",
+        "page_cache_query_ignore.parameters",
+        "PARAMETERS"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Implement hook_page_cache_query_ignore_parameters_alter(array &$parameters) (in MODULE.page_cache_query_ignore.inc), or subscribe to PageCacheQueryIgnoreEvents::PARAMETERS ('page_cache_query_ignore.parameters') to mutate the parameter list, and PageCacheQueryIgnoreEvents::QUERY ('page_cache_query_ignore.query') to normalize the parsed query (e.g. values inside bracket arrays).",
+      "difficulty": "easy"
+    },
+    {
+      "id": "page_cache_query_ignore-known-list",
+      "mode": "introspection",
+      "prompt": "On this Drupal site, page_cache_query_ignore is already configured. Inspect the live configuration and list the query parameter names it is currently set to ignore for the page cache.",
+      "must_contain_any": [
+        "pcqi_known_a",
+        "pcqi_known_b"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The config object page_cache_query_ignore.settings has query_parameters = [pcqi_known_a, pcqi_known_b] with ignore_action 'exclude'. Read it with e.g. `drush cget page_cache_query_ignore.settings query_parameters`.",
+      "setup": "agent-module-documentation/evaluation/verify/page_cache_query_ignore-list-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/page_cache_query_ignore-list-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "page_cache_query_ignore-known-action",
+      "mode": "introspection",
+      "prompt": "On this Drupal site, is page_cache_query_ignore currently configured to EXCLUDE the listed query parameters from the cache key, or to INCLUDE only the listed ones? Inspect the live configuration to answer.",
+      "must_contain_any": [
+        "include"
+      ],
+      "must_not_contain": [],
+      "expected_output": "It is set to 'include' (ignore_action = include in page_cache_query_ignore.settings), i.e. only the single listed parameter pcqi_only is kept in the cache key and everything else is dropped; ignore_redirects is also on.",
+      "setup": "agent-module-documentation/evaluation/verify/page_cache_query_ignore-action-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/page_cache_query_ignore-action-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "page_cache_query_ignore-exclude-tracking",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, configure page_cache_query_ignore so the anonymous page cache ignores the tracking parameters 'gclid' and 'utm_source' (they should be stripped from the cache key, other parameters kept). Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/page_cache_query_ignore-exclude-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/page_cache_query_ignore-exclude-verify.sh",
+      "expected_output": "In page_cache_query_ignore.settings set ignore_action to 'exclude' and add both 'gclid' and 'utm_source' to query_parameters (e.g. via the settings form or `drush cset ... query_parameters.0 gclid` / config factory).",
+      "cleanup": "agent-module-documentation/evaluation/verify/page_cache_query_ignore-exclude-reset.sh"
+    },
+    {
+      "id": "page_cache_query_ignore-include-only",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, configure page_cache_query_ignore in allowlist mode so that ONLY the 'page' query parameter is kept in the anonymous page-cache key and every other query parameter is ignored. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/page_cache_query_ignore-include-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/page_cache_query_ignore-include-verify.sh",
+      "expected_output": "In page_cache_query_ignore.settings set ignore_action to 'include' and set query_parameters to contain 'page' (include mode keeps only the listed parameters, dropping all others).",
+      "cleanup": "agent-module-documentation/evaluation/verify/page_cache_query_ignore-include-reset.sh"
+    }
+  ]
+}

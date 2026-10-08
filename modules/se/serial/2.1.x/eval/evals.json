@@ -1,0 +1,100 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "serial",
+  "version": "2.1.x",
+  "note": "serial defines an atomic auto-increment field type 'serial' (SerialItem) with a hidden widget serial_default_widget and formatter serial_default_formatter. Storage settings: start_value (default 1) and init_existing_entities (0/1), schema field.storage_settings.serial. Value allocated in preSave() via the serial.sql_storage service using a per-field AUTO_INCREMENT assistant table serial_<md5(entityType_bundle_field)>; creating/deleting a serial FieldConfig auto-creates/drops that table (serial_field_config_create/delete). No admin page, permissions, Drush, or plugin types (configure=null). Medium cases create serial fields (field_srl_*) with known settings and the agent reads field.storage config back; hard cases create serial fields (start_value / with display formatter) verified against live field + display config. Only this module's own field_srl_* storages are ever created/deleted by name (never a broad field purge).",
+  "evals": [
+    {
+      "id": "serial-what-field",
+      "mode": "recipe",
+      "prompt": "I need each new node of a content type to get an automatic sequential number (like an invoice number) in Drupal. Which contrib module/field type gives me that, and how do editors enter the value?",
+      "must_contain_any": [
+        "serial",
+        "auto increment",
+        "auto-increment",
+        "Serial"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Use the Serial module's 'serial' field type: add a Serial field to the bundle. Editors do NOT enter it — the widget is 'Hidden (Automatic)' (serial_default_widget) and the next number is assigned automatically on save.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "serial-storage-settings",
+      "mode": "recipe",
+      "prompt": "What options can I configure when creating a Serial field in Drupal, e.g. the number it starts at and back-filling existing content? Name the storage settings.",
+      "must_contain_any": [
+        "start_value",
+        "starting value",
+        "init_existing_entities",
+        "existing entities"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Two storage settings set at field-creation time: start_value (default 1, the first number) and init_existing_entities (No/Yes — whether to assign serial values to entities that already exist in the bundle). Both are locked once the field has data.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "serial-atomic-mechanism",
+      "mode": "recipe",
+      "prompt": "How does the Drupal Serial module guarantee unique, atomic sequential numbers even under concurrent entity creation? What does it create per field?",
+      "must_contain_any": [
+        "assistant table",
+        "AUTO_INCREMENT",
+        "auto increment",
+        "serial_",
+        "serial.sql_storage"
+      ],
+      "must_not_contain": [],
+      "expected_output": "For each serial field it creates a dedicated 'assistant' table named serial_<md5(entityType_bundle_field)> with a real database AUTO_INCREMENT (sid) column. To allocate a number the serial.sql_storage service inserts a temporary row inside a transaction and returns the DB-generated sid, so allocation is atomic and race-free.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "serial-inspect-start-value",
+      "mode": "introspection",
+      "prompt": "On this Drupal site the Article content type has a Serial field named field_srl_known. Inspect the live field storage configuration and tell me the starting value it was configured with.",
+      "must_contain_any": [
+        "1000"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The starting value is 1000 — field.storage.node.field_srl_known settings.start_value = 1000.",
+      "setup": "agent-module-documentation/evaluation/verify/serial-start-value-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/serial-start-value-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "serial-identify-field",
+      "mode": "introspection",
+      "prompt": "The Article content type on this site has several fields. Inspect the live field configuration and tell me the machine name of the field that is a Serial (auto-increment) field.",
+      "must_contain_any": [
+        "field_srl_auto"
+      ],
+      "must_not_contain": [],
+      "expected_output": "field_srl_auto is the serial field (field.storage.node.field_srl_auto type = serial); field_srl_plain is a plain integer, not serial.",
+      "setup": "agent-module-documentation/evaluation/verify/serial-identify-field-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/serial-identify-field-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "serial-create-field",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, use the Serial module to add an auto-increment field with machine name field_srl_task to the Article content type, configured to start numbering at 500. Apply it to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/serial-create-field-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/serial-create-field-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/serial-create-field-cleanup.sh",
+      "expected_output": "field.storage.node.field_srl_task exists with type 'serial' and settings.start_value = 500, and the field is attached to the article bundle."
+    },
+    {
+      "id": "serial-display-field",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this site add a Serial field named field_srl_evt to the Article content type, and make the number visible on the article's default display using the Serial default formatter. Apply it to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/serial-display-field-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/serial-display-field-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/serial-display-field-cleanup.sh",
+      "expected_output": "field.storage.node.field_srl_evt is type 'serial' and core.entity_view_display.node.article.default shows field_srl_evt with formatter type serial_default_formatter."
+    }
+  ]
+}

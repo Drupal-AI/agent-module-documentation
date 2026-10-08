@@ -1,0 +1,81 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "content_moderation_notifications",
+  "version": "3.8.x",
+  "note": "Content Moderation Notifications emails users on content-moderation state transitions via `content_moderation_notification` config entities. Cases are `recipe` (response-graded) probing documented facts an agent would otherwise read source (routing, entity/schema, Notification service, api.php, permissions.yml, tokens) to answer; no site mutation.",
+  "evals": [
+    {
+      "id": "cmn-configure-route",
+      "mode": "recipe",
+      "prompt": "On a Drupal 11 site with content_moderation_notifications, where do I manage notifications and what is the module's configure route?",
+      "must_contain_any": ["/admin/config/workflow/notifications", "entity.content_moderation_notification.collection"],
+      "must_not_contain": [],
+      "expected_output": "Administration → Configuration → Workflow → Content Moderation Notifications at /admin/config/workflow/notifications; the configure route is entity.content_moderation_notification.collection."
+    },
+    {
+      "id": "cmn-config-entity",
+      "mode": "recipe",
+      "prompt": "What config entity does content_moderation_notifications define, and what does each notification bind to?",
+      "must_contain_any": ["content_moderation_notification", "workflow", "transition"],
+      "must_not_contain": [],
+      "expected_output": "It defines the content_moderation_notification config entity; each one is scoped to a single workflow and a chosen set of that workflow's transitions, and only fires when enabled and the entity's transition matches."
+    },
+    {
+      "id": "cmn-recipients",
+      "mode": "recipe",
+      "prompt": "Who can content_moderation_notifications send a notification to when a moderated entity changes state?",
+      "must_contain_any": ["author", "role", "ad-hoc", "user field", "user_fields", "emails"],
+      "must_not_contain": [],
+      "expected_output": "The entity author/owner, all active users in selected roles (each access-checked for view on the entity), ad-hoc email addresses, and users referenced by configured entity-reference user fields."
+    },
+    {
+      "id": "cmn-bcc-sitemail",
+      "mode": "recipe",
+      "prompt": "How does content_moderation_notifications address the outgoing email — how are recipients placed and what is the visible recipient, and what does the 'disable site mail' option do?",
+      "must_contain_any": ["Bcc", "site mail", "site_mail"],
+      "must_not_contain": [],
+      "expected_output": "All recipients are forced onto the Bcc header; the visible recipient is the site mail address unless the notification's 'disable site mail' (site_mail) flag is set, in which case no site-mail recipient is used."
+    },
+    {
+      "id": "cmn-permission",
+      "mode": "recipe",
+      "prompt": "What permission does content_moderation_notifications add and what does it gate? Is a permission needed to receive a notification?",
+      "must_contain_any": ["administer content moderation notifications"],
+      "must_not_contain": [],
+      "expected_output": "It adds a single permission, 'administer content moderation notifications', gating the notifications admin UI and create/edit/delete of notifications. Receiving a notification needs no permission (recipients are chosen by config), though role recipients are still view-access-checked on the entity."
+    },
+    {
+      "id": "cmn-alter-hook",
+      "mode": "recipe",
+      "prompt": "How can another module add or change the recipients of a content_moderation_notifications email programmatically?",
+      "must_contain_any": ["hook_content_moderation_notification_mail_data_alter", "mail_data_alter", "$data['to']"],
+      "must_not_contain": [],
+      "expected_output": "Implement hook_content_moderation_notification_mail_data_alter(EntityInterface $entity, array &$data) and modify $data['to']; it runs in Notification::sendNotification() before the Bcc header is built from $data['to']."
+    },
+    {
+      "id": "cmn-twig-tokens",
+      "mode": "recipe",
+      "prompt": "Can I make the subject/body of a content_moderation_notifications email dynamic, and what moderation-specific tokens does the module provide?",
+      "must_contain_any": ["Twig", "workflow", "from-state", "to-state"],
+      "must_not_contain": [],
+      "expected_output": "Yes — subject and body support Drupal tokens and inline Twig (body also filtered through a chosen text format). The module adds the content_moderation_notifications token type with workflow, from-state, and to-state tokens."
+    },
+    {
+      "id": "cmn-dependencies",
+      "mode": "recipe",
+      "prompt": "What modules does content_moderation_notifications depend on, and is the token module required?",
+      "must_contain_any": ["content_moderation", "workflows", "text"],
+      "must_not_contain": [],
+      "expected_output": "It depends on core content_moderation, text, and workflows. The token module is not a runtime dependency (only a dev/recommended enhancement for token support)."
+    },
+    {
+      "id": "cmn-services",
+      "mode": "recipe",
+      "prompt": "In content_moderation_notifications, which service is the entry point that turns an entity save into emails, and how does it avoid firing during migrations?",
+      "must_contain_any": ["content_moderation_notifications.notification", "processEntity", "syncing"],
+      "must_not_contain": [],
+      "expected_output": "The content_moderation_notifications.notification service (Notification::processEntity), called from hook_entity_insert/update; it skips entities that are syncing (e.g. migrations) before looking up and sending matching notifications."
+    }
+  ]
+}

@@ -1,0 +1,104 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "file_rename",
+  "version": "1.0.x",
+  "note": "File Rename adds a rename form/route for core file entities plus optional 'Rename' links on file-field widgets. Its only persistent state is (a) the config flag file_rename.settings:always_show_widget_link (boolean, shipped default 1) and (b) a per-widget third-party setting content.<field>.third_party_settings.file_rename.show_rename_link on an entity_form_display component (only offered on FileWidget/subclass widgets). No Drush, no plugins. Medium/hard cases are grounded in that real config: introspection reads the global flag and which file field's widget has the rename link; execution turns the global flag on and enables the per-widget setting, verified against live config. The rename form route is entity.file.rename_form and rename invokes hook_file_prerename/hook_file_rename; only permanent files are renamable.",
+  "evals": [
+    {
+      "id": "file_rename-permission-and-global-key",
+      "mode": "recipe",
+      "prompt": "On a Drupal site with the file_rename module, what permission must a user have to rename a managed file, and which config object/key turns on the inline 'Rename' link for all file field widgets at once?",
+      "must_contain_any": [
+        "rename files",
+        "always_show_widget_link",
+        "file_rename.settings"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Permission: 'rename files' (defined in file_rename.permissions.yml, restrict access). Global link: config object file_rename.settings, boolean key always_show_widget_link (default 1); enable at /admin/config/file_rename/settings or `drush config:set file_rename.settings always_show_widget_link 1`.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "file_rename-per-widget-storage",
+      "mode": "recipe",
+      "prompt": "With file_rename installed but the global setting off, how do I enable the 'Rename' link for just one file field, and where is that choice stored in configuration?",
+      "must_contain_any": [
+        "show_rename_link",
+        "third_party_settings",
+        "Manage form display",
+        "form display",
+        "entity_form_display"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Open that field's Manage form display, open the file widget's settings, tick 'Show rename link', Update and Save. It is stored as a third-party setting on the widget component: core.entity_form_display.<entity>.<bundle>.<mode> -> content.<field>.third_party_settings.file_rename.show_rename_link: true. The checkbox only appears on FileWidget (or subclass) widgets.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "file_rename-route-and-hooks",
+      "mode": "recipe",
+      "prompt": "In the file_rename module, which route/form is used to rename a file entity, and which hook fires immediately before the file is moved on disk (useful for flushing caches)?",
+      "must_contain_any": [
+        "entity.file.rename_form",
+        "rename_form",
+        "file_prerename",
+        "hook_file_prerename"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Route entity.file.rename_form (path admin/content/files/rename/{file}) rendered by Drupal\\file_rename\\Form\\FileRenameForm. On save the module invokes hook_file_prerename() before FileSystem::move() and hook_file_rename() after saving; file_rename's own file_prerename flushes image-style derivatives for images.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "file_rename-global-value",
+      "mode": "introspection",
+      "prompt": "On this Drupal site, is the file_rename option that shows the 'Rename' link on ALL file field widgets currently enabled? Inspect the live configuration and state the value of its flag.",
+      "must_contain_any": [
+        "0",
+        "false",
+        "off",
+        "disabled",
+        "not enabled",
+        "no"
+      ],
+      "must_not_contain": [],
+      "expected_output": "It is currently OFF: file_rename.settings:always_show_widget_link is 0 (false). Read with `drush config:get file_rename.settings always_show_widget_link`.",
+      "setup": "agent-module-documentation/evaluation/verify/file_rename-global-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/file_rename-global-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "file_rename-which-widget-field",
+      "mode": "introspection",
+      "prompt": "The Article content type on this site has a file field whose upload widget is configured (via file_rename) to show a 'Rename' link, while the global setting is off. Inspect the live default form display for Article and give the machine name of that field.",
+      "must_contain_any": [
+        "field_fr_doc"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The field is field_fr_doc: in core.entity_form_display.node.article.default its file_generic widget component has third_party_settings.file_rename.show_rename_link: true.",
+      "setup": "agent-module-documentation/evaluation/verify/file_rename-widget-field-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/file_rename-widget-field-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "file_rename-enable-per-widget",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site the Article content type has a file field field_fr_task using the standard file (file_generic) widget, and file_rename's global link setting is off. Using file_rename, configure the default form display so this field's widget shows the 'Rename' link. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/file_rename-enable-widget-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/file_rename-enable-widget-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/file_rename-enable-widget-cleanup.sh",
+      "expected_output": "In core.entity_form_display.node.article.default the field_fr_task component carries third_party_settings.file_rename.show_rename_link: true (tick 'Show rename link' on the widget in Manage form display, or set the component's third_party_settings and save)."
+    },
+    {
+      "id": "file_rename-enable-global",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "site-owner",
+      "prompt": "I want the 'Rename' link to appear on every file upload field across my whole site, without configuring each field individually. Turn on the file_rename setting that does this, and apply it to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/file_rename-enable-global-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/file_rename-enable-global-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/file_rename-enable-global-cleanup.sh",
+      "expected_output": "Set file_rename.settings:always_show_widget_link to 1 (true) - via /admin/config/file_rename/settings ('Display \"Rename\" link on all file fields') or `drush config:set file_rename.settings always_show_widget_link 1`."
+    }
+  ]
+}

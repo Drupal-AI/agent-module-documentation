@@ -1,0 +1,105 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "config_rewrite",
+  "version": "1.6.x",
+  "note": "config_rewrite has no admin UI, permissions, or Drush commands: it rewrites config another module installed via config/rewrite/*.yml on hook_module_preinstall, exposed as the config.rewriter service (config_rewrite.config_rewriter). Easy cases probe the directory convention, the rewrite YAML format, and the service id. Medium cases apply a known rewrite to a live config object (system.site / user.settings) via the service, then ask the agent to read the resulting value. Hard cases have the agent USE the config.rewriter service to rewrite a specific live config value; verify asserts the resulting config value (exit 0 = pass). The slogan hard case has layman/expert persona variants sharing one verify.",
+  "evals": [
+    {
+      "id": "config_rewrite-directory-convention",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "With the Configuration Rewrite (config_rewrite) module, in which directory inside a module do you place the YAML files that rewrite another extension's configuration on install? Answer with the directory path only.",
+      "must_contain_any": ["config/rewrite"],
+      "must_not_contain": ["config/install"],
+      "expected_output": "config/rewrite (files like config/rewrite/system.site.yml, applied on hook_module_preinstall)."
+    },
+    {
+      "id": "config_rewrite-replace-key",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "In a config_rewrite rewrite YAML file, the default behavior deep-merges your keys onto the existing config. Which top-level control key (and value) do you add to replace the ENTIRE config object wholesale instead of merging? Name the key and value.",
+      "must_contain_any": ["config_rewrite: replace", "config_rewrite:\n", "config_rewrite: 'replace'", "config_rewrite key", "`config_rewrite`"],
+      "must_not_contain": [],
+      "expected_output": "Add `config_rewrite: replace` (the top-level `config_rewrite` key set to `replace`). It is stripped before saving. A `config_rewrite: { replace: [keys] }` form replaces only listed keys."
+    },
+    {
+      "id": "config_rewrite-service-id",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "What is the Drupal service id of the config_rewrite service you call to rewrite configuration in code (the one whose class implements ConfigRewriterInterface)? Give the service id only.",
+      "must_contain_any": ["config_rewrite.config_rewriter"],
+      "must_not_contain": [],
+      "expected_output": "config_rewrite.config_rewriter (Drupal\\config_rewrite\\ConfigRewriterInterface)."
+    },
+    {
+      "id": "config_rewrite-site-slogan-introspect",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site (DDEV, drush available), the config_rewrite module was used to rewrite the system.site configuration. Inspect the running site and tell me the exact site slogan value it is currently set to.",
+      "setup": "agent-module-documentation/evaluation/verify/config_rewrite-site-slogan-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/config_rewrite-site-slogan-cleanup.sh",
+      "must_contain_any": ["Rewritten slogan 4242"],
+      "must_not_contain": [],
+      "expected_output": "The live system.site slogan is `Rewritten slogan 4242` (read from system.site on the running site, e.g. `drush config:get system.site slogan`)."
+    },
+    {
+      "id": "config_rewrite-anon-name-introspect",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site (drush available), the config_rewrite module rewrote the user.settings configuration. Inspect the running site and tell me the exact anonymous-user display name it is currently configured to show.",
+      "setup": "agent-module-documentation/evaluation/verify/config_rewrite-anon-name-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/config_rewrite-anon-name-cleanup.sh",
+      "must_contain_any": ["Visitor 7788"],
+      "must_not_contain": [],
+      "expected_output": "The live user.settings `anonymous` value is `Visitor 7788` (read from user.settings on the running site)."
+    },
+    {
+      "id": "config_rewrite-site-mail-introspect",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site (drush available), config_rewrite rewrote the system.site configuration's email address. Inspect the running site and tell me the exact site email address it is currently set to.",
+      "setup": "agent-module-documentation/evaluation/verify/config_rewrite-site-mail-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/config_rewrite-site-mail-cleanup.sh",
+      "must_contain_any": ["rewritten-9931@example.com"],
+      "must_not_contain": [],
+      "expected_output": "The live system.site `mail` value is `rewritten-9931@example.com` (read from system.site on the running site)."
+    },
+    {
+      "id": "config_rewrite-rewrite-slogan-expert",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site (DDEV, drush available), use the config_rewrite module's config.rewriter service (`config_rewrite.config_rewriter`) to rewrite the system.site configuration so its slogan becomes exactly `Rewritten by config_rewrite`, and save it to the live site. Do not edit the value with a plain config:set — call the config_rewrite service's rewriteConfig() to build the merged data, then save. Give a one-line summary of what you changed.",
+      "reset": "agent-module-documentation/evaluation/verify/config_rewrite-rewrite-slogan-reset.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/config_rewrite-rewrite-slogan-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/config_rewrite-rewrite-slogan-verify.sh",
+      "expected_output": "The live system.site slogan equals `Rewritten by config_rewrite`, produced by calling config_rewrite.config_rewriter->rewriteConfig() on system.site and saving. Verified against live site state."
+    },
+    {
+      "id": "config_rewrite-rewrite-slogan-layman",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "layman",
+      "prompt": "My site has the Config Rewrite module installed. I want the little tagline under my site name to read exactly `Rewritten by config_rewrite`. Please use that module's rewrite feature to change it on the site and save it, then tell me in one line what you did.",
+      "reset": "agent-module-documentation/evaluation/verify/config_rewrite-rewrite-slogan-reset.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/config_rewrite-rewrite-slogan-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/config_rewrite-rewrite-slogan-verify.sh",
+      "expected_output": "Same end state as the expert variant: the live system.site slogan equals `Rewritten by config_rewrite`, reached via the config_rewrite service. The agent must map 'tagline' onto the system.site slogan and use the config.rewriter service. Verified against live site state."
+    },
+    {
+      "id": "config_rewrite-rewrite-anon-expert",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site (drush available), use the config_rewrite config.rewriter service (`config_rewrite.config_rewriter`) to rewrite the user.settings configuration so the anonymous user's display name becomes exactly `Guest User`, and save it to the live site. Build the merged data with the service's rewriteConfig() method rather than a plain config:set. State in one line what you changed.",
+      "reset": "agent-module-documentation/evaluation/verify/config_rewrite-rewrite-anon-reset.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/config_rewrite-rewrite-anon-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/config_rewrite-rewrite-anon-verify.sh",
+      "expected_output": "The live user.settings `anonymous` value equals `Guest User`, produced via config_rewrite.config_rewriter->rewriteConfig() on user.settings and saved. Verified against live site state."
+    }
+  ]
+}

@@ -1,0 +1,80 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "smart_title",
+  "version": "1.0.x",
+  "note": "Smart Title exposes an entity's label as a configurable extra field 'smart_title' on Manage display. Two layers of real state: (1) eligible bundles = 'entity_type:bundle' strings in smart_title.settings.smart_title; (2) per view display, third_party_settings.smart_title.enabled + third_party_settings.smart_title.settings (smart_title__tag, smart_title__classes[], smart_title__link) + a 'smart_title' component, all on core.entity_view_display.<entity>.<bundle>.<mode>. No configure route on the base module (the smart_title_ui submodule adds it). All medium/hard cases are grounded in that config: introspection reads back the enabled display / tag / eligible bundles; execution enables Smart Title on node.article.default and sets its tag/link, verified against the live entity_view_display.",
+  "evals": [
+    {
+      "id": "smart_title-where-stored",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "In the Drupal smart_title module, once Smart Title is turned on for a view mode, where and how is that recorded in configuration?",
+      "must_contain_any": ["third_party_settings", "entity_view_display", "third-party setting", "smart_title"],
+      "must_not_contain": [],
+      "expected_output": "It is stored on the view mode's entity_view_display config entity (core.entity_view_display.<entity>.<bundle>.<mode>) as third_party_settings.smart_title.enabled: true, plus a 'smart_title' component placed in a region and format settings under third_party_settings.smart_title.settings."
+    },
+    {
+      "id": "smart_title-eligible-bundles-key",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "Before Smart Title appears on a content type's Manage display form, the bundle has to be made eligible. Which configuration object and key list the eligible bundles, and in what format are the entries?",
+      "must_contain_any": ["smart_title.settings", "entity_type:bundle", "node:article"],
+      "must_not_contain": [],
+      "expected_output": "The config object smart_title.settings has a key 'smart_title' holding a flat list of '<entity_type>:<bundle>' strings, e.g. 'node:article'. The Smart Title UI submodule manages this list."
+    },
+    {
+      "id": "smart_title-format-settings",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "What aspects of the rendered title can Smart Title configure per view mode, and which setting keys hold them?",
+      "must_contain_any": ["smart_title__tag", "smart_title__classes", "smart_title__link", "HTML tag"],
+      "must_not_contain": [],
+      "expected_output": "It configures the wrapper HTML tag (smart_title__tag: h1..h6/div/span), CSS classes (smart_title__classes, an array), and whether the title links to the entity (smart_title__link, boolean) — stored under third_party_settings.smart_title.settings."
+    },
+    {
+      "id": "smart_title-known-display",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "On this Drupal site, Smart Title is enabled on the Article content type's default view display. Inspect the live display configuration and state which HTML tag Smart Title wraps the title in.",
+      "must_contain_any": ["h1"],
+      "must_not_contain": [],
+      "expected_output": "In core.entity_view_display.node.article.default, third_party_settings.smart_title.settings.smart_title__tag is 'h1' (and smart_title__link is false).",
+      "setup": "agent-module-documentation/evaluation/verify/smart_title-known-display-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/smart_title-known-display-cleanup.sh"
+    },
+    {
+      "id": "smart_title-eligible-bundles",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "On this site, which content-entity bundles have been made eligible for Smart Title? Inspect the live configuration and list them.",
+      "must_contain_any": ["node:article", "node:page"],
+      "must_not_contain": [],
+      "expected_output": "smart_title.settings.smart_title lists node:article and node:page as the eligible bundles.",
+      "setup": "agent-module-documentation/evaluation/verify/smart_title-eligible-bundles-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/smart_title-eligible-bundles-cleanup.sh"
+    },
+    {
+      "id": "smart_title-enable-display",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, the Article content type is already eligible for Smart Title (node:article is in smart_title.settings). Enable Smart Title on Article's default view display and place the title element as a visible component, applying the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/smart_title-enable-display-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/smart_title-enable-display-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/smart_title-enable-display-cleanup.sh",
+      "expected_output": "On core.entity_view_display.node.article.default set third_party_settings.smart_title.enabled = TRUE and add a 'smart_title' component (region/weight) — e.g. $vd->setThirdPartySetting('smart_title','enabled',TRUE)->setComponent('smart_title',['region'=>'content','weight'=>-5])->save()."
+    },
+    {
+      "id": "smart_title-set-tag",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this site Smart Title is enabled on Article's default view display but currently wraps the title in an h2 that links to the node. Reconfigure Smart Title so the title is wrapped in an h1 and is NOT linked to the entity. Apply the change live.",
+      "reset": "agent-module-documentation/evaluation/verify/smart_title-set-tag-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/smart_title-set-tag-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/smart_title-set-tag-cleanup.sh",
+      "expected_output": "In core.entity_view_display.node.article.default set third_party_settings.smart_title.settings.smart_title__tag = 'h1' and smart_title__link = FALSE and save."
+    }
+  ]
+}

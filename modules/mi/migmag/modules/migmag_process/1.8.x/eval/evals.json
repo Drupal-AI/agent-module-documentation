@@ -1,0 +1,100 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "migmag_process",
+  "version": "1.8.x",
+  "note": "migmag_process provides seven migrate process plugins (migmag_lookup, migmag_try, migmag_compare, migmag_target_bundle, migmag_get_entity_property, migmag_uuid_generate, migmag_logger_log) and the public service migmag_process.lookup.stub (MigMagMigrateStub). No config/UI/permissions/Drush. All plugins are discoverable via the core process plugin manager (plugin.manager.migrate.process), which works on this site even though the migration plugin manager is broken by pathauto - so evals are grounded in the process plugin manager, the container service, and module state, never a migration run. Baseline: migmag + migmag_process + migmag_rollbackable enabled; migmag_process_lookup_replace disabled. Introspection reads the live migmag_* process plugin list / stub service; execution enables the module (getting its plugins+service) and enables its child migmag_process_lookup_replace to swap migration_lookup to MigMagLookup.",
+  "evals": [
+    {
+      "id": "migmag_process-lookup-plugin",
+      "mode": "recipe",
+      "prompt": "Which Migrate Magician process plugin is a smarter drop-in replacement for core's migration_lookup, and what is one problem it fixes compared to core?",
+      "must_contain_any": [
+        "migmag_lookup",
+        "MigMagLookup"
+      ],
+      "must_not_contain": [],
+      "expected_output": "migmag_lookup (class MigMagLookup). It only creates valid stubs, correctly identifies which migration contains a source row, can stub from partial source IDs, and supports stub_default_values - fixing core migration_lookup's invalid/wrong-migration stub problems.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "migmag_process-try",
+      "mode": "recipe",
+      "prompt": "Which migmag_process process plugin wraps a process sub-pipeline in try/catch so you can return a fallback value when an exception is thrown, and what config key holds the fallback map?",
+      "must_contain_any": [
+        "migmag_try",
+        "catch"
+      ],
+      "must_not_contain": [],
+      "expected_output": "migmag_try wraps the 'process' sub-pipeline in try/catch. Its 'catch' config maps exception FQCN => return value (default ['Exception' => NULL]); 'saveMessage' controls whether migrate messages are saved.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "migmag_process-stub-service",
+      "mode": "recipe",
+      "prompt": "What is the service id of the alternative migrate stub service that the migmag_process module registers, and what can it do that core's stub service cannot?",
+      "must_contain_any": [
+        "migmag_process.lookup.stub",
+        "MigMagMigrateStub",
+        "partial"
+      ],
+      "must_not_contain": [],
+      "expected_output": "migmag_process.lookup.stub (class MigMagMigrateStub, extends core MigrateStub). It can create stubs for partial entity IDs (e.g. a reference to a translation/revision that resolves to a different base entity), which core's stub service cannot.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "migmag_process-list-plugins",
+      "mode": "introspection",
+      "prompt": "On this Drupal site the migmag_process module is enabled. Inspect the running site's migrate process plugin manager and list the process plugin ids that Migrate Magician adds (they are prefixed migmag_).",
+      "must_contain_any": [
+        "migmag_lookup",
+        "migmag_try",
+        "migmag_compare",
+        "migmag_target_bundle",
+        "migmag_get_entity_property",
+        "migmag_uuid_generate",
+        "migmag_logger_log"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The migmag_ prefixed process plugins are: migmag_lookup, migmag_try, migmag_compare, migmag_target_bundle, migmag_get_entity_property, migmag_uuid_generate, migmag_logger_log (from plugin.manager.migrate.process getDefinitions()).",
+      "setup": "agent-module-documentation/evaluation/verify/migmag-process-ensure-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/migmag-process-ensure-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "migmag_process-lookup-override-active",
+      "mode": "introspection",
+      "prompt": "On this Drupal site a Migrate Magician submodule has been enabled that forces core's migration_lookup process plugin to use Migrate Magician's implementation. Inspect the process plugin manager and report the class that migration_lookup now resolves to.",
+      "must_contain_any": [
+        "MigMagLookup"
+      ],
+      "must_not_contain": [],
+      "expected_output": "migmag_process_lookup_replace is enabled, so migration_lookup's class is now Drupal\\migmag_process\\Plugin\\migrate\\process\\MigMagLookup (read via plugin.manager.migrate.process getDefinition('migration_lookup')['class']).",
+      "setup": "agent-module-documentation/evaluation/verify/migmag-lookupreplace-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/migmag-lookupreplace-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "migmag_process-enable",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, make Migrate Magician's extra migrate process plugins and its alternative migrate stub service available. Apply the change to the live site so that the migmag_lookup process plugin and the migmag_process.lookup.stub service both exist.",
+      "reset": "agent-module-documentation/evaluation/verify/migmag-process-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/migmag-process-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/migmag-process-cleanup.sh",
+      "expected_output": "Enable the migmag_process module (drush en migmag_process -y). Afterwards plugin.manager.migrate.process exposes migmag_lookup (and the other migmag_ plugins) and the container has the migmag_process.lookup.stub service."
+    },
+    {
+      "id": "migmag_process-enable-lookup-replace",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, using Migrate Magician, force core's migration_lookup process plugin to use migmag_process's MigMagLookup implementation for all migrations, without editing migration YAML. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/migmag-lookupreplace-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/migmag-lookupreplace-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/migmag-lookupreplace-cleanup.sh",
+      "expected_output": "Enable the migmag_process_lookup_replace submodule (drush en migmag_process_lookup_replace -y); its hook_migrate_process_info_alter sets migration_lookup's class to MigMagLookup."
+    }
+  ]
+}

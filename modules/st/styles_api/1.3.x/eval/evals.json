@@ -1,0 +1,100 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "styles_api",
+  "version": "1.3.x",
+  "note": "Styles API defines a 'Style' plugin type (manager plugin.manager.styles_api / StylePluginManager, annotation @Style in src/Plugin/Style, base StyleBase, interface StyleInterface) plus YAML discovery via <provider>.themes.yml. It has no config, UI, permissions or Drush. Following the repo's plugin-type module pattern, medium cases install a fixed probe module registering a known style and introspect it via the live plugin manager; hard cases have the agent create a module that registers a Style plugin (one via @Style annotation, one via a themes.yml file), verified by checking the live plugin.manager.styles_api has the definition. Both discovery paths were confirmed to register on this site. All fixture modules are namespaced styles_api_* / sap_* under web/modules/custom and are uninstalled (drush pm:uninstall) before their directory is removed, then caches cleared.",
+  "evals": [
+    {
+      "id": "styles_api-define-style",
+      "mode": "recipe",
+      "prompt": "How do I register a new style with the Drupal styles_api module using a PHP plugin? Name the annotation, the discovery directory, the base class, and the plugin manager service.",
+      "must_contain_any": [
+        "@Style",
+        "Plugin/Style",
+        "StyleBase",
+        "plugin.manager.styles_api"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Create a class in src/Plugin/Style/ annotated with @Style (id, type, label, category, template or theme, path, icon) extending StyleBase (or StyleDefault). It is discovered by the plugin manager service plugin.manager.styles_api (StylePluginManager). Clear caches to register.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "styles_api-yaml-and-template",
+      "mode": "recipe",
+      "prompt": "With styles_api, how can a module or theme declare styles without writing a plugin class, and what happens if a style definition sets a 'template' property?",
+      "must_contain_any": [
+        "themes.yml",
+        "YAML",
+        "yaml",
+        "hook_theme",
+        "template"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Declare styles in a <provider>.themes.yml file (module or theme) — YAML discovery registers them without a class. If a style sets 'template', styles_api registers that template with hook_theme() for you (via styles_api_theme()/getThemeImplementations); 'template' and 'theme' are mutually exclusive.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "styles_api-list-styles",
+      "mode": "recipe",
+      "prompt": "In code, how do I get the list of all styles registered via styles_api, and how would I get them as grouped select options by category?",
+      "must_contain_any": [
+        "plugin.manager.styles_api",
+        "getDefinitions",
+        "getStyleOptions",
+        "stylePluginManager"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Get the manager (\\Drupal::service('plugin.manager.styles_api') or Style::stylePluginManager()) then call getDefinitions() for all definitions, or getStyleOptions(['group_by_category' => TRUE]) for options grouped by category. Avoid the deprecated Style::getStyleOptions() static (it fatals).",
+      "difficulty": "easy"
+    },
+    {
+      "id": "styles_api-probe-id",
+      "mode": "introspection",
+      "prompt": "On this site a module has registered a custom style through styles_api. Inspect the running site's styles_api plugin manager and give the machine id of the registered style whose id starts with 'sap_'.",
+      "must_contain_any": [
+        "sap_probe_style"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The registered style id is sap_probe_style. Find it via \\Drupal::service('plugin.manager.styles_api')->getDefinitions() (its provider is styles_api_probe).",
+      "setup": "agent-module-documentation/evaluation/verify/styles_api-probe-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/styles_api-probe-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "styles_api-probe-provider",
+      "mode": "introspection",
+      "prompt": "On this site, the styles_api plugin manager has a style with id 'sap_probe_style'. Inspect the live plugin definition and report which module provides that style and what its human-readable label is.",
+      "must_contain_any": [
+        "styles_api_probe"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The style sap_probe_style is provided by the module styles_api_probe and its label is 'SAP Probe Style'. Inspect the definition's 'provider' and 'label' via the styles_api plugin manager.",
+      "setup": "agent-module-documentation/evaluation/verify/styles_api-probe-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/styles_api-probe-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "styles_api-register-annotation",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site (styles_api is enabled), create and enable a custom module named 'styles_api_eval_anno' that registers a Style plugin with id 'sap_eval_anno' using an @Style annotation class (type 'element', a label). Apply it to the live site so the style is discoverable.",
+      "reset": "agent-module-documentation/evaluation/verify/styles_api-register-annotation-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/styles_api-register-annotation-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/styles_api-register-annotation-cleanup.sh",
+      "expected_output": "A module styles_api_eval_anno with src/Plugin/Style/<Class>.php annotated @Style(id = \"sap_eval_anno\", ...) extending StyleBase. Verified by checking \\Drupal::service('plugin.manager.styles_api')->hasDefinition('sap_eval_anno')."
+    },
+    {
+      "id": "styles_api-register-yaml",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site (styles_api is enabled), register a style with id 'sap_eval_yaml' WITHOUT writing a plugin class — use styles_api's YAML discovery. Create and enable a module named 'styles_api_eval_yaml' that declares the style in a themes.yml file (label and type 'element'). Make it discoverable on the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/styles_api-register-yaml-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/styles_api-register-yaml-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/styles_api-register-yaml-cleanup.sh",
+      "expected_output": "A module styles_api_eval_yaml with a styles_api_eval_yaml.themes.yml file declaring a top-level key sap_eval_yaml (with label/type). Verified by checking \\Drupal::service('plugin.manager.styles_api')->hasDefinition('sap_eval_yaml')."
+    }
+  ]
+}

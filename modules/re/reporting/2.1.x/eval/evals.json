@@ -1,0 +1,98 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "reporting",
+  "version": "2.1.x",
+  "note": "Reporting implements the W3C Reporting API. Core state is the `reporting_endpoint` config entity (reporting.reporting_endpoint.<id>, keys id/label/status); a ships-enabled 'default' endpoint exists. Enabled endpoints are advertised in a Reporting-Endpoints response header pointing at /system/reporting/{id}, which logs POSTed reports to the 'reporting' logger channel. configure route = entity.reporting_endpoint.collection (/admin/config/system/reporting); admin routes need 'administer site configuration', the report page /admin/reports/reporting needs 'access site reports' + dblog. No custom permission, no drush. Medium/hard cases are grounded in the real reporting_endpoint config entity (namespaced ids reporting_ep_*), never touching the shipped 'default'.",
+  "evals": [
+    {
+      "id": "reporting-what-header",
+      "mode": "recipe",
+      "prompt": "What HTTP response header does the Reporting module add to advertise its endpoints to browsers, and what URL path do browsers POST their reports to?",
+      "must_contain_any": [
+        "Reporting-Endpoints",
+        "/system/reporting"
+      ],
+      "must_not_contain": [],
+      "expected_output": "It adds a `Reporting-Endpoints` header (a structured-fields dictionary of id=\"absolute URL\") for each enabled reporting_endpoint. Browsers POST reports to /system/reporting/{endpoint_id}, which the module logs.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "reporting-endpoint-entity",
+      "mode": "recipe",
+      "prompt": "In the Drupal Reporting module, what kind of entity is a 'reporting endpoint', where do you manage them, and what happens when you disable one?",
+      "must_contain_any": [
+        "config entity",
+        "reporting_endpoint",
+        "/admin/config/system/reporting",
+        "410"
+      ],
+      "must_not_contain": [],
+      "expected_output": "A reporting endpoint is a config entity (reporting_endpoint), managed at /admin/config/system/reporting (route entity.reporting_endpoint.collection, permission 'administer site configuration'). Disabling it (status=false) drops it from the Reporting-Endpoints header and makes its /system/reporting/{id} URL return 410 Gone.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "reporting-content-types",
+      "mode": "recipe",
+      "prompt": "Which request Content-Types does the Reporting module's endpoint controller accept for incoming reports, and where do accepted reports end up?",
+      "must_contain_any": [
+        "application/reports+json",
+        "application/csp-report",
+        "logger",
+        "watchdog",
+        "reporting"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The log controller accepts application/reports+json (Reporting API) and application/csp-report (legacy CSP report-uri, incl. Firefox's format which it normalizes); other content types get 415. Valid reports are written to the 'reporting' logger channel (viewable at /admin/reports/reporting with dblog). Success returns 202.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "reporting-known-endpoint",
+      "mode": "introspection",
+      "prompt": "Besides the shipped 'default' endpoint, this site has one additional reporting endpoint configured. Inspect the live configuration and give the machine name (id) of that additional reporting endpoint.",
+      "must_contain_any": [
+        "reporting_ep_known"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The additional endpoint is the reporting_endpoint config entity with id 'reporting_ep_known' (label 'Known CSP Collector'), config name reporting.reporting_endpoint.reporting_ep_known.",
+      "setup": "agent-module-documentation/evaluation/verify/reporting-known-endpoint-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/reporting-known-endpoint-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "reporting-which-disabled",
+      "mode": "introspection",
+      "prompt": "This site has two custom reporting endpoints, 'reporting_ep_on' and 'reporting_ep_off'. Exactly one is disabled (so its /system/reporting URL would return 410). Inspect the live config and state which endpoint id is disabled.",
+      "must_contain_any": [
+        "reporting_ep_off"
+      ],
+      "must_not_contain": [],
+      "expected_output": "reporting_ep_off has status=false (disabled); reporting_ep_on has status=true. Read via drush cget reporting.reporting_endpoint.reporting_ep_off (status: false).",
+      "setup": "agent-module-documentation/evaluation/verify/reporting-which-disabled-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/reporting-which-disabled-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "reporting-create-endpoint",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "Using the Reporting module, create a new, enabled reporting endpoint whose machine id is exactly 'reporting_ep_task' (any label). Apply it to the live site so it is advertised to browsers.",
+      "reset": "agent-module-documentation/evaluation/verify/reporting-create-endpoint-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/reporting-create-endpoint-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/reporting-create-endpoint-cleanup.sh",
+      "expected_output": "A reporting_endpoint config entity with id 'reporting_ep_task' and status TRUE exists (ReportingEndpoint::create(['id'=>'reporting_ep_task','label'=>...,'status'=>TRUE])->save()), so /system/reporting/reporting_ep_task accepts reports and appears in the Reporting-Endpoints header."
+    },
+    {
+      "id": "reporting-disable-endpoint",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "This site has an enabled reporting endpoint 'reporting_ep_toggle'. Using the Reporting module, disable it (so its /system/reporting URL returns 410 Gone and it drops out of the Reporting-Endpoints header), and apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/reporting-disable-endpoint-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/reporting-disable-endpoint-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/reporting-disable-endpoint-cleanup.sh",
+      "expected_output": "The reporting_endpoint 'reporting_ep_toggle' still exists but its status is FALSE ($e->disable()->save() or set status false), so the endpoint is no longer advertised and returns 410."
+    }
+  ]
+}

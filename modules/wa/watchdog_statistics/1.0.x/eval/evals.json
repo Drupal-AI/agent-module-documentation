@@ -1,0 +1,80 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "watchdog_statistics",
+  "version": "1.0.x",
+  "note": "Watchdog statistics adds a grouped-log report over core dblog. Via hook_views_data_alter it registers three Views handlers on the watchdog table: messages_count (field+sort watchdog_message_count), latest_watchdog_id (MAX(wid)), latest_watchdog_timestamp (MAX(timestamp)). The count field tags the query and watchdog_statistics_query_watchdog_message_count_alter (hook_query_TAG_alter) rewrites GROUP BY to message,variables,type,severity with COUNT(wid). It ships View `watchdog_statistics` with page display at admin/reports/dblog/statistics (a dblog tab), sorted by message count DESC. No settings form, no own permissions (uses 'access site reports'), no drush, no new plugin type. Medium cases seed known dblog rows (a marker log channel) and read counts back; hard cases mutate real live state (build a watchdog View using the count field; move the shipped report's page path) verified against config/site.",
+  "evals": [
+    {
+      "id": "watchdog_statistics-report-path",
+      "mode": "recipe",
+      "prompt": "After enabling the watchdog_statistics module on a Drupal site, what report does it add and at which admin path can I view the log messages grouped with their counts?",
+      "must_contain_any": ["admin/reports/dblog/statistics", "Log messages statistics"],
+      "must_not_contain": [],
+      "expected_output": "It adds a 'Log messages statistics' report at admin/reports/dblog/statistics, shown as a tab beside the core Recent log messages report under admin/reports/dblog, listing each distinct watchdog message with its occurrence count.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "watchdog_statistics-grouping",
+      "mode": "recipe",
+      "prompt": "How does watchdog_statistics turn thousands of individual dblog rows into one row per distinct message with a count? Describe the query mechanism it uses.",
+      "must_contain_any": ["COUNT(wid)", "GROUP BY", "group by", "hook_query_TAG_alter", "watchdog_message_count"],
+      "must_not_contain": [],
+      "expected_output": "Its Message count Views field (watchdog_message_count) adds a COUNT(wid) expression and tags the query; watchdog_statistics_query_watchdog_message_count_alter() (a hook_query_TAG_alter) then rewrites the GROUP BY to group by message, variables, type and severity, collapsing identical messages into one counted row.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "watchdog_statistics-views-fields",
+      "mode": "recipe",
+      "prompt": "Which extra fields does watchdog_statistics make available on the watchdog table in Views, and what does each represent?",
+      "must_contain_any": ["messages_count", "latest_watchdog_id", "latest_watchdog_timestamp", "watchdog_message_count"],
+      "must_not_contain": [],
+      "expected_output": "It adds messages_count (Message count, via watchdog_message_count = COUNT(wid)), latest_watchdog_id (Latest WID = MAX(wid)), and latest_watchdog_timestamp (Latest timestamp = MAX(timestamp)) to the watchdog table in Views.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "watchdog_statistics-known-count",
+      "mode": "introspection",
+      "prompt": "This site has recently logged a repeated message to the log channel (type) 'ws_eval'. Using the log data that watchdog_statistics aggregates, inspect the live site and state how many log entries exist for that type.",
+      "must_contain_any": ["7"],
+      "must_not_contain": [],
+      "expected_output": "There are 7 watchdog rows of type ws_eval (the same message logged 7 times), which watchdog_statistics would show as a single grouped row with count 7.",
+      "setup": "agent-module-documentation/evaluation/verify/watchdog_statistics-known-count-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/watchdog_statistics-known-count-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "watchdog_statistics-most-frequent",
+      "mode": "introspection",
+      "prompt": "The log channel (type) 'ws_eval2' on this site contains two different messages, one containing the marker text WS_EVAL_ALPHA and one containing WS_EVAL_BETA, logged different numbers of times. Using the aggregated log data, which marker's message was logged more often?",
+      "must_contain_any": ["WS_EVAL_BETA", "BETA"],
+      "must_not_contain": [],
+      "expected_output": "The WS_EVAL_BETA message was logged more often (9 times) than WS_EVAL_ALPHA (2 times); watchdog_statistics groups by message and would rank BETA higher by count.",
+      "setup": "agent-module-documentation/evaluation/verify/watchdog_statistics-most-frequent-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/watchdog_statistics-most-frequent-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "watchdog_statistics-build-view",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "Using the watchdog_statistics module's Views integration, build a new View with machine name 'ws_eval_report' on the watchdog (log messages) table that shows each distinct log message together with how many times it occurred, using the module's Message count field (the watchdog_message_count handler). Save it to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/watchdog_statistics-build-view-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/watchdog_statistics-build-view-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/watchdog_statistics-build-view-reset.sh",
+      "expected_output": "A View 'ws_eval_report' exists with base_table watchdog and a field handler whose plugin_id is watchdog_message_count (the Message count field), so it aggregates identical messages with a count."
+    },
+    {
+      "id": "watchdog_statistics-move-report-path",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this site the watchdog_statistics 'Log messages statistics' report is served by the page display of the watchdog_statistics View at admin/reports/dblog/statistics. Move that report page to admin/reports/dblog/stats instead, and apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/watchdog_statistics-move-report-path-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/watchdog_statistics-move-report-path-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/watchdog_statistics-move-report-path-reset.sh",
+      "expected_output": "In views.view.watchdog_statistics the page display's path is set to admin/reports/dblog/stats."
+    }
+  ]
+}

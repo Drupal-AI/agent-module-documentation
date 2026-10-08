@@ -1,0 +1,80 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "bamboo_twig_security",
+  "version": "6.0.x",
+  "note": "bamboo_twig_security (submodule of bamboo_twig) registers bamboo_has_permission(permission, user=null), bamboo_has_permissions(permissions[], conjunction='AND', user=null), bamboo_has_role(role, user=null), bamboo_has_roles(roles[], conjunction='AND', user=null) on service bamboo_twig_security.twig.security. user omitted = current user; anonymous/missing user -> null; invalid conjunction throws. Medium cases seed a namespaced role/user (bts_sec_*/bts_perm_*) and grade the agent's read-back. Hard cases have the agent write a Twig template (under web/sites/default/files/) that a verify script renders, checking the role/permission answer for user 1 (admin) computed live. Fixtures are namespaced bts_*.",
+  "evals": [
+    {
+      "id": "bamboo_twig_security-has-permission",
+      "mode": "recipe",
+      "prompt": "In bamboo_twig_security, which Twig function checks whether a user has a given permission, and what happens if you omit the user argument?",
+      "must_contain_any": ["bamboo_has_permission", "current user"],
+      "must_not_contain": [],
+      "expected_output": "bamboo_has_permission(permission, user = null); when user is omitted it checks the current user. It returns null for an anonymous or missing user.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "bamboo_twig_security-conjunction",
+      "mode": "recipe",
+      "prompt": "How do I check a collection of roles at once with bamboo_twig_security, and what conjunction values are allowed?",
+      "must_contain_any": ["bamboo_has_roles", "AND", "OR"],
+      "must_not_contain": [],
+      "expected_output": "bamboo_has_roles(roles[], conjunction = 'AND', user = null) (and bamboo_has_permissions similarly); conjunction must be 'AND' or 'OR' — any other value throws InvalidArgumentException.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "bamboo_twig_security-has-role",
+      "mode": "recipe",
+      "prompt": "With bamboo_twig_security, how do I check whether a specific user (by uid) has a role in a Twig template? What does it return for an anonymous user?",
+      "must_contain_any": ["bamboo_has_role", "anonymous", "null"],
+      "must_not_contain": [],
+      "expected_output": "bamboo_has_role(role, user = null); pass the uid as the second argument, e.g. bamboo_has_role('administrator', 1). For an anonymous or non-existent user it returns null.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "bamboo_twig_security-known-role",
+      "mode": "introspection",
+      "prompt": "On this Drupal site, does the user 'bts_sec_user' have the role 'bts_sec_role'? Inspect the live site (via bamboo_twig_security or drush) and answer yes or no.",
+      "must_contain_any": ["yes", "true", "has the role", "has that role", "does have"],
+      "must_not_contain": [],
+      "expected_output": "Yes — bts_sec_user was assigned the bts_sec_role role (bamboo_has_role('bts_sec_role', <uid>) is true).",
+      "setup": "agent-module-documentation/evaluation/verify/bamboo_twig_security-known-role-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/bamboo_twig_security-known-role-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "bamboo_twig_security-known-perm",
+      "mode": "introspection",
+      "prompt": "On this Drupal site the user 'bts_perm_user' has been granted, through its role, one notable node-management permission. Inspect the live site and name that permission.",
+      "must_contain_any": ["administer nodes"],
+      "must_not_contain": [],
+      "expected_output": "bts_perm_user holds 'administer nodes' via the bts_perm_role role (bamboo_has_permission('administer nodes', <uid>) is true).",
+      "setup": "agent-module-documentation/evaluation/verify/bamboo_twig_security-known-perm-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/bamboo_twig_security-known-perm-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "bamboo_twig_security-render-hasrole",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "Using bamboo_twig_security, create a Twig template at web/sites/default/files/bamboo_twig_security_render_hasrole.html.twig that prints the word HASROLE if user 1 has the 'administrator' role, and NOROLE otherwise. Use the module's role-checking function.",
+      "reset": "agent-module-documentation/evaluation/verify/bamboo_twig_security-render-hasrole-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/bamboo_twig_security-render-hasrole-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/bamboo_twig_security-render-hasrole-cleanup.sh",
+      "expected_output": "Template like {% if bamboo_has_role('administrator', 1) %}HASROLE{% else %}NOROLE{% endif %}; rendered output matches the live answer (HASROLE for the admin user 1)."
+    },
+    {
+      "id": "bamboo_twig_security-render-hasperm",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "Using bamboo_twig_security, create a Twig template at web/sites/default/files/bamboo_twig_security_render_hasperm.html.twig that prints YES if user 1 has the 'administer site configuration' permission, and NO otherwise, using the module's permission-checking function.",
+      "reset": "agent-module-documentation/evaluation/verify/bamboo_twig_security-render-hasperm-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/bamboo_twig_security-render-hasperm-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/bamboo_twig_security-render-hasperm-cleanup.sh",
+      "expected_output": "Template like {% if bamboo_has_permission('administer site configuration', 1) %}YES{% else %}NO{% endif %}; rendered output matches the live answer."
+    }
+  ]
+}

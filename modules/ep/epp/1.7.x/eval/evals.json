@@ -1,0 +1,103 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "epp",
+  "version": "1.7.x",
+  "note": "Entity Prepopulate (epp) has no config entity, permission, plugin, admin page, or configure route. Its entire persistent state is two third-party settings on a field config (field.field.<entity>.<bundle>.<field>): epp.value (a YAML string that may contain tokens) and epp.on_update (bool). epp_form_alter() adds the 'Entity Prepopulate' fieldset to field_config_edit_form/base_field_override_edit_form; epp_entity_prepare_form() (hook_entity_prepare_form) applies the value on new entities (or on update when on_update is TRUE), but only if every token resolves and the value validates. Medium/hard cases are grounded in that real config: introspection reads back a field's epp.value and its on_update flag; execution sets epp.value on a field and turns on_update on, verified against the live FieldConfig third-party settings. Fixtures use namespaced field_epp_* fields on Article.",
+  "evals": [
+    {
+      "id": "epp-tps-keys",
+      "mode": "recipe",
+      "prompt": "The Drupal module epp (Entity Prepopulate) stores its per-field configuration as third-party settings on the field. What are the two third-party setting keys it uses (under the 'epp' namespace) and what does each do?",
+      "must_contain_any": [
+        "on_update",
+        "value"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Under the epp third-party-settings namespace on the field config: 'value' (a YAML string, may contain tokens, that is prefilled onto the entity) and 'on_update' (boolean; when TRUE the value is also applied on entity update, not just on create).",
+      "difficulty": "easy"
+    },
+    {
+      "id": "epp-when-applied",
+      "mode": "recipe",
+      "prompt": "With the epp module, when is a field's prepopulate value actually applied to an entity form, and what conditions must hold for it to take effect? Is there an admin settings page?",
+      "must_contain_any": [
+        "new",
+        "on_update",
+        "all tokens",
+        "tokens resolve",
+        "validate"
+      ],
+      "must_not_contain": [],
+      "expected_output": "There is no admin settings page (configure=null); you set it per field. epp_entity_prepare_form() applies the value when the entity is new (or when epp.on_update is TRUE), and only if every token in the value resolves (it compares a normal token replace against one with clear=TRUE) and the resulting value passes entity validation; otherwise it is not applied.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "epp-where-configure",
+      "mode": "recipe",
+      "prompt": "Using epp on a Drupal 11 site, where do I enter the prepopulate value for a field (there's no /admin config page), and where does that value get stored in configuration?",
+      "must_contain_any": [
+        "Manage fields",
+        "field settings",
+        "Entity Prepopulate",
+        "third_party_settings",
+        "field.field."
+      ],
+      "must_not_contain": [],
+      "expected_output": "On the field's own settings form (Manage fields -> edit the field), in the 'Entity Prepopulate' fieldset (Value + 'Also on update'). It is stored as third_party_settings.epp.value / epp.on_update on the field config entity field.field.<entity>.<bundle>.<field>.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "epp-known-value",
+      "mode": "introspection",
+      "prompt": "On this Drupal site, one field on the Article content type has an epp (Entity Prepopulate) prepopulate value configured. Inspect the live field configuration and report the field's machine name and the exact epp value string.",
+      "must_contain_any": [
+        "field_epp_known",
+        "Prefilled EPP Marker"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The field field_epp_known on node.article has third_party_settings.epp.value = 'Prefilled EPP Marker' (on_update false).",
+      "setup": "agent-module-documentation/evaluation/verify/epp-known-value-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/epp-known-value-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "epp-on-update-known",
+      "mode": "introspection",
+      "prompt": "On this site the Article field field_epp_update has epp prepopulation configured. Inspect the live configuration: does its prepopulate value get reapplied when an existing node is updated, or only when a node is first created?",
+      "must_contain_any": [
+        "on_update",
+        "also on update",
+        "update",
+        "true"
+      ],
+      "must_not_contain": [],
+      "expected_output": "It is reapplied on update: field_epp_update has third_party_settings.epp.on_update = true (plus a value), so epp applies it both on create and on update.",
+      "setup": "agent-module-documentation/evaluation/verify/epp-on-update-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/epp-on-update-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "epp-set-value",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site the Article content type has a text field field_epp_task. Using the epp (Entity Prepopulate) module, configure this field so new Article nodes are prepopulated with a default value (any non-empty value). Apply the change to the live configuration.",
+      "reset": "agent-module-documentation/evaluation/verify/epp-set-value-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/epp-set-value-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/epp-set-value-cleanup.sh",
+      "expected_output": "field_epp_task on node.article carries a non-empty third_party_settings.epp.value (e.g. $fc->setThirdPartySetting('epp','value','...')->save(), or entered in the field's Entity Prepopulate fieldset)."
+    },
+    {
+      "id": "epp-enable-on-update",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this site the Article field field_epp_task already has an epp prepopulate value, but it only applies to newly created nodes. Reconfigure it with the epp module so the value is ALSO reapplied whenever an existing Article node is updated. Apply the change live.",
+      "reset": "agent-module-documentation/evaluation/verify/epp-on-update-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/epp-on-update-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/epp-on-update-exec-cleanup.sh",
+      "expected_output": "field_epp_task on node.article has third_party_settings.epp.on_update = true (in addition to its value) - i.e. tick 'Also on update' or $fc->setThirdPartySetting('epp','on_update',TRUE)->save()."
+    }
+  ]
+}

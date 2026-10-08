@@ -1,0 +1,78 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "unlimited_number",
+  "version": "2.0.x",
+  "note": "unlimited_number provides (1) a Form API render element `#type => unlimited_number` (class Drupal\\unlimited_number\\Element\\UnlimitedNumber) that renders two radios ('Unlimited'/'Limited') plus an inline #type=number, resolving to either the string 'unlimited' or the entered integer; and (2) an integer-field widget id `unlimited_number` label 'Unlimited or Number' (extends core NumberWidget) that stores 'unlimited' as a configurable integer via the setting value_unlimited (default 0). It has NO admin UI, NO permissions, NO Drush, NO plugin types. It DOES have a real, introspectable config surface: the widget's settings on an entity_form_display, with config schema at field.widget.settings.unlimited_number. MEDIUM (introspection) is therefore genuine and INCLUDED (not fabricated): a setup script plants field_un_limit on Article using the unlimited_number widget with distinctive settings (label_unlimited='Forever', value_unlimited=-1) that differ from the defaults, so answering requires inspecting the live form display, and cleanup restores baseline. HARD (execution) is verified against live state by configuring a field's edit-form widget to the module's widget: the render element itself does NOT render via renderInIsolation on a bare element (its radios/number are built in a #process that needs form_state + the complete form and return empty in isolation) -- unlike form_options_attributes' select -- so a file-return-render-array + renderInIsolation verify (the form_options_attributes pattern) is NOT robust here. Instead the HARD verify drives the module through its real widget: reset forces field_un_cardinality to core's 'number' widget (verify FAILs), the agent switches it to unlimited_number storing 'unlimited' as -1, and verify checks the entity_form_display component type + value_unlimited setting AND renders the actual Article node edit form to confirm the widget's radios appear. Two HARD persona variants (expert/layman) share one verify.",
+  "evals": [
+    {
+      "id": "un-what-it-provides",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "On a Drupal 11 site with the unlimited_number module enabled, what does it provide and how would a developer use it? Name the Form API render element type it adds and the field widget it adds (including which field type that widget applies to).",
+      "must_contain_any": ["unlimited_number", "#type => unlimited_number", "Unlimited or Number"],
+      "must_not_contain": ["decimal", "float field", "string field"],
+      "expected_output": "It provides a Form API render element `#type => unlimited_number` (two radios, 'Unlimited' / 'Limited', with an inline number field) and a field widget id `unlimited_number` labelled 'Unlimited or Number' that applies to INTEGER fields. Use the element in a custom form, or set an integer field's edit-form widget to 'Unlimited or Number'."
+    },
+    {
+      "id": "un-unlimited-return-value",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "With the unlimited_number module, when a user picks the 'Unlimited' choice, what value does the `#type => unlimited_number` render element submit, and how does the 'Unlimited or Number' field widget end up storing that in an integer field?",
+      "must_contain_any": ["'unlimited'", "UnlimitedNumber::UNLIMITED", "value_unlimited"],
+      "must_not_contain": ["stores the string", "saves 'unlimited' as text"],
+      "expected_output": "The render element submits the string 'unlimited' (the constant UnlimitedNumber::UNLIMITED); otherwise it submits the entered integer. The field widget converts 'unlimited' to a real integer using its value_unlimited setting (default 0; commonly set to -1) so the integer column stays numeric."
+    },
+    {
+      "id": "un-widget-settings",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "For the unlimited_number field widget ('Unlimited or Number') on a Drupal 11 site, which settings can I configure, and is there an admin configuration page or permission for the module?",
+      "must_contain_any": ["value_unlimited", "label_unlimited", "label_number"],
+      "must_not_contain": ["/admin/config/unlimited", "adds a permission", "grants a permission"],
+      "expected_output": "The widget has three settings: value_unlimited (integer stored for 'unlimited', default 0), label_unlimited, and label_number. There is no dedicated admin page and no permissions; you configure it on the entity form display (Manage form display) or via config, and enabling the module is the whole install."
+    },
+    {
+      "id": "un-introspect-widget",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "On this Drupal 11 site, the Article content type has an integer field named field_un_limit. Inspect the live configuration and tell me: which field widget does it use on the Article edit form, and what label is shown on its 'unlimited' radio?",
+      "setup": "agent-module-documentation/evaluation/verify/unlimited_number-widget-config-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/unlimited_number-widget-config-cleanup.sh",
+      "must_contain_any": ["Forever"],
+      "must_not_contain": ["number widget", "no widget", "not configured"],
+      "expected_output": "field_un_limit uses the unlimited_number widget ('Unlimited or Number'), and its unlimited radio label is configured to 'Forever' (with value_unlimited set to -1)."
+    },
+    {
+      "id": "un-introspect-unlimited-value",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "On this Drupal 11 site, the Article integer field field_un_limit uses the 'Unlimited or Number' widget. Inspect the live config and tell me exactly which integer value gets stored in that field when an editor chooses 'unlimited'.",
+      "setup": "agent-module-documentation/evaluation/verify/unlimited_number-widget-config-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/unlimited_number-widget-config-cleanup.sh",
+      "must_contain_any": ["-1"],
+      "must_not_contain": ["stores 0", "stored as 0", "default of 0"],
+      "expected_output": "The widget's value_unlimited setting is -1, so choosing 'unlimited' stores the integer -1 in field_un_limit."
+    },
+    {
+      "id": "un-configure-widget-expert",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "expert",
+      "prompt": "On this Drupal 11 site the Article content type has an integer field field_un_cardinality. Configure its edit-form widget to the unlimited_number module's 'Unlimited or Number' widget, and set it so that choosing 'Unlimited' stores the integer -1 (value_unlimited = -1). Leave the field renderable on the Article node edit form.",
+      "reset": "agent-module-documentation/evaluation/verify/unlimited_number-widget-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/unlimited_number-widget-verify.sh",
+      "expected_output": "The entity_form_display node.article.default component for field_un_cardinality has type 'unlimited_number' with settings.value_unlimited = -1, and the Article node edit form renders the widget's radios."
+    },
+    {
+      "id": "un-configure-widget-layman",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "layman",
+      "prompt": "On my site, Articles have a whole-number field called 'Max values' (field_un_cardinality). On the edit form I want editors to be able to pick 'Unlimited' or type a specific number instead of just a plain number box. And when they choose Unlimited, please save it in the database as -1. Set that up.",
+      "reset": "agent-module-documentation/evaluation/verify/unlimited_number-widget-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/unlimited_number-widget-verify.sh",
+      "expected_output": "The entity_form_display node.article.default component for field_un_cardinality has type 'unlimited_number' with settings.value_unlimited = -1, and the Article node edit form renders the widget's radios."
+    }
+  ]
+}

@@ -1,0 +1,82 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "menu_perms_per_menu",
+  "version": "1.0.x",
+  "note": "Menu Perms per Menu depends on menu_admin_per_menu and dynamically generates six permissions per menu via MenuPermsPerMenuPermissions::permissions(): 'add new links to <menu_id> menu from menu interface', 'delete links in <menu_id> menu from menu interface', 'enable/disable links in <menu_id> menu', 'expand links in <menu_id> menu', 'edit link of menu links in <menu_id> menu', 'translate links in <menu_id> menu from menu interface'. No config UI (configure=null). Enforcement via a route subscriber (_custom_access on add/delete/translate) plus hook_form_alter on menu_link_content and menu_edit_form. Medium/hard cases grant these permission strings to namespaced roles (menu_ppm_*) and read them back / verify them from user.role.* config.",
+  "evals": [
+    {
+      "id": "menu-ppm-what-permissions",
+      "mode": "recipe",
+      "prompt": "The Drupal contrib module menu_perms_per_menu adds fine-grained menu permissions. Which per-menu operations does it let you control, and what does a permission machine name look like (give the pattern)?",
+      "must_contain_any": ["from menu interface", "add new links", "enable/disable links", "expand links"],
+      "must_not_contain": [],
+      "expected_output": "For every menu it generates six permissions controlling: add new links, delete links, enable/disable links, expand links (show as expanded), edit the link (URL) of links, and translate links. The machine names embed the menu id, e.g. 'add new links to main menu from menu interface', 'enable/disable links in main menu', 'expand links in main menu'.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "menu-ppm-where-configured",
+      "mode": "recipe",
+      "prompt": "How do I configure menu_perms_per_menu on a Drupal 11 site? Is there a settings form?",
+      "must_contain_any": ["admin/people/permissions", "Permissions", "People", "permissions page"],
+      "must_not_contain": [],
+      "expected_output": "There is no settings form (configure=null). You configure it entirely on the Permissions page (People -> Permissions, admin/people/permissions), where each menu exposes its six permissions to grant to roles.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "menu-ppm-dependency",
+      "mode": "recipe",
+      "prompt": "What module must be installed for menu_perms_per_menu to work, and what does menu_perms_per_menu add on top of it?",
+      "must_contain_any": ["menu_admin_per_menu", "Menu Admin per Menu"],
+      "must_not_contain": [],
+      "expected_output": "It depends on and extends Menu Admin per Menu (menu_admin_per_menu). Where menu_admin_per_menu scopes which menus a role may administer, menu_perms_per_menu adds per-menu, per-operation permissions (add/delete/enable/expand/edit-link/translate).",
+      "difficulty": "easy"
+    },
+    {
+      "id": "menu-ppm-read-role-perms",
+      "mode": "introspection",
+      "prompt": "This site has a role with machine name 'menu_ppm_reader'. Inspect its permissions and state which menu_perms_per_menu per-menu permission it has been granted (name the operation and the menu).",
+      "must_contain_any": ["add new links to main menu from menu interface", "add new links to main menu"],
+      "must_not_contain": [],
+      "expected_output": "The menu_ppm_reader role has the permission 'add new links to main menu from menu interface' (i.e. it can add new links to the Main menu from the menu interface).",
+      "setup": "agent-module-documentation/evaluation/verify/menu_perms_per_menu-read-role-perms-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/menu_perms_per_menu-read-role-perms-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "menu-ppm-which-menu-delete",
+      "mode": "introspection",
+      "prompt": "The role 'menu_ppm_reader2' on this site has been granted exactly one menu_perms_per_menu permission: the right to delete links, on one specific menu. Inspect the live configuration and state which menu it can delete links in.",
+      "must_contain_any": ["footer"],
+      "must_not_contain": [],
+      "expected_output": "The role has 'delete links in footer menu from menu interface', so it can delete links in the Footer menu.",
+      "setup": "agent-module-documentation/evaluation/verify/menu_perms_per_menu-which-menu-delete-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/menu_perms_per_menu-which-menu-delete-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "menu-ppm-grant-add-main",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "This site has a role with machine name 'menu_ppm_task'. Using menu_perms_per_menu, grant that role the permission to add new links to the Main menu from the menu interface, and apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/menu_perms_per_menu-grant-add-main-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/menu_perms_per_menu-grant-add-main-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/menu_perms_per_menu-grant-add-main-cleanup.sh",
+      "expected_output": "Grant the menu_ppm_task role the permission 'add new links to main menu from menu interface' (e.g. via drush role:perm:add or by saving the user.role.menu_ppm_task config), then save.",
+      "difficulty_note": "verify checks the role holds 'add new links to main menu from menu interface'."
+    },
+    {
+      "id": "menu-ppm-grant-enable-footer",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-layman",
+      "prompt": "On this Drupal site there is a role called 'menu_ppm_task2'. I want people in that role to be able to switch links in the Footer menu on and off, but nothing else about menus. Set that up on the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/menu_perms_per_menu-grant-enable-footer-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/menu_perms_per_menu-grant-enable-footer-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/menu_perms_per_menu-grant-enable-footer-cleanup.sh",
+      "expected_output": "Grant the menu_ppm_task2 role the menu_perms_per_menu permission 'enable/disable links in footer menu' (which controls the Enabled checkbox on Footer-menu links), then save.",
+      "difficulty_note": "verify checks the role holds 'enable/disable links in footer menu'."
+    }
+  ]
+}

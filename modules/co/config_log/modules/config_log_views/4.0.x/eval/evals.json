@@ -1,0 +1,100 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "config_log_views",
+  "version": "4.0.x",
+  "note": "config_log_views is the Views submodule of config_log. It registers the config_log DB table as a Views base table (hook_views_data), adds the config_log_diff virtual field plugin that diffs originaldata vs data using core DiffFormatter and the leading/trailing_context_lines from config_log.settings, and installs the views.view.config_log report at admin/reports/config-log. No config UI of its own (configure -> config_log.admin), no permissions, no plugin types. Medium/hard cases are grounded in real state: introspection reads the diff-context settings and a known config_log table row surfaced by the view; execution sets the diff context lines and restores the deleted report view, both verified against live config/DB.",
+  "evals": [
+    {
+      "id": "config_log_views-report-path",
+      "mode": "recipe",
+      "prompt": "I enabled config_log_views. Where can I see the browsable report of configuration changes in the Drupal admin, and what does each row show?",
+      "must_contain_any": [
+        "admin/reports/config-log",
+        "config-log",
+        "Reports",
+        "diff"
+      ],
+      "must_not_contain": [],
+      "expected_output": "It ships the view views.view.config_log with a Page display at admin/reports/config-log (menu 'Config Log' under Reports). Each row shows the change plus a From/To diff of the config produced by the config_log_diff field.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "config_log_views-diff-field",
+      "mode": "recipe",
+      "prompt": "In config_log_views, which Views field handler renders the configuration diff, and what does it compare?",
+      "must_contain_any": [
+        "config_log_diff",
+        "diff",
+        "originaldata",
+        "DiffFormatter"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The custom Views field plugin config_log_diff (class ConfigLogDiff) compares the row's originaldata YAML against its data YAML using core's DiffFormatter, honouring config_log.settings leading/trailing_context_lines, and renders a From/To diff table.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "config_log_views-base-table",
+      "mode": "recipe",
+      "prompt": "What database table does config_log_views expose to Views, and how would I build my own report of configuration changes filtered by config name?",
+      "must_contain_any": [
+        "config_log",
+        "base table",
+        "hook_views_data",
+        "Configuration Name"
+      ],
+      "must_not_contain": [],
+      "expected_output": "It exposes the config_log table as a Views base table via hook_views_data(), with fields clid, uid (relationship to users), created, data, originaldata, name (Configuration Name), old_name, and the config_log_diff field. Build a new view on the 'Config log' base table and add a filter/exposed filter on the name field.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "config_log_views-context-value",
+      "mode": "introspection",
+      "prompt": "The Config Log report's diff field shows some unchanged context lines around each change. Inspect the live configuration and state how many leading context lines the diff is currently set to show.",
+      "must_contain_any": [
+        "3"
+      ],
+      "must_not_contain": [],
+      "expected_output": "config_log.settings:leading_context_lines is 3 (and trailing_context_lines is 3); the config_log_diff field reads these when formatting each diff.",
+      "setup": "agent-module-documentation/evaluation/verify/config_log_views-context-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/config_log_views-context-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "config_log_views-known-row",
+      "mode": "introspection",
+      "prompt": "The Config Log report (config_log table) on this site already has a logged configuration change. Inspect the live config_log data and give the configuration object name of that logged change.",
+      "must_contain_any": [
+        "clv_eval_marker.settings",
+        "clv_eval_marker"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The config_log table contains a row with name = clv_eval_marker.settings (operation update), which the config_log view surfaces at admin/reports/config-log.",
+      "setup": "agent-module-documentation/evaluation/verify/config_log_views-row-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/config_log_views-row-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "config_log_views-set-context",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "Configure the Config Log report so that each configuration diff shows 2 unchanged context lines before and 2 after every change. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/config_log_views-context-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/config_log_views-context-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/config_log_views-context-cleanup.sh",
+      "expected_output": "Set config_log.settings:leading_context_lines = 2 and trailing_context_lines = 2 (these drive the config_log_diff field's DiffFormatter)."
+    },
+    {
+      "id": "config_log_views-restore-view",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "The Config Log report view (views.view.config_log) has been deleted from this site. Restore it so the report is once again available at admin/reports/config-log over the config_log table. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/config_log_views-view-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/config_log_views-view-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/config_log_views-view-cleanup.sh",
+      "expected_output": "The views.view.config_log config entity exists again with base_table config_log and a display serving admin/reports/config-log -- e.g. re-import the module's config/install/views.view.config_log.yml (drush config:import --partial, or set the config data from the file)."
+    }
+  ]
+}

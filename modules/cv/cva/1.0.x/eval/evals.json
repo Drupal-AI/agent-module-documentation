@@ -1,0 +1,70 @@
+{
+  "module": "cva",
+  "version": "1.0.x",
+  "skill_name": "drupal-module-docs",
+  "note": "CVA is a tiny, config-less module: it registers Twig's html_cva function and whitelists the returned Cva object in Drupal's Twig sandbox. It ships no admin UI, no config entities, no settings, no permissions, and no Drush commands. All three tiers are therefore expressed against its only real surface — the Twig runtime. Medium (introspection) cases cannot read a saved config value (there is none), so their KNOWN state is the module being enabled and its Twig decorations being live; the agent must inspect the running container (twig service class, sandbox policy) to answer. Hard (execution) cases have the agent author a real Twig template that uses html_cva and are verified by rendering it live against expected class output. There is no per-case setup that writes module-owned config because the module owns none.",
+  "evals": [
+    {
+      "id": "cva-what-function",
+      "difficulty": "easy",
+      "mode": "recipe",
+      "prompt": "In Drupal, which Twig function does the CVA (Class Variance Authority) module make available in templates, and which Composer package provides it?",
+      "must_contain_any": ["html_cva"],
+      "must_not_contain": ["admin/config"]
+    },
+    {
+      "id": "cva-apply-basics",
+      "difficulty": "easy",
+      "mode": "recipe",
+      "prompt": "Using the CVA module's html_cva Twig function, how do you define a component with a base class and variants, and how do you compute the final class string for a chosen set of variant values? Name the method you call on the returned object.",
+      "must_contain_any": ["apply", ".apply"],
+      "must_not_contain": []
+    },
+    {
+      "id": "cva-compound-and-tailwind",
+      "difficulty": "easy",
+      "mode": "recipe",
+      "prompt": "With CVA's html_cva, how do you add extra CSS classes only when several variant options match together, and how can you de-duplicate conflicting Tailwind utility classes in the output?",
+      "must_contain_any": ["compound_variants", "compound"],
+      "must_not_contain": []
+    },
+    {
+      "id": "cva-twig-env-class",
+      "difficulty": "medium",
+      "mode": "introspection",
+      "prompt": "On this live Drupal site, is the CVA module active in the Twig runtime? Inspect the running site (e.g. with drush) and report the class of the active `twig` service and confirm whether the html_cva function is available.",
+      "must_contain_any": ["CvaTwigEnvironment", "Drupal\\cva\\Twig\\CvaTwigEnvironment"],
+      "must_not_contain": [],
+      "setup": "agent-module-documentation/evaluation/verify/cva-twig-env-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/cva-twig-env-cleanup.sh"
+    },
+    {
+      "id": "cva-sandbox-policy",
+      "difficulty": "medium",
+      "mode": "introspection",
+      "prompt": "This site uses CVA, which lets templates call methods on the object returned by html_cva without tripping Drupal's Twig sandbox. Inspect the running site and report which Twig sandbox policy class is active and whether the Twig\\Extra\\Html\\Cva class is allowed by it.",
+      "must_contain_any": ["CvaSandboxPolicy", "Drupal\\cva\\Twig\\CvaSandboxPolicy"],
+      "must_not_contain": [],
+      "setup": "agent-module-documentation/evaluation/verify/cva-sandbox-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/cva-sandbox-cleanup.sh"
+    },
+    {
+      "id": "cva-button-compound",
+      "difficulty": "hard",
+      "mode": "execution",
+      "persona": "drupal-expert",
+      "prompt": "Using the CVA module's html_cva Twig function, create a Twig template at web/sites/default/files/cva-eval/button.html.twig that defines a `button` component: base class `button`; color variants primary=bg-blue and danger=bg-red; size variants sm=text-sm and lg=text-lg; and a compound variant giving color=danger together with size=lg the extra class `font-bold`. The template must render two results separated by a single `|` with no surrounding whitespace: first apply({color:'danger', size:'lg'}), then apply({color:'primary', size:'sm'}). The rendered output must be exactly: button bg-red text-lg font-bold|button bg-blue text-sm",
+      "reset": "agent-module-documentation/evaluation/verify/cva-button-compound-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/cva-button-compound-verify.sh"
+    },
+    {
+      "id": "cva-badge-default",
+      "difficulty": "hard",
+      "mode": "execution",
+      "persona": "drupal-expert",
+      "prompt": "Using the CVA module's html_cva Twig function, create a Twig template at web/sites/default/files/cva-eval/badge.html.twig that defines a `badge` component: base class `badge`; color variants info=bg-blue and warn=bg-yellow; rounded variants sm=rounded-sm and full=rounded-full; and a default_variant setting rounded to `full`. The template must render apply({color:'info'}) only (omitting the rounded option so the default applies). The rendered output must be exactly: badge bg-blue rounded-full",
+      "reset": "agent-module-documentation/evaluation/verify/cva-badge-default-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/cva-badge-default-verify.sh"
+    }
+  ]
+}

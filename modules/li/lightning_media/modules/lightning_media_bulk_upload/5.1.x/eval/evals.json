@@ -1,0 +1,98 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "lightning_media_bulk_upload",
+  "version": "5.1.x",
+  "note": "Bulk Media Upload is one route plus one form. lightning_media_bulk_upload.routing.yml declares lightning_media.bulk_upload at /admin/content/media/bulk-upload with _form: BulkUploadForm and _permission: 'dropzone upload files,create media' - a comma in _permission means BOTH permissions are required. Action links appear on entity.media.collection and view.media_library.page. The form renders a dropzonejs element whose accepted extensions come from MediaHelper::getFileExtensions() and creates one media entity per file via MediaHelper::createFromInput() + MediaHelper::useFile(). hook_install() grants 'dropzone upload files' to the media_creator role; update 9001 downloads the Dropzone library. The module defines no permission of its own, no service, no settings form (configure = null), no config schema, no Drush and no plugin types. Dependencies: dropzonejs and lightning_media.",
+  "evals": [
+    {
+      "id": "lightning_media_bulk_upload-route",
+      "mode": "recipe",
+      "prompt": "Where is the bulk upload form added by the Drupal module lightning_media_bulk_upload, what is its route name, and which permissions does a user need to open it?",
+      "must_contain_any": [
+        "/admin/content/media/bulk-upload",
+        "lightning_media.bulk_upload",
+        "dropzone upload files"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Route lightning_media.bulk_upload at /admin/content/media/bulk-upload, served by Drupal\\lightning_media_bulk_upload\\Form\\BulkUploadForm. Its requirement is _permission: 'dropzone upload files,create media' - the comma means BOTH permissions are required, so holding only one gives a 403.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "lightning_media_bulk_upload-extensions",
+      "mode": "recipe",
+      "prompt": "On a Drupal site with lightning_media_bulk_upload, which file types can editors drop into the bulk upload form, and what decides that list?",
+      "must_contain_any": [
+        "getFileExtensions",
+        "MediaHelper",
+        "source field",
+        "file_extensions"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The dropzonejs element's accepted extensions come from Lightning Media's MediaHelper::getFileExtensions() - the union of the file_extensions settings of the source field of every media type the current user has create access to. Each dropped file is then matched to a bundle with MediaHelper::createFromInput(), so a file type no installed component claims cannot be bulk uploaded.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "lightning_media_bulk_upload-action-links",
+      "mode": "recipe",
+      "prompt": "Where does lightning_media_bulk_upload surface its 'Bulk upload' button in the Drupal admin UI, and which module supplies the JavaScript it depends on?",
+      "must_contain_any": [
+        "entity.media.collection",
+        "media_library",
+        "dropzonejs",
+        "DropzoneJS"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Its links.action.yml puts a 'Bulk upload' action link on the entity.media.collection route (/admin/content/media) and on view.media_library.page. The JavaScript comes from the contrib dropzonejs module (a declared dependency) plus the Dropzone JS library, which update 9001 will download into /libraries/dropzone if it is missing.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "lightning_media_bulk_upload-role",
+      "mode": "introspection",
+      "prompt": "Inspect the roles on this Drupal site and tell me which non-core role has been granted the DropzoneJS upload permission that Bulk Media Upload's form requires. Is that permission on its own enough to open the form?",
+      "must_contain_any": [
+        "lm_bulk_uploader"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The role lm_bulk_uploader holds 'dropzone upload files'. That alone is not enough: the lightning_media.bulk_upload route requires 'dropzone upload files,create media', i.e. both permissions.",
+      "setup": "agent-module-documentation/evaluation/verify/lightning_media_bulk_upload-role-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/lightning_media_bulk_upload-role-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "lightning_media_bulk_upload-route-access",
+      "mode": "introspection",
+      "prompt": "This Drupal site has two custom roles whose machine names start with lm_bulk_. Inspect their live permissions and tell me which one can actually open the Bulk Media Upload form at /admin/content/media/bulk-upload, and why the other one cannot.",
+      "must_contain_any": [
+        "lm_bulk_full"
+      ],
+      "must_not_contain": [],
+      "expected_output": "lm_bulk_full can, because it holds both 'dropzone upload files' and 'create media'. lm_bulk_partial only holds 'create media', and the route's _permission requirement 'dropzone upload files,create media' uses a comma, which Drupal treats as AND.",
+      "setup": "agent-module-documentation/evaluation/verify/lightning_media_bulk_upload-route-access-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/lightning_media_bulk_upload-route-access-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "lightning_media_bulk_upload-create-role",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, create a role with the machine name lm_bulk_editor that is able to use the Bulk Media Upload form at /admin/content/media/bulk-upload. Grant it exactly the permissions that route requires.",
+      "reset": "agent-module-documentation/evaluation/verify/lightning_media_bulk_upload-create-role-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/lightning_media_bulk_upload-create-role-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/lightning_media_bulk_upload-create-role-cleanup.sh",
+      "expected_output": "A user_role config entity lm_bulk_editor holding both 'dropzone upload files' and 'create media' (the two permissions in the lightning_media.bulk_upload route's _permission requirement)."
+    },
+    {
+      "id": "lightning_media_bulk_upload-user-access-layman",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "site-owner",
+      "prompt": "We are hiring a photographer who needs to dump lots of files into our Drupal media library in one go, using the bulk upload page at /admin/content/media/bulk-upload. Please set up an account called lm_bulk_user, give it a role called lm_bulk_team, and make sure that account can actually open that page. Do not make them an administrator.",
+      "reset": "agent-module-documentation/evaluation/verify/lightning_media_bulk_upload-user-access-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/lightning_media_bulk_upload-user-access-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/lightning_media_bulk_upload-user-access-cleanup.sh",
+      "expected_output": "An active user named lm_bulk_user holding the role lm_bulk_team, where lm_bulk_team grants both 'dropzone upload files' and 'create media' so that access_manager->checkNamedRoute('lightning_media.bulk_upload', [], $account) returns TRUE."
+    }
+  ]
+}

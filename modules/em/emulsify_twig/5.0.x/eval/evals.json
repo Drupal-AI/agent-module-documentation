@@ -1,0 +1,98 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "emulsify_twig",
+  "version": "5.0.x",
+  "note": "emulsify_twig ships exactly two Twig extension services (emulsify_twig.twig.emulsify_twig_bem -> BemTwigExtension providing bem(), and emulsify_twig.twig.emulsify_twig_add_attributes -> AddAttributesTwigExtension providing add_attributes()). It has no configuration, routes, permissions, schema, plugins or module dependencies, so there is no config to introspect: the medium cases instead read the live container and render a known template through the running site's Twig environment, and the hard cases make the agent author real Twig that is rendered and asserted by the verify scripts (which also grep the file to make sure the module's function was actually used rather than hard-coded classes).",
+  "evals": [
+    {
+      "id": "emulsify_twig-bem-output",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "In a Drupal theme using the emulsify_twig module, what markup does `<h1 {{ bem('title', ['small', 'red'], 'card') }}>` produce? List the exact classes.",
+      "must_contain_any": [
+        "card__title--small",
+        "card__title card__title--small card__title--red"
+      ],
+      "must_not_contain": [],
+      "expected_output": "<h1 class=\"card__title card__title--small card__title--red\"> — with a blockname the base class becomes blockname__base and every modifier becomes blockname__base--modifier."
+    },
+    {
+      "id": "emulsify_twig-bem-signature",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "What are the arguments of the bem() Twig function provided by the Drupal emulsify_twig module, in order, and what is the fourth one for?",
+      "must_contain_any": [
+        "blockname",
+        "modifiers",
+        "extra"
+      ],
+      "must_not_contain": [],
+      "expected_output": "bem(base_class, modifiers = [], blockname = '', extra = []). The fourth argument is a list of extra, non-BEM classes (JS hooks or utility classes) appended verbatim, e.g. bem('title', '', '', ['js-click']) -> class=\"title js-click\"."
+    },
+    {
+      "id": "emulsify_twig-add-attributes-purpose",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "What does the add_attributes() Twig function from the Drupal emulsify_twig module do, and why does the module say it 'prevents attributes from trickling down into includes'?",
+      "must_contain_any": [
+        "merge",
+        "merges",
+        "removeAttribute",
+        "context"
+      ],
+      "must_not_contain": [],
+      "expected_output": "It merges a map of additional attributes with the template's own attributes object and returns a Drupal\\Core\\Template\\Attribute. While doing so it copies each attribute off context['attributes'] and calls removeAttribute() on it, so the parent template's attributes are consumed once and are no longer present in the Twig context for any {% include %}d child template."
+    },
+    {
+      "id": "emulsify_twig-known-bem-render",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "This Drupal site has a Twig template at web/sites/default/files/emulsify_twig_eval/known.html.twig that uses a function provided by an installed module. Render or inspect it against the running site and state the exact value of the class attribute it produces.",
+      "must_contain_any": [
+        "banner__headline--dark",
+        "banner__headline banner__headline--wide banner__headline--dark js-banner"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The template calls bem('headline', ['wide', 'dark'], 'banner', ['js-banner']) from emulsify_twig, which renders class=\"banner__headline banner__headline--wide banner__headline--dark js-banner\".",
+      "setup": "agent-module-documentation/evaluation/verify/emulsify_twig-known-bem-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/emulsify_twig-known-bem-cleanup.sh"
+    },
+    {
+      "id": "emulsify_twig-registered-services",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "Inspect this running Drupal site: which services does the emulsify_twig module register in the container, what classes do they use, and which Twig functions do they add?",
+      "must_contain_any": [
+        "emulsify_twig.twig.emulsify_twig_bem",
+        "BemTwigExtension"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Two twig.extension services: emulsify_twig.twig.emulsify_twig_bem => Drupal\\emulsify_twig\\BemTwigExtension (adds bem()) and emulsify_twig.twig.emulsify_twig_add_attributes => Drupal\\emulsify_twig\\AddAttributesTwigExtension (adds add_attributes()). Both functions are registered with needs_context TRUE and is_safe html.",
+      "setup": "agent-module-documentation/evaluation/verify/emulsify_twig-services-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/emulsify_twig-services-cleanup.sh"
+    },
+    {
+      "id": "emulsify_twig-bem-template",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, create the Twig template file web/sites/default/files/emulsify_twig_eval/card-title.html.twig. It must contain a single <h1> with the text 'Read more' and must use the emulsify_twig module's BEM helper function (not literal class names) so that rendering the template produces exactly the classes teaser__title, teaser__title--large and js-teaser on that <h1>.",
+      "reset": "agent-module-documentation/evaluation/verify/emulsify_twig-bem-template-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/emulsify_twig-bem-template-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/emulsify_twig-bem-template-reset.sh",
+      "expected_output": "<h1 {{ bem('title', ['large'], 'teaser', ['js-teaser']) }}>Read more</h1> — verified by rendering the file through the site's Twig environment and comparing the class set."
+    },
+    {
+      "id": "emulsify_twig-add-attributes-template",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, create the Twig template file web/sites/default/files/emulsify_twig_eval/wrapper.html.twig containing a single empty <div>. Using the emulsify_twig module's attribute-merging Twig function, the div must add the class 'promo' and the attribute data-promo=\"true\" on top of whatever classes the template's own attributes variable already carries (so a context whose attributes has class 'existing' must render class=\"existing promo\").",
+      "reset": "agent-module-documentation/evaluation/verify/emulsify_twig-add-attributes-template-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/emulsify_twig-add-attributes-template-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/emulsify_twig-add-attributes-template-reset.sh",
+      "expected_output": "<div {{ add_attributes({'class': ['promo'], 'data-promo': 'true'}) }}></div> — rendered with an attributes object containing class 'existing' it produces <div class=\"existing promo\" data-promo=\"true\"></div>."
+    }
+  ]
+}

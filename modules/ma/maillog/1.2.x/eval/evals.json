@@ -1,0 +1,80 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "maillog",
+  "version": "1.2.x",
+  "note": "Maillog is a mail-developer tool: a core Mail plugin ('maillog') set as system.mail interface.default on install, which logs outgoing mail to the {maillog} DB table, can display mail on-screen (verbose), and can suppress delivery. Everything is driven by config object maillog.settings (keys: send, log, verbose, nosend_notify, log_notify, body_trimmed, base64_remove, cron_enabled, keep_limit_type in {time_to_keep,number_to_keep}, time_to_keep, number_to_keep). Shipped defaults: send=true, log=true, verbose=true, everything else false/null except keep_limit_type=time_to_keep. Permissions: view/delete/administer maillog. Drush: maillog:clear (truncates the table). Log list at /admin/reports/maillog (a View). Medium cases read maillog.settings off the live site; hard cases set config and verify it. Cleanup/reset restore the shipped defaults explicitly (not via State).",
+  "evals": [
+    {
+      "id": "maillog-clear-and-suppress",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "On a staging site using the Maillog module, which Drush command wipes all logged emails, and which setting stops the site from actually delivering mail?",
+      "must_contain_any": ["maillog:clear", "send"],
+      "must_not_contain": [],
+      "expected_output": "drush maillog:clear truncates the {maillog} table (deletes all logged entries). To stop real delivery, set maillog.settings 'send' to false; Maillog will still log/display the mail but not send it."
+    },
+    {
+      "id": "maillog-config-object",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "What config object stores Maillog's options, name a few of its keys, and what does the module change about the site's mail system when you install it?",
+      "must_contain_any": ["maillog.settings", "system.mail", "interface"],
+      "must_not_contain": [],
+      "expected_output": "Options live in maillog.settings (keys include send, log, verbose, body_trimmed, base64_remove, cron_enabled, keep_limit_type, time_to_keep, number_to_keep). On install Maillog sets system.mail interface.default = maillog (making its Mail plugin the active backend); uninstall restores php_mail."
+    },
+    {
+      "id": "maillog-permissions-report",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "Which permissions does the Maillog module define, and at what admin path can you browse the emails it has logged?",
+      "must_contain_any": ["view maillog", "administer maillog", "delete maillog", "/admin/reports/maillog"],
+      "must_not_contain": [],
+      "expected_output": "Maillog defines three permissions: 'view maillog', 'delete maillog', and 'administer maillog' (all restrict access). Logged emails are browsable via a View at /admin/reports/maillog."
+    },
+    {
+      "id": "maillog-delivery-state",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "On this site Maillog is installed. Inspect the live configuration and tell me whether the site is currently delivering emails for real or whether Maillog is suppressing delivery.",
+      "must_contain_any": ["not", "false", "suppress", "disabled"],
+      "must_not_contain": [],
+      "expected_output": "Delivery is currently suppressed: maillog.settings 'send' is false, so Maillog logs the emails but does not deliver them (log is still true).",
+      "setup": "agent-module-documentation/evaluation/verify/maillog-delivery-state-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/maillog-delivery-state-cleanup.sh"
+    },
+    {
+      "id": "maillog-retention",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "This site has Maillog's automatic log cleanup configured. Inspect the live configuration and describe the retention policy (what triggers cleanup and how much it keeps).",
+      "must_contain_any": ["100", "number_to_keep", "number"],
+      "must_not_contain": [],
+      "expected_output": "Cron cleanup is enabled (cron_enabled = true) with keep_limit_type = number_to_keep and number_to_keep = 100, so on cron Maillog keeps only the newest 100 logged emails.",
+      "setup": "agent-module-documentation/evaluation/verify/maillog-retention-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/maillog-retention-cleanup.sh"
+    },
+    {
+      "id": "maillog-suppress",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "This is a staging copy of a production site and it must NOT send real emails, but you still want a copy of every message for debugging. Using the Maillog module, configure the site so that outgoing email is not delivered but is still logged. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/maillog-suppress-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/maillog-suppress-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/maillog-suppress-cleanup.sh",
+      "expected_output": "Set maillog.settings 'send' to false (boolean) and keep 'log' true, then save. The verify checks that send === false."
+    },
+    {
+      "id": "maillog-cron-retention",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "site-builder",
+      "prompt": "The Maillog log table on this site keeps growing. Configure Maillog so that its automatic cleanup runs on cron and deletes logged emails older than 30 days. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/maillog-cron-retention-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/maillog-cron-retention-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/maillog-cron-retention-cleanup.sh",
+      "expected_output": "Set maillog.settings cron_enabled = true, keep_limit_type = 'time_to_keep', and time_to_keep = 30, then save. The verify checks cron_enabled === true, keep_limit_type === 'time_to_keep', and time_to_keep === 30."
+    }
+  ]
+}

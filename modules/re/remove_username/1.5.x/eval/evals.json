@@ -1,0 +1,104 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "remove_username",
+  "version": "1.5.x",
+  "note": "Remove Username has NO config, no configure route, no permissions, no Drush, no plugins and no config schema. Its behaviour is entirely hooks: form_alters that hide account][name and make mail required/relabel Username to 'Email address' on login+password forms, plus hook_user_presave that forces $user->setUsername($user->getEmail()) on every save. Medium/hard cases are grounded in that presave rule: creating/updating a user makes name == mail regardless of any requested username, verifiable with drush against the live user entity. All artifacts are namespaced with the ru_ / ru_*@example.com prefix.",
+  "evals": [
+    {
+      "id": "remove_username-what-it-does",
+      "mode": "recipe",
+      "prompt": "On a Drupal 11 site I enabled the remove_username module. What does it change on the user registration and account-edit forms, and what happens to a user's username when the account is saved?",
+      "must_contain_any": [
+        "email",
+        "mail",
+        "username",
+        "name",
+        "hidden",
+        "presave"
+      ],
+      "must_not_contain": [],
+      "expected_output": "It hides the separate Username field (account][name #access=FALSE) and makes the email field required on the register and edit forms, and hook_user_presave copies the email into the username (setUsername(getEmail())) on every save, so the username always equals the email.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "remove_username-login-label",
+      "mode": "recipe",
+      "prompt": "After enabling remove_username, does the login form still ask for a 'Username'? What does the module do to the login and forgotten-password forms specifically?",
+      "must_contain_any": [
+        "Email address",
+        "relabel",
+        "label",
+        "title",
+        "email"
+      ],
+      "must_not_contain": [],
+      "expected_output": "On user_login_form and user_pass the module does not hide the field; it only relabels the name field's #title to 'Email address'. Users log in by typing their email (which is also their username).",
+      "difficulty": "easy"
+    },
+    {
+      "id": "remove_username-no-config",
+      "mode": "recipe",
+      "prompt": "Where is the settings page for remove_username, and how do I configure which forms it affects on a Drupal site?",
+      "must_contain_any": [
+        "no config",
+        "no configuration",
+        "no settings",
+        "configure",
+        "hook",
+        "form_alter"
+      ],
+      "must_not_contain": [],
+      "expected_output": "There is no settings page and no configuration (configure is null, no permissions, no schema). Behaviour is fixed in hook_form_FORM_ID_alter implementations and hook_user_presave; to change or revert it you enable/uninstall the module or write your own hooks.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "remove_username-known-user",
+      "mode": "introspection",
+      "prompt": "A user account exists on this Drupal site with the email address ru_known@example.com. Because remove_username is enabled, inspect the live site and state that account's username (the 'name' value).",
+      "must_contain_any": [
+        "ru_known@example.com"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The username is ru_known@example.com — remove_username_user_presave() forced the name to equal the email even though the account was created with a different requested username.",
+      "setup": "agent-module-documentation/evaluation/verify/remove_username-known-user-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/remove_username-known-user-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "remove_username-override-check",
+      "mode": "introspection",
+      "prompt": "An account on this site was created with the email ru_known2@example.com and the requested username 'chosenhandle'. Inspect the live user entity and report what username it actually has now.",
+      "must_contain_any": [
+        "ru_known2@example.com"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Its username is ru_known2@example.com, not 'chosenhandle': the presave hook overwrote the requested username with the email address.",
+      "setup": "agent-module-documentation/evaluation/verify/remove_username-override-check-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/remove_username-override-check-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "remove_username-create-user",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site (remove_username is enabled), create a new active user account for the email address ru_task@example.com, following the site's email-as-identity model so that the account's username matches its email. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/remove_username-create-user-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/remove_username-create-user-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/remove_username-create-user-cleanup.sh",
+      "expected_output": "A user exists whose mail is ru_task@example.com and whose name equals ru_task@example.com. Simply creating the user with that email is enough because remove_username_user_presave() sets the username to the email on save."
+    },
+    {
+      "id": "remove_username-change-email",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this site there is an account with email ru_task2@example.com. Change that account's email address to ru_new2@example.com and save it, making sure its username tracks the new email as remove_username requires. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/remove_username-change-email-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/remove_username-change-email-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/remove_username-change-email-cleanup.sh",
+      "expected_output": "After the change, a user exists whose mail is ru_new2@example.com and whose name equals ru_new2@example.com, and no account with ru_task2@example.com remains. The presave hook copies the new email into the username automatically on save."
+    }
+  ]
+}

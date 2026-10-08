@@ -1,0 +1,58 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "media_library_theme_reset",
+  "version": "2.0.x",
+  "note": "media_library_theme_reset is a theming-only module (documented release 2.0.0-beta1). It has NO configuration UI, no config entities, no settings, no permissions, no Drush commands, and no plugin types — enabling it is the whole setup. Its effect is fixed in code: it registers 14 Claro-copied Twig templates via hook_theme(), registers two CSS libraries (media_library_theme_reset/media_library -> css/media-library-fixes.css and media_library_theme_reset/olivero_fixes -> css/olivero-fixes.css), and on the Media Library add-form attaches claro/media_library.theme + its own media_library library, plus olivero_fixes only when olivero is in the active theme chain. EASY (recipe) cases probe what it does and which hook/library it uses (response-graded). MEDIUM (introspection) cases are grounded in the one genuinely site-state-dependent behaviour: the olivero_fixes stylesheet loads only when the front-end/default theme's chain contains olivero, so a setup script switches system.theme:default (olivero vs claro) and the agent must read live theme config to answer; cleanup restores default=olivero. HARD (execution) is OMITTED: the module owns no config/entities/plugins and mutates no persistent live state that a reset->build->verify loop could check. Its only 'build'-style extension points (copying a Twig template into a theme, or adding a themename-fixes.css + a form_alter attach line) require editing theme/module source files, not verifiable Drupal config or entities on the live site, so authoring a hard case would be fabrication. Honesty over fabrication per AGENTS.md.",
+  "evals": [
+    {
+      "id": "mllr-what-it-does",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "On a Drupal 11 site, the Media Library modal looks broken (misaligned grid, wrong spacing) when editing content in a front-end theme and inside Layout Builder. What does the media_library_theme_reset module do to fix this, and does it require any configuration?",
+      "must_contain_any": ["admin", "administ", "Claro", "claro"],
+      "must_not_contain": [],
+      "expected_output": "It makes core's Media Library render with administrative (Claro) styling even when shown in a front-end theme. It attaches Claro's media-library CSS (claro/media_library.theme) plus its own fixes CSS and copies of Claro's Twig templates whenever the Media Library loads, so front-end contexts (Layout Builder, front-end content editing, webforms, low-permission users) get a usable layout. It needs NO configuration — just enable the module."
+    },
+    {
+      "id": "mllr-hook-and-library",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "In the media_library_theme_reset module, which Drupal hook registers its Twig templates, and which core Claro CSS library does it attach to the Media Library add form so the media library gets admin styling?",
+      "must_contain_any": ["hook_theme", "claro/media_library.theme"],
+      "must_not_contain": [],
+      "expected_output": "It registers its templates with hook_theme() (media_library_theme_reset_theme(), 14 theme hooks copied from Claro, each with a `base hook`). On the Media Library add-form (media_library_theme_reset_form_media_library_add_form_alter()) it attaches the core library `claro/media_library.theme` together with its own `media_library_theme_reset/media_library` library."
+    },
+    {
+      "id": "mllr-registered-libraries",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "Which CSS libraries does media_library_theme_reset define in its *.libraries.yml, what CSS file does each provide, and when is the Olivero one loaded?",
+      "must_contain_any": ["media-library-fixes.css", "olivero-fixes.css"],
+      "must_not_contain": [],
+      "expected_output": "Two libraries: `media_library_theme_reset/media_library` provides css/media-library-fixes.css (the base admin styling, attached to the media library add form), and `media_library_theme_reset/olivero_fixes` provides css/olivero-fixes.css. The olivero_fixes library is attached only when `olivero` is in the active theme chain (checked via media_library_theme_reset_get_active_theme_chain())."
+    },
+    {
+      "id": "mllr-olivero-chain",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "On THIS Drupal site (media_library_theme_reset is enabled), inspect the theme configuration. When the Media Library add form renders in the site's front-end (default) theme, does the module attach its Olivero-specific fixes stylesheet? Name the library/CSS file and explain why, based on the site's current default theme.",
+      "must_contain_any": ["olivero_fixes", "olivero-fixes.css"],
+      "must_not_contain": [],
+      "setup": "agent-module-documentation/evaluation/verify/media_library_theme_reset-olivero-chain-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/media_library_theme_reset-olivero-chain-cleanup.sh",
+      "expected_output": "Reading system.theme:default (e.g. `drush config:get system.theme default`) shows the front-end theme is `olivero`. Because `olivero` is in the active theme chain, media_library_theme_reset_form_media_library_add_form_alter() attaches media_library_theme_reset/olivero_fixes (css/olivero-fixes.css) in addition to the base media_library_theme_reset/media_library library. So yes, the Olivero fixes CSS is loaded."
+    },
+    {
+      "id": "mllr-nonolivero-chain",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "On THIS Drupal site, check the current front-end (default) theme, then tell me: when the Media Library add form renders in that theme, does media_library_theme_reset load its Olivero fixes stylesheet (media_library_theme_reset/olivero_fixes)? Which CSS fixes file DOES it attach for this theme?",
+      "must_contain_any": ["media-library-fixes.css", "media_library_theme_reset/media_library"],
+      "must_not_contain": [],
+      "setup": "agent-module-documentation/evaluation/verify/media_library_theme_reset-nonolivero-chain-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/media_library_theme_reset-nonolivero-chain-cleanup.sh",
+      "expected_output": "Reading system.theme:default shows the front-end theme is `claro`, whose theme chain does NOT contain `olivero`. So the module does NOT attach media_library_theme_reset/olivero_fixes; it attaches only its base library media_library_theme_reset/media_library (css/media-library-fixes.css) plus the core claro/media_library.theme library."
+    }
+  ]
+}

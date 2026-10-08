@@ -1,0 +1,147 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "views_bulk_operations",
+  "version": "4.4.x",
+  "note": "VBO is configured per View (no global admin UI) and extended via Action plugins. Cases span three difficulty tiers: easy=`recipe` (response-graded), medium=`introspection` (a setup script installs a KNOWN View `eval_intro_vbo` with a VBO field, the agent inspects live state via drush, cleanup removes it), hard=`execution` (agent builds a View, live-state verify checks it).",
+  "evals": [
+    {
+      "id": "vbo-build-bulk-view",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site (drush available), build an admin content-management screen with bulk actions using Views Bulk Operations. Create a View with machine name `eval_vbo` on Content (nodes) with a page display, and add the Views Bulk Operations bulk-operations field to it, enabling at least one bulk action (for example delete or (un)publish content). Apply the View to the live site config so it really exists; don't just describe it. One-line summary.",
+      "reset": "agent-module-documentation/evaluation/verify/views_bulk_operations-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/views_bulk_operations-build-view.sh",
+      "expected_output": "A View `eval_vbo` on nodes with a page display exists in live config, and one of its displays has a `views_bulk_operations_bulk_form` field with at least one action enabled (non-empty selected_actions, e.g. node_delete_action/node_(un)publish_action, or the select-all-actions flag). Verified against live site state."
+    },
+    {
+      "id": "vbo-build-publish-only-view",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site (drush available), build a View with machine name `eval_vbo_pub` on Content (nodes) with a page display and a Views Bulk Operations bulk-operations field, configured so the ONLY bulk action offered is 'Publish content' (node_publish_action) — no other actions — and with the 'Select / Deselect all results (all pages)' checkbox turned OFF. Apply it to live config so it really exists; don't just describe it. One-line summary.",
+      "reset": "agent-module-documentation/evaluation/verify/views_bulk_operations-pub-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/views_bulk_operations-pub-verify.sh",
+      "expected_output": "A View `eval_vbo_pub` on nodes with a page display exists in live config; a display has a `views_bulk_operations_bulk_form` field whose selected_actions is exactly {node_publish_action} and whose show_select_all is not `always_show` (select-all off). Verified against live site state."
+    },
+    {
+      "id": "vbo-build-delete-unpublish-view",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site (drush available), build a View with machine name `eval_vbo_multi` on Content (nodes) with a page display and a Views Bulk Operations bulk-operations field that offers exactly two bulk actions: 'Delete content' (node_delete_action) and 'Unpublish content' (node_unpublish_action). Apply it to live config so it really exists; don't just describe it. One-line summary.",
+      "reset": "agent-module-documentation/evaluation/verify/views_bulk_operations-multi-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/views_bulk_operations-multi-verify.sh",
+      "expected_output": "A View `eval_vbo_multi` on nodes with a page display exists in live config; a display has a `views_bulk_operations_bulk_form` field whose selected_actions is exactly the set {node_delete_action, node_unpublish_action}. Verified against live site state."
+    },
+    {
+      "id": "vbo-intro-which-actions",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "persona": "drupal-expert",
+      "prompt": "A View with machine name `eval_intro_vbo` already exists on this Drupal site and has a Views Bulk Operations bulk-operations field. Inspect the live site (drush) and tell me exactly which bulk actions are enabled on that VBO field.",
+      "setup": "agent-module-documentation/evaluation/verify/views_bulk_operations-intro-actions-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/views_bulk_operations-intro-actions-cleanup.sh",
+      "must_contain_any": ["node_publish_action", "node_unpublish_action", "Publish content"],
+      "must_not_contain": [],
+      "expected_output": "The VBO field on `eval_intro_vbo` enables two actions: node_publish_action (Publish content) and node_unpublish_action (Unpublish content), read from views.view.eval_intro_vbo selected_actions."
+    },
+    {
+      "id": "vbo-intro-select-all",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, the View `eval_intro_vbo` has a Views Bulk Operations bulk-operations field. Inspect the live site (drush) and tell me whether that field is configured to show the 'Select / Deselect all results (all pages)' checkbox, and what its show_select_all setting is.",
+      "setup": "agent-module-documentation/evaluation/verify/views_bulk_operations-intro-selectall-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/views_bulk_operations-intro-selectall-cleanup.sh",
+      "must_contain_any": ["always_show", "always show"],
+      "must_not_contain": [],
+      "expected_output": "Yes — the VBO field's show_select_all setting is `always_show`, so the select-all-across-all-pages checkbox is always displayed."
+    },
+    {
+      "id": "vbo-intro-which-display",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, the View `eval_intro_vbo` has a Views Bulk Operations bulk-operations field (plugin id views_bulk_operations_bulk_form). Inspect the live site (drush) and tell me which display of the View the VBO bulk-form field is defined on.",
+      "setup": "agent-module-documentation/evaluation/verify/views_bulk_operations-intro-display-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/views_bulk_operations-intro-display-cleanup.sh",
+      "must_contain_any": ["default", "Default"],
+      "must_not_contain": [],
+      "expected_output": "The views_bulk_operations_bulk_form field is defined on the `default` (master) display of `eval_intro_vbo` (inherited by the Page display page_1)."
+    },
+    {
+      "id": "vbo-views-field",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "On a Drupal 11 View I want per-row checkboxes plus an action dropdown so editors can run a bulk operation on selected rows. Which field do I add to the View display? Name it exactly.",
+      "must_contain_any": ["Views bulk operations"],
+      "must_not_contain": [],
+      "expected_output": "Add the 'Views bulk operations' field (Global) to the View display; it renders the checkbox column, a select-all control, and the actions dropdown. Only one per display, and place it first."
+    },
+    {
+      "id": "vbo-action-plugin-base",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "I'm writing a custom bulk action for VBO on Drupal 11. Which base class must my Action plugin extend and which namespace is it in? Show the class declaration.",
+      "must_contain_any": ["ViewsBulkOperationsActionBase", "Drupal\\views_bulk_operations\\Action\\ViewsBulkOperationsActionBase"],
+      "must_not_contain": [],
+      "expected_output": "Extend Drupal\\views_bulk_operations\\Action\\ViewsBulkOperationsActionBase, placed in src/Plugin/Action/."
+    },
+    {
+      "id": "vbo-action-annotation",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "For a VBO custom action class, what discovery attribute/annotation do I use, and how do I limit the action to only the `node` entity type? Show the attribute.",
+      "must_contain_any": ["#[Action", "Action(", "type: 'node'", "'type' => 'node'"],
+      "must_not_contain": [],
+      "expected_output": "Use the core #[Action(...)] attribute with id and label, and set the `type` key to 'node' (empty string '' means all entity types). VBO's plugin.manager.views_bulk_operations_action discovers it."
+    },
+    {
+      "id": "vbo-manager-service",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "Which service (plugin manager) does VBO use to discover its action plugins on a Drupal 11 site? Give the service id.",
+      "must_contain_any": ["plugin.manager.views_bulk_operations_action"],
+      "must_not_contain": [],
+      "expected_output": "plugin.manager.views_bulk_operations_action (ViewsBulkOperationsActionManager), which extends the core Action manager."
+    },
+    {
+      "id": "vbo-batch-all-results",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "I have a View with thousands of results across many pages and want a VBO bulk action to run over the ENTIRE result set (all pages) without PHP timeouts. How does VBO handle this and what setting controls it?",
+      "must_contain_any": ["Batch API", "batch size", "select all results", "Batch"],
+      "must_not_contain": [],
+      "expected_output": "Enable Batch on the VBO field and set a Batch size (default 10); selecting 'select all results' processes every row across all pages through the Batch API in chunks. Selection is held in tempstore across multi-page AJAX."
+    },
+    {
+      "id": "vbo-actions-permissions",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "I need per-role, per-action access control over which VBO actions each role can run on this Drupal site. Which submodule provides that?",
+      "must_contain_any": ["actions_permissions", "Actions Permissions"],
+      "must_not_contain": [],
+      "expected_output": "Enable the actions_permissions submodule that ships with VBO for per-role, per-action permissions."
+    },
+    {
+      "id": "vbo-restrict-actions",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "On a specific View display I only want certain VBO actions to appear in the dropdown, not every registered action. Where/how do I configure which actions are offered?",
+      "must_contain_any": ["Selected actions", "field settings", "field", "leave empty"],
+      "must_not_contain": [],
+      "expected_output": "In the 'Views bulk operations' field settings, use 'Selected actions' to tick which Action plugins are offered; leaving it empty offers all actions. Per action you can also set a label, preconfiguration, and configure/confirm steps."
+    },
+    {
+      "id": "vbo-drush-execute",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "How do I run a View's VBO action from the command line (e.g. from cron) on Drupal 11? Give the drush command.",
+      "must_contain_any": ["vbo-execute", "views:bulk-operations:execute", "vbo-exec"],
+      "must_not_contain": [],
+      "expected_output": "drush vbo-execute <view_id> <action_id> (aliases vbo-exec / views:bulk-operations:execute), with options like --display-id, --batch-size, --exposed, --configuration; empty selection means all results."
+    }
+  ]
+}

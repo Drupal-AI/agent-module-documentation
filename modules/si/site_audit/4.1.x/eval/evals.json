@@ -1,0 +1,80 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "site_audit",
+  "version": "4.1.x",
+  "note": "Site Audit runs best-practice checks grouped into 13 reports (checklist plugin type site_audit_checklist) made of checks (site_audit_check). Run via Drush: site_audit:audit (alias audit), site_audit:all (audit-all, aa), site_audit:list (audit-list), with --format=text|html|json|markdown, --detail, --bootstrap, --skip. Admin page site_audit.report at /admin/reports/site-audit (perm administer site configuration); settings form (SiteAuditConfigForm) writes site_audit.settings key 'reports' (checkboxes; empty => run all). Custom checks/reports extend SiteAuditCheckBase/SiteAuditChecklistBase with @SiteAuditCheck (property 'checklist') / @SiteAuditChecklist annotations. Medium cases read the live site_audit.settings 'reports' config; hard cases write that config or generate a Drush HTML report, verified against live state. site_audit.settings does not exist by default (baseline = all reports run).",
+  "evals": [
+    {
+      "id": "sa-run-audit",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "The site_audit module is installed on my Drupal 11 site. What Drush command runs the full best-practice audit, and how do I run just one report (e.g. cache)?",
+      "must_contain_any": ["site_audit:audit", "drush audit", "audit-all", "audit cache"],
+      "must_not_contain": [],
+      "expected_output": "Run all reports with `drush site_audit:audit` / `drush audit` (or `drush audit-all` / `aa`). Run a single report by naming it, e.g. `drush audit cache`. `drush audit-list` lists every report and check."
+    },
+    {
+      "id": "sa-output-formats",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "How do I get a site_audit report as HTML (or another format) instead of plain console text, and how do I write it to a file?",
+      "must_contain_any": ["--format", "html", "json", "markdown"],
+      "must_not_contain": [],
+      "expected_output": "Use the --format option: text (default), html, json, or markdown, e.g. `drush audit --format=html > report.html`. --bootstrap wraps HTML in Bootstrap styles (and forces html); --detail shows details for passing checks."
+    },
+    {
+      "id": "sa-custom-check",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "How do I add a custom check to site_audit and attach it to an existing report? Which base class and annotation do I use, and how do I say which report it belongs to?",
+      "must_contain_any": ["SiteAuditCheckBase", "SiteAuditCheck", "checklist", "Plugin/SiteAuditCheck"],
+      "must_not_contain": [],
+      "expected_output": "Create a plugin in your module's src/Plugin/SiteAuditCheck/ extending SiteAuditCheckBase with a @SiteAuditCheck annotation (id, name, description) whose `checklist` property is the id of the report to attach to (e.g. checklist = \"cache\"). Implement calculateScore() (PASS=2/WARN=1/FAIL=0/INFO=3) and the getResult*() messages. A custom report extends SiteAuditChecklistBase with @SiteAuditChecklist."
+    },
+    {
+      "id": "sa-known-reports",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "On this Drupal site, the site_audit admin audit page has been configured to run only a subset of its reports. Inspect the live site_audit configuration and name the reports that are selected to run.",
+      "must_contain_any": ["security", "cache"],
+      "must_not_contain": [],
+      "expected_output": "site_audit.settings 'reports' has cache and security enabled (their values equal their ids); all other reports are unselected.",
+      "setup": "agent-module-documentation/evaluation/verify/site_audit-reports-multi-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/site_audit-reports-multi-cleanup.sh"
+    },
+    {
+      "id": "sa-known-single-report",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "This site has the site_audit report selection configured to a single report in its settings config. Inspect the live configuration and state which report is selected.",
+      "must_contain_any": ["watchdog"],
+      "must_not_contain": [],
+      "expected_output": "site_audit.settings 'reports' has only watchdog set (reports.watchdog = 'watchdog').",
+      "setup": "agent-module-documentation/evaluation/verify/site_audit-reports-single-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/site_audit-reports-single-cleanup.sh"
+    },
+    {
+      "id": "sa-configure-reports",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, configure the site_audit module so that the admin audit page (/admin/reports/site-audit) runs only the Cache and Status reports, and nothing else. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/site_audit-configure-reports-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/site_audit-configure-reports-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/site_audit-configure-reports-cleanup.sh",
+      "expected_output": "Set site_audit.settings 'reports' so only the cache and status checklists are enabled (e.g. reports: {cache: cache, status: status}) via the Settings form or config. Verify checks that the enabled (truthy) report ids are exactly [cache, status]."
+    },
+    {
+      "id": "sa-html-report-file",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "Using the site_audit Drush command, generate an HTML report of ONLY the Cache report for this site and save it to the file /tmp/site_audit_eval_report.html on the server. Run it against the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/site_audit-html-report-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/site_audit-html-report-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/site_audit-html-report-cleanup.sh",
+      "expected_output": "Run `drush audit cache --format=html > /tmp/site_audit_eval_report.html` (from the Drupal root inside the container). Verify checks the file exists and contains a Site Audit HTML report mentioning Cache."
+    }
+  ]
+}

@@ -1,0 +1,99 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "views_parity_row",
+  "version": "1.14.x",
+  "note": "Views Parity Row provides a derivative Views row plugin `views_parity_row_entity:<entity_type>` that renders a primary view mode but alternates to a second view mode on a cadence (views_parity_row_enable + views_parity_row.{frequency,start,end,view_mode}) or per fixed row (views_parity_row_per_row_enable + view_mode_1..20). All config lives in the view display's `row` options; no admin page, permission, or drush. Medium/hard cases are grounded in a real node view fixture named 'views_parity_row_demo': introspection reads the configured alternate view mode / frequency from the live view config; execution switches the view's row plugin to views_parity_row_entity:node with a cadence and is verified against the saved views.view config.",
+  "evals": [
+    {
+      "id": "views_parity_row-plugin-id",
+      "mode": "recipe",
+      "prompt": "In Views Parity Row, what do I choose in a view's Format/Show setting to alternate view modes, and what is the machine name of that row plugin for a node view?",
+      "must_contain_any": [
+        "views_parity_row_entity",
+        "views_parity_row_entity:node",
+        "(alternate)"
+      ],
+      "must_not_contain": [],
+      "expected_output": "You set the view's Format -> Show to the '<Entity> (alternate)' row plugin. Its machine id is a derivative per entity type: views_parity_row_entity:<entity_type>, e.g. views_parity_row_entity:node for a content/node view.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "views_parity_row-cadence-keys",
+      "mode": "recipe",
+      "prompt": "Using Views Parity Row, how do I make every 3rd row of a node listing render in a different view mode? Which row option keys control the cadence and the alternate view mode?",
+      "must_contain_any": [
+        "views_parity_row_enable",
+        "frequency",
+        "views_parity_row"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Enable views_parity_row_enable, then set views_parity_row.frequency = 3 and views_parity_row.view_mode to the alternate view mode (optionally start/end bounds; end=0 means no upper bound). A row uses the alternate mode when (current_item - start) % frequency === 0.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "views_parity_row-per-row-vs-pager",
+      "mode": "recipe",
+      "prompt": "In Views Parity Row, does the every-X-rows cadence restart on each pager page, and how can I instead set an exact view mode for specific individual rows?",
+      "must_contain_any": [
+        "per row",
+        "per_row",
+        "view_mode_",
+        "pager",
+        "does not restart",
+        "continues"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The cadence does NOT restart per page: preRender adds the pager offset (previous pages' item count) to the row index, so it continues across pages. For explicit control, enable views_parity_row_per_row_enable and set views_parity_row_per_row.view_mode_1..view_mode_20 for individual rows; per-row overrides the cadence.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "views_parity_row-known-altmode",
+      "mode": "introspection",
+      "prompt": "This site has a view whose machine name is 'views_parity_row_demo'. Its display uses the Views Parity Row row plugin with an every-X-rows cadence. Inspect the live view configuration and tell me which alternate view mode it switches to and how often (the frequency).",
+      "must_contain_any": [
+        "full"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The row options have views_parity_row.view_mode = 'full' with views_parity_row.frequency = '3' (primary view_mode 'teaser'), so every 3rd row renders in the 'full' view mode.",
+      "setup": "agent-module-documentation/evaluation/verify/views_parity_row-known-altmode-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/views_parity_row-known-altmode-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "views_parity_row-known-frequency",
+      "mode": "introspection",
+      "prompt": "On this site, the view 'views_parity_row_demo' alternates entity view modes with Views Parity Row. Inspect its live row-plugin options and state the numeric frequency at which it switches to the alternate view mode.",
+      "must_contain_any": [
+        "4"
+      ],
+      "must_not_contain": [],
+      "expected_output": "views_parity_row.frequency is '4' — every 4th row renders in the alternate view mode.",
+      "setup": "agent-module-documentation/evaluation/verify/views_parity_row-known-frequency-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/views_parity_row-known-frequency-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "views_parity_row-configure-cadence",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "The view 'views_parity_row_demo' on this site is a node view currently using a plain entity row (view mode 'teaser'). Using Views Parity Row, change its default display's row plugin so that every 2nd row renders in the 'full' view mode while other rows stay 'teaser'. Save it to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/views_parity_row-configure-cadence-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/views_parity_row-configure-cadence-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/views_parity_row-configure-cadence-cleanup.sh",
+      "expected_output": "views.view.views_parity_row_demo default display row.type becomes 'views_parity_row_entity:node' with options.views_parity_row_enable = true, options.views_parity_row.view_mode = 'full' and options.views_parity_row.frequency = '2' (primary view_mode 'teaser')."
+    },
+    {
+      "id": "views_parity_row-per-row-slot",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On the node view 'views_parity_row_demo', use Views Parity Row's per-row mode so that the FIRST row specifically renders in the 'full' view mode (leave the primary as 'teaser'). Apply it to the live view.",
+      "reset": "agent-module-documentation/evaluation/verify/views_parity_row-per-row-slot-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/views_parity_row-per-row-slot-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/views_parity_row-per-row-slot-cleanup.sh",
+      "expected_output": "The row plugin is views_parity_row_entity:node with options.views_parity_row_per_row_enable = true and options.views_parity_row_per_row.view_mode_1 = 'full', so the first row (slot 1) renders in the 'full' view mode."
+    }
+  ]
+}

@@ -1,0 +1,80 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "job_scheduler_waiting",
+  "version": "4.0.x",
+  "note": "job_scheduler_waiting runs one named scheduler continuously: each loop iteration equals \\Drupal::service('job_scheduler.manager')->perform($name) (the same due-job dispatch as cron). It ships a supervisord template and a legacy Drush 8 .drush.inc command (job-scheduler-waiting-perform / jswp) that modern Drush does not load. Depends on job_scheduler. Medium/hard cases are grounded in real job_schedule entities (namespaced 'jsw_') and the live perform() dispatch, which consumes a due non-periodic job whose scheduler has no declared worker.",
+  "evals": [
+    {
+      "id": "job_scheduler_waiting-what-it-does",
+      "mode": "recipe",
+      "prompt": "What is the purpose of the job_scheduler_waiting module, and what does each iteration of its worker loop actually call?",
+      "must_contain_any": ["perform", "job_scheduler.manager", "loop"],
+      "must_not_contain": [],
+      "expected_output": "It runs one Job Scheduler scheduler continuously (a long-running process) instead of on cron. Each loop iteration calls \\Drupal::service('job_scheduler.manager')->perform($name), the same due-job dispatch cron uses, with set_time_limit(0) and a short sleep between empty passes.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "job_scheduler_waiting-command",
+      "mode": "recipe",
+      "prompt": "How is the job_scheduler_waiting worker intended to be run in production, and what is the name of the Drush command it declares? Any caveat on modern Drupal?",
+      "must_contain_any": ["job-scheduler-waiting-perform", "jswp", "supervisord"],
+      "must_not_contain": [],
+      "expected_output": "It is meant to run under a process supervisor (supervisord template in misc/), invoking the legacy Drush command job-scheduler-waiting-perform (alias jswp) with the scheduler name. Caveat: that command lives in a legacy .drush.inc file which modern Drush (10+) does not load, so drive perform() from your own supervised process.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "job_scheduler_waiting-dependency",
+      "mode": "recipe",
+      "prompt": "Which module does job_scheduler_waiting depend on, and where does the actual job dispatch logic live?",
+      "must_contain_any": ["job_scheduler", "job_scheduler.manager", "perform"],
+      "must_not_contain": [],
+      "expected_output": "It depends on job_scheduler; the dispatch logic is the parent module's job_scheduler.manager service perform()/dispatch()/execute() — job_scheduler_waiting just calls perform($name) repeatedly.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "job_scheduler_waiting-known-jobid",
+      "mode": "introspection",
+      "prompt": "On this Drupal site a job named 'jsw_probe' is scheduled for a waiting worker to process. Inspect the live site and state the numeric job id (the 'id' value) of that scheduled job.",
+      "must_contain_any": ["321"],
+      "must_not_contain": [],
+      "expected_output": "The 'jsw_probe' job_schedule entity has id = 321 (query the job_schedule entity where name = 'jsw_probe').",
+      "setup": "agent-module-documentation/evaluation/verify/job_scheduler_waiting-known-jobid-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/job_scheduler_waiting-known-jobid-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "job_scheduler_waiting-known-period",
+      "mode": "introspection",
+      "prompt": "On this Drupal site there is a scheduled job named 'jsw_due' that a waiting worker would process. Inspect the live site and state its period in seconds.",
+      "must_contain_any": ["7200"],
+      "must_not_contain": [],
+      "expected_output": "The 'jsw_due' job_schedule entity has period = 7200 (read the 'period' field of the job_schedule entity where name = 'jsw_due').",
+      "setup": "agent-module-documentation/evaluation/verify/job_scheduler_waiting-known-period-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/job_scheduler_waiting-known-period-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "job_scheduler_waiting-schedule",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, schedule a job named 'jsw_worker' of type 'jsw_worker_type' with job id 7 and a period of 3600 seconds, so a waiting worker for that scheduler would have a job to process. Apply it to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/job_scheduler_waiting-schedule-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/job_scheduler_waiting-schedule-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/job_scheduler_waiting-schedule-cleanup.sh",
+      "expected_output": "Call \\Drupal::service('job_scheduler.manager')->set(['name'=>'jsw_worker','type'=>'jsw_worker_type','id'=>7,'period'=>3600]); a job_schedule entity with those values is created."
+    },
+    {
+      "id": "job_scheduler_waiting-perform-due",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site there is a due (overdue) scheduled job named 'jsw_task'. Process the due jobs for the 'jsw_task' scheduler exactly as the waiting worker does (perform them once), so that the due job is dispatched and no longer pending. Apply it to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/job_scheduler_waiting-perform-due-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/job_scheduler_waiting-perform-due-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/job_scheduler_waiting-perform-due-cleanup.sh",
+      "expected_output": "Call \\Drupal::service('job_scheduler.manager')->perform('jsw_task') (one iteration of the waiting loop). The due non-periodic jsw_task job is dispatched and removed, so no jsw_task job remains pending."
+    }
+  ]
+}

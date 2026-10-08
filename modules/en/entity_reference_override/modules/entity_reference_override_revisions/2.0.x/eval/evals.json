@@ -1,0 +1,63 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "entity_reference_override_revisions",
+  "version": "2.0.x",
+  "note": "EXPERIMENTAL thin field-plugin submodule of entity_reference_override. Provides the field type entity_reference_override_revisions ('Entity reference revisions w/custom text', class Drupal\\entity_reference_override_revisions\\Plugin\\Field\\FieldType\\EntityReferenceOverrideRevisions, extends entity_reference_revisions' EntityReferenceRevisionsItem), adding ONE override column (varchar 255; NO override_format) and field setting override_label. default_widget entity_reference_override_revisions_autocomplete; default_formatter reuses the parent module's entity_reference_override_label. No config form, no permissions, no services. Depends on entity_reference_override + entity_reference_revisions. Medium introspects the live field-type plugin definition (cheap plugin.manager.field.field_type read). Hard has the agent write the field-storage-creation CODE into a deletable scratch file under web/sites/default/ (entity_reference_override_revisions_field.eval.php) which verify greps and reset deletes -- scratch-file authoring is used because on THIS shared site attaching field/display config for this type is very slow (canvas reacts to field definitions) and 'drush cr' fatals in an unrelated canvas/ui_patterns collision. Facts grounded in src/Plugin/Field/FieldType/EntityReferenceOverrideRevisions.php and src/Plugin/Field/FieldWidget/.",
+  "evals": [
+    {
+      "id": "entity_reference_override_revisions-field-type",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "I use Entity Reference Revisions (e.g. with Paragraphs) and want a per-reference custom title. Which field type does the entity_reference_override_revisions submodule add, and what does it extend?",
+      "must_contain_any": [
+        "entity_reference_override_revisions",
+        "Entity reference revisions w/custom text",
+        "EntityReferenceRevisionsItem",
+        "override"
+      ],
+      "must_not_contain": [],
+      "expected_output": "It adds the field type entity_reference_override_revisions ('Entity reference revisions w/custom text'), a subclass of Entity Reference Revisions' EntityReferenceRevisionsItem, with an extra 'override' text column for overriding the referenced revision's title."
+    },
+    {
+      "id": "entity_reference_override_revisions-no-format",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "For the entity_reference_override_revisions field type, which formatter is used by default to apply the override, and does it support a text-format (WYSIWYG) override like the base entity_reference_override field?",
+      "must_contain_any": [
+        "entity_reference_override_label",
+        "override_format",
+        "plain",
+        "no override_format"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Its default_formatter is the parent module's entity_reference_override_label (so the same override_action modes apply). Unlike the base entity_reference_override type it has NO override_format setting -- the override is plain text only (override column is varchar 255)."
+    },
+    {
+      "id": "entity_reference_override_revisions-fieldtype-class",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "On this running Drupal site, inspect the field-type plugin definitions and tell me the PHP class implementing entity_reference_override_revisions and its default formatter.",
+      "must_contain_any": [
+        "EntityReferenceOverrideRevisions",
+        "Drupal\\entity_reference_override_revisions\\Plugin\\Field\\FieldType\\EntityReferenceOverrideRevisions",
+        "entity_reference_override_label"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Class Drupal\\entity_reference_override_revisions\\Plugin\\Field\\FieldType\\EntityReferenceOverrideRevisions; default_formatter entity_reference_override_label; default_widget entity_reference_override_revisions_autocomplete. Discoverable with: drush php:eval \"var_export(\\Drupal::service('plugin.manager.field.field_type')->getDefinition('entity_reference_override_revisions'));\".",
+      "setup": "agent-module-documentation/evaluation/verify/entity_reference_override_revisions-fieldtype-def-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/entity_reference_override_revisions-fieldtype-def-cleanup.sh"
+    },
+    {
+      "id": "entity_reference_override_revisions-write-field-code",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "Write PHP that defines a field storage of type entity_reference_override_revisions on the node entity. To avoid mutating this shared site's field definitions, write the code into the scratch file web/sites/default/entity_reference_override_revisions_field.eval.php (create it). It must create a FieldStorageConfig whose type is entity_reference_override_revisions.",
+      "reset": "agent-module-documentation/evaluation/verify/entity_reference_override_revisions-field-snippet-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/entity_reference_override_revisions-field-snippet-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/entity_reference_override_revisions-field-snippet-cleanup.sh",
+      "expected_output": "PHP creating FieldStorageConfig::create([... 'type' => 'entity_reference_override_revisions' ...])->save()."
+    }
+  ]
+}

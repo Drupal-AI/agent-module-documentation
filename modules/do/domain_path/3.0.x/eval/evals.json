@@ -1,0 +1,80 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "domain_path",
+  "version": "3.0.x",
+  "note": "Domain Path adds per-domain URL aliases for content in a multi-domain (Domain module) site. A per-domain alias is a core path_alias entity with an extra domain_id base field (the module also swaps the path_alias class for DomainPathAlias and adds a computed domain_path field to enabled entity types). Settings config object domain_path.settings: entity_types (default [node]), alias_title (name/hostname/url), hide_path_alias_ui, use_advanced_group, language_method. Settings route entity.domain_path_settings -> /admin/config/domain/domain_path, permission 'administer domain paths'. Requires the domain module. Medium/hard cases are grounded in real config and in real domain-tagged path_alias entities, created node-free (a Domain entity + a path_alias with domain_id) to avoid the shared site's broken node-delete (field_ld_disp missing table).",
+  "evals": [
+    {
+      "id": "domain_path-how-stored",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "In the domain_path module, how is a per-domain URL alias stored? Does it use a new alias table?",
+      "must_contain_any": ["path_alias", "domain_id"],
+      "must_not_contain": [],
+      "expected_output": "No new alias table. A per-domain alias is a standard core path_alias entity with an extra domain_id base field (added by domain_path, which also swaps the path_alias entity class for DomainPathAlias). You can load them with loadByProperties(['domain_id' => $id])."
+    },
+    {
+      "id": "domain_path-settings-object",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "Where does domain_path keep its settings, which key controls which entity types get per-domain aliases, and where is the settings form?",
+      "must_contain_any": ["domain_path.settings", "entity_types", "entity.domain_path_settings", "/admin/config/domain/domain_path"],
+      "must_not_contain": [],
+      "expected_output": "Config object domain_path.settings; the entity_types key (default [node]) lists which entity types get per-domain alias fields. The settings form is route entity.domain_path_settings at /admin/config/domain/domain_path (permission 'administer domain paths')."
+    },
+    {
+      "id": "domain_path-alias-title-options",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "In domain_path, which setting controls how each domain is labelled in the alias widget on the entity form, and what are its options?",
+      "must_contain_any": ["alias_title", "hostname", "name", "url"],
+      "must_not_contain": [],
+      "expected_output": "The alias_title setting in domain_path.settings, with options name (domain name, the default), hostname, or url."
+    },
+    {
+      "id": "domain_path-alias-title-value",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "On this Drupal site, how are domains labelled in the Domain Path alias widget? Inspect the live domain_path configuration and give the value of the setting that controls it.",
+      "must_contain_any": ["hostname"],
+      "must_not_contain": [],
+      "expected_output": "domain_path.settings.alias_title is 'hostname', so domains are labelled by their hostname in the alias widget.",
+      "setup": "agent-module-documentation/evaluation/verify/domain_path-alias-title-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/domain_path-alias-title-cleanup.sh"
+    },
+    {
+      "id": "domain_path-known-alias",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "On this site there is a domain 'dp_intro' that has a domain-specific URL alias configured via Domain Path. Inspect the live path aliases and state the alias string set for that domain.",
+      "must_contain_any": ["/dp-known-alias", "dp-known-alias"],
+      "must_not_contain": [],
+      "expected_output": "There is a path_alias entity with domain_id 'dp_intro' whose alias is /dp-known-alias (pointing at /node/9001).",
+      "setup": "agent-module-documentation/evaluation/verify/domain_path-known-alias-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/domain_path-known-alias-cleanup.sh"
+    },
+    {
+      "id": "domain_path-create-alias",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site there is a domain with id 'dp_task'. Using Domain Path, create a domain-specific URL alias '/dp-task-alias' (for the internal path /node/12345) that applies only to the dp_task domain. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/domain_path-create-alias-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/domain_path-create-alias-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/domain_path-create-alias-cleanup.sh",
+      "expected_output": "Create a path_alias entity with path '/node/12345', alias '/dp-task-alias', langcode 'en', and domain_id set to 'dp_task' (e.g. PathAlias::create([...])->set('domain_id','dp_task')->save()). This is exactly what saving that alias in the node form's domain_path field does."
+    },
+    {
+      "id": "domain_path-enable-entity-type",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, Domain Path currently only offers per-domain aliases for nodes. Configure Domain Path so that taxonomy terms also get per-domain alias fields, keeping nodes enabled too. Apply the change live.",
+      "reset": "agent-module-documentation/evaluation/verify/domain_path-enable-entity-type-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/domain_path-enable-entity-type-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/domain_path-enable-entity-type-cleanup.sh",
+      "expected_output": "Add 'taxonomy_term' to domain_path.settings.entity_types (keeping 'node'), via the settings form at /admin/config/domain/domain_path or config."
+    }
+  ]
+}

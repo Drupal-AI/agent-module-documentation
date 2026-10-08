@@ -1,0 +1,147 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "quicktabs",
+  "version": "4.3.x",
+  "note": "Quick Tabs is configured through the quicktabs_instance config entity and its admin UI; grounded in the 4.3.x docs (data.json, usage.md, agent/). Cases are tiered: easy=recipe (response-graded), medium=introspection (setup a known quicktabs_instance, agent inspects live via drush, cleanup after), hard=execution (agent builds a quicktabs_instance, verified against live site state).",
+  "evals": [
+    {
+      "id": "qt-admin-route",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "On a Drupal 11 site with Quick Tabs enabled, where in the admin UI do I go to create a new tabbed block, and what permission gates it?",
+      "must_contain_any": ["/admin/structure/quicktabs", "quicktabs.admin", "Structure"],
+      "must_not_contain": [],
+      "expected_output": "Go to Structure > Quick Tabs (/admin/structure/quicktabs, route quicktabs.admin, the configure route) and add an instance; the admin UI and entity forms require the `administer quicktabs` permission."
+    },
+    {
+      "id": "qt-config-entity",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "What config entity type does Quick Tabs use to store each tab set, and what is the config name pattern?",
+      "must_contain_any": ["quicktabs_instance"],
+      "must_not_contain": [],
+      "expected_output": "Each tab set is a `quicktabs_instance` config entity, stored as config named quicktabs.quicktabs_instance.{id} (schema quicktabs.quicktabs_instance.*)."
+    },
+    {
+      "id": "qt-tab-types",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "In Quick Tabs, what kinds of content can an individual tab load, and what plugin type controls this?",
+      "must_contain_any": ["TabType", "node_content", "view_content", "block_content", "qtabs_content"],
+      "must_not_contain": [],
+      "expected_output": "A tab's content source is a TabType plugin; built-ins are node_content, block_content, view_content, and qtabs_content (another Quick Tabs instance)."
+    },
+    {
+      "id": "qt-renderer-plugin-type",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "How does Quick Tabs decide whether a tab set renders as classic tabs, jQuery UI tabs, or an accordion? Name the plugin type and the built-in ids plus which module provides each.",
+      "must_contain_any": ["TabRenderer", "quick_tabs", "accordion_tabs", "ui_tabs"],
+      "must_not_contain": [],
+      "expected_output": "The instance's `renderer` names a TabRenderer plugin: quick_tabs (base module), accordion_tabs (quicktabs_accordion submodule), ui_tabs (quicktabs_jqueryui submodule)."
+    },
+    {
+      "id": "qt-add-tabtype",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "I want tabs to be able to load a brand-new kind of content in Quick Tabs. Which plugin do I write: attribute, base class, interface methods, and manager service?",
+      "must_contain_any": ["TabType", "TabTypeBase", "optionsForm", "render"],
+      "must_not_contain": [],
+      "expected_output": "Create a plugin in Plugin/TabType with the #[TabType(id, name)] attribute, extending Drupal\\quicktabs\\TabTypeBase (TabTypeInterface), implementing optionsForm() and render(); it is discovered by plugin.manager.tab_type."
+    },
+    {
+      "id": "qt-ajax-and-block",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "After I save a Quick Tabs instance, how do I actually show it on the site, and how can I make each tab load its content over AJAX?",
+      "must_contain_any": ["block", "quicktabs_block", "ajax"],
+      "must_not_contain": [],
+      "expected_output": "Saving derives a block (quicktabs_block:{id}, category QuickTabs) that you place on /admin/structure/block; enable the quick_tabs renderer's `ajax` option to load each tab on demand via the quicktabs.ajax_content route."
+    },
+    {
+      "id": "qt-instance-alter",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "On a Drupal 11 site I need to inject a per-user View argument into a specific Quick Tabs tab at render time, and keep caching correct. Which hook do I implement and what must I do about cache metadata?",
+      "must_contain_any": ["hook_quicktabs_instance_alter", "quicktabs_instance_alter"],
+      "must_not_contain": [],
+      "expected_output": "Implement hook_quicktabs_instance_alter(QuickTabsInstance $qt): modify $qt in place via getConfigurationData()/setConfigurationData(), then declare variation with $qt->addCacheContexts(['user']); it runs once per request on both the block and AJAX render paths."
+    },
+    {
+      "id": "qt-remember-tab",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "Which Quick Tabs instance option re-opens the tab a visitor last clicked on their next visit, and what dependency powers it?",
+      "must_contain_any": ["remember_last_clicked_tab", "remember last clicked"],
+      "must_not_contain": [],
+      "expected_output": "Enable `remember_last_clicked_tab`; it uses a JS cookie (the required js_cookie module / js-cookie library) to reopen the last-clicked tab."
+    },
+    {
+      "id": "qt-intro-tab-count",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "persona": "drupal-expert",
+      "prompt": "A Quick Tabs instance `eval_intro_tabs` already exists on this Drupal site (drush available). Inspect the running site and tell me: how many tabs does it have?",
+      "setup": "agent-module-documentation/evaluation/verify/quicktabs-intro-tabs-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/quicktabs-intro-tabs-cleanup.sh",
+      "must_contain_any": ["3", "three"],
+      "must_not_contain": [],
+      "expected_output": "The quicktabs_instance `eval_intro_tabs` has 3 tabs configured in its configuration_data."
+    },
+    {
+      "id": "qt-intro-renderer",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "persona": "drupal-expert",
+      "prompt": "A Quick Tabs instance `eval_intro_tabs` already exists on this Drupal site (drush available). Inspect the running site and tell me: which renderer does it use?",
+      "setup": "agent-module-documentation/evaluation/verify/quicktabs-intro-tabs-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/quicktabs-intro-tabs-cleanup.sh",
+      "must_contain_any": ["accordion_tabs", "accordion"],
+      "must_not_contain": [],
+      "expected_output": "The quicktabs_instance `eval_intro_tabs` uses the `accordion_tabs` renderer (Quick Tabs Accordion submodule)."
+    },
+    {
+      "id": "qt-intro-tab-titles",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "persona": "drupal-expert",
+      "prompt": "A Quick Tabs instance `eval_intro_tabs` already exists on this Drupal site (drush available). Inspect the running site and tell me: what are its tab titles?",
+      "setup": "agent-module-documentation/evaluation/verify/quicktabs-intro-tabs-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/quicktabs-intro-tabs-cleanup.sh",
+      "must_contain_any": ["Shipping", "Returns", "Warranty"],
+      "must_not_contain": [],
+      "expected_output": "The quicktabs_instance `eval_intro_tabs` has three tabs titled Shipping, Returns, and Warranty (in that weight order)."
+    },
+    {
+      "id": "quicktabs-build-instance",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site (drush available), build a tabbed content widget using Quick Tabs. Create a Quick Tabs instance with machine name `eval_tabs` and label `Eval Tabs`, using the default tabs renderer, containing at least TWO tabs titled `Tab One` and `Tab Two`, each showing some content. Apply it to the live site so the quicktabs instance really exists; don't just describe it. One-line summary.",
+      "reset": "agent-module-documentation/evaluation/verify/quicktabs-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/quicktabs-build-instance.sh",
+      "expected_output": "A quicktabs_instance config entity `eval_tabs` (label Eval Tabs, renderer quick_tabs) exists with at least two tabs in its configuration_data. Verified against live site state."
+    },
+    {
+      "id": "quicktabs-build-tabs3",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site (drush available), build a Quick Tabs instance with machine name `eval_tabs3` and label `Eval Tabs Three`, using the default tabs renderer, containing EXACTLY THREE tabs, each showing some content. Apply it to the live site so the quicktabs instance really exists; don't just describe it. One-line summary.",
+      "reset": "agent-module-documentation/evaluation/verify/quicktabs-tabs3-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/quicktabs-tabs3-verify.sh",
+      "expected_output": "A quicktabs_instance config entity `eval_tabs3` exists with exactly three tabs in its configuration_data. Verified against live site state."
+    },
+    {
+      "id": "quicktabs-build-block-tabs",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site (drush available), build a Quick Tabs instance with machine name `eval_block_tabs` and label `Eval Block Tabs` that uses the accordion renderer (the `accordion_tabs` renderer from the Quick Tabs Accordion submodule). Give it TWO tabs, each of the `block_content` tab type, both pointing at the core `system_powered_by_block` block plugin. Apply it to the live site so the quicktabs instance really exists; don't just describe it. One-line summary.",
+      "reset": "agent-module-documentation/evaluation/verify/quicktabs-block-tabs-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/quicktabs-block-tabs-verify.sh",
+      "expected_output": "A quicktabs_instance config entity `eval_block_tabs` exists using renderer accordion_tabs with two block_content tabs referencing the system_powered_by_block plugin. Verified against live site state."
+    }
+  ]
+}

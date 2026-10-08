@@ -1,0 +1,97 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "dbal",
+  "version": "2.0.x",
+  "note": "DBAL Connection is a low-level developer bridge: it exposes a Doctrine\\DBAL\\Connection built from Drupal's $databases settings. Services: dbal_connection_factory (ConnectionFactory, ->get($target)), dbal_connection (the default Doctrine\\DBAL\\Connection), and the alias Doctrine\\DBAL\\Connection -> @dbal_connection. No config, UI, permissions, plugins, Drush, or schema. Medium/hard cases exercise the agent actually USING the DBAL connection against the live database: setup/reset scripts create or drop plain raw SQL tables (namespaced dbal_*) via drush sql:query, the agent reads or writes them through \\Drupal::service('dbal_connection'), and verify checks the raw table state. Raw SQL tables are used deliberately (no Drupal entities/config), which also avoids an unrelated pre-existing site issue with commerce_giftcard entity updates.",
+  "evals": [
+    {
+      "id": "dbal-get-connection",
+      "mode": "recipe",
+      "prompt": "I have the drupal/dbal module installed. How do I get a Doctrine DBAL connection (Doctrine\\DBAL\\Connection) to the Drupal database in my code?",
+      "must_contain_any": [
+        "dbal_connection",
+        "Doctrine\\DBAL\\Connection",
+        "dbal_connection_factory"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Use the 'dbal_connection' service (\\Drupal::service('dbal_connection')) or autowire the Doctrine\\DBAL\\Connection type; for a specific database target call \\Drupal::service('dbal_connection_factory')->get($target).",
+      "difficulty": "easy"
+    },
+    {
+      "id": "dbal-source-of-settings",
+      "mode": "recipe",
+      "prompt": "Where does the drupal/dbal module get the database credentials for the Doctrine DBAL connection, and does it need its own configuration?",
+      "must_contain_any": [
+        "getAllConnectionInfo",
+        "$databases",
+        "settings.php",
+        "Database connection settings"
+      ],
+      "must_not_contain": [],
+      "expected_output": "It has no config of its own; ConnectionFactory reads Drupal's Database::getAllConnectionInfo() (the $databases in settings.php) and maps it to Doctrine DriverManager options (driver becomes pdo_<driver>).",
+      "difficulty": "easy"
+    },
+    {
+      "id": "dbal-nondefault-target",
+      "mode": "recipe",
+      "prompt": "Using drupal/dbal, how do I get a Doctrine DBAL connection to a non-default Drupal database target (for example a replica)?",
+      "must_contain_any": [
+        "get",
+        "target",
+        "dbal_connection_factory"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Call the factory: \\Drupal::service('dbal_connection_factory')->get('replica') - pass the Drupal target name as named in $databases; it falls back to 'default' if the target is unknown, and caches per target.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "dbal-known-value",
+      "mode": "introspection",
+      "prompt": "On this Drupal site there is a database table named 'dbal_probe' with a column 'label'. Using the drupal/dbal Doctrine DBAL connection, read the value in the 'label' column of the row where id = 1 and report it.",
+      "must_contain_any": [
+        "dbal-secret-42"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Querying via the dbal_connection service (SELECT label FROM dbal_probe WHERE id = 1) returns 'dbal-secret-42'.",
+      "setup": "agent-module-documentation/evaluation/verify/dbal-known-value-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/dbal-known-value-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "dbal-row-count",
+      "mode": "introspection",
+      "prompt": "Using the drupal/dbal Doctrine DBAL connection, how many rows are in the database table named 'dbal_probe_rows' on this site?",
+      "must_contain_any": [
+        "3"
+      ],
+      "must_not_contain": [],
+      "expected_output": "SELECT COUNT(*) FROM dbal_probe_rows via the dbal_connection service returns 3.",
+      "setup": "agent-module-documentation/evaluation/verify/dbal-row-count-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/dbal-row-count-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "dbal-create-table",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "Using the drupal/dbal Doctrine DBAL connection (not Drupal's Database API), create a database table named 'dbal_task' with an integer 'id' column and a 'note' column, and insert one row with id = 1. Execute it against the live database.",
+      "reset": "agent-module-documentation/evaluation/verify/dbal-create-table-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/dbal-create-table-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/dbal-create-table-cleanup.sh",
+      "expected_output": "Table dbal_task exists and has a row with id=1 (e.g. \\Drupal::service('dbal_connection')->executeStatement('CREATE TABLE dbal_task (id INT, note VARCHAR(64))') then an INSERT with id=1)."
+    },
+    {
+      "id": "dbal-insert-row",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "There is an empty database table 'dbal_task2' (columns id INT, note VARCHAR) on this site. Using the drupal/dbal Doctrine DBAL connection, insert a row whose 'note' value is exactly 'dbal-done'. Execute it against the live database.",
+      "reset": "agent-module-documentation/evaluation/verify/dbal-insert-row-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/dbal-insert-row-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/dbal-insert-row-cleanup.sh",
+      "expected_output": "Table dbal_task2 contains a row with note='dbal-done' (e.g. \\Drupal::service('dbal_connection')->executeStatement(\"INSERT INTO dbal_task2 (id, note) VALUES (1, 'dbal-done')\"))."
+    }
+  ]
+}

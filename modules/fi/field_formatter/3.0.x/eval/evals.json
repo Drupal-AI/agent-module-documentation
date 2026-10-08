@@ -1,0 +1,109 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "field_formatter",
+  "version": "3.0.x",
+  "note": "Field formatter provides three @FieldFormatter plugins and no config UI: field_formatter_with_inline_settings and field_formatter_from_view_display (both for entity_reference / entity_reference_revisions, showing one field of the referenced entity), and field_link 'Field linker' (all field types, wraps output in a link to the host entity). Settings live in the entity VIEW display config (core.entity_view_display.*). Medium/hard cases are grounded in that real config on namespaced fields on the Article content type: introspection reads back the configured formatter + settings on field_ff_ref / field_ff_inline; execution switches a field's view-display component to a field_formatter formatter, verified against the stored view display. Fields are created idempotently; hard-case reset leaves the field using a core formatter (clean baseline) so verify fails on empty state and passes only after the agent configures the field_formatter formatter.",
+  "evals": [
+    {
+      "id": "field-formatter-which-formatters",
+      "mode": "recipe",
+      "prompt": "What field formatters does the Drupal 'field_formatter' module add, and what are they for?",
+      "must_contain_any": [
+        "field_formatter_with_inline_settings",
+        "field_formatter_from_view_display",
+        "field_link",
+        "Field linker",
+        "single field",
+        "referenced entity"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Three: 'Field formatter with inline settings' (field_formatter_with_inline_settings) and 'Field formatter from view display' (field_formatter_from_view_display) render a single chosen field of a referenced entity (on entity_reference / entity_reference_revisions fields), and 'Field linker' (field_link) wraps any field's output in a link to the host entity.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "field-formatter-inline-vs-view-display",
+      "mode": "recipe",
+      "prompt": "In the field_formatter module, what is the difference between 'Field formatter with inline settings' and 'Field formatter from view display', and what settings does each store?",
+      "must_contain_any": [
+        "view_mode",
+        "view mode",
+        "field_name",
+        "inline",
+        "formatter"
+      ],
+      "must_not_contain": [],
+      "expected_output": "With inline settings you pick the referenced field (field_name) and configure that inner field's formatter inline (settings: field_name, type, settings, label, link_to_entity). From view display you pick a view_mode of the referenced entity and it renders the chosen field_name using that view mode's existing formatter (settings: view_mode, field_name, link_to_entity).",
+      "difficulty": "easy"
+    },
+    {
+      "id": "field-formatter-field-link-types",
+      "mode": "recipe",
+      "prompt": "The field_formatter module's 'Field linker' (field_link) formatter is available on every field type, unlike the other two. How does field_formatter make that happen, and what does the formatter do?",
+      "must_contain_any": [
+        "hook_field_formatter_info_alter",
+        "field_formatter_info_alter",
+        "all field types",
+        "wraps",
+        "link",
+        "canonical"
+      ],
+      "must_not_contain": [],
+      "expected_output": "field_link declares no field_types in its annotation; field_formatter_field_formatter_info_alter() sets its field_types to all field type ids. It renders the field with any inner formatter and wraps each item in a link to the host entity's canonical URL.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "field-formatter-configured-ref",
+      "mode": "introspection",
+      "prompt": "On this Drupal site, the Article content type's default view display has an entity reference field configured with a field_formatter formatter. Inspect the live view display and report the field's machine name, which field_formatter formatter it uses, and the referenced field / view mode it displays.",
+      "must_contain_any": [
+        "field_ff_ref",
+        "field_formatter_from_view_display",
+        "teaser",
+        "body"
+      ],
+      "must_not_contain": [],
+      "expected_output": "In core.entity_view_display.node.article.default the field_ff_ref component uses formatter field_formatter_from_view_display with settings view_mode: teaser and field_name: body.",
+      "setup": "agent-module-documentation/evaluation/verify/field_formatter-from-view-display-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/field_formatter-from-view-display-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "field-formatter-configured-inline",
+      "mode": "introspection",
+      "prompt": "The Article content type on this site has an entity reference field named field_ff_inline whose display uses field_formatter's 'inline settings' formatter. Inspect the live view display and state which referenced field it shows and which inner formatter is applied to it.",
+      "must_contain_any": [
+        "field_formatter_with_inline_settings",
+        "body",
+        "text_default"
+      ],
+      "must_not_contain": [],
+      "expected_output": "field_ff_inline uses field_formatter_with_inline_settings with settings.field_name: body and settings.type: text_default (label above).",
+      "setup": "agent-module-documentation/evaluation/verify/field_formatter-inline-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/field_formatter-inline-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "field-formatter-set-from-view-display",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, the Article content type has an entity reference field field_ff_task (referencing Article) whose default display currently uses the core 'Label' formatter. Using the field_formatter module, change the default view display so this field is rendered with the 'Field formatter from view display' formatter showing one field of the referenced node. Apply it to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/field_formatter-configure-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/field_formatter-configure-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/field_formatter-configure-cleanup.sh",
+      "expected_output": "In core.entity_view_display.node.article.default set the field_ff_task component type to field_formatter_from_view_display with a non-empty settings.field_name (and a view_mode), e.g. via $viewDisplay->setComponent('field_ff_task', ['type'=>'field_formatter_from_view_display','settings'=>['view_mode'=>'teaser','field_name'=>'body','link_to_entity'=>FALSE], ...])->save()."
+    },
+    {
+      "id": "field-formatter-field-linker",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "The Article content type on this site has a plain text field field_ff_str whose default display uses the core 'Plain text' formatter. Using the field_formatter module, wrap this field's output in a link to the article by switching it to the 'Field linker' formatter, and apply the change to the live default view display.",
+      "reset": "agent-module-documentation/evaluation/verify/field_formatter-linker-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/field_formatter-linker-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/field_formatter-linker-cleanup.sh",
+      "expected_output": "In core.entity_view_display.node.article.default set the field_ff_str component type to field_link (the 'Field linker' formatter), e.g. $viewDisplay->setComponent('field_ff_str', ['type'=>'field_link','settings'=>['type'=>'string','settings'=>[]], ...])->save()."
+    }
+  ]
+}

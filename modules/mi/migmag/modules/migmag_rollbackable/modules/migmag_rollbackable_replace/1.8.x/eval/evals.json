@@ -1,0 +1,93 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "migmag_rollbackable_replace",
+  "version": "1.8.x",
+  "note": "Glue submodule: a single hook_migrate_destination_info_alter() that swaps the class of core destinations (config, color, default_langcode, component_entity_display, component_entity_form_display, shortcut_set_users, d7_theme_settings) to the Rollbackable* classes from migmag_rollbackable; the plugin ids stay the same. No config/UI/permissions/Drush/plugins. Verified via the core destination plugin manager (works on this site; migration plugin manager is broken by pathauto but not needed). Baseline: this module DISABLED (config = core Config). Introspection reads the 'config' destination class with the override on; execution toggles it on (config -> RollbackableConfig) and off (config -> core Config).",
+  "evals": [
+    {
+      "id": "migmag_rr-what",
+      "mode": "recipe",
+      "prompt": "What does the Drupal module migmag_rollbackable_replace do, and does it change the destination plugin ids used in migrations?",
+      "must_contain_any": [
+        "hook_migrate_destination_info_alter",
+        "class",
+        "RollbackableConfig",
+        "same"
+      ],
+      "must_not_contain": [],
+      "expected_output": "It implements hook_migrate_destination_info_alter() to swap the implementing class of core destinations (config, color, default_langcode, etc.) to the Rollbackable* classes from migmag_rollbackable. The plugin ids stay the same (still 'config', 'color', ...) - only the class changes.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "migmag_rr-config-class",
+      "mode": "recipe",
+      "prompt": "After enabling migmag_rollbackable_replace, which class does core's 'config' migrate destination plugin resolve to?",
+      "must_contain_any": [
+        "RollbackableConfig"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Drupal\\migmag_rollbackable\\Plugin\\migrate\\destination\\RollbackableConfig.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "migmag_rr-dependency",
+      "mode": "recipe",
+      "prompt": "Which module provides the rollbackable destination classes that migmag_rollbackable_replace swaps in, i.e. what does it depend on?",
+      "must_contain_any": [
+        "migmag_rollbackable"
+      ],
+      "must_not_contain": [],
+      "expected_output": "It depends on migmag_rollbackable, which provides the Rollbackable* destination classes and the rollback DB tables.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "migmag_rr-active-class",
+      "mode": "introspection",
+      "prompt": "On this Drupal site, migmag_rollbackable_replace has been enabled. Inspect the migrate destination plugin manager and report the implementing class of the 'config' destination plugin.",
+      "must_contain_any": [
+        "RollbackableConfig"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The 'config' destination class is Drupal\\migmag_rollbackable\\Plugin\\migrate\\destination\\RollbackableConfig (read via plugin.manager.migrate.destination getDefinition('config')['class']).",
+      "setup": "agent-module-documentation/evaluation/verify/migmag-rbreplace-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/migmag-rbreplace-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "migmag_rr-provider",
+      "mode": "introspection",
+      "prompt": "On this Drupal site the forced-rollbackable override is active. Inspecting the running site, which Migrate Magician module (enabled as a dependency) provides the rollbackable destination classes now in use?",
+      "must_contain_any": [
+        "migmag_rollbackable"
+      ],
+      "must_not_contain": [],
+      "expected_output": "migmag_rollbackable provides the Rollbackable* classes; it is enabled as a dependency of the enabled migmag_rollbackable_replace module.",
+      "setup": "agent-module-documentation/evaluation/verify/migmag-rbreplace-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/migmag-rbreplace-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "migmag_rr-enable-override",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, make core's 'config' migrate destination rollback-capable for all migrations without editing YAML, using Migrate Magician's forced-rollbackable module. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/migmag-rbreplace-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/migmag-rbreplace-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/migmag-rbreplace-cleanup.sh",
+      "expected_output": "Enable migmag_rollbackable_replace (drush en migmag_rollbackable_replace -y). The 'config' destination class becomes Drupal\\migmag_rollbackable\\Plugin\\migrate\\destination\\RollbackableConfig."
+    },
+    {
+      "id": "migmag_rr-remove-override",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site the forced-rollbackable override is currently active (the 'config' destination uses RollbackableConfig). Remove the override so core's 'config' migrate destination uses core's own Config class again. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/migmag-rbreplace-remove-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/migmag-rbreplace-remove-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/migmag-rbreplace-cleanup.sh",
+      "expected_output": "Uninstall migmag_rollbackable_replace (drush pmu migmag_rollbackable_replace -y). The 'config' destination class returns to Drupal\\migrate\\Plugin\\migrate\\destination\\Config."
+    }
+  ]
+}

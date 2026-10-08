@@ -1,0 +1,82 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "dotenv",
+  "version": "1.2.x",
+  "note": "Dotenv integrates symfony/dotenv with Drupal. It has NO Drupal config entity, settings form, configure route (configure=null), permission, or plugin type. Its persistent artifacts are files at the Composer root: a .env file (parsed into $_ENV) plus the bootstrap file load.environment.php, and the compiled .env.local.php produced by `drush dotenv:dump`. It also registers Drush/Console commands dotenv:init, dotenv:dump, dotenv:debug. Because the module stores nothing in Drupal config, medium (introspection) and hard (execution) cases are grounded in the real .env file at /var/www/html (the container's Composer root): introspection reads back a variable value from a .env fixture, execution creates a .env / compiles it to .env.local.php. Verify scripts are pure file checks so they do not depend on a full Drupal bootstrap.",
+  "evals": [
+    {
+      "id": "dotenv-init-command",
+      "mode": "recipe",
+      "prompt": "On a Drupal site using the dotenv contrib module, which single Drush command automatically sets up the .env integration — creating the .env file (seeded with database credentials), a .env.example, the load.environment.php loader wired into composer.json autoload, and a .gitignore entry?",
+      "must_contain_any": ["dotenv:init", "drush dotenv:init"],
+      "must_not_contain": [],
+      "expected_output": "drush dotenv:init. It creates .env (APP_ENV + DB credentials from settings.php), a keyless .env.example, copies load.environment.php and adds it to composer.json autoload.files (then composer dump-autoload), appends .env to .gitignore, and adds $databases[...] = $_ENV[...] lines to settings.php. Options --database-settings / --add-loader / --add-gitignore each default TRUE.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "dotenv-read-in-settings",
+      "mode": "recipe",
+      "prompt": "With the dotenv module loaded on a Drupal site, once variables from the .env file are parsed, in which PHP superglobal do they become available, and how would you read a database password in settings.php?",
+      "must_contain_any": ["$_ENV", "_ENV", "$_SERVER"],
+      "must_not_contain": [],
+      "expected_output": "Variables are exposed in the $_ENV (and $_SERVER) superglobal. In settings.php you read e.g. $databases['default']['default']['password'] = $_ENV['DB_PASSWORD']; The .env is loaded by the autoloaded load.environment.php via Symfony Dotenv::bootEnv().",
+      "difficulty": "easy"
+    },
+    {
+      "id": "dotenv-dump-production",
+      "mode": "recipe",
+      "prompt": "The dotenv README warns that on production the .env file is parsed on every request unless it is compiled. Which dotenv Drush command should you run after changing .env to compile it into an optimized cache file, and what file does it produce?",
+      "must_contain_any": ["dotenv:dump", ".env.local.php"],
+      "must_not_contain": [],
+      "expected_output": "Run `drush dotenv:dump` (Symfony's DotenvDumpCommand). It compiles the .env files at the Composer root into an optimized .env.local.php so PHP no longer re-parses .env on each request.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "dotenv-known-token",
+      "mode": "introspection",
+      "prompt": "This Drupal site uses the dotenv module and has a .env file at the project (Composer) root. Inspect it and state the exact value assigned to the DOTENV_PROBE_TOKEN environment variable.",
+      "must_contain_any": ["probe-9f3a7c"],
+      "must_not_contain": [],
+      "expected_output": "DOTENV_PROBE_TOKEN=probe-9f3a7c in /var/www/html/.env (which also sets APP_ENV=staging). Read it with `cat .env` or `drush dotenv:debug`.",
+      "setup": "agent-module-documentation/evaluation/verify/dotenv-known-token-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/dotenv-known-token-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "dotenv-mail-var",
+      "mode": "introspection",
+      "prompt": "The dotenv .env file at this site's project root defines a SITE_MAIL_FROM variable. Inspect the running site's .env and report the exact value it is set to.",
+      "must_contain_any": ["alerts@probe.example"],
+      "must_not_contain": [],
+      "expected_output": "SITE_MAIL_FROM=alerts@probe.example in /var/www/html/.env (APP_ENV=staging). Discoverable via `cat .env` or `drush dotenv:debug`.",
+      "setup": "agent-module-documentation/evaluation/verify/dotenv-mail-var-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/dotenv-mail-var-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "dotenv-create-env",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site the dotenv module is enabled but there is no .env file yet. Create a .env file at the project (Composer) root, i.e. /var/www/html/.env, containing APP_ENV=prod and an application secret DOTENV_TASK_KEY set to taskvalue123. Apply the change to the live filesystem.",
+      "reset": "agent-module-documentation/evaluation/verify/dotenv-create-env-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/dotenv-create-env-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/dotenv-create-env-cleanup.sh",
+      "expected_output": "/var/www/html/.env exists and contains lines APP_ENV=prod and DOTENV_TASK_KEY=taskvalue123.",
+      "must_not_contain": []
+    },
+    {
+      "id": "dotenv-dump-compile",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "This site already has a dotenv .env file at the project root (/var/www/html/.env) with APP_ENV=prod, but production is re-parsing it on every request. Use the dotenv module's Drush command to compile the .env into an optimized cached file for the prod environment, applying it to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/dotenv-dump-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/dotenv-dump-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/dotenv-dump-cleanup.sh",
+      "expected_output": "Running `drush dotenv:dump prod` writes /var/www/html/.env.local.php compiled from .env.",
+      "must_not_contain": []
+    }
+  ]
+}

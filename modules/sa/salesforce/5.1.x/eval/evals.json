@@ -1,0 +1,103 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "salesforce",
+  "version": "5.1.x",
+  "note": "Base Salesforce module: the salesforce.client REST client, SOQL SelectQuery, the @SalesforceAuthProvider plugin type (providers oauth/jwt via submodules; each authorization is a salesforce_auth config entity), 15 salesforce:* Drush commands, value objects (SObject/SFID) and events. Actual API calls require an external Salesforce org, so ALL medium/hard cases are grounded in the LOCAL salesforce.settings config object (global_push_limit, pull_max_queue_size, standalone, use_latest, salesforce_auth_provider, cache lifetimes, etc.), which needs no connection and is verified by pure config reads. Cleanup restores shipped defaults explicitly (global_push_limit 100000, use_latest true, standalone false).",
+  "evals": [
+    {
+      "id": "salesforce-client-service",
+      "mode": "recipe",
+      "prompt": "In the Drupal Salesforce module, which service do I use to call the Salesforce REST API (create/read records, run SOQL), and what class builds a SOQL query?",
+      "must_contain_any": [
+        "salesforce.client",
+        "RestClient",
+        "SelectQuery"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Use the salesforce.client service (Drupal\\salesforce\\Rest\\RestClient): objectCreate/objectRead/objectUpdate/objectUpsert, query(), etc. Build SOQL with the SelectQuery class (set fields, addCondition(), limit) and pass it to $client->query().",
+      "difficulty": "easy"
+    },
+    {
+      "id": "salesforce-drush",
+      "mode": "recipe",
+      "prompt": "What Drush commands does the Salesforce module provide to list configured auth providers and to run a SOQL query from the CLI?",
+      "must_contain_any": [
+        "salesforce:list-providers",
+        "salesforce:query-object",
+        "salesforce:execute-query",
+        "salesforce:list-objects"
+      ],
+      "must_not_contain": [],
+      "expected_output": "drush salesforce:list-providers lists the configured authorizations; drush salesforce:query-object <Object> or drush salesforce:execute-query \"<SOQL>\" runs a query. There are ~15 salesforce:* commands (list-objects, describe-fields, read/create-object, refresh/revoke-token, ...).",
+      "difficulty": "easy"
+    },
+    {
+      "id": "salesforce-auth-plugin",
+      "mode": "recipe",
+      "prompt": "How does authentication to Salesforce work in this module - what plugin type is used, and how is a specific authorization stored?",
+      "must_contain_any": [
+        "SalesforceAuthProvider",
+        "salesforce_auth",
+        "auth provider",
+        "oauth",
+        "jwt"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Authentication uses the @SalesforceAuthProvider plugin type (manager plugin.manager.salesforce.auth_providers). Providers include oauth (salesforce_oauth) and jwt/jwt_govcloud (salesforce_jwt). Each authorization is a salesforce_auth config entity naming a provider plugin and its settings; the default one is salesforce.settings.salesforce_auth_provider.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "salesforce-known-push-limit",
+      "mode": "introspection",
+      "prompt": "On this Drupal site, what is the Salesforce global push queue limit configured in the Salesforce settings? Inspect the live configuration and give the number.",
+      "must_contain_any": [
+        "250"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The global push limit is 250: salesforce.settings global_push_limit is set to 250.",
+      "setup": "agent-module-documentation/evaluation/verify/salesforce-known-push-limit-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/salesforce-known-push-limit-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "salesforce-known-uselatest",
+      "mode": "introspection",
+      "prompt": "On this Drupal site, is the Salesforce integration configured to always use the latest REST API version, or a pinned version? Inspect the live Salesforce settings and say which.",
+      "must_contain_any": [
+        "false",
+        "not",
+        "pinned",
+        "disabled",
+        "off"
+      ],
+      "must_not_contain": [],
+      "expected_output": "It does NOT use the latest version automatically: salesforce.settings use_latest is false, so it uses the pinned rest_api_version instead.",
+      "setup": "agent-module-documentation/evaluation/verify/salesforce-known-uselatest-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/salesforce-known-uselatest-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "salesforce-set-push-limit",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, configure the Salesforce integration so that at most 500 records are processed per push queue run (set the global push queue limit to 500). Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/salesforce-set-push-limit-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/salesforce-set-push-limit-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/salesforce-set-push-limit-cleanup.sh",
+      "expected_output": "salesforce.settings global_push_limit is set to 500 (via the Salesforce settings form or config)."
+    },
+    {
+      "id": "salesforce-standalone",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, enable Salesforce standalone queue processing (so the push queue is processed via a standalone endpoint instead of during cron). Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/salesforce-standalone-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/salesforce-standalone-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/salesforce-standalone-cleanup.sh",
+      "expected_output": "salesforce.settings standalone is set to true (enable 'Provide standalone queue processing endpoint and disable cron processing')."
+    }
+  ]
+}

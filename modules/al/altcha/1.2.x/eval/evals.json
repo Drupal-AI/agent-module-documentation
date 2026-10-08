@@ -1,0 +1,80 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "altcha",
+  "version": "1.2.x",
+  "note": "ALTCHA is a proof-of-work CAPTCHA that plugs into the contrib CAPTCHA module via hook_captcha (challenge type 'ALTCHA'). You place it on a form with a CAPTCHA point config entity captcha.captcha_point.<form_id> whose captchaType is 'altcha/ALTCHA'. Config altcha.settings (has schema + install defaults): integration_type (self_hosted|sentinel_api|saas_api), max_number (complexity 1000-1000000), expire/delay, auto_verification (off|onfocus|onload|onsubmit), floating_enabled/floating_mode(auto|top|bottom)/floating_anchor/floating_offset, hide_logo/hide_footer, i18n labels, obfuscate_* (submodule). Self-hosted HMAC secret is in State 'altcha-hmac-key' (SecretManager, created on install). Settings form altcha.settings at /admin/config/people/captcha/altcha (permission 'administer altcha'); challenge endpoint /altcha/v1/challenge. Medium cases read altcha.settings; hard cases build a captcha point and (re)generate the State secret; all restore baseline.",
+  "evals": [
+    {
+      "id": "altcha-how-it-works",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "How does the ALTCHA module protect a Drupal form against bots - what mechanism does it use instead of image puzzles, and which module does it integrate with to appear as a challenge?",
+      "must_contain_any": ["proof-of-work", "proof of work", "ALTCHA", "hook_captcha", "captcha"],
+      "must_not_contain": [],
+      "expected_output": "It integrates with the contrib CAPTCHA module via hook_captcha, adding an 'ALTCHA' challenge type. Instead of image puzzles the visitor's browser solves a proof-of-work computation, verified on submit by altcha_captcha_validation()."
+    },
+    {
+      "id": "altcha-secret-key",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "For ALTCHA's self-hosted integration, where is the HMAC secret key that signs/verifies challenges stored, what is its key name, and what creates it initially?",
+      "must_contain_any": ["altcha-hmac-key", "State", "SecretManager", "secret_manager", "install"],
+      "must_not_contain": [],
+      "expected_output": "The secret is stored in Drupal State under the key 'altcha-hmac-key', created on install by SecretManager::generateSecretKey() (service altcha.secret_manager). It is not in config. You can regenerate it from the settings form."
+    },
+    {
+      "id": "altcha-integration-types",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "What integration types does ALTCHA support, and at what admin path is its settings form?",
+      "must_contain_any": ["self_hosted", "self-hosted", "sentinel", "saas", "/admin/config/people/captcha/altcha"],
+      "must_not_contain": [],
+      "expected_output": "Three integration_type options: self_hosted (default), sentinel_api, and saas_api. The settings form (route altcha.settings, permission 'administer altcha') is at /admin/config/people/captcha/altcha."
+    },
+    {
+      "id": "altcha-complexity",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "On this Drupal site, ALTCHA's proof-of-work complexity has been changed from the default. Inspect the live altcha.settings configuration and report the configured complexity (the max_number value).",
+      "must_contain_any": ["50000"],
+      "must_not_contain": [],
+      "expected_output": "altcha.settings max_number is 50000.",
+      "setup": "agent-module-documentation/evaluation/verify/altcha-complexity-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/altcha-complexity-cleanup.sh"
+    },
+    {
+      "id": "altcha-floating-mode",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "ALTCHA on this site has been switched into its floating (invisible) widget mode. Inspect the live altcha.settings and report where the floating widget is anchored (its floating_mode).",
+      "must_contain_any": ["bottom"],
+      "must_not_contain": [],
+      "expected_output": "Floating is enabled (floating_enabled = true) with floating_mode = bottom in altcha.settings.",
+      "setup": "agent-module-documentation/evaluation/verify/altcha-floating-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/altcha-floating-cleanup.sh"
+    },
+    {
+      "id": "altcha-place-on-form",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this site, protect the form with form id 'altcha_eval_form' with the ALTCHA CAPTCHA. Create the CAPTCHA point so that this form uses the ALTCHA challenge, and apply it to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/altcha-place-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/altcha-place-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/altcha-place-cleanup.sh",
+      "expected_output": "Create captcha_point config captcha.captcha_point.altcha_eval_form with captchaType 'altcha/ALTCHA', e.g. \\Drupal::entityTypeManager()->getStorage('captcha_point')->create(['formId' => 'altcha_eval_form', 'captchaType' => 'altcha/ALTCHA', 'status' => TRUE])->save() (or via the CAPTCHA admin UI)."
+    },
+    {
+      "id": "altcha-generate-secret",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "site-owner",
+      "prompt": "ALTCHA self-hosted verification on this site is broken because its secret key is missing. Generate a new ALTCHA self-hosted secret key so challenges can be signed again, and apply it to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/altcha-secret-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/altcha-secret-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/altcha-secret-cleanup.sh",
+      "expected_output": "Generate the self-hosted secret key, e.g. \\Drupal::service('altcha.secret_manager')->generateSecretKey() (or click 'Regenerate secret key' on the ALTCHA settings form). Afterwards State 'altcha-hmac-key' holds a non-empty key."
+    }
+  ]
+}

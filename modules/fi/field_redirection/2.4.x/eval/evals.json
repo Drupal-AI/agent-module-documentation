@@ -1,0 +1,80 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "field_redirection",
+  "version": "2.4.x",
+  "note": "Field Redirection provides one field formatter, field_redirection_formatter ('Redirect'), for link / entity_reference / file fields. When the entity is viewed it resolves the field's destination URL and issues a RedirectResponse with a configurable HTTP status. Settings: code (default 301; options 300/301/302/303/304/305/307), 404_if_empty (bool), page_restrictions (0 all / 1 only-listed / 2 all-except-listed), pages (newline paths). One permission: 'bypass redirection' (holders are not redirected). It no-ops under CLI. No config route; state is the formatter type + settings on a field component in an entity_view_display config entity (e.g. core.entity_view_display.node.article.default). Config schema field.formatter.settings.field_redirection_formatter. Medium reads back a configured status code / 404 option; hard switches a link field's display formatter to field_redirection_formatter with a given code, verified live. Fixture link fields are namespaced field_fr_* on Article.",
+  "evals": [
+    {
+      "id": "field_redirection-formatter-basics",
+      "mode": "recipe",
+      "prompt": "The Drupal contrib module field_redirection provides a field formatter that redirects a page to a URL held in a field. What is the formatter's plugin id, which field types can it be used on, and what is its default HTTP status code?",
+      "must_contain_any": ["field_redirection_formatter"],
+      "must_not_contain": [],
+      "expected_output": "The formatter id is field_redirection_formatter (label 'Redirect'); it applies to link, entity_reference, and file fields; its default HTTP status code is 301.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "field_redirection-settings-and-perm",
+      "mode": "recipe",
+      "prompt": "In field_redirection, which formatter setting makes it return a 404 when the field is empty, and what permission lets a user see the source page instead of being redirected?",
+      "must_contain_any": ["404_if_empty", "bypass redirection"],
+      "must_not_contain": [],
+      "expected_output": "The 404_if_empty setting returns the 404 page when the field is empty. The 'bypass redirection' permission lets a user view the source entity (with a warning link) instead of being redirected.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "field_redirection-view-mode",
+      "mode": "recipe",
+      "prompt": "Why should the field_redirection 'Redirect' formatter only be attached to the Full content view mode, and does it fire when rendering via Drush/CLI?",
+      "must_contain_any": ["Full content", "full", "teaser", "CLI", "cli", "Drush"],
+      "must_not_contain": [],
+      "expected_output": "Because the redirect fires whenever the entity is rendered with the formatter, using it on other view modes (e.g. teasers in a listing) would trigger unwanted redirects; the module warns about this. It deliberately no-ops under CLI (php_sapi_name()=='cli'), so Drush rendering does not redirect.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "field_redirection-known-code",
+      "mode": "introspection",
+      "prompt": "On this Drupal site, the Article content type has a link field field_fr_dest whose default display uses the field_redirection 'Redirect' formatter. Inspect the live view display and tell me which HTTP status code the redirect is configured to use.",
+      "must_contain_any": ["302"],
+      "must_not_contain": [],
+      "expected_output": "field_fr_dest uses field_redirection_formatter with settings.code = 302 in core.entity_view_display.node.article.default.",
+      "setup": "agent-module-documentation/evaluation/verify/field_redirection-known-dest-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/field_redirection-known-dest-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "field_redirection-known-404",
+      "mode": "introspection",
+      "prompt": "The Article content type has a link field field_fr_go rendered with the field_redirection formatter. Inspect its live default display configuration: is it set to return a 404 when the URL field is empty?",
+      "must_contain_any": ["404", "yes", "true", "404_if_empty"],
+      "must_not_contain": [],
+      "expected_output": "Yes. field_fr_go uses field_redirection_formatter with 404_if_empty = true (and code 301) in core.entity_view_display.node.article.default.",
+      "setup": "agent-module-documentation/evaluation/verify/field_redirection-known-empty404-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/field_redirection-known-empty404-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "field_redirection-set-301",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site the Article content type has a link field field_fr_link currently shown with the standard Link formatter. Using field_redirection, change the default display so this field redirects the page with a permanent 301 status. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/field_redirection-set-301-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/field_redirection-set-301-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/field_redirection-set-301-cleanup.sh",
+      "expected_output": "Set the field_fr_link component in core.entity_view_display.node.article.default to type field_redirection_formatter with settings.code = 301."
+    },
+    {
+      "id": "field_redirection-set-302-404",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "The Article content type has a link field field_fr_temp shown with the standard Link formatter. Use field_redirection to make its default display redirect with a temporary 302 status and also return a 404 when the field is empty. Apply it to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/field_redirection-set-302-empty404-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/field_redirection-set-302-empty404-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/field_redirection-set-302-empty404-cleanup.sh",
+      "expected_output": "Set the field_fr_temp component in core.entity_view_display.node.article.default to type field_redirection_formatter with settings.code = 302 and settings.404_if_empty = true."
+    }
+  ]
+}

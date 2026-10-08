@@ -1,0 +1,98 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "field_formatter_range",
+  "version": "2.0.x",
+  "note": "Field Formatter Range adds order/limit/offset to any field formatter on a multi-value field. It defines no field type/widget/formatter and no config UI (configure=null), no permissions, no Drush, no plugins. Its entire persistent state is a per-component third-party setting stored on a formatter in an entity_view_display config entity: core.entity_view_display.<entity>.<bundle>.<view_mode> -> content.<field>.third_party_settings.field_formatter_range -> {order,limit,offset}. order: 0 Default / 1 Reverse / 2 Random; limit = display items (0=all); offset = skip items. The settings group is only offered when field cardinality != 1. Config schema: field.formatter.third_party.field_formatter_range (3 integers). Rendering happens in hook_preprocess_field (reverse/shuffle then array_slice). All medium/hard cases create multi-value string fields (field_ffr_*) on Article and read/write the field_formatter_range third-party settings on the default view display, verified against live entity_view_display config.",
+  "evals": [
+    {
+      "id": "ffr-where-stored",
+      "mode": "recipe",
+      "prompt": "The Drupal contrib module field_formatter_range lets me show only some of a multi-value field's values. There is no settings page for it. How do I turn on its range/offset for a field, and where is that choice stored?",
+      "must_contain_any": [
+        "Manage display",
+        "third_party_settings",
+        "field_formatter_range",
+        "entity_view_display"
+      ],
+      "must_not_contain": [],
+      "expected_output": "There is no configure route. On the bundle's Manage display page, open the field formatter's cog and set the 'Field Formatter Range' order/display items/skip items. It is stored as a third-party setting on that formatter component: core.entity_view_display.<entity>.<bundle>.<mode> -> content.<field>.third_party_settings.field_formatter_range: {order, limit, offset}.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "ffr-order-values",
+      "mode": "recipe",
+      "prompt": "In field_formatter_range, what does the 'order' setting control and what are its possible values? What do 'limit' and 'offset' do?",
+      "must_contain_any": [
+        "reverse",
+        "random",
+        "order"
+      ],
+      "must_not_contain": [],
+      "expected_output": "order controls display ordering: 0 = Default, 1 = Reverse, 2 = Random. limit ('Display items') is the number of items to show (0 = all). offset ('Skip items') is how many items to skip from the beginning. Rendering reverses/shuffles then slices by offset and limit.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "ffr-when-available",
+      "mode": "recipe",
+      "prompt": "On which fields does the field_formatter_range 'Field Formatter Range' settings group appear on the Manage display page? Does it work on a single-value field?",
+      "must_contain_any": [
+        "cardinality",
+        "multi-value",
+        "more than one",
+        "multiple"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The settings group is added by hook_field_formatter_third_party_settings_form only when the field's cardinality is not 1 (i.e. multi-value fields). On a single-value field there is no range to apply, so it is not offered and has no effect.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "ffr-known-field",
+      "mode": "introspection",
+      "prompt": "On this Drupal site, the Article content type has a multi-value field whose default-view-mode formatter has field_formatter_range configured to limit how many items display. Inspect the live default view display for Article and give the machine name of that field and its configured 'limit' (display items) value.",
+      "must_contain_any": [
+        "field_ffr_known"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The field is field_ffr_known with limit 3: in core.entity_view_display.node.article.default its component has third_party_settings.field_formatter_range.limit = 3 (order 0, offset 0).",
+      "setup": "agent-module-documentation/evaluation/verify/field_formatter_range-known-field-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/field_formatter_range-known-field-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "ffr-reverse-vs-not",
+      "mode": "introspection",
+      "prompt": "The Article content type on this site has two multi-value fields, field_ffr_on and field_ffr_off. Exactly one of them uses field_formatter_range to display its items in reversed order. Inspect the live default view display configuration and state which field is set to reverse order.",
+      "must_contain_any": [
+        "field_ffr_on"
+      ],
+      "must_not_contain": [],
+      "expected_output": "field_ffr_on is reversed: in core.entity_view_display.node.article.default its component has third_party_settings.field_formatter_range.order = 1 (Reverse), whereas field_ffr_off has order 0 / no range setting.",
+      "setup": "agent-module-documentation/evaluation/verify/field_formatter_range-reverse-vs-not-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/field_formatter_range-reverse-vs-not-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "ffr-set-limit",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, the Article content type has a multi-value field field_ffr_task shown on the default view display. Using field_formatter_range, configure that field's formatter so it displays only the first 2 items. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/field_formatter_range-set-limit-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/field_formatter_range-set-limit-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/field_formatter_range-set-limit-cleanup.sh",
+      "expected_output": "In core.entity_view_display.node.article.default the field_ffr_task component carries third_party_settings.field_formatter_range.limit = 2 (e.g. set the component's third_party_settings and save, or set 'Display items' to 2 on Manage display)."
+    },
+    {
+      "id": "ffr-set-reverse",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, the Article content type has a multi-value field field_ffr_period on the default view display. Using field_formatter_range, configure that field's formatter to display its items in reversed order. Apply the change to the live default view display.",
+      "reset": "agent-module-documentation/evaluation/verify/field_formatter_range-set-reverse-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/field_formatter_range-set-reverse-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/field_formatter_range-set-reverse-cleanup.sh",
+      "expected_output": "In core.entity_view_display.node.article.default the field_ffr_period component carries third_party_settings.field_formatter_range.order = 1 (Reverse)."
+    }
+  ]
+}

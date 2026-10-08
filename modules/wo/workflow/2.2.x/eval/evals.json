@@ -1,0 +1,103 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "workflow",
+  "version": "2.2.x",
+  "note": "Workflow is a configurable state machine attached to entities via a field. A Workflow is a workflow_type config entity (workflow.workflow.<wid>) with workflow_state config entities (workflow.state.<sid>, sid = <wid>_<name>, plus an implicit <wid>_creation) and workflow_config_transition config entities (workflow.transition.<tid>, from_sid/to_sid + roles). A field of type 'workflow' bound via storage setting workflow_type puts it on content. Fixtures are built via raw config writes with integer state weights (a NULL weight makes WorkflowState::sort() fatal, and createState()/createTransition() are statically cached per request). Medium cases read back the states of a known workflow and which workflow a field binds to; hard cases attach a workflow field to Article and add a transition, verified against live config. All fixtures are namespaced wf_* / field_wf_* and torn down.",
+  "evals": [
+    {
+      "id": "workflow-what-is-it",
+      "mode": "recipe",
+      "prompt": "In the Drupal contrib module Workflow, what does a 'workflow' consist of, and which configuration entities represent it? Name the config entity types for the workflow, its states, and its transitions.",
+      "must_contain_any": [
+        "workflow_type",
+        "workflow_state",
+        "workflow_config_transition",
+        "states",
+        "transitions"
+      ],
+      "must_not_contain": [],
+      "expected_output": "A Workflow is a workflow_type config entity that has states (workflow_state config entities, including an implicit (creation) state) and transitions (workflow_config_transition config entities) declaring which state can move to which, restricted per role.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "workflow-attach-to-content",
+      "mode": "recipe",
+      "prompt": "How do I actually put a Workflow onto a content type in Drupal so editors can change its state? What kind of field do I add and how is it linked to the workflow?",
+      "must_contain_any": [
+        "Workflow state",
+        "workflow field",
+        "workflow_type",
+        "field of type",
+        "workflow_default"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Add a field of type 'workflow' (label 'Workflow state', widget workflow_default) to the bundle, and set its storage setting workflow_type to the workflow's id. The field's allowed values come from the workflow's states.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "workflow-participate-permission",
+      "mode": "recipe",
+      "prompt": "Which permission do I grant a role so its users are allowed to move content through a Workflow's state transitions? Explain the naming pattern (it includes the workflow id).",
+      "must_contain_any": [
+        "create",
+        "workflow_transition",
+        "participate"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Grant 'create <wid> workflow_transition' (the 'Participate in workflow' permission), where <wid> is the workflow's machine id. These per-workflow permissions are generated dynamically by WorkflowPermissions; per-transition role restrictions further refine it.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "workflow-known-states",
+      "mode": "introspection",
+      "prompt": "On this Drupal site there is a Workflow with machine id 'wf_known'. Inspect the live configuration and list the workflow states it defines (their machine names or labels).",
+      "must_contain_any": [
+        "wf_known_published",
+        "Published",
+        "wf_known_draft",
+        "Draft"
+      ],
+      "must_not_contain": [],
+      "expected_output": "wf_known has the states wf_known_creation ((creation)), wf_known_draft (Draft) and wf_known_published (Published), stored as workflow.state.* config entities with wid=wf_known.",
+      "setup": "agent-module-documentation/evaluation/verify/workflow-known-states-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/workflow-known-states-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "workflow-field-binding",
+      "mode": "introspection",
+      "prompt": "On this Drupal site, the Article content type has a Workflow field named 'field_wf_known'. Inspect the live field configuration and state which Workflow (workflow_type) that field is bound to.",
+      "must_contain_any": [
+        "wf_field"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The field_wf_known field storage (type 'workflow') has the storage setting workflow_type = wf_field, so the field is bound to the wf_field workflow.",
+      "setup": "agent-module-documentation/evaluation/verify/workflow-field-binding-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/workflow-field-binding-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "workflow-attach-field",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site there is a Workflow with id 'wf_attach'. Attach it to the Article content type by adding a Workflow-state field named 'field_wf_attach' bound to that workflow, and apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/workflow-attach-field-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/workflow-attach-field-verify.sh",
+      "expected_output": "Create a field storage field_wf_attach on node of type 'workflow' with storage setting workflow_type=wf_attach, and a field instance on the article bundle. Verified against the live field config.",
+      "cleanup": "agent-module-documentation/evaluation/verify/workflow-attach-field-cleanup.sh"
+    },
+    {
+      "id": "workflow-add-transition",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site there is a Workflow 'wf_trans' with the states (creation), Draft, Published and Archived. It currently allows creation->draft and draft->published. Add a new allowed transition from the Published state (wf_trans_published) to the Archived state (wf_trans_archived) and apply it to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/workflow-add-transition-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/workflow-add-transition-verify.sh",
+      "expected_output": "Create a workflow_config_transition in workflow wf_trans with from_sid=wf_trans_published and to_sid=wf_trans_archived (e.g. via the workflow's Transitions admin page, or $workflow->createTransition('wf_trans_published','wf_trans_archived')). Verified against the live transition config.",
+      "cleanup": "agent-module-documentation/evaluation/verify/workflow-add-transition-cleanup.sh"
+    }
+  ]
+}

@@ -1,0 +1,80 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "anonymous_login",
+  "version": "2.2.x",
+  "note": "Anonymous Login forces anonymous users to log in on configured paths. All state is the single config object anonymous_login.settings with keys: paths (a sequence where a plain entry is an INCLUDE that forces login and a ~-prefixed entry is an EXCLUDE; * wildcards allowed), login_path (default /user/login), and message (optional). Redirect is done by the anonymous_login.redirect event subscriber on KernelEvents::REQUEST (priority 100), sending users to login_path?destination=<alias>; it always excludes user/reset/*, cron/*, sites/default/files/*. Configure route anonymous_login.settings at /admin/config/user-interface/anonymous-login; permission 'administer anonymous login settings'. The shipped install default is exactly {login_path: '/user/login'} (no paths, no message). Medium/hard cases mutate ONLY this config object; setup/cleanup/reset restore that shipped default via setData, so no other module is touched and no fields/content types are created.",
+  "evals": [
+    {
+      "id": "anonymous_login-where-configured",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "Using the Drupal contrib module anonymous_login, how do I force anonymous users to log in before viewing certain pages, and where is the list of those paths stored?",
+      "must_contain_any": ["anonymous_login.settings", "paths", "anonymous-login", "/admin/config/user-interface/anonymous-login"],
+      "must_not_contain": [],
+      "expected_output": "Enter the paths at Configuration > User interface > Anonymous login (route anonymous_login.settings, /admin/config/user-interface/anonymous-login). They are stored in the config object anonymous_login.settings under the `paths` key (one path per line)."
+    },
+    {
+      "id": "anonymous_login-include-exclude",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "In anonymous_login's path list, how do I mark a path as an exception that should NOT force login, and can I use wildcards?",
+      "must_contain_any": ["~", "tilde", "exclude", "*", "wildcard"],
+      "must_not_contain": [],
+      "expected_output": "A plain path is an include (forces login); prefix a path with ~ (tilde) to exclude it from redirection. Wildcards (*) are supported, e.g. include /members/* and exclude ~/members/public."
+    },
+    {
+      "id": "anonymous_login-destination-and-always-excluded",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "When anonymous_login redirects an anonymous user to log in, how does it return them to the page they wanted, and which paths does it always leave accessible?",
+      "must_contain_any": ["destination", "user/reset", "cron", "sites/default/files"],
+      "must_not_contain": [],
+      "expected_output": "It redirects to login_path with a ?destination=<requested alias> query so the user returns after login. It always excludes user/reset/*, cron/*, and sites/default/files/* regardless of configuration."
+    },
+    {
+      "id": "anonymous_login-known-paths",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "On this Drupal site, anonymous_login is configured to force login on a section but with one exception. Inspect the live anonymous_login.settings configuration and state which path pattern forces anonymous users to log in and which path is excluded.",
+      "must_contain_any": ["/members/*", "members/public"],
+      "must_not_contain": [],
+      "expected_output": "anonymous_login.settings.paths contains '/members/*' (an include that forces login) and '~/members/public' (an exclude). So /members/* forces login except /members/public.",
+      "setup": "agent-module-documentation/evaluation/verify/anonymous_login-known-paths-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/anonymous_login-known-paths-cleanup.sh"
+    },
+    {
+      "id": "anonymous_login-known-message",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "This site's anonymous_login is configured with a custom login message and a protected path. Inspect the live anonymous_login.settings and report the exact login message and the protected path.",
+      "must_contain_any": ["Please sign in to view members content", "/vault"],
+      "must_not_contain": [],
+      "expected_output": "anonymous_login.settings has message 'Please sign in to view members content.' and paths includes '/vault'.",
+      "setup": "agent-module-documentation/evaluation/verify/anonymous_login-known-message-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/anonymous_login-known-message-cleanup.sh"
+    },
+    {
+      "id": "anonymous_login-force-login",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, use the anonymous_login module to force anonymous users to log in when they visit any page under /portal (i.e. /portal and everything beneath it). Apply the change to the live configuration.",
+      "reset": "agent-module-documentation/evaluation/verify/anonymous_login-force-login-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/anonymous_login-force-login-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/anonymous_login-force-login-cleanup.sh",
+      "expected_output": "anonymous_login.settings.paths contains an include entry for the /portal section (e.g. '/portal/*') with no leading ~, so anonymous users hitting /portal/* are redirected to login."
+    },
+    {
+      "id": "anonymous_login-include-and-exclude",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, configure anonymous_login so that anonymous users must log in to view anything under /reports, EXCEPT pages under /reports/public which must stay publicly visible. Apply the change to the live configuration.",
+      "reset": "agent-module-documentation/evaluation/verify/anonymous_login-include-and-exclude-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/anonymous_login-include-and-exclude-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/anonymous_login-include-and-exclude-cleanup.sh",
+      "expected_output": "anonymous_login.settings.paths contains an include for /reports (e.g. '/reports/*') and a ~-prefixed exclude for /reports/public (e.g. '~/reports/public' or '~/reports/public/*')."
+    }
+  ]
+}

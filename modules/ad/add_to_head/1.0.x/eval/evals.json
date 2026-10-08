@@ -1,0 +1,93 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "add_to_head",
+  "version": "1.0.x",
+  "note": "Add To Head lets site builders define named 'profiles' of raw HTML/JS/CSS injected into pages, scoped by path and role. Profiles are NOT config entities: they all live in one config object, add_to_head.settings, key add_to_head_profiles, as an associative array keyed by each profile's own machine name (confirmed via AddToHeadParamConverter::convert() and AddToHeadProfileForm::submitForm()). Each profile has name/code/scope/paths/roles. scope=head is rendered via hook_page_attachments_alter() into html_head (early in <head>); scope=scripts is rendered via hook_page_bottom() (page bottom); scope=styles is accepted by the form/schema but hook_css_alter() is an intentional no-op, so it never renders. All medium/hard cases are grounded in add_to_head.settings directly; baseline is genuinely absent config (the module ships no config/install default), so reset/cleanup scripts use `drush config:delete add_to_head.settings`.",
+  "evals": [
+    {
+      "id": "add_to_head-storage",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "The Drupal contrib module add_to_head lets editors inject custom code into pages via 'profiles'. Where are those profiles actually stored, and what fields does each profile have?",
+      "must_contain_any": [
+        "add_to_head.settings",
+        "add_to_head_profiles"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Profiles are stored in the config object add_to_head.settings, under the key add_to_head_profiles, as an array keyed by each profile's own machine name (not a numeric index or a config entity). Each profile has: name (machine name), code (the raw markup/JS/CSS to inject), scope (head/scripts/styles), paths (a mapping with visibility include|exclude and a newline-separated paths list), and roles (a mapping with visibility include|exclude and a list of role IDs)."
+    },
+    {
+      "id": "add_to_head-scopes",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "add_to_head profiles have a 'scope' setting of head, scripts, or styles. Which hook injects a head-scope profile into the page's <head>, which hook injects a scripts-scope profile, and does the styles scope actually render anything?",
+      "must_contain_any": [
+        "hook_page_attachments_alter",
+        "page_attachments_alter"
+      ],
+      "must_not_contain": [],
+      "expected_output": "scope=head is injected by add_to_head_page_attachments_alter() (an implementation of hook_page_attachments_alter()) into $attachments['#attached']['html_head'], rendered early in <head> before CSS/JS. scope=scripts is injected by add_to_head_page_bottom() (hook_page_bottom()) near the end of the page output. scope=styles is offered in the form and schema but add_to_head_css_alter() (hook_css_alter()) is an intentional no-op ('this does not work yet'), so a styles-scope profile is saved but never actually rendered anywhere."
+    },
+    {
+      "id": "add_to_head-admin-route",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "What is the admin path and permission for managing add_to_head profiles, and if a profile's path visibility is set to 'exclude' with an empty paths list, on which pages does it appear?",
+      "must_contain_any": [
+        "administer add to head",
+        "/admin/config/development/add-to-head"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The overview is at /admin/config/development/add-to-head (route add_to_head.admin), gated by the 'administer add to head' permission (restrict access: TRUE). Path visibility 'exclude' means the profile shows on every page except those listed; with an empty paths list nothing is excluded, so it shows on every page. 'include' with an empty list would show on no pages."
+    },
+    {
+      "id": "add_to_head-known-profile",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "On this Drupal site, add_to_head.settings already has one profile configured. Inspect the live configuration and report that profile's machine name, its scope, and a distinguishing marker in its code.",
+      "must_contain_any": [
+        "ath-known"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The profile is named ath-known, scope=head, and its code is <meta name=\"ath-known\" content=\"1\"> (a meta tag carrying the same 'ath-known' marker as the profile name).",
+      "setup": "agent-module-documentation/evaluation/verify/add_to_head-known-profile-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/add_to_head-known-profile-cleanup.sh"
+    },
+    {
+      "id": "add_to_head-head-vs-scripts",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "This site's add_to_head.settings has two profiles: ath-head-scope and ath-scripts-scope. Inspect the live configuration and state which one injects its code into the page's <head>.",
+      "must_contain_any": [
+        "ath-head-scope"
+      ],
+      "must_not_contain": [],
+      "expected_output": "ath-head-scope injects into <head>: its scope is 'head', rendered via hook_page_attachments_alter() into html_head. ath-scripts-scope has scope 'scripts' and is rendered at page bottom via hook_page_bottom() instead.",
+      "setup": "agent-module-documentation/evaluation/verify/add_to_head-head-vs-scripts-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/add_to_head-head-vs-scripts-cleanup.sh"
+    },
+    {
+      "id": "add_to_head-verify-head",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, add_to_head.settings currently has no profiles. Using the add_to_head module, create a profile with scope 'head' whose code contains exactly the marker <meta name=\"ath-verify\" content=\"ok\"> so it will be injected into the page <head> on every page. Apply the change to the live site (via the admin UI at /admin/config/development/add-to-head/add, drush php:eval with add_to_head_set_settings(), or the config API directly).",
+      "reset": "agent-module-documentation/evaluation/verify/add_to_head-verify-head-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/add_to_head-verify-head-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/add_to_head-verify-head-cleanup.sh",
+      "expected_output": "add_to_head.settings:add_to_head_profiles now contains a profile with scope=head whose code contains <meta name=\"ath-verify\" content=\"ok\">, e.g. by saving a new profile keyed by its name with paths.visibility=exclude and an empty paths list so it applies to every page."
+    },
+    {
+      "id": "add_to_head-verify-scripts",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, add_to_head.settings currently has no profiles. Using the add_to_head module, create a profile with scope 'scripts' whose code contains exactly the marker <!-- ath-scripts-verify --> so it will be injected at the bottom of the page. Apply the change to the live site (via the admin UI, drush php:eval with add_to_head_set_settings(), or the config API directly).",
+      "reset": "agent-module-documentation/evaluation/verify/add_to_head-verify-scripts-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/add_to_head-verify-scripts-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/add_to_head-verify-scripts-cleanup.sh",
+      "expected_output": "add_to_head.settings:add_to_head_profiles now contains a profile with scope=scripts whose code contains <!-- ath-scripts-verify -->, rendered via hook_page_bottom() at the bottom of the page."
+    }
+  ]
+}

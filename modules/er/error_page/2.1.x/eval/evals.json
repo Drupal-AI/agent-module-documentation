@@ -1,0 +1,103 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "error_page",
+  "version": "2.1.x",
+  "note": "error_page shows a friendly, customizable page on fatal errors/exceptions. It has NO admin UI, NO config entities, NO Drush, NO permissions, NO plugins (configure=null, provides_config_schema=false); it is configured only via $settings['error_page'] in settings.php. Because the shared site's real settings.php must stay untouched, the medium cases introspect the module's live container footprint (its registered final-exception subscriber service error_page.exception_subscriber => ErrorPageFinalExceptionSubscriber, and the priority -255 that class subscribes at on KernelEvents::EXCEPTION), and the hard cases have the agent write the correct settings.php directives into a dedicated, deletable scratch snippet file (web/sites/default/settings.error_page_*.eval.php) which the verify greps and the reset deletes — keeping the real settings.php safe while still checking live filesystem state the agent produced. NOTE: error_page also swaps core's 'exception.logger' class (ErrorPageServiceProvider), but on THIS site simple_oauth also swaps that service and wins, so the mediums deliberately target error_page's own subscriber service (which is unambiguously active) rather than the shared exception.logger. All facts are grounded in src/ (ErrorPageFinalExceptionSubscriber priority -255; ErrorPageErrorHandler::handleError/handleException; ErrorPagePhpErrorLogger log method/destination) and README.",
+  "evals": [
+    {
+      "id": "error_page-register-handlers",
+      "mode": "recipe",
+      "prompt": "I installed the Drupal contrib module error_page. Enabling it already replaces the page for uncaught exceptions, but I also want it to catch fatal and user-level PHP errors. What exactly do I add to settings.php to do that?",
+      "must_contain_any": [
+        "set_error_handler",
+        "set_exception_handler",
+        "ErrorPageErrorHandler",
+        "handleError",
+        "handleException"
+      ],
+      "must_not_contain": [],
+      "expected_output": "In settings.php register the module's handlers: set_error_handler(['Drupal\\error_page\\ErrorPageErrorHandler', 'handleError']); and set_exception_handler(['Drupal\\error_page\\ErrorPageErrorHandler', 'handleException']);. (If not using Composer autoloading, first require_once the ErrorPageErrorHandler.php file.)",
+      "difficulty": "easy"
+    },
+    {
+      "id": "error_page-uuid-setting",
+      "mode": "recipe",
+      "prompt": "How do I turn off the per-error UUID in the Drupal error_page module, and where is that configured? Is there an admin form for it?",
+      "must_contain_any": [
+        "settings.php",
+        "$settings['error_page']['uuid']",
+        "['error_page']['uuid']",
+        "uuid"
+      ],
+      "must_not_contain": [],
+      "expected_output": "error_page has no admin form (configure=null); everything is in settings.php. Set $settings['error_page']['uuid'] = FALSE; to disable UUID generation. It defaults to TRUE.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "error_page-customize-markup",
+      "mode": "recipe",
+      "prompt": "How can I customize the look/wording of the friendly page that Drupal's error_page module shows? Which files and which placeholder tokens are involved, and how do I point the module at my copies?",
+      "must_contain_any": [
+        "template_dir",
+        "error_page.html",
+        "error_message.html",
+        "{{ uuid }}",
+        "{{ error_report }}",
+        "{{ base_path }}"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Copy markup/error_page.html (full page) and/or markup/error_message.html (inline message) somewhere (ideally outside the web root), edit them using the tokens {{ uuid }}, {{ base_path }} and {{ error_report }}, and set $settings['error_page']['template_dir'] to that directory. Output is plain HTML with strtr() token replacement, not Twig.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "error_page-subscriber-service",
+      "mode": "introspection",
+      "prompt": "On this running Drupal site the error_page module is enabled. It renders the friendly page for uncaught exceptions via its own event subscriber service. Inspect the live site and tell me the service id error_page registers for this, and the class that service instantiates.",
+      "must_contain_any": [
+        "error_page.exception_subscriber",
+        "ErrorPageFinalExceptionSubscriber"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Service id error_page.exception_subscriber, class Drupal\\error_page\\EventSubscriber\\ErrorPageFinalExceptionSubscriber. Discoverable with: drush php:eval \"echo get_class(\\Drupal::service('error_page.exception_subscriber'));\".",
+      "setup": "agent-module-documentation/evaluation/verify/error_page-logger-swap-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/error_page-logger-swap-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "error_page-subscriber-priority",
+      "mode": "introspection",
+      "prompt": "error_page's exception subscriber has to run just before core's FinalExceptionSubscriber so it can render its own page and stop the event. On this live site, inspect error_page's subscriber and tell me the priority it registers for on the KernelEvents::EXCEPTION event.",
+      "must_contain_any": [
+        "-255"
+      ],
+      "must_not_contain": [],
+      "expected_output": "It subscribes to KernelEvents::EXCEPTION at priority -255 (core FinalExceptionSubscriber is -256). Discoverable with: drush php:eval \"var_export(\\Drupal\\error_page\\EventSubscriber\\ErrorPageFinalExceptionSubscriber::getSubscribedEvents());\".",
+      "setup": "agent-module-documentation/evaluation/verify/error_page-final-subscriber-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/error_page-final-subscriber-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "error_page-write-handlers-snippet",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "error_page is configured in settings.php. To keep this shared site's real settings.php untouched, write the exact settings.php PHP directives that register error_page's fatal-error and exception handlers into the file web/sites/default/settings.error_page_handlers.eval.php (create it). It must register both the error handler and the exception handler pointing at the module's ErrorPageErrorHandler class.",
+      "reset": "agent-module-documentation/evaluation/verify/error_page-handlers-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/error_page-handlers-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/error_page-handlers-cleanup.sh",
+      "expected_output": "The file contains set_error_handler(['Drupal\\error_page\\ErrorPageErrorHandler', 'handleError']); and set_exception_handler(['Drupal\\error_page\\ErrorPageErrorHandler', 'handleException']);."
+    },
+    {
+      "id": "error_page-write-logfile-snippet",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "I want error_page to write fatal-error details to a log file via PHP's error_log(). Without touching this shared site's real settings.php, write the correct settings.php directives into the file web/sites/default/settings.error_page_log.eval.php (create it): set the error_page log method to 3 (log to file) and give it a destination file.",
+      "reset": "agent-module-documentation/evaluation/verify/error_page-logfile-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/error_page-logfile-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/error_page-logfile-cleanup.sh",
+      "expected_output": "The file sets $settings['error_page']['log']['method'] = 3; and $settings['error_page']['log']['destination'] = 'temporary://error_log.txt'; (any destination path is fine)."
+    }
+  ]
+}

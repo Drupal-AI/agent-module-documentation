@@ -1,0 +1,95 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "taxonomy_term_replace",
+  "version": "1.0.x",
+  "note": "Taxonomy Term Replace is a UI-only admin tool: one form at route taxonomy_term_replace.dashboard (/admin/structure/taxonomy/taxonomy-term-replace), permission 'access Taxonomy Term Replace dashboard'. It has no config, no config schema, no plugins, no services, no Drush. Published-node search uses the core taxonomy_index table; the unpublished path scans entity-reference fields (target_type taxonomy_term) matching the vocabulary. Replacement is a batch that swaps the matching target_id in the node's reference field to the replacement term and saves the node. CSV export -> public://taxonomy-term-node-search.csv. Medium is grounded in real content (taxonomy_index usage of a term); hard verifies a node's reference field was swapped from one term to another.",
+  "evals": [
+    {
+      "id": "taxonomy_term_replace-route",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "Which module lets a site admin bulk-replace one taxonomy term with another across the nodes that reference it, and at what admin path (and behind what permission) is its dashboard?",
+      "must_contain_any": [
+        "/admin/structure/taxonomy/taxonomy-term-replace",
+        "taxonomy_term_replace.dashboard",
+        "access Taxonomy Term Replace dashboard"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The taxonomy_term_replace module. Its dashboard is at /admin/structure/taxonomy/taxonomy-term-replace (route taxonomy_term_replace.dashboard), gated by the permission 'access Taxonomy Term Replace dashboard'."
+    },
+    {
+      "id": "taxonomy_term_replace-how-finds",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "How does the taxonomy_term_replace module find the published nodes associated with a taxonomy term when you search for it?",
+      "must_contain_any": [
+        "taxonomy_index"
+      ],
+      "must_not_contain": [],
+      "expected_output": "For published nodes it queries the core taxonomy_index table (SELECT nid FROM taxonomy_index WHERE tid IN (...)). Including unpublished nodes instead scans each content type's entity-reference fields whose target_type is taxonomy_term and target bundle matches the vocabulary."
+    },
+    {
+      "id": "taxonomy_term_replace-csv",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "Besides replacing a term, what reporting/export feature does the taxonomy_term_replace dashboard provide?",
+      "must_contain_any": [
+        "CSV",
+        "csv",
+        "download",
+        "Download"
+      ],
+      "must_not_contain": [],
+      "expected_output": "It shows the count of nodes associated with the searched term in a table and offers a 'Download table' button that exports that node list (Node ID, URL, content type, status) to a CSV file (public://taxonomy-term-node-search.csv)."
+    },
+    {
+      "id": "taxonomy_term_replace-known-count",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "On this Drupal site, the vocabulary ttr_known has a term named 'Popular Known'. Using the same source the taxonomy_term_replace dashboard uses for published nodes, determine how many published nodes are associated with that term.",
+      "must_contain_any": [
+        "2"
+      ],
+      "must_not_contain": [],
+      "expected_output": "2 published nodes reference the 'Popular Known' term. This is countable from the core taxonomy_index table (SELECT COUNT(*) FROM taxonomy_index WHERE tid = <term id>), which is what the module queries for published nodes.",
+      "setup": "agent-module-documentation/evaluation/verify/taxonomy_term_replace-known-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/taxonomy_term_replace-known-cleanup.sh"
+    },
+    {
+      "id": "taxonomy_term_replace-known-field",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "On this site, nodes in the Article type reference terms of the vocabulary ttr_known. Inspect the live field configuration and name the entity-reference field (machine name) that points Article nodes at ttr_known terms.",
+      "must_contain_any": [
+        "field_ttr_kref"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The field is field_ttr_kref: an entity_reference field on node/article with target_type taxonomy_term and target_bundles including ttr_known. This is the kind of field the module scans for the unpublished-node path.",
+      "setup": "agent-module-documentation/evaluation/verify/taxonomy_term_replace-known-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/taxonomy_term_replace-known-cleanup.sh"
+    },
+    {
+      "id": "taxonomy_term_replace-replace",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site there is a vocabulary ttr_task with terms 'ttr_old' and 'ttr_new', and an Article node titled TTR_TASK_NODE whose entity-reference field (field_ttr_tref) currently references 'ttr_old'. Perform the taxonomy_term_replace operation: replace the term 'ttr_old' with 'ttr_new' on that node so it now references ttr_new. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/taxonomy_term_replace-replace-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/taxonomy_term_replace-replace-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/taxonomy_term_replace-replace-cleanup.sh",
+      "expected_output": "The TTR_TASK_NODE node's field_ttr_tref no longer references the ttr_old term and instead references ttr_new (swap the matching target_id in the reference field to the ttr_new term id and save the node, as TaxonomyTermReplaceForm::taxonomyTermReplacement() does — or perform it via the dashboard)."
+    },
+    {
+      "id": "taxonomy_term_replace-replace-layman",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "site-owner",
+      "prompt": "I renamed one of my content tags: everything filed under the old tag 'ttr_old' should now use the tag 'ttr_new' instead. There is a page (TTR_TASK_NODE) still using the old tag. Please move it over to the new tag on the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/taxonomy_term_replace-replace-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/taxonomy_term_replace-replace-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/taxonomy_term_replace-replace-cleanup.sh",
+      "expected_output": "Change the TTR_TASK_NODE node's field_ttr_tref reference from the ttr_old term to the ttr_new term and save the node."
+    }
+  ]
+}

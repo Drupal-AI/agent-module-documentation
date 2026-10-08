@@ -1,0 +1,84 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "eu_cookie_compliance_gtm",
+  "version": "2.2.x",
+  "note": "EU Cookie Compliance GTM is glue between eu_cookie_compliance (GDPR) and google_tag. Code-grounded facts: it adds a GTM data textarea to the cookie category add/edit forms and stores the entered JSON as a THIRD-PARTY SETTING gtm_data on the cookie_category config entity ($category->getThirdPartySetting('eu_cookie_compliance_gtm','gtm_data')); JSON must be an object; leaving it empty unsets the setting; tokens @status -> 1/0 for this category and @<machine>_status -> another category's consent (e.g. @functional_status); front-end JS reads drupalSettings.eu_cookie_compliance.cookie_categories_details and pushes to the GTM dataLayer on consent events. No settings form, permission, route, config schema, drush, or plugins. Medium cases install known live state (a category with gtm_data; one referencing another category). Hard cases build real state verified against the live cookie_category entity: add gtm_data to a category, and clear gtm_data from a category. Fixtures namespaced eucc_*.",
+  "evals": [
+    {
+      "id": "eucc-gtm-where-stored",
+      "mode": "recipe",
+      "prompt": "Using the eu_cookie_compliance_gtm module, how do I configure what data is sent to Google Tag Manager for a given cookie category, and where is that configuration stored?",
+      "must_contain_any": ["gtm_data", "third party setting", "third_party_setting", "cookie category", "JSON"],
+      "must_not_contain": [],
+      "expected_output": "Edit the cookie category at /admin/config/system/eu-cookie-compliance/categories - the module adds a 'GTM data' textarea where you enter a JSON object. It is saved as a third-party setting 'gtm_data' on the cookie_category config entity (third_party_settings.eu_cookie_compliance_gtm.gtm_data).",
+      "difficulty": "easy"
+    },
+    {
+      "id": "eucc-gtm-tokens",
+      "mode": "recipe",
+      "prompt": "In the eu_cookie_compliance_gtm module's per-category GTM JSON, what do the placeholders @status and @<machine_name>_status mean?",
+      "must_contain_any": ["@status", "@functional_status", "dataLayer", "1 or 0", "consent"],
+      "must_not_contain": [],
+      "expected_output": "@status is replaced at runtime with 1 or 0 depending on whether THIS category is accepted; @<machine_name>_status (e.g. @functional_status) is replaced with another category's accepted state. The substituted object is pushed to the GTM dataLayer on consent changes.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "eucc-gtm-deps",
+      "mode": "recipe",
+      "prompt": "What two modules does eu_cookie_compliance_gtm depend on, and in one sentence what does it do on the front end?",
+      "must_contain_any": ["eu_cookie_compliance", "google_tag", "dataLayer"],
+      "must_not_contain": [],
+      "expected_output": "It depends on eu_cookie_compliance and google_tag. On the front end its JS hooks the consent events fired by EU Cookie Compliance and pushes each category's (token-substituted) gtm_data to the Google Tag Manager dataLayer so GTM triggers respect the visitor's consent.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "eucc-gtm-known-cat",
+      "mode": "introspection",
+      "prompt": "On this Drupal site, one cookie category has GTM data configured with the eu_cookie_compliance_gtm module. Inspect the live configuration and give the machine id of that cookie category.",
+      "must_contain_any": ["eucc_analytics"],
+      "must_not_contain": [],
+      "expected_output": "The cookie category eucc_analytics has a gtm_data third-party setting ({\"analytics\":\"@status\"}), readable via `drush cget eu_cookie_compliance.cookie_category.eucc_analytics third_party_settings.eu_cookie_compliance_gtm.gtm_data`.",
+      "setup": "agent-module-documentation/evaluation/verify/eu_cookie_compliance_gtm-known-cat-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/eu_cookie_compliance_gtm-known-cat-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "eucc-gtm-known-ref",
+      "mode": "introspection",
+      "prompt": "On this Drupal site, a cookie category's GTM data (configured via eu_cookie_compliance_gtm) references the consent status of ANOTHER cookie category using a status token. Inspect the live configuration and give the exact token it uses to reference the other category.",
+      "must_contain_any": ["@functional_status", "functional"],
+      "must_not_contain": [],
+      "expected_output": "The eucc_marketing category's gtm_data is {\"marketing\":\"@status\",\"functional\":\"@functional_status\"} - it references the functional category via the @functional_status token.",
+      "setup": "agent-module-documentation/evaluation/verify/eu_cookie_compliance_gtm-known-ref-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/eu_cookie_compliance_gtm-known-ref-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "eucc-gtm-add-data",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site there is a cookie category with machine id eucc_task that currently has no Google Tag Manager data. Using the eu_cookie_compliance_gtm module, configure it to push {\"analytics\": \"@status\"} to GTM (so an analytics flag reflects this category's consent). Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/eu_cookie_compliance_gtm-add-data-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/eu_cookie_compliance_gtm-add-data-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/eu_cookie_compliance_gtm-add-data-cleanup.sh",
+      "expected_output": "The eucc_task cookie category gains a gtm_data third-party setting equal to {\"analytics\":\"@status\"} (set via the GTM data field on the category edit form, or setThirdPartySetting('eu_cookie_compliance_gtm','gtm_data', ['analytics' => '@status'])).",
+      "must_contain_any": [],
+      "must_not_contain": []
+    },
+    {
+      "id": "eucc-gtm-clear-data",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site the cookie category eucc_clear currently has Google Tag Manager data configured via eu_cookie_compliance_gtm. Remove that GTM data so nothing is pushed to the dataLayer for this category. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/eu_cookie_compliance_gtm-clear-data-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/eu_cookie_compliance_gtm-clear-data-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/eu_cookie_compliance_gtm-clear-data-cleanup.sh",
+      "expected_output": "The eucc_clear category's gtm_data third-party setting is unset/empty (clear the GTM data textarea and save - the entity builder unsets it - or call unsetThirdPartySetting('eu_cookie_compliance_gtm','gtm_data')).",
+      "must_contain_any": [],
+      "must_not_contain": []
+    }
+  ]
+}

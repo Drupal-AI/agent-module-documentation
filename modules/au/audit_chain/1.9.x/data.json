@@ -1,0 +1,99 @@
+{
+  "name": "Audit Chain",
+  "data_name": "audit_chain",
+  "description": "Tamper-evident, hash-chained audit logging for any Drupal module — optional HMAC signing, at-rest encryption, prefix seal for historical segments, and independent verification.",
+  "version": "1.9.x",
+  "package": "Security",
+  "composer_namespace": "drupal/audit_chain",
+  "composer_requirements": {
+    "drupal/key": "^1.20",
+    "drupal/encrypt": "^3.2"
+  },
+  "dependent_modules": [
+    "drupal:user",
+    "key:key",
+    "encrypt:encrypt"
+  ],
+  "configure": "audit_chain.settings",
+  "core_version_requirement": "^10.6 || ^11.3",
+  "active_installs": null,
+  "list_position": null,
+  "project_url": "https://www.drupal.org/project/audit_chain",
+  "license": "GPL-2.0-or-later",
+  "php_requirement": ">=8.1",
+  "library_dependencies": [],
+  "suggests": {
+    "drupal/mcp_sentinel": "Required only by the Audit Chain MCP submodule (audit_chain_mcp): ^2.22.",
+    "drupal/tool": "Required only by the Audit Chain MCP submodule (audit_chain_mcp): ^1.0.0-beta8.",
+    "drupal/charts": "Optional: upgrades the keyed-vs-unkeyed SVG on Reports → Audit Chain to an interactive chart (install a library submodule such as charts_chartjs). The page keeps the SVG fallback when Charts is absent or has no library."
+  },
+  "submodules": [
+    "audit_chain_mcp"
+  ],
+  "provides_permissions": true,
+  "provides_drush_commands": true,
+  "provides_config_schema": true,
+  "provides_plugin_types": [],
+  "categories": [
+    "Security",
+    "Administration tools"
+  ],
+  "subcategories": [
+    "Code integrity / tamper detection",
+    "Audit trail / activity logging"
+  ],
+  "keywords": [
+    "audit log",
+    "tamper-evident",
+    "hash chain",
+    "hmac",
+    "integrity",
+    "evidence",
+    "verification",
+    "ndjson export"
+  ],
+  "project_description": "Tamper-evident audit logging for Drupal, usable by any module. Each entry's hash (HMAC-SHA256, or plain SHA-256 when unkeyed) covers its own content plus the previous entry's hash, so any later insertion, deletion or edit breaks the chain and is detectable by an independent verification pass. With a Key-module HMAC key configured, forging a repair also requires the key, so a database-level edit cannot be quietly papered over. Consumers write through Drupal\\audit_chain\\AuditChainLoggerInterface (service audit_chain.logger) identifying themselves by a channel; a request-scoped collector deduplicates high-frequency events and flushes once at kernel.terminate. Metadata can be encrypted at rest via an Encrypt profile. Drush commands verify the chain (exit code is the contract), seal an unverifiable historical prefix without re-chaining it, re-encrypt metadata across profiles, and export data-minimized NDJSON evidence off-system; cron can run scheduled verification and gated export. A read-only Reports dashboard shows integrity and the keyed-vs-unkeyed split without ever exposing metadata. The optional audit_chain_mcp submodule exposes governed Tool API plugins for status, window counts, export status and verify-now under MCP Sentinel. Extracted from MCP Sentinel, where it began as the audit trail for AI-agent traffic.",
+  "maintenance_status": "Actively maintained",
+  "development_status": "Under active development",
+  "security_advisory_coverage": "not-covered",
+  "project_created": "2026-07-29",
+  "project_changed": "2026-08-18",
+  "core_semver_minimum": 10006000,
+  "core_semver_maximum": 12000000,
+  "tooling": {
+    "provides_tool_plugins": true,
+    "tool_plugins": [
+      {
+        "id": "audit_chain_export_status",
+        "label": "Audit Chain export status",
+        "description": "Report the configured off-system evidence export: whether cron export is enabled, the last row id delivered and when, and how many entries are waiting beyond that checkpoint. The destination is reported as its kind and, for a URL, its host only: no path, port, credentials or query string. Does not export anything and cannot change the destination.",
+        "deriver": false,
+        "file": "audit_chain/modules/audit_chain_mcp/src/Plugin/tool/Tool/ExportStatusTool.php"
+      },
+      {
+        "id": "audit_chain_status",
+        "label": "Audit Chain status",
+        "description": "Report chain health from stored state: how the last scheduled verification classifies (ok, warn or crit) and when it ran, the last verdict, whether new entries are signed, how far the prefix seal reaches, and the recovery successor status. Does not walk the chain. Returns no rows, metadata, hashes, seal MAC, prefix digest, key identifier or seal reason.",
+        "deriver": false,
+        "file": "audit_chain/modules/audit_chain_mcp/src/Plugin/tool/Tool/StatusTool.php"
+      },
+      {
+        "id": "audit_chain_verify_now",
+        "label": "Verify the audit chain now",
+        "description": "Run the scheduled chain verification now and return its verdict. Expensive: verification reads every row past the seal and decrypts its metadata, so the cost grows with the table. The profile rate limit applies, and a call within 60 seconds of the last recorded run returns that run with \"ran\": false instead of walking the table again. The run is recorded exactly as a cron run is: a failure is logged and the verification-failed event fires. Verification never changes the chain. Returns verdict fields only: no rows, metadata, hashes or key identifiers. \"broken_at\" is a row id.",
+        "deriver": false,
+        "file": "audit_chain/modules/audit_chain_mcp/src/Plugin/tool/Tool/VerifyNowTool.php"
+      },
+      {
+        "id": "audit_chain_window_counts",
+        "label": "Audit Chain window counts",
+        "description": "Count chain entries written in the last 24 hours, 7 days or 30 days, split into keyed (HMAC-signed) and unkeyed. Unkeyed entries on a site with a signing key mean the key was missing when they were written. Omit the window to get all three. Counts only; no rows are read. The counts come from the dashboard metrics service, which logs a failed query and reports zero for it, so zero on a busy site is a reason to read the log.",
+        "deriver": false,
+        "file": "audit_chain/modules/audit_chain_mcp/src/Plugin/tool/Tool/WindowCountsTool.php"
+      }
+    ],
+    "provides_agent_skills": false,
+    "agent_skills": []
+  },
+  "contributor_count": 3
+}

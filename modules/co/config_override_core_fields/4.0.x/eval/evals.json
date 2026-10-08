@@ -1,0 +1,82 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "config_override_core_fields",
+  "version": "4.0.x",
+  "note": "Config Override Core Fields is a data-provider only: one hook_form_alter() tags elements on a fixed list of core config forms with $element['#config']['key'] = 'config.object:key' (e.g. system.site:name, system.performance:cache.page.max_age). No config, no schema, no permissions, no plugins, no configure route. Consumers (notably COI) read those hints. Medium cases confirm the isset()-guarded mappings that only appear when a contrib module is enabled (dblog.settings:row_limit on the logging form, automated_cron.settings:interval on the cron form) - genuine live-state. Hard cases have the agent write a core config value via the object/key that a given site-info field maps to (system.site:slogan, system.site:page.403), verified on the live config; reset/cleanup restore the shipped-empty defaults.",
+  "evals": [
+    {
+      "id": "config_override_core_fields-purpose",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "What does the config_override_core_fields module actually do to Drupal's core configuration forms, and in which render-array property does it record the mapping? Does it provide any user-facing feature on its own?",
+      "must_contain_any": [
+        "#config",
+        "config.object:key",
+        "form_alter",
+        "config_data_store"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Its single hook_form_alter() tags core config-form elements with $element['#config']['key'] = '<config_object>:<dotted.key>' (e.g. system.site:name). It has no feature of its own; it just provides these hints for a consumer like COI (which also honors the core WIP #config_data_store['key'])."
+    },
+    {
+      "id": "config_override_core_fields-site-name-key",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "On the Basic site settings form (system_site_information_settings), config_override_core_fields maps the 'Site name' field to a configuration object and key. What is that config key string?",
+      "must_contain_any": [
+        "system.site:name"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The site_name element gets #config['key'] = 'system.site:name'. (Related keys on the same form: system.site:slogan, system.site:mail, system.site:page.front, system.site:page.403/404.)"
+    },
+    {
+      "id": "config_override_core_fields-logging-map",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "This site has the Database Logging (dblog) module enabled, so its 'Database log messages to keep' field appears on the logging settings form. Using config_override_core_fields' mapping, determine the config object and key that this row-limit field is annotated with, and report it.",
+      "must_contain_any": [
+        "dblog.settings:row_limit"
+      ],
+      "must_not_contain": [],
+      "expected_output": "config_override_core_fields maps the dblog_row_limit field on system_logging_settings to #config['key'] = 'dblog.settings:row_limit' (guarded by isset, so it only applies when dblog is enabled).",
+      "setup": "agent-module-documentation/evaluation/verify/config_override_core_fields-logging-map-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/config_override_core_fields-logging-map-cleanup.sh"
+    },
+    {
+      "id": "config_override_core_fields-cron-map",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "The Automated Cron module is enabled on this site, so the cron settings form shows a 'Run cron every' interval field. Per config_override_core_fields, which configuration object and key is that interval field mapped to?",
+      "must_contain_any": [
+        "automated_cron.settings:interval"
+      ],
+      "must_not_contain": [],
+      "expected_output": "On system_cron_settings the interval field gets #config['key'] = 'automated_cron.settings:interval' (added only when automated_cron is enabled, via an isset guard).",
+      "setup": "agent-module-documentation/evaluation/verify/config_override_core_fields-cron-map-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/config_override_core_fields-cron-map-cleanup.sh"
+    },
+    {
+      "id": "config_override_core_fields-write-slogan",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "config_override_core_fields maps the 'Slogan' field on the Basic site settings form to a specific configuration object and key. Using that exact mapping, set the site slogan to 'COCF Verified Slogan' by writing to the correct config object/key, and apply it to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/config_override_core_fields-write-slogan-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/config_override_core_fields-write-slogan-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/config_override_core_fields-write-slogan-cleanup.sh",
+      "expected_output": "system.site:slogan is set to 'COCF Verified Slogan' (the config object/key the slogan field maps to), e.g. drush config:set system.site slogan 'COCF Verified Slogan'."
+    },
+    {
+      "id": "config_override_core_fields-write-403",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On the Basic site settings form the '403 (access denied) page' field is mapped by config_override_core_fields to a config object and key. Using that mapping, set the 403 page path to '/cocf-403' by writing the correct config object/key on the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/config_override_core_fields-write-403-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/config_override_core_fields-write-403-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/config_override_core_fields-write-403-cleanup.sh",
+      "expected_output": "system.site:page.403 is set to '/cocf-403' (the config object/key the 403 field maps to), e.g. drush config:set system.site page.403 '/cocf-403'."
+    }
+  ]
+}

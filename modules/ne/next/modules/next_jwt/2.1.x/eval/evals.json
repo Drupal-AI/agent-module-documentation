@@ -1,0 +1,80 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "next_jwt",
+  "version": "2.1.x",
+  "note": "next_jwt (depends on next, jwt, jwt_auth_consumer) implements next's preview_url_generator plugin type with a 'jwt' plugin (@PreviewUrlGenerator id=jwt) as an alternative to the default simple_oauth. It is selected globally via next.settings.preview_url_generator = jwt (config next.preview_url_generator.configuration.jwt: secret_expiration, access_token_expiration). It also adds jwt_auth to decoupled_router/subrequests routes and claims via an event subscriber, but the JWT/preview traffic itself is external. All medium/hard eval state is grounded in LOCAL config: introspection reads the available plugin definitions / the active generator; execution switches next.settings.preview_url_generator to jwt (and its configuration), verified against the live next.settings and next.settings.manager. Baseline generator is simple_oauth (restored by cleanup).",
+  "evals": [
+    {
+      "id": "next-jwt-what",
+      "mode": "recipe",
+      "prompt": "What does the next_jwt submodule add to the Next.js (next) module, and how does its access control differ from the default?",
+      "must_contain_any": ["jwt", "json web token", "user-based", "user based"],
+      "must_not_contain": [],
+      "expected_output": "It adds a 'jwt' preview_url_generator plugin that signs Next.js preview/draft URLs with JSON Web Tokens, giving user-based access control, versus the default simple_oauth generator which is OAuth role/scope based.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "next-jwt-select",
+      "mode": "recipe",
+      "prompt": "How do I make the next module use next_jwt's JWT-based preview URLs instead of the default? Which setting controls it?",
+      "must_contain_any": ["preview_url_generator", "next.settings", "jwt"],
+      "must_not_contain": [],
+      "expected_output": "Set next.settings.preview_url_generator to 'jwt' (e.g. drush cset next.settings preview_url_generator jwt). The preview_url_generator_configuration then holds secret_expiration and access_token_expiration (schema next.preview_url_generator.configuration.jwt).",
+      "difficulty": "easy"
+    },
+    {
+      "id": "next-jwt-routes",
+      "mode": "recipe",
+      "prompt": "Besides adding a preview URL generator, what does next_jwt do to routes so a JWT-authenticated Next.js app can fetch data?",
+      "must_contain_any": ["jwt_auth", "decoupled_router", "subrequests", "RouteSubscriber"],
+      "must_not_contain": [],
+      "expected_output": "Its RouteSubscriber::alterRoutes() adds the jwt_auth authentication provider to the decoupled_router.path_translation and subrequests.front-controller routes (appending jwt_auth to each route's _auth option), and a JwtEventSubscriber adds claims when a token is generated.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "next-jwt-plugin-available",
+      "mode": "introspection",
+      "prompt": "On this live site, inspect the next preview_url_generator plugins and confirm whether a JWT-based generator is available. What is its plugin id?",
+      "must_contain_any": ["jwt"],
+      "must_not_contain": [],
+      "expected_output": "The preview_url_generator plugin manager has a definition with id 'jwt' (label 'JSON Web Tokens'), provided by next_jwt. Discoverable via \\Drupal::service('plugin.manager.next.preview_url_generator')->getDefinitions().",
+      "setup": "agent-module-documentation/evaluation/verify/next_jwt-plugin-available-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/next_jwt-plugin-available-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "next-jwt-active-generator",
+      "mode": "introspection",
+      "prompt": "This site has been configured to use JWT-based preview URLs for Next.js. Inspect the live next.settings configuration and state which preview URL generator is currently active.",
+      "must_contain_any": ["jwt"],
+      "must_not_contain": [],
+      "expected_output": "next.settings.preview_url_generator is 'jwt', so the active generator (\\Drupal::service('next.settings.manager')->getPreviewUrlGenerator()->getId()) is jwt.",
+      "setup": "agent-module-documentation/evaluation/verify/next_jwt-active-generator-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/next_jwt-active-generator-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "next-jwt-switch",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "site-owner",
+      "prompt": "I want my Next.js preview links to use JSON Web Tokens (per-user access) instead of the default OAuth-based ones. Switch the next module's preview URL generator to next_jwt's JWT generator and save it to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/next_jwt-switch-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/next_jwt-switch-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/next_jwt-switch-cleanup.sh",
+      "expected_output": "next.settings.preview_url_generator is set to 'jwt' (e.g. drush cset next.settings preview_url_generator jwt), so the active preview URL generator is the JWT plugin."
+    },
+    {
+      "id": "next-jwt-switch-configured",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "Configure the next module to generate preview URLs with next_jwt's JWT generator AND set its secret_expiration to 60 (minutes). Apply both changes to the live next.settings.",
+      "reset": "agent-module-documentation/evaluation/verify/next_jwt-switch-configured-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/next_jwt-switch-configured-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/next_jwt-switch-configured-cleanup.sh",
+      "expected_output": "next.settings.preview_url_generator = 'jwt' and next.settings.preview_url_generator_configuration.secret_expiration = 60 (set both keys on the next.settings config object and save)."
+    }
+  ]
+}

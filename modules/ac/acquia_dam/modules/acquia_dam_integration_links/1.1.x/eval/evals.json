@@ -1,0 +1,78 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "acquia_dam_integration_links",
+  "version": "1.1.x",
+  "note": "Trivial glue submodule of acquia_dam with NO UI, config, permissions, or Drush of its own. It adds entity insert/update/delete hooks that run pluggable asset_detector-tagged services (MediaReference/EntityEmbedText/Paragraphs) to discover DAM assets in content, then delegates to the parent's IntegrationLinkRegister which queues work in the acquia_dam_integration_links queue. Actual link registration calls the DAM API and needs a live connection, so the medium/hard cases avoid the API entirely: medium reads the depth of the local acquia_dam_integration_links Drupal queue this submodule feeds; hard checks that the submodule itself is enabled (a real, verifiable core.extension state). Per the campaign the submodule is left UNINSTALLED at baseline, so the hard reset/cleanup uninstall it and the queue exists regardless (its worker lives in the parent). Counts 3 easy / 1 medium / 1 hard as a trivial submodule.",
+  "evals": [
+    {
+      "id": "acquia_dam_integration_links-what",
+      "mode": "recipe",
+      "prompt": "What does the Acquia DAM 'Enhanced integration links' submodule add on top of the base acquia_dam module's asset-usage tracking?",
+      "must_contain_any": [
+        "paragraph",
+        "entity reference",
+        "embed",
+        "integration link",
+        "discover"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The parent tracks direct media entities; this submodule deep-discovers DAM assets referenced anywhere in content - entity-reference fields, nested paragraphs, and Entity Embed in rich text - across all content entity types, registering accurate integration links back to the DAM.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "acquia_dam_integration_links-mechanism",
+      "mode": "recipe",
+      "prompt": "How does the Enhanced integration links submodule detect DAM assets when content is saved, and how would a developer extend that detection to a custom field structure?",
+      "must_contain_any": [
+        "asset_detector",
+        "detector",
+        "entity_insert",
+        "entity save",
+        "service tag"
+      ],
+      "must_not_contain": [],
+      "expected_output": "On hook_entity_insert/update/delete it runs services tagged 'asset_detector' (collected by AssetTracker) - MediaReferenceAssetDetector, EntityEmbedTextDetector, ParagraphsAssetDetector. To extend it, register a new service with the 'asset_detector' tag implementing AssetDetectorInterface.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "acquia_dam_integration_links-when",
+      "mode": "recipe",
+      "prompt": "When should a site enable the Enhanced integration links submodule, and when is it unnecessary? Does it require any configuration?",
+      "must_contain_any": [
+        "paragraph",
+        "entity embed",
+        "complex",
+        "simple",
+        "no configuration"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Enable it on sites with complex/nested content: paragraphs with media, Entity Embed in WYSIWYG, or references across many content types. Skip it on simple sites that only use direct media entities (to avoid per-save scanning overhead). It has no UI and needs no configuration - it works automatically once enabled.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "acquia_dam_integration_links-queue-depth",
+      "mode": "introspection",
+      "prompt": "On this Drupal site, how many items are currently waiting in the 'acquia_dam_integration_links' queue that the enhanced integration links submodule feeds? Inspect the live queue to answer.",
+      "must_contain_any": [
+        "2"
+      ],
+      "must_not_contain": [],
+      "expected_output": "There are 2 items in the acquia_dam_integration_links queue (drush queue:list, or \\Drupal::queue('acquia_dam_integration_links')->numberOfItems()).",
+      "setup": "agent-module-documentation/evaluation/verify/acquia_dam_integration_links-queue-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/acquia_dam_integration_links-queue-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "acquia_dam_integration_links-enable",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "This site needs accurate Acquia DAM asset-usage tracking across paragraphs and embedded media, which requires the Enhanced integration links submodule. Make sure that submodule is enabled on the site.",
+      "reset": "agent-module-documentation/evaluation/verify/acquia_dam_integration_links-enabled-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/acquia_dam_integration_links-enabled-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/acquia_dam_integration_links-enabled-cleanup.sh",
+      "expected_output": "Enable the submodule: drush en acquia_dam_integration_links -y (it depends on acquia_dam, which is already enabled). Verified via \\Drupal::moduleHandler()->moduleExists('acquia_dam_integration_links')."
+    }
+  ]
+}

@@ -1,0 +1,80 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "media_pdf_thumbnail",
+  "version": "7.0.x",
+  "note": "Media PDF Thumbnail renders a page of a PDF as a Media entity's thumbnail via the field formatter media_pdf_thumbnail_image_field_formatter, selected on the media thumbnail field in a view display. Actually rasterising a PDF needs the imagick extension + spatie/pdf-to-image + a real PDF, so cases are grounded in CONFIG and the view-display formatter selection rather than generated images. Global config = media_pdf_thumbnail.settings (destination_uri_public/private), schema-less, absent by default. This site has a media type 'document'; media.document.default view display does NOT exist at baseline. Medium cases set a known public URI / select the formatter on the document thumbnail and read it back; hard cases reset to a known baseline (verify FAILS) and require the agent to set the public URI or switch the thumbnail formatter to the PDF one.",
+  "evals": [
+    {
+      "id": "media_pdf_thumbnail-formatter-id",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "How do I make a Media (document) entity show a preview image of its PDF instead of a generic icon using the media_pdf_thumbnail module? Which field formatter do I use and on which field?",
+      "must_contain_any": ["media_pdf_thumbnail_image_field_formatter", "Media PDF Thumbnail Image", "thumbnail"],
+      "must_not_contain": [],
+      "expected_output": "On the Media type's view display, set the thumbnail image field's formatter to 'Media PDF Thumbnail Image' (media_pdf_thumbnail_image_field_formatter), then configure per bundle which file field holds the PDF, the page, format (jpg/png), image style and link."
+    },
+    {
+      "id": "media_pdf_thumbnail-token",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "The media_pdf_thumbnail module exposes tokens to get a PDF thumbnail's image. What is the token pattern for getting the image file URI, and for a rendered image with an image style?",
+      "must_contain_any": ["media_pdf_thumbnail:", "image_uri", "render", "[media_pdf_thumbnail"],
+      "must_not_contain": [],
+      "expected_output": "The token type is media_pdf_thumbnail: [media_pdf_thumbnail:<pdf_field>:<page>:<format>:image_uri] (or image_id) for the value, and [media_pdf_thumbnail:<pdf_field>:<page>:<format>:render:<image_style>] (optionally :link_pdf) for a rendered image."
+    },
+    {
+      "id": "media_pdf_thumbnail-requirements",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "What are the runtime requirements for the media_pdf_thumbnail module to actually generate a thumbnail from a PDF, and where is its global settings form?",
+      "must_contain_any": ["imagick", "spatie/pdf-to-image", "spatie", "ImageMagick"],
+      "must_not_contain": [],
+      "expected_output": "It requires the PHP imagick extension (>= ImageMagick 6.3.7) and the spatie/pdf-to-image library (>= 3.0). Global settings (custom public/private destination URIs) are under Configuration -> Media -> Media PDF thumbnail (the view.pdf_image_entity.list section, Settings tab / media_pdf_thumbnail.settings.global)."
+    },
+    {
+      "id": "media_pdf_thumbnail-known-public-uri",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "This site has media_pdf_thumbnail configured with a custom destination for generated public thumbnail images. Inspect the live configuration and tell me the public destination URI.",
+      "must_contain_any": ["public://mpt-known"],
+      "must_not_contain": [],
+      "expected_output": "The public destination URI is public://mpt-known (media_pdf_thumbnail.settings.destination_uri_public = public://mpt-known).",
+      "setup": "agent-module-documentation/evaluation/verify/media_pdf_thumbnail-public-uri-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/media_pdf_thumbnail-public-uri-cleanup.sh"
+    },
+    {
+      "id": "media_pdf_thumbnail-known-formatter",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "On this site, the 'document' media type's default display renders its thumbnail with a special formatter from a contrib module. Inspect the live view display and tell me which formatter its thumbnail field uses.",
+      "must_contain_any": ["media_pdf_thumbnail_image_field_formatter", "Media PDF Thumbnail Image"],
+      "must_not_contain": [],
+      "expected_output": "The thumbnail field on core.entity_view_display.media.document.default uses the media_pdf_thumbnail_image_field_formatter (Media PDF Thumbnail Image) formatter.",
+      "setup": "agent-module-documentation/evaluation/verify/media_pdf_thumbnail-formatter-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/media_pdf_thumbnail-formatter-cleanup.sh"
+    },
+    {
+      "id": "media_pdf_thumbnail-set-public-uri",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, configure the media_pdf_thumbnail module to store generated PUBLIC thumbnail images in public://pdf-thumbs. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/media_pdf_thumbnail-public-config-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/media_pdf_thumbnail-public-config-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/media_pdf_thumbnail-public-config-cleanup.sh",
+      "expected_output": "Set media_pdf_thumbnail.settings.destination_uri_public to public://pdf-thumbs (via the Settings form at /admin/media-pdf-thumbnail/settings/global or drush config)."
+    },
+    {
+      "id": "media_pdf_thumbnail-switch-formatter",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "site-owner",
+      "prompt": "My 'document' media items show a generic file icon. Using the media_pdf_thumbnail module, make the document media type's default display show a real image generated from the PDF instead. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/media_pdf_thumbnail-display-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/media_pdf_thumbnail-display-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/media_pdf_thumbnail-display-cleanup.sh",
+      "expected_output": "On core.entity_view_display.media.document.default set the thumbnail component's formatter type to media_pdf_thumbnail_image_field_formatter (Manage display -> thumbnail -> Media PDF Thumbnail Image)."
+    }
+  ]
+}

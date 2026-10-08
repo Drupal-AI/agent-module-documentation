@@ -1,0 +1,93 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "paragraphs_previewer",
+  "version": "1.9.x",
+  "note": "Paragraphs Previewer has no settings form and no configure route. Its whole surface is: three FieldWidget plugins for entity_reference_revisions fields (paragraphs_previewer, entity_reference_paragraphs_previewer, and the deprecated misspelled paragraphs_previwer), one simple config object paragraphs_previewer.settings with the single key previewer_view_mode (default 'full'), one permission 'view any paragraphs previewer' guarding the CSRF-protected route paragraphs_previewer.form_preview, and three asset libraries. Every case below is grounded in those real ids. Medium cases install a known live state (a widget choice on core.entity_form_display.node.article.default, and a non-default previewer_view_mode) so the answer can only be read off the running site. Hard cases require switching a real form-display widget and granting the real permission, both verified against live config.",
+  "evals": [
+    {
+      "id": "paragraphs_previewer-widget-id",
+      "difficulty": "easy",
+      "mode": "recipe",
+      "prompt": "On a Drupal 11 site with the contrib module paragraphs_previewer enabled, how do I actually get the 'Preview' button to appear on a Paragraphs field? Name the field widget plugin id I should select and where I select it.",
+      "must_contain_any": [
+        "paragraphs_previewer",
+        "Manage form display",
+        "form display"
+      ],
+      "must_not_contain": [],
+      "expected_output": "There is no settings page. On the host bundle's Manage form display (e.g. /admin/structure/types/manage/article/form-display) change the Paragraphs field's widget to 'Paragraphs Previewer', plugin id paragraphs_previewer. This writes type: paragraphs_previewer into the component in core.entity_form_display.<entity>.<bundle>.<form_mode>."
+    },
+    {
+      "id": "paragraphs_previewer-view-mode-key",
+      "difficulty": "easy",
+      "mode": "recipe",
+      "prompt": "Which view mode does paragraphs_previewer use to render the paragraph inside the preview modal, and which config key controls it? There is no admin UI for it - how would I change it to 'teaser'?",
+      "must_contain_any": [
+        "previewer_view_mode",
+        "paragraphs_previewer.settings"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The config object paragraphs_previewer.settings has a single key previewer_view_mode, shipped as 'full'. Change it with `drush cset paragraphs_previewer.settings previewer_view_mode teaser -y` (or via config API). The controller falls back to 'full' when the value is empty."
+    },
+    {
+      "id": "paragraphs_previewer-permission-route",
+      "difficulty": "easy",
+      "mode": "recipe",
+      "prompt": "Editors on my Drupal site see the paragraphs_previewer 'Preview' button but the modal shows an access denied page. Which permission does this module define, and what route does it protect?",
+      "must_contain_any": [
+        "view any paragraphs previewer"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The module defines one permission, 'view any paragraphs previewer'. It is the _permission requirement of the route paragraphs_previewer.form_preview (path paragraphs-previewer/form/{form_build_id}/{element_parents}), which also requires _csrf_token: TRUE. Grant the permission to the editor roles, e.g. `drush role:perm:add editor 'view any paragraphs previewer'`."
+    },
+    {
+      "id": "paragraphs_previewer-known-widget",
+      "difficulty": "medium",
+      "mode": "introspection",
+      "prompt": "This Drupal site's Article content type has two Paragraphs fields, field_pp_known and field_pp_plain. Exactly one of them is configured to use the Paragraphs Previewer widget on the default form display. Inspect the running site and tell me which field it is and which widget plugin id it uses.",
+      "must_contain_any": [
+        "field_pp_known"
+      ],
+      "must_not_contain": [],
+      "expected_output": "field_pp_known. In core.entity_form_display.node.article.default its component has type: paragraphs_previewer (edit_mode: closed), while field_pp_plain uses the stock type: paragraphs widget.",
+      "setup": "agent-module-documentation/evaluation/verify/paragraphs_previewer-known-widget-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/paragraphs_previewer-known-widget-cleanup.sh"
+    },
+    {
+      "id": "paragraphs_previewer-view-mode",
+      "difficulty": "medium",
+      "mode": "introspection",
+      "prompt": "On this Drupal site, when an editor clicks the paragraphs_previewer 'Preview' button, which entity view mode is actually used to render the paragraph in the modal? Check the live configuration rather than assuming the module default, and say which config key you read.",
+      "must_contain_any": [
+        "teaser"
+      ],
+      "must_not_contain": [],
+      "expected_output": "teaser. The site has paragraphs_previewer.settings:previewer_view_mode set to 'teaser' (the module default would be 'full'); check with `drush cget paragraphs_previewer.settings previewer_view_mode`.",
+      "setup": "agent-module-documentation/evaluation/verify/paragraphs_previewer-view-mode-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/paragraphs_previewer-view-mode-cleanup.sh"
+    },
+    {
+      "id": "paragraphs_previewer-enable-widget",
+      "difficulty": "hard",
+      "mode": "execution",
+      "persona": "drupal-expert",
+      "prompt": "This Drupal site's Article content type has a Paragraphs field field_pp_task that currently uses the stock 'Paragraphs' widget on the default form display. Using the paragraphs_previewer module, change the default form display so this field's widget gives editors the per-paragraph Preview button. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/paragraphs_previewer-enable-widget-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/paragraphs_previewer-enable-widget-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/paragraphs_previewer-enable-widget-cleanup.sh",
+      "expected_output": "In core.entity_form_display.node.article.default the field_pp_task component must have type: paragraphs_previewer (set the component type and save the entity_form_display, or pick 'Paragraphs Previewer' on Manage form display)."
+    },
+    {
+      "id": "paragraphs_previewer-grant-permission",
+      "difficulty": "hard",
+      "mode": "execution",
+      "persona": "site-owner",
+      "prompt": "My site has a role called pp_reviewer. People in that role click the Preview button on a paragraph and just get an 'access denied' page inside the popup. Please give that role whatever it needs so the paragraph previews actually load, and apply it to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/paragraphs_previewer-grant-permission-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/paragraphs_previewer-grant-permission-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/paragraphs_previewer-grant-permission-cleanup.sh",
+      "expected_output": "Grant the paragraphs_previewer permission 'view any paragraphs previewer' to the pp_reviewer role (drush role:perm:add pp_reviewer 'view any paragraphs previewer'), because it is the _permission requirement of the route paragraphs_previewer.form_preview loaded inside the modal iframe."
+    }
+  ]
+}

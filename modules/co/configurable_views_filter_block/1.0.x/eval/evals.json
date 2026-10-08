@@ -1,0 +1,99 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "configurable_views_filter_block",
+  "version": "1.0.x",
+  "note": "The module provides one Block plugin, configurable_views_filter_block_block, extending core ViewsExposedFilterBlock and reusing its deriver, so derivatives are keyed configurable_views_filter_block_block:<view_id>-<display_id> for displays with 'Exposed form in block' enabled. Per-instance block settings: visible_filters (list of exposed-filter identifiers kept visible) plus booleans no_groups, no_reset, no_sort, no_pager. No route/permissions/services/drush. All medium/hard cases are grounded in a real block config entity's settings. FIXTURE: setup/reset scripts raw-write the module's own bundled test view (view_simple_exposed_filters, page_1 display, exposed filters 'title' and 'uid', exposed_block=true) via config.storage->write() rather than a View entity save. This is deliberate: the shared site currently has a PRE-EXISTING, unrelated fatal (vefl_bef's exposed_form plugin is incompatible with the installed better_exposed_filters, a PHP TypeError) that aborts any views exposed_form plugin discovery/render or View entity save. Block config-entity placement and reading settings back do NOT trigger it, so introspection/verify work; the scripts were smoke-tested this way. Rendering the block or building its config form on the UI may hit that vefl_bef fatal until the site's BEF/vefl mismatch is fixed.",
+  "evals": [
+    {
+      "id": "configurable_views_filter_block-plugin-prereq",
+      "mode": "recipe",
+      "prompt": "I want to place a Views exposed-filters block but only show some of the filters, using the configurable_views_filter_block module. Which block do I place, and what must be enabled on the view display first for that block to be available?",
+      "must_contain_any": [
+        "configurable_views_filter_block_block",
+        "Exposed form in block",
+        "exposed_block",
+        "Views Exposed Filter Block (configurable form)"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Place the 'Views Exposed Filter Block (configurable form)' block (plugin configurable_views_filter_block_block, a derivative configurable_views_filter_block_block:<view>-<display>). It only exists for a view display that has 'Exposed form in block' enabled (display option exposed_block: true) and has exposed filters.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "configurable_views_filter_block-settings-keys",
+      "mode": "recipe",
+      "prompt": "Using configurable_views_filter_block, which per-instance block settings let me hide the reset button, hide the exposed sort, hide the exposed pager, and flatten collapsible filter groups?",
+      "must_contain_any": [
+        "no_reset",
+        "no_sort",
+        "no_pager",
+        "no_groups"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The block's settings include booleans no_reset (hide reset button), no_sort (hide exposed sort_by/sort_order), no_pager (hide exposed items_per_page/offset), and no_groups (convert collapsible details groups into plain containers). Which of reset/sort/pager options appear depends on whether the view exposes them.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "configurable_views_filter_block-visible-filters-key",
+      "mode": "recipe",
+      "prompt": "With configurable_views_filter_block, I want one block to show only a subset of a view's exposed filters. Which block setting controls which filters are shown, and what happens to the filters I don't select (are their values lost)?",
+      "must_contain_any": [
+        "visible_filters"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The visible_filters setting (a list of exposed-filter identifiers) controls which filters stay visible; any exposed filter not listed is hidden. Hidden filters are only visually hidden (wrapped in <div class=\"hidden-exposed-filter\">), not removed via #access, so their submitted values are preserved. Each instance also gets a fresh unique form id so the same view's form can appear multiple times.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "configurable_views_filter_block-known-visible",
+      "mode": "introspection",
+      "prompt": "On this Drupal site there is a configurable Views exposed-filter block placed for a view that exposes both a 'title' and a 'uid' filter. Inspect the live block configuration and state which exposed filter it is set to keep visible.",
+      "must_contain_any": [
+        "uid"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The block (cvfb_probe) has visible_filters set to just 'uid' (the title filter is hidden). Read block.block.cvfb_probe settings.visible_filters.",
+      "setup": "agent-module-documentation/evaluation/verify/configurable_views_filter_block-visible-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/configurable_views_filter_block-visible-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "configurable_views_filter_block-known-options",
+      "mode": "introspection",
+      "prompt": "On this Drupal site there is a configurable Views exposed-filter block. Inspect its live configuration and state which visibility options it has turned on (is the reset button hidden? is the sort hidden?).",
+      "must_contain_any": [
+        "no_reset",
+        "no_sort",
+        "reset",
+        "sort"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The block (cvfb_options) has no_reset = true and no_sort = true (reset button and exposed sort hidden), while no_groups and no_pager are false. Read block.block.cvfb_options settings.",
+      "setup": "agent-module-documentation/evaluation/verify/configurable_views_filter_block-options-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/configurable_views_filter_block-options-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "configurable_views_filter_block-place-subset",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site (theme olivero) there is a view 'view_simple_exposed_filters' whose 'page_1' display has 'Exposed form in block' enabled and exposes a 'title' and a 'uid' filter. Place a Configurable Views Filter Block (block id 'cvfb_task') in the content region that shows ONLY the 'title' exposed filter. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/configurable_views_filter_block-place-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/configurable_views_filter_block-place-verify.sh",
+      "expected_output": "Create a block config entity id cvfb_task with plugin configurable_views_filter_block_block:view_simple_exposed_filters-page_1, theme olivero, region content, and settings.visible_filters containing only 'title' (uid excluded).",
+      "cleanup": "agent-module-documentation/evaluation/verify/configurable_views_filter_block-place-cleanup.sh"
+    },
+    {
+      "id": "configurable_views_filter_block-hide-sort-reset",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site there is a configurable Views exposed-filter block with id 'cvfb_hide'. Reconfigure it so the exposed sort controls AND the reset button are hidden on that block. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/configurable_views_filter_block-hide-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/configurable_views_filter_block-hide-verify.sh",
+      "expected_output": "In block.block.cvfb_hide settings, set no_sort = true and no_reset = true (both), leaving the filters visible.",
+      "cleanup": "agent-module-documentation/evaluation/verify/configurable_views_filter_block-hide-cleanup.sh"
+    }
+  ]
+}

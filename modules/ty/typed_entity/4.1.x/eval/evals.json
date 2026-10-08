@@ -1,0 +1,82 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "typed_entity",
+  "version": "4.1.x",
+  "note": "Typed Entity is a developer OOP API: wrapped entities (WrappedEntityBase) hold per-bundle business logic, and typed repository plugins (Plugin/TypedRepositories, declared with #[TypedRepository(entity_type_id, bundle, wrappers, renderers)]) map an entity-type/bundle to its wrapper + renderer. Entry point is the RepositoryManager service (class name is the service id). Wrapper/renderer variants use ClassWithVariants(fallback, [variants]) with a static applies() (or FieldValueVariantCondition/EmptyFieldVariantCondition). The base module has no config/permissions/Drush and registers NO repositories by itself, so medium/hard cases enable the typed_entity_example submodule (which registers node.article -> Article/BakingArticle and the bundle-less user -> User) as live fixtures. Medium introspection reads the live plugin registry (getAll(), plugin definitions); hard execution uses the repository's createEntity() helper to build a real node/user, verified against live entity state. cleanup uninstalls typed_entity_example to restore baseline (submodule disabled).",
+  "evals": [
+    {
+      "id": "typed_entity-attribute",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "In the Drupal typed_entity module, how do you register a typed repository for a given entity type and bundle? Name the PHP attribute you add to the plugin class and where the class must live.",
+      "must_contain_any": ["#[TypedRepository", "TypedRepository", "Plugin/TypedRepositories"],
+      "must_not_contain": [],
+      "expected_output": "Add the #[TypedRepository(entity_type_id: '...', bundle: '...', wrappers: ..., renderers: ...)] attribute (Drupal\\typed_entity\\Attribute\\TypedRepository) to a class extending TypedRepositoryBase, placed in the module's src/Plugin/TypedRepositories/ directory."
+    },
+    {
+      "id": "typed_entity-manager-service",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "With the typed_entity module, I have a loaded node entity and want the typed 'wrapped entity' object for it. Which service do I use and which method do I call?",
+      "must_contain_any": ["RepositoryManager", "->wrap(", "wrap(", "typed_entity_repository_manager"],
+      "must_not_contain": [],
+      "expected_output": "Use the Drupal\\typed_entity\\RepositoryManager service (autowired by class name, or via the typed_entity_repository_manager() helper) and call ->wrap($entity), which returns the WrappedEntityInterface for that entity's type/bundle (or NULL)."
+    },
+    {
+      "id": "typed_entity-variants",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "In typed_entity, a repository can pick a different wrapper class depending on an entity's data (for example a special wrapper only for articles tagged 'Baking'). What construct declares the fallback + variant classes, and what method decides which variant applies?",
+      "must_contain_any": ["ClassWithVariants", "applies(", "applies", "negotiateVariant"],
+      "must_not_contain": [],
+      "expected_output": "Declare wrappers/renderers as new ClassWithVariants($fallback, [$variant, ...]); each variant implements a static applies(TypedEntityContext $context): bool (optionally using FieldValueVariantCondition / EmptyFieldVariantCondition), and ClassWithVariants::negotiateVariant() uses the first variant whose applies() returns TRUE, else the fallback."
+    },
+    {
+      "id": "typed_entity-registered-repos",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "On this running Drupal site, inspect the Typed Entity repositories that are currently registered and list the entity-type/bundle pairs they cover.",
+      "must_contain_any": ["node.article", "node", "article"],
+      "must_not_contain": [],
+      "expected_output": "The registered typed repositories are node.article (entity type node, bundle article) and user (entity type user, bundle-less). Discover them via the RepositoryManager: \\Drupal::service(Drupal\\typed_entity\\RepositoryManager::class)->getAll() and read each repository's getEntityType()->id() / getBundle().",
+      "setup": "agent-module-documentation/evaluation/verify/typed_entity-list-repos-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/typed_entity-list-repos-cleanup.sh"
+    },
+    {
+      "id": "typed_entity-article-variant-wrapper",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "On this running Drupal site, the Typed Entity repository for the article content type declares a specialized wrapper variant (in addition to its default wrapper). Inspect the live repository definition and give the class name of that variant wrapper.",
+      "must_contain_any": ["BakingArticle"],
+      "must_not_contain": [],
+      "expected_output": "The node.article repository's wrappers is new ClassWithVariants(Article::class, [BakingArticle::class]); the variant wrapper is BakingArticle (Drupal\\typed_entity_example\\WrappedEntities\\BakingArticle). Read it from the plugin definition: \\Drupal::service('plugin.manager.typed_entity_repository')->getDefinition('node.article')['wrappers']->getVariants().",
+      "setup": "agent-module-documentation/evaluation/verify/typed_entity-variant-wrapper-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/typed_entity-variant-wrapper-cleanup.sh"
+    },
+    {
+      "id": "typed_entity-create-article",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site the Typed Entity 'article' repository (entity type node, bundle article) is available. Using the Typed Entity API, create and save a new Article node with the title 'TE Article Probe'. Apply the change to the live site.",
+      "must_not_contain": [],
+      "expected_output": "Use the article repository's createEntity() helper, e.g. $repo = \\Drupal::service(Drupal\\typed_entity\\RepositoryManager::class)->repository('node','article'); $wrapped = $repo->createEntity(['title' => 'TE Article Probe']); $wrapped->getEntity()->save(); The bundle key is auto-set to 'article'. Result: a node of type article titled 'TE Article Probe' exists.",
+      "reset": "agent-module-documentation/evaluation/verify/typed_entity-create-article-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/typed_entity-create-article-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/typed_entity-create-article-cleanup.sh"
+    },
+    {
+      "id": "typed_entity-create-user",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site the Typed Entity 'user' repository is available (a bundle-less entity type). Using the Typed Entity API's repository helper, create and save a new active user account with the email 'te_probe_user@example.com'. Apply the change to the live site.",
+      "must_not_contain": [],
+      "expected_output": "Use the bundle-less user repository (id 'user'): $repo = \\Drupal::service(Drupal\\typed_entity\\RepositoryManager::class)->repository('user'); $wrapped = $repo->createEntity(['name' => 'te_probe_user', 'mail' => 'te_probe_user@example.com', 'status' => 1]); $wrapped->getEntity()->save(); Result: an active user account with email te_probe_user@example.com exists. (This site's email_registration module forces the username to equal the email, so the email is the identifier.)",
+      "reset": "agent-module-documentation/evaluation/verify/typed_entity-create-user-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/typed_entity-create-user-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/typed_entity-create-user-cleanup.sh"
+    }
+  ]
+}

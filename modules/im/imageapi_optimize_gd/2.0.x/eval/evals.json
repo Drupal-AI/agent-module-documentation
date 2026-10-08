@@ -1,0 +1,67 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "imageapi_optimize_gd",
+  "version": "2.0.x",
+  "note": "ImageAPI Optimize GD provides one ImageAPIOptimizeProcessor plugin (id: imageapi_optimize_gd, label 'GD') for the parent imageapi_optimize module. It has no admin route (configure=null), no permissions, no Drush, and no config schema of its own. All state lives on imageapi_optimize_pipeline config entities: a processor entry {id: imageapi_optimize_gd, data: {quality, file_types}}. Defaults quality=75, file_types=['image/jpeg']; options quality 1-100 and JPEG/WebP. It re-encodes JPEG/WebP derivatives via PHP GD (imagejpeg/imagewebp) at the set quality, gated on MIME type and on function_exists('imagegd2'). Medium/hard cases are grounded in that real pipeline config: introspection reads the quality of a GD processor in a known pipeline; execution creates a pipeline with a GD processor, verified against the live config entity.",
+  "evals": [
+    {
+      "id": "imageapi_optimize_gd-plugin-basics",
+      "mode": "recipe",
+      "prompt": "In Drupal, what does the imageapi_optimize_gd module add, which image formats can its processor re-compress, and what is the default image quality it uses?",
+      "must_contain_any": ["GD", "processor", "imageapi_optimize_gd"],
+      "must_not_contain": [],
+      "expected_output": "It adds a single ImageAPIOptimizeProcessor plugin (id imageapi_optimize_gd, label 'GD') to the imageapi_optimize module. It re-compresses JPEG and WebP images using PHP's GD library (imagejpeg/imagewebp). Default quality is 75 and the default file type is image/jpeg; quality is configurable 1-100.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "imageapi_optimize_gd-how-to-use",
+      "mode": "recipe",
+      "prompt": "There is no settings page for imageapi_optimize_gd on my Drupal site. How do I actually make it compress my images, and where does that configuration get stored?",
+      "must_contain_any": ["pipeline", "Image Optimize", "imageapi_optimize.pipeline"],
+      "must_not_contain": [],
+      "expected_output": "There is no configure route. You add the 'GD' processor to an ImageAPI Optimize pipeline (Configuration > Media > Image Optimize pipelines), set quality and file types, then apply the pipeline to image styles (or set it as the sitewide default). The config is stored on the imageapi_optimize_pipeline entity (imageapi_optimize.pipeline.<id>) as a processors[] entry with id imageapi_optimize_gd and data.quality / data.file_types.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "imageapi_optimize_gd-requires-gd",
+      "mode": "recipe",
+      "prompt": "What PHP requirement must be met for the imageapi_optimize_gd processor to actually re-encode an image, and what happens if it is not met?",
+      "must_contain_any": ["GD", "imagegd2", "GD library"],
+      "must_not_contain": [],
+      "expected_output": "PHP must be compiled with the GD library; the processor checks function_exists('imagegd2'). If GD is missing, applyToImage() logs a notice and returns FALSE without changing the image. It also only processes files whose MIME type is in its configured file_types (JPEG/WebP).",
+      "difficulty": "easy"
+    },
+    {
+      "id": "imageapi_optimize_gd-known-quality",
+      "mode": "introspection",
+      "prompt": "This Drupal site has an Image Optimize pipeline named 'iaogd_known' that uses the GD (imageapi_optimize_gd) processor. Inspect the live configuration and state the image quality value that GD processor is set to.",
+      "must_contain_any": ["42"],
+      "must_not_contain": [],
+      "expected_output": "The GD processor in pipeline iaogd_known is configured with quality 42 (imageapi_optimize.pipeline.iaogd_known -> processors[0].data.quality = 42).",
+      "setup": "agent-module-documentation/evaluation/verify/imageapi_optimize_gd-known-quality-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/imageapi_optimize_gd-known-quality-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "imageapi_optimize_gd-build-pipeline",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, create an ImageAPI Optimize pipeline with the machine name 'iaogd_task' that contains a GD (imageapi_optimize_gd) processor so JPEG derivatives get re-compressed. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/imageapi_optimize_gd-build-pipeline-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/imageapi_optimize_gd-build-pipeline-verify.sh",
+      "expected_output": "An imageapi_optimize_pipeline config entity 'iaogd_task' exists with a processors[] entry whose id is imageapi_optimize_gd (e.g. ImageAPIOptimizePipeline::create(['name'=>'iaogd_task','label'=>...,'processors'=>[['id'=>'imageapi_optimize_gd','weight'=>0,'uuid'=>...,'data'=>['quality'=>60,'file_types'=>['image/jpeg'=>'image/jpeg']]]]])->save();)."
+    },
+    {
+      "id": "imageapi_optimize_gd-build-pipeline-layman",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "site-owner",
+      "prompt": "My Drupal photos are too heavy. Using the GD image optimizer that's installed, set up an image optimization recipe called 'iaogd_task' that shrinks my JPEG images, and switch it on.",
+      "reset": "agent-module-documentation/evaluation/verify/imageapi_optimize_gd-build-pipeline-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/imageapi_optimize_gd-build-pipeline-verify.sh",
+      "expected_output": "Same verified end state as the expert variant: an imageapi_optimize_pipeline 'iaogd_task' with a GD (imageapi_optimize_gd) processor."
+    }
+  ]
+}

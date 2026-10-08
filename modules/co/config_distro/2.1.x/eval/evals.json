@@ -1,0 +1,80 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "config_distro",
+  "version": "2.1.x",
+  "note": "Config Distro is an event-driven framework for applying a distribution's config updates. Core piece: the config_distro.storage.distro service (a ManagedStorage backed by DistroStorageManager) - reading it copies active config to a MemoryStorage, dispatches ConfigDistroEvents::TRANSFORM (config_distro.transform) so subscribers rewrite it, and returns a ReadOnlyStorage; on a clean site (no companion like config_sync) it mirrors active config. ConfigDistroEvents::IMPORT (config_distro.import) fires after an import. UI: route config_distro.import at /admin/config/development/distro (the module's configure route), ConfigDistroImportForm (extends core ConfigSync), permission 'synchronize distro configuration'. Drush: config-distro-update (alias cd-update, --preview=list|diff). Requires config_filter. Submodules: config_distro_filter (deprecated bridge), config_distro_ignore. No config entity/schema of its own. Medium/hard cases are grounded in the live config_distro.storage.distro service (which reliably reflects active config) and the live config_filter plugin registry; hard cases store results in Drupal State, verified live. (Note: the global distro-vs-active changelist is not asserted, as it depends on which other config_filter modules are enabled on this shared site.)",
+  "evals": [
+    {
+      "id": "config_distro-drush-command",
+      "mode": "recipe",
+      "prompt": "What Drush command does the config_distro module add to apply configuration updates from a distribution, and what is its alias?",
+      "must_contain_any": ["config-distro-update", "cd-update"],
+      "must_not_contain": [],
+      "expected_output": "drush config-distro-update (alias cd-update). It compares the distribution storage against active config and, after a preview (--preview=list or diff), imports the changes.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "config_distro-events",
+      "mode": "recipe",
+      "prompt": "config_distro is an event-driven framework. What are the two events it defines, and when does each fire?",
+      "must_contain_any": ["config_distro.transform", "config_distro.import", "TRANSFORM", "IMPORT"],
+      "must_not_contain": [],
+      "expected_output": "ConfigDistroEvents::TRANSFORM ('config_distro.transform') fires each time the distro storage is built, letting subscribers rewrite it to the distribution's desired state; ConfigDistroEvents::IMPORT ('config_distro.import') fires after a distribution import completes.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "config_distro-ui-permission",
+      "mode": "recipe",
+      "prompt": "Where is the config_distro distribution-update UI, and which permission controls access to it?",
+      "must_contain_any": ["/admin/config/development/distro", "config_distro.import", "synchronize distro configuration"],
+      "must_not_contain": [],
+      "expected_output": "The import UI is at /admin/config/development/distro (route config_distro.import, the module's configure route, rendered by ConfigDistroImportForm). It and the diff pages require the 'synchronize distro configuration' permission.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "config_distro-distro-read",
+      "mode": "introspection",
+      "prompt": "This Drupal site has a configuration object 'config_distro_eval.data' in its active configuration. Using config_distro's distribution storage service, read that object and report the value of its 'color' key.",
+      "must_contain_any": ["teal"],
+      "must_not_contain": [],
+      "expected_output": "Read it through \\Drupal::service('config_distro.storage.distro')->read('config_distro_eval.data'); since no transform subscriber changes it, the distro storage mirrors active config, so color is teal.",
+      "setup": "agent-module-documentation/evaluation/verify/config_distro-distro-read-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/config_distro-distro-read-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "config_distro-distro-filter",
+      "mode": "introspection",
+      "prompt": "On this Drupal site, inspect the registered Config Filter plugins and identify which one is bound to the config_distro distribution storage (config_distro.storage.distro).",
+      "must_contain_any": ["config_distro_ignore"],
+      "must_not_contain": [],
+      "expected_output": "The config_distro_ignore filter plugin declares storages = {config_distro.storage.distro} in its @ConfigFilter annotation, so it is the plugin bound to the distro storage (config_merge, by contrast, is bound to config.storage.sync).",
+      "setup": "agent-module-documentation/evaluation/verify/config_distro-distro-filter-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/config_distro-distro-filter-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "config_distro-read-to-state",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site there is a config object 'config_distro_eval.readh' in active configuration. Using config_distro's distribution storage service, read that config object as the distribution storage sees it and store the resulting value (the array) into Drupal State under the key 'config_distro_eval_read'. Apply it to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/config_distro-read-to-state-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/config_distro-read-to-state-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/config_distro-read-to-state-cleanup.sh",
+      "expected_output": "\\Drupal::state()->set('config_distro_eval_read', \\Drupal::service('config_distro.storage.distro')->read('config_distro_eval.readh')); — the stored array must contain marker => DISTRO123."
+    },
+    {
+      "id": "config_distro-compare",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, use config_distro's distribution storage service to read the config object 'config_distro_eval.cmph' as the distribution sees it, compare it to the same object in the active configuration storage, and store the string \"MATCH\" into Drupal State key 'config_distro_eval_match' if they are identical (or \"DIFF\" if they differ). Apply it to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/config_distro-compare-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/config_distro-compare-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/config_distro-compare-cleanup.sh",
+      "expected_output": "$d = \\Drupal::service('config_distro.storage.distro')->read('config_distro_eval.cmph'); $a = \\Drupal::service('config.storage')->read('config_distro_eval.cmph'); \\Drupal::state()->set('config_distro_eval_match', $d === $a ? 'MATCH' : 'DIFF'); — because no transform subscriber changes this item, the distro copy equals the active copy, so the stored value is MATCH."
+    }
+  ]
+}

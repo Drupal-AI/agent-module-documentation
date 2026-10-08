@@ -1,0 +1,102 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "genpass",
+  "version": "3.0.x",
+  "note": "Three tiers. easy=recipe (text-graded, no site changes). medium=introspection (a setup script writes a KNOWN genpass.settings value, the agent reads it off the live site via drush, cleanup restores the install default). hard=execution (reset restores install defaults so verify FAILs, the agent CONFIGURES genpass.settings, verify reads the live config; exit 0 = pass). Config keys: genpass_length (5-32, default 12), genpass_mode (0 req/1 opt/2 restricted, default 2), genpass_admin_mode (1 show/2 hide, default 1), genpass_display (0 none/1 admin/2 user/3 both, default 0), genpass_override_core (bool, default true).",
+  "evals": [
+    {
+      "id": "genpass-configure-route",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "On a Drupal site with the Generate Password (genpass) module, there is no dedicated genpass settings page. At which admin path do you configure its settings, and what config object holds them? Name the path and the config object.",
+      "must_contain_any": ["admin/config/people/accounts"],
+      "must_not_contain": [],
+      "expected_output": "Genpass settings are edited on the core Account settings form at /admin/config/people/accounts (route entity.user.admin_form); the values are stored in the genpass.settings config object."
+    },
+    {
+      "id": "genpass-length-drush",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "On this Drupal site, give the exact drush command to set the genpass generated-password length to 20. Answer with the command only.",
+      "must_contain_any": ["config:set genpass.settings genpass_length", "config-set genpass.settings genpass_length"],
+      "must_not_contain": [],
+      "expected_output": "drush config:set genpass.settings genpass_length 20 -y"
+    },
+    {
+      "id": "genpass-service",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "In the genpass module, which core service does it decorate to produce stronger passwords, and what is the one method you call to generate a password? Name the service and the method.",
+      "must_contain_any": ["password_generator"],
+      "must_not_contain": [],
+      "expected_output": "Genpass decorates the core `password_generator` service (with GenpassPasswordGenerator); call ->generate() (optionally ->generate($length)) to get a password."
+    },
+    {
+      "id": "genpass-length-introspect",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "persona": "drupal-expert",
+      "prompt": "This Drupal site has genpass installed and its generated-password length has been customized away from the default. Inspect the running site (drush available) and tell me the exact genpass_length value currently configured.",
+      "setup": "agent-module-documentation/evaluation/verify/genpass-length-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/genpass-length-cleanup.sh",
+      "must_contain_any": ["24"],
+      "must_not_contain": [],
+      "expected_output": "The live genpass.settings:genpass_length is 24 (read from genpass.settings on the running site)."
+    },
+    {
+      "id": "genpass-display-introspect",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, genpass is configured to reveal the generated password after account creation. Inspect the running site (drush available) and tell me who the generated password is shown to (the genpass_display setting and what it means).",
+      "setup": "agent-module-documentation/evaluation/verify/genpass-display-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/genpass-display-cleanup.sh",
+      "must_contain_any": ["3", "both"],
+      "must_not_contain": [],
+      "expected_output": "The live genpass.settings:genpass_display is 3, meaning the generated password is displayed to BOTH site administrators and users."
+    },
+    {
+      "id": "genpass-mode-introspect",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "persona": "drupal-expert",
+      "prompt": "This Drupal site's genpass has a non-default registration password mode. Inspect the running site (drush available) and tell me the exact genpass_mode value and what it means for users registering an account.",
+      "setup": "agent-module-documentation/evaluation/verify/genpass-mode-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/genpass-mode-cleanup.sh",
+      "must_contain_any": ["1", "optional"],
+      "must_not_contain": [],
+      "expected_output": "The live genpass.settings:genpass_mode is 1 (optional): users MAY enter a password at registration, and if they leave it blank a strong one is generated."
+    },
+    {
+      "id": "genpass-set-length-32",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site (DDEV, drush available), configure the Generate Password (genpass) module so that generated passwords are the maximum allowed length. Apply it to the running site with drush/config — do not just describe it. State in one line what you changed.",
+      "reset": "agent-module-documentation/evaluation/verify/genpass-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/genpass-length-verify.sh",
+      "expected_output": "genpass.settings:genpass_length is set to 32 (the schema maximum). Verified against live site state."
+    },
+    {
+      "id": "genpass-disable-core-override",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site (drush available), the genpass module is currently overriding Drupal core's default password generator. Change the genpass configuration so core's DefaultPasswordGenerator is used again instead of Genpass's generator, and apply it live with drush/config. Give a one-line summary of what you changed.",
+      "reset": "agent-module-documentation/evaluation/verify/genpass-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/genpass-override-off-verify.sh",
+      "expected_output": "genpass.settings:genpass_override_core is set to false, so core DefaultPasswordGenerator is used. Verified against live site state."
+    },
+    {
+      "id": "genpass-display-to-user",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site (drush available), configure genpass so that when a user registers and a password is generated for them, that generated password is displayed to the user. Apply the change live via drush/config rather than describing it. Summarize in one line what you changed.",
+      "reset": "agent-module-documentation/evaluation/verify/genpass-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/genpass-display-user-verify.sh",
+      "expected_output": "genpass.settings:genpass_display is set to 2 (user) or 3 (both) so the generated password is shown to the user. Verified against live site state."
+    }
+  ]
+}

@@ -1,0 +1,80 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "admin_theme",
+  "version": "1.1.x",
+  "note": "Admin Theme applies Drupal's admin theme to an arbitrary include/exclude path list. Its whole persistent state is the config object admin_theme.settings with two string keys: paths (Include) and exclude_paths (Exclude), each a newline-separated request_path pattern list. Both ship with the placeholder default '/dummy-path-needed-until-core-issue-2930364-is-fixed' (= match nothing). There is no dedicated settings page (configure route is system.themes_page; fields are injected into /admin/appearance). The switch is performed by the service admin_theme.admin_context which decorates router.admin_context. No permissions, no Drush, no plugins. medium/hard cases set/read these two config keys; cleanup restores the shipped placeholder default.",
+  "evals": [
+    {
+      "id": "admin_theme-config-keys",
+      "mode": "recipe",
+      "prompt": "In the admin_theme Drupal module, which config object and keys control on which paths the administration theme is applied (and which paths are excluded)?",
+      "must_contain_any": ["admin_theme.settings", "paths", "exclude_paths"],
+      "must_not_contain": [],
+      "expected_output": "The config object admin_theme.settings has two keys: paths (the Include list) and exclude_paths (the Exclude list), each a newline-separated request_path pattern list.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "admin_theme-purpose",
+      "mode": "recipe",
+      "prompt": "What does the admin_theme module let me do that Drupal core cannot, and where do I configure it in the UI?",
+      "must_contain_any": ["/admin/appearance", "appearance", "include", "exclude", "any path", "arbitrary"],
+      "must_not_contain": [],
+      "expected_output": "Core can only use the admin theme on node-edit pages; admin_theme lets you apply it to an arbitrary Include list of paths (and an Exclude list). You configure it on the appearance form at /admin/appearance (the Include/Exclude fieldsets); there is no separate settings page.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "admin_theme-mechanism",
+      "mode": "recipe",
+      "prompt": "How does the admin_theme module actually make Drupal render a page with the administration theme? What core service does it override, and what path syntax do the Include/Exclude fields use?",
+      "must_contain_any": ["router.admin_context", "decorat", "isAdminRoute", "request_path", "wildcard", "*"],
+      "must_not_contain": [],
+      "expected_output": "It decorates the core router.admin_context service (AdminThemeAdminContext) so isAdminRoute() returns TRUE on matching paths. The Include/Exclude fields use core request_path condition syntax: one path per line, leading slash, * wildcards and <front>.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "admin_theme-include",
+      "mode": "introspection",
+      "prompt": "On this Drupal site the admin_theme module has been configured to apply the administration theme to a particular section. Inspect the live admin_theme.settings configuration and state which path(s) are in the Include list.",
+      "must_contain_any": ["/reports"],
+      "must_not_contain": [],
+      "expected_output": "The Include list (admin_theme.settings:paths) is '/reports' and '/reports/*'. Read it with `drush config:get admin_theme.settings paths`.",
+      "setup": "agent-module-documentation/evaluation/verify/admin_theme-include-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/admin_theme-include-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "admin_theme-exclude",
+      "mode": "introspection",
+      "prompt": "On this Drupal site the admin_theme module excludes a path from the administration theme. Inspect the live configuration and state which path is in the Exclude list.",
+      "must_contain_any": ["/admin/content"],
+      "must_not_contain": [],
+      "expected_output": "The Exclude list (admin_theme.settings:exclude_paths) is '/admin/content'. Read it with `drush config:get admin_theme.settings exclude_paths`.",
+      "setup": "agent-module-documentation/evaluation/verify/admin_theme-exclude-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/admin_theme-exclude-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "admin_theme-add-include",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, use the admin_theme module to make the administration theme apply to the path /company-dashboard and all of its sub-pages. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/admin_theme-add-include-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/admin_theme-add-include-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/admin_theme-add-include-cleanup.sh",
+      "expected_output": "Set admin_theme.settings:paths to include /company-dashboard (e.g. lines '/company-dashboard' and '/company-dashboard/*'), replacing the placeholder default."
+    },
+    {
+      "id": "admin_theme-add-exclude",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, use the admin_theme module to exclude the /node/add pages from the administration theme (so content creation forms keep the default theme). Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/admin_theme-add-exclude-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/admin_theme-add-exclude-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/admin_theme-add-exclude-cleanup.sh",
+      "expected_output": "Set admin_theme.settings:exclude_paths to include /node/add (e.g. '/node/add' and '/node/add/*'), replacing the placeholder default."
+    }
+  ]
+}

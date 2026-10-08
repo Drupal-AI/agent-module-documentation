@@ -1,0 +1,94 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "date_all_day",
+  "version": "2.1.x",
+  "note": "Date All Day adds no field type. It ships one widget for core daterange fields - daterange_all_day ('Date and time range with All day') - and three formatters: daterange_all_day_default, daterange_all_day_custom and the deprecated daterange_all_day_plain, each adding a date_only_format setting (default the locked date_all_day date-format entity, pattern Y-m-d) used instead of the normal format when an item is all-day. There is NO all-day flag in storage: DateRangeAllDayHelper::isAllDay() derives it from the stored times - start 00:00:00 and (no end, or end 23:59:59) in the site default timezone - and the widget's massageFormValues() coerces the values to exactly that when the checkbox is ticked. The module has no settings form, no configure route, no permissions, no Drush and no services. Medium cases read the live form/view display configuration and the real stored values of two nodes; hard cases require configuring the widget+formatter on a live display and creating a node whose stored range the module's own helper accepts as all-day.",
+  "evals": [
+    {
+      "id": "date_all_day-plugin-ids",
+      "mode": "recipe",
+      "prompt": "The Drupal date_all_day module is installed. I have a core Date range (daterange) field. Which widget do I choose on Manage form display to get an 'All day' checkbox, and which formatters does the module add on Manage display?",
+      "must_contain_any": [
+        "daterange_all_day",
+        "All day"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Choose the widget daterange_all_day, labelled 'Date and time range with All day'. On Manage display the module adds daterange_all_day_default ('Default (All day)'), daterange_all_day_custom ('Custom (All day)') and daterange_all_day_plain ('Plain (All day) (DEPRECATED)'), all for daterange fields.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "date_all_day-how-stored",
+      "mode": "recipe",
+      "prompt": "In Drupal's date_all_day module, how is it recorded that a date range is an 'all day' range? Is there a separate boolean column, and what exact times does it use?",
+      "must_contain_any": [
+        "00:00:00",
+        "23:59:59",
+        "isAllDay"
+      ],
+      "must_not_contain": [],
+      "expected_output": "There is no boolean column and nothing extra in storage. The state is derived by DateRangeAllDayHelper::isAllDay(): a range counts as all-day when the start time formats to 00:00:00 and the end is either empty or formats to 23:59:59, evaluated in the site's default timezone. The widget's massageFormValues() sets exactly those times (setTime(0,0,0) and setTime(23,59,59)) when the All day checkbox is ticked, and the checkbox's default value is re-derived from the stored values on the next form build.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "date_all_day-date-only-format",
+      "mode": "recipe",
+      "prompt": "What is the date_only_format setting on the Drupal date_all_day formatters for, what is its default value, and how does it differ between the Default (All day) and Custom (All day) formatters?",
+      "must_contain_any": [
+        "date_only_format",
+        "date_all_day"
+      ],
+      "must_not_contain": [],
+      "expected_output": "date_only_format is the format used instead of the normal one whenever the range is all-day, so an all-day event prints just a date with no time. Its default is 'date_all_day', a locked core date_format entity the module installs with pattern Y-m-d. On daterange_all_day_default it is a select of existing date format entity ids; on daterange_all_day_custom it is a free-text PHP date pattern, so the literal default 'date_all_day' must be replaced with a real pattern such as Y-m-d. daterange_all_day_plain has no such setting.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "date_all_day-known-widget",
+      "mode": "introspection",
+      "prompt": "On this Drupal site, the Article content type has a date range field field_dad_known set up with the date_all_day module. Inspect the live form and view display configuration for Article and tell me which widget it uses, which formatter it uses, and which date format is configured as its date-only format.",
+      "must_contain_any": [
+        "html_date"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Widget daterange_all_day on core.entity_form_display.node.article.default and formatter daterange_all_day_default on core.entity_view_display.node.article.default, whose settings.date_only_format is 'html_date' (with format_type 'long' and separator 'to' for non-all-day ranges).",
+      "setup": "agent-module-documentation/evaluation/verify/date_all_day-known-widget-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/date_all_day-known-widget-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "date_all_day-allday-node",
+      "mode": "introspection",
+      "prompt": "This Drupal site has two Article nodes, 'DAD All Day Probe' and 'DAD Timed Probe', each with a value in the date range field field_dad_probe. Using the date_all_day module's own definition of an all-day range, inspect the live stored values and tell me which node is the all-day one and why.",
+      "must_contain_any": [
+        "DAD All Day Probe"
+      ],
+      "must_not_contain": [],
+      "expected_output": "'DAD All Day Probe'. Its field_dad_probe range starts at 00:00:00 and ends at 23:59:59 in the site's default timezone, which is exactly what DateRangeAllDayHelper::isAllDay() checks; 'DAD Timed Probe' runs 09:30 to 17:00 and so is a normal timed range.",
+      "setup": "agent-module-documentation/evaluation/verify/date_all_day-allday-node-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/date_all_day-allday-node-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "date_all_day-formatter",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "This Drupal site has the date_all_day module installed and the Article content type has a Date range field field_dad_task. Configure the live default displays for Article so that editors get the module's 'All day' checkbox on the node form, and so that all-day ranges are rendered date-only using the html_date date format while timed ranges keep their normal format.",
+      "reset": "agent-module-documentation/evaluation/verify/date_all_day-formatter-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/date_all_day-formatter-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/date_all_day-formatter-cleanup.sh",
+      "expected_output": "core.entity_form_display.node.article.default must give field_dad_task the daterange_all_day widget, and core.entity_view_display.node.article.default must give it a date_all_day formatter (daterange_all_day_default or daterange_all_day_custom) with settings.date_only_format = 'html_date'."
+    },
+    {
+      "id": "date_all_day-allday-node-build",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "site-owner-layman",
+      "prompt": "On this Drupal site please create an Article called 'DAD Build All Day' for an event that takes place on 24 December 2026 and lasts the whole day - it has no start or end time, it just covers that entire day. Use the existing date range field field_dad_build and save it on the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/date_all_day-allday-node-build-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/date_all_day-allday-node-build-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/date_all_day-allday-node-build-cleanup.sh",
+      "expected_output": "An Article node titled 'DAD Build All Day' whose field_dad_build starts on 2026-12-24 at 00:00:00 and ends 2026-12-24 at 23:59:59 in the site's default timezone (stored in UTC in DATETIME_STORAGE_FORMAT), so that DateRangeAllDayHelper::isAllDay() returns TRUE for it."
+    }
+  ]
+}

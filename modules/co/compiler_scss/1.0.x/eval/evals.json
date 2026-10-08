@@ -1,0 +1,80 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "compiler_scss",
+  "version": "1.0.x",
+  "note": "SCSS Compiler registers an 'scss' Compiler plugin (ScssCompiler, @Compiler(\"scss\")) for the compiler module, backed by the swappable service compiler_scss.backend (ScssPhp, wrapping scssphp/scssphp). Compile via \\Drupal::service('plugin.manager.compiler')->createInstance('scss')->compile($context) where $context is a Drupal\\compiler\\CompilerContext('scss', $options, [inputs]). It has NO per-site config, admin UI, routes, permissions or settings (configure=null) - it is code-driven developer infrastructure. Because there is no configurable state to seed, the medium (introspection) cases have the agent inspect the LIVE plugin registry / container to report the real registered plugin and backend class; setup/cleanup only rebuild caches. The hard (execution) cases exercise the module's actual compile behavior: the agent compiles a known SCSS snippet and writes the resulting CSS to a file, verified by asserting on the compiled output (proving real compilation, not a copy). Test artifacts are namespaced /tmp/compiler_scss_eval_*.",
+  "evals": [
+    {
+      "id": "compiler_scss-how-to-compile",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "Using the Drupal compiler_scss (SCSS Compiler) module, how do I compile a snippet of SCSS into CSS from PHP?",
+      "must_contain_any": ["plugin.manager.compiler", "createInstance('scss')", "CompilerContext", "compile"],
+      "must_not_contain": [],
+      "expected_output": "Get the scss compiler plugin from plugin.manager.compiler (createInstance('scss')), build a Drupal\\compiler\\CompilerContext('scss', [], [new CompilerInputDirect('...scss...')]) and call $compiler->compile($context) to get the CSS string."
+    },
+    {
+      "id": "compiler_scss-backend-library",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "What library and plugin power the compiler_scss module, and what service holds the backend?",
+      "must_contain_any": ["scssphp", "compiler_scss.backend", "@Compiler"],
+      "must_not_contain": [],
+      "expected_output": "It uses the pure-PHP scssphp/scssphp library via the compiler_scss.backend service (ScssPhp), exposed as the @Compiler(\"scss\") plugin (ScssCompiler) for the compiler module's plugin type."
+    },
+    {
+      "id": "compiler_scss-schema-and-elements",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "What config-schema data types or form elements does compiler_scss add for authoring style values?",
+      "must_contain_any": ["compiler_scss_color", "compiler_scss_number", "compiler_scss_font_family", "compiler_scss_unit"],
+      "must_not_contain": [],
+      "expected_output": "It adds config-schema types and matching form elements: compiler_scss_color, compiler_scss_font_family, compiler_scss_number and compiler_scss_unit."
+    },
+    {
+      "id": "compiler_scss-registered-plugin",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "On this Drupal site, inspect the live Compiler plugin registry and report which compiler plugin id is available and the PHP class that implements it.",
+      "must_contain_any": ["ScssCompiler", "scss"],
+      "must_not_contain": [],
+      "expected_output": "The plugin id 'scss' is registered, implemented by Drupal\\compiler_scss\\Plugin\\Compiler\\ScssCompiler (from plugin.manager.compiler->getDefinitions()).",
+      "setup": "agent-module-documentation/evaluation/verify/compiler_scss-registry-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/compiler_scss-registry-cleanup.sh"
+    },
+    {
+      "id": "compiler_scss-backend-service",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "Inspect the live service container on this site and report which class the 'compiler_scss.backend' service resolves to.",
+      "must_contain_any": ["ScssPhp"],
+      "must_not_contain": [],
+      "expected_output": "compiler_scss.backend resolves to Drupal\\compiler_scss\\Backend\\ScssPhp (registered by CompilerScssServiceProvider).",
+      "setup": "agent-module-documentation/evaluation/verify/compiler_scss-registry-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/compiler_scss-registry-cleanup.sh"
+    },
+    {
+      "id": "compiler_scss-compile-arithmetic",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "Using the compiler_scss 'scss' compiler on this site, compile the SCSS '$p: 10px; .box { padding: $p * 2; }' and write the resulting CSS to the file /tmp/compiler_scss_eval_h1.css.",
+      "reset": "agent-module-documentation/evaluation/verify/compiler_scss-compile-arithmetic-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/compiler_scss-compile-arithmetic-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/compiler_scss-compile-arithmetic-reset.sh",
+      "expected_output": "Compile with the scss plugin (plugin.manager.compiler -> createInstance('scss'), CompilerContext with a CompilerInputDirect) and write the returned CSS to /tmp/compiler_scss_eval_h1.css; the output contains 'padding: 20px'."
+    },
+    {
+      "id": "compiler_scss-compile-nesting",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "Using the compiler_scss 'scss' compiler, compile the nested SCSS '.a { .b { color: red; } }' and write the resulting CSS to /tmp/compiler_scss_eval_h2.css.",
+      "reset": "agent-module-documentation/evaluation/verify/compiler_scss-compile-nesting-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/compiler_scss-compile-nesting-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/compiler_scss-compile-nesting-reset.sh",
+      "expected_output": "Compiling the nested SCSS yields the selector '.a .b' with 'color: red'; write that CSS to /tmp/compiler_scss_eval_h2.css."
+    }
+  ]
+}

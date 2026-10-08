@@ -1,0 +1,100 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "language_switcher_langcode",
+  "version": "2.2.x",
+  "note": "language_switcher_langcode is a display-only module: one hook (hook_language_switch_links_alter) rewrites each core Language Switcher link's text to strtoupper($langcode) and moves the language name into the link's title attribute. It has NO config, NO admin route (configure=null), NO permission, NO schema, and its rendered output (getLanguageSwitchLinks) is not reliably reproducible from a CLI/drush context (needs a real request with URL language negotiation). Therefore the medium/hard cases are grounded in the site's live language CONFIGURATION, which is exactly what determines the switcher's tokens: each configured langcode is shown uppercased. Introspection reads which languages are configured and applies the module's rule; execution adds a language so the switcher gains that uppercase token, verified against the live ConfigurableLanguage entity (the module being enabled guarantees the label is the uppercased code).",
+  "evals": [
+    {
+      "id": "language_switcher_langcode-what-it-shows",
+      "mode": "recipe",
+      "prompt": "What exactly does the language_switcher_langcode module change about Drupal's core Language Switcher block links, and what happens to the original language name?",
+      "must_contain_any": [
+        "langcode",
+        "language code",
+        "uppercase",
+        "strtoupper",
+        "title"
+      ],
+      "must_not_contain": [],
+      "expected_output": "It implements hook_language_switch_links_alter() and replaces each link's visible text (the language name) with the uppercased language code, e.g. 'English' -> 'EN'. The original language name is preserved as the link's title (hover tooltip) attribute.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "language_switcher_langcode-hook-name",
+      "mode": "recipe",
+      "prompt": "I want to reproduce (or override) what language_switcher_langcode does to the language switcher. Which Drupal hook does it implement, and does it have any settings I can configure?",
+      "must_contain_any": [
+        "hook_language_switch_links_alter",
+        "language_switch_links_alter"
+      ],
+      "must_not_contain": [],
+      "expected_output": "It implements hook_language_switch_links_alter(). There is no configuration — no settings form, no config entity, no permission (configure=null). To override it, implement the same alter hook and run after it to reset $link['title'].",
+      "difficulty": "easy"
+    },
+    {
+      "id": "language_switcher_langcode-requirements",
+      "mode": "recipe",
+      "prompt": "I enabled language_switcher_langcode but I don't see any language codes anywhere. What do I need on the site for its effect to be visible?",
+      "must_contain_any": [
+        "Language switcher",
+        "block",
+        "two languages",
+        "more than one language",
+        "multiple languages",
+        "second language"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The module only rewrites links produced by the core Language switcher. You need at least two configured languages and the core 'Language switcher' block placed in a region (with language negotiation configured), so switch links are actually rendered — then their labels appear as uppercase langcodes.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "language_switcher_langcode-tokens-ptbr",
+      "mode": "introspection",
+      "prompt": "On this site, with language_switcher_langcode enabled, the language switcher shows one link per configured language, labelled with the uppercased language code. Inspect the site's live language configuration and give the exact label the switcher shows for the non-English language.",
+      "must_contain_any": [
+        "PT-BR"
+      ],
+      "must_not_contain": [],
+      "expected_output": "A 'Portuguese, Brazil' language with langcode pt-br is configured, so the switcher labels its link 'PT-BR' (strtoupper('pt-br')). English shows as 'EN'.",
+      "setup": "agent-module-documentation/evaluation/verify/language_switcher_langcode-tokens-ptbr-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/language_switcher_langcode-tokens-ptbr-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "language_switcher_langcode-tokens-esmx",
+      "mode": "introspection",
+      "prompt": "This site has an additional non-English language configured besides English. Given how language_switcher_langcode renders switcher links, what label will the switcher display for that additional language? Inspect the live language list to answer.",
+      "must_contain_any": [
+        "ES-MX"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The additional language is 'Spanish, Mexico' (langcode es-mx), so the switcher renders its link label as 'ES-MX'.",
+      "setup": "agent-module-documentation/evaluation/verify/language_switcher_langcode-tokens-esmx-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/language_switcher_langcode-tokens-esmx-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "language_switcher_langcode-add-fr",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "This site currently has only English. Add a French (fr) language so that, with language_switcher_langcode enabled, the language switcher will offer an 'FR' link. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/language_switcher_langcode-add-fr-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/language_switcher_langcode-add-fr-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/language_switcher_langcode-add-fr-cleanup.sh",
+      "expected_output": "A configurable language with langcode 'fr' exists (e.g. drush language:add fr, or ConfigurableLanguage::createFromLangcode('fr')->save()); the enabled module then labels its switcher link 'FR'."
+    },
+    {
+      "id": "language_switcher_langcode-add-nl",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "site-owner-layman",
+      "prompt": "My website is only in English right now. I want my little language menu to also offer Dutch, shown as the short code NL. Please make Dutch available on the site.",
+      "reset": "agent-module-documentation/evaluation/verify/language_switcher_langcode-add-nl-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/language_switcher_langcode-add-nl-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/language_switcher_langcode-add-nl-cleanup.sh",
+      "expected_output": "A configurable language with langcode 'nl' (Dutch) is added to the site; language_switcher_langcode then renders its switcher link as 'NL'."
+    }
+  ]
+}

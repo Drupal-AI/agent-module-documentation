@@ -1,0 +1,58 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "cms_content_sync_developer",
+  "version": "3.2.x",
+  "note": "Developer helper submodule for Content Sync: version-mismatch warnings plus Drush commands (csuf, csfed). Its only persistent state is the cms_content_sync.developer config key version_mismatch (a map keyed by flow id), which is safe to read/write via the config factory without any sync backend. Medium reads that config; hard writes it.",
+  "evals": [
+    {
+      "id": "ccs-dev-update-flows-command",
+      "mode": "recipe",
+      "prompt": "In the cms_content_sync_developer module, which Drush command re-exports/updates all Content Sync flow configurations (and clears version warnings), and what is its alias?",
+      "must_contain_any": ["cms_content_sync_developer:update-flows", "csuf", "update-flows"],
+      "must_not_contain": [],
+      "expected_output": "cms_content_sync_developer:update-flows, alias csuf.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "ccs-dev-force-deletion",
+      "mode": "recipe",
+      "prompt": "The cms_content_sync_developer module adds a Drush command to force-delete an entity from Content Sync's bookkeeping. What is the command (or alias) and which options select the entity?",
+      "must_contain_any": ["cms_content_sync_developer:force-entity-deletion", "csfed", "entity_uuid", "bundle"],
+      "must_not_contain": [],
+      "expected_output": "cms_content_sync_developer:force-entity-deletion (alias csfed); selects the entity with --entity_uuid=<uuid> or --bundle=<bundle> on a given entity type, e.g. drush csfed node --entity_uuid=...",
+      "difficulty": "easy"
+    },
+    {
+      "id": "ccs-dev-version-mismatch-config",
+      "mode": "recipe",
+      "prompt": "The cms_content_sync_developer module warns site builders about out-of-date flows. Which config object and key hold that version-mismatch state, and how is it kept out of exported configuration?",
+      "must_contain_any": ["cms_content_sync.developer", "version_mismatch", "config_ignore"],
+      "must_not_contain": [],
+      "expected_output": "State lives in the cms_content_sync.developer config under the key version_mismatch (a map keyed by flow id). hook_config_ignore_settings_alter() adds cms_content_sync.developer:version_mismatch to config_ignore so it is not exported.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "ccs-dev-known-mismatch",
+      "mode": "introspection",
+      "prompt": "On this site, the cms_content_sync_developer module currently records a version mismatch for exactly one flow. Inspect the live cms_content_sync.developer configuration and give the machine id of the flow that is flagged.",
+      "must_contain_any": ["ccs_known_flow"],
+      "must_not_contain": [],
+      "expected_output": "The flow ccs_known_flow is flagged: cms_content_sync.developer:version_mismatch contains the key ccs_known_flow. Read with drush cget cms_content_sync.developer version_mismatch.",
+      "setup": "agent-module-documentation/evaluation/verify/cms_content_sync_developer-known-mismatch-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/cms_content_sync_developer-known-mismatch-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "ccs-dev-flag-mismatch",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this site, use the cms_content_sync_developer state configuration to flag the flow with machine id 'ccs_task_flow' as having a version mismatch. That is, add ccs_task_flow as a key under version_mismatch in the cms_content_sync.developer config and apply it to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/cms_content_sync_developer-flag-mismatch-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/cms_content_sync_developer-flag-mismatch-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/cms_content_sync_developer-flag-mismatch-cleanup.sh",
+      "expected_output": "cms_content_sync.developer:version_mismatch is a map containing the key ccs_task_flow, e.g. \\Drupal::configFactory()->getEditable('cms_content_sync.developer')->set('version_mismatch', ['ccs_task_flow' => ['name' => 'CCS Task Flow']])->save();"
+    }
+  ]
+}

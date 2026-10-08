@@ -1,0 +1,88 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "csv_importer",
+  "version": "2.3.x",
+  "note": "CSV Importer bulk-creates/updates any content entity from an uploaded CSV via one deriver-generated 'importer:<entity_type>' plugin, batched. No config UI, no config entities, no Drush. Cases are `recipe` (response-graded) probing documented facts an agent would otherwise read source to answer; no site mutation.",
+  "evals": [
+    {
+      "id": "csv-importer-route-permission",
+      "mode": "recipe",
+      "prompt": "On Drupal 11 with the csv_importer module, what is the admin path to import a CSV and which permission gates it?",
+      "must_contain_any": ["/admin/content/csv-importer", "access csv importer"],
+      "must_not_contain": [],
+      "expected_output": "The import form is at /admin/content/csv-importer (Content > Import CSV), and every csv_importer route requires the single 'access csv importer' permission (restricted)."
+    },
+    {
+      "id": "csv-importer-no-config",
+      "mode": "recipe",
+      "prompt": "Where is the settings/configuration form for csv_importer, and what config entities does it provide?",
+      "must_contain_any": ["no config", "no settings", "no configuration", "does not"],
+      "expected_output": "It has none — csv_importer declares no `configure` route, ships no config/ directory, and provides no config entities or config schema. The only UI is the import form itself."
+    },
+    {
+      "id": "csv-importer-multivalue-syntax",
+      "mode": "recipe",
+      "prompt": "In a csv_importer CSV, how do I put several values into one multi-value field from a single cell?",
+      "must_contain_any": ["values(", "multiple(", "REGEX_MULTIPLE"],
+      "must_not_contain": [],
+      "expected_output": "Wrap the cell as values(a+b+c) or multiple(a+b+c); the value is split on '+' into an array (matched by ImporterInterface::REGEX_MULTIPLE) to populate a multi-value field."
+    },
+    {
+      "id": "csv-importer-file-attach",
+      "mode": "recipe",
+      "prompt": "How does csv_importer let me attach an image/file to an entity from the CSV, and what kinds of paths are accepted?",
+      "must_contain_any": ["public://", "private://", "http", "stream", "file_get_contents"],
+      "must_not_contain": [],
+      "expected_output": "Put a stream-wrapper URI (public://…, private://…) or an http(s) URL in the cell; the file is downloaded via file.repository and replaced by its file ID (or {target_id} array for multiple). Bare local filesystem paths are rejected for security."
+    },
+    {
+      "id": "csv-importer-update-existing",
+      "mode": "recipe",
+      "prompt": "Can csv_importer update existing entities instead of always creating new ones? How?",
+      "must_contain_any": ["id", "nid", "load", "update"],
+      "must_not_contain": [],
+      "expected_output": "Yes. If a row includes the entity id key column (e.g. nid/uid/tid) matching an existing entity, that entity is loaded and updated; otherwise a new entity is created. A langcode column targets a translation."
+    },
+    {
+      "id": "csv-importer-plugin-type",
+      "mode": "recipe",
+      "prompt": "How does csv_importer support arbitrary content entity types internally — is there a plugin per entity type?",
+      "must_contain_any": ["deriver", "importer:", "ImporterDeriver", "derivative"],
+      "must_not_contain": [],
+      "expected_output": "There is one 'importer' plugin (ImporterBase) whose ImporterDeriver creates a derivative for every content entity type, yielding plugin IDs like importer:node, importer:user, importer:taxonomy_term. The form calls createInstance('importer:' . $entity_type)."
+    },
+    {
+      "id": "csv-importer-pre-import-hook",
+      "mode": "recipe",
+      "prompt": "Which hook lets me modify CSV data in csv_importer before entities are created, and when does it fire?",
+      "must_contain_any": ["hook_csv_importer_pre_import", "csv_importer_pre_import"],
+      "must_not_contain": [],
+      "expected_output": "Implement hook_csv_importer_pre_import(array &$data); it is invoked in ImporterBase::data() after the CSV is parsed/normalized but before any entity is written, with $data['content'] passed by reference."
+    },
+    {
+      "id": "csv-importer-history-revert",
+      "mode": "recipe",
+      "prompt": "Does csv_importer keep a record of imports, and can I undo one?",
+      "must_contain_any": ["csv_importer_history", "history", "revert"],
+      "must_not_contain": [],
+      "expected_output": "Yes. Each import is logged to the csv_importer_history table and listed at /admin/content/csv-importer/history; the revert action deletes the entities that import created and marks the record reverted (status 1)."
+    },
+    {
+      "id": "csv-importer-required-fields",
+      "mode": "recipe",
+      "prompt": "What happens in csv_importer if my CSV is missing a field that the target bundle marks required?",
+      "must_contain_any": ["missing required", "required fields", "aborts", "nothing"],
+      "must_not_contain": [],
+      "expected_output": "The form validation lists the missing required fields ('Your CSV has missing required fields: …') and imports nothing; you must add those columns."
+    },
+    {
+      "id": "csv-importer-parser-service",
+      "mode": "recipe",
+      "prompt": "Which service parses a CSV in csv_importer and what method reads a managed file into rows?",
+      "must_contain_any": ["csv_importer.parser", "getCsvById"],
+      "must_not_contain": [],
+      "expected_output": "The csv_importer.parser service (Drupal\\csv_importer\\Parser); getCsvById(int $fid, string $delimiter=',') returns the rows, getCsvFieldsById() the header row, getCsvEntity() the File entity."
+    }
+  ]
+}

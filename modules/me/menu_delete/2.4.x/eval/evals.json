@@ -1,0 +1,80 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "menu_delete",
+  "version": "2.4.x",
+  "note": "Menu Delete is a UI-only module: hook_form_alter() adds a per-row Delete checkbox and a 'Delete selected' button to the core menu_edit_form, then a confirm form at route menu_delete.multiple_delete_confirm (/admin/structure/menu/manage/{menu}/menu-delete-items, permission 'administer menu') deletes the chosen menu_link_content entities by UUID. Only content links (isDeletable()) get a checkbox; code-defined links do not. No config, no schema, no Drush command, no new permission. Because the deliverable is deletion of menu_link_content links, medium cases inspect the content links of a live menu, and hard cases delete menu_link_content links (all of one menu, or a selective subset) verified against live menu state via core entity queries.",
+  "evals": [
+    {
+      "id": "menu_delete-how-to-bulk-delete",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "Using the Drupal contrib module Menu Delete, how do I delete many links from a menu at once, and what permission is required?",
+      "must_contain_any": ["Delete selected", "administer menu", "menu-delete-items", "menu_edit_form", "Structure"],
+      "must_not_contain": [],
+      "expected_output": "On Structure -> Menus, edit the menu; Menu Delete adds a Delete checkbox per link and a 'Delete selected' button, which sends you to a confirm form (route menu_delete.multiple_delete_confirm at /admin/structure/menu/manage/{menu}/menu-delete-items) to confirm. It requires the core 'administer menu' permission."
+    },
+    {
+      "id": "menu_delete-which-links",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "With Menu Delete, which menu links can actually be selected and deleted, and which cannot?",
+      "must_contain_any": ["menu_link_content", "isDeletable", "content", "code"],
+      "must_not_contain": [],
+      "expected_output": "Only deletable links get a checkbox: content menu links (menu_link_content entities), where $item->link->isDeletable() is TRUE. Links defined in code (*.links.menu.yml) are not deletable and show no checkbox."
+    },
+    {
+      "id": "menu_delete-drush-or-ui",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "Does Menu Delete (version 2.4.x) provide a Drush command, or is its bulk deletion triggered through the admin UI? How is the selection carried to the confirmation step?",
+      "must_contain_any": ["UI", "menu edit", "Delete selected", "tempstore", "confirm"],
+      "must_not_contain": [],
+      "expected_output": "It is UI-only in this version (no Drush command). You select links on the core menu edit form and click 'Delete selected'; the chosen items are stored in the private tempstore 'menu_delete_item_confirm' (keyed by user) and carried to the confirm form which deletes them."
+    },
+    {
+      "id": "menu_delete-count-links",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "This site has a menu with machine name 'md_known'. Inspect the live site and state how many content (menu_link_content) links it currently contains.",
+      "must_contain_any": ["3", "three"],
+      "must_not_contain": [],
+      "setup": "agent-module-documentation/evaluation/verify/menu_delete-known-menu-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/menu_delete-known-menu-cleanup.sh",
+      "expected_output": "The md_known menu contains 3 content links (MD Alpha, MD Bravo, MD Charlie). Count via a menu_link_content entity query filtered on menu_name = md_known."
+    },
+    {
+      "id": "menu_delete-find-link-title",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "Inspect the menu with machine name 'md_src' on this live site and give the title of the content menu link it contains.",
+      "must_contain_any": ["MD Findme Link", "MD Findme"],
+      "must_not_contain": [],
+      "setup": "agent-module-documentation/evaluation/verify/menu_delete-find-link-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/menu_delete-find-link-cleanup.sh",
+      "expected_output": "The md_src menu contains a single content link titled 'MD Findme Link'."
+    },
+    {
+      "id": "menu_delete-clear-menu",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "The menu with machine name 'md_task' on this site contains several content menu links. Delete ALL of its content menu links (the job Menu Delete performs), leaving the menu itself in place. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/menu_delete-clear-menu-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/menu_delete-clear-menu-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/menu_delete-clear-menu-cleanup.sh",
+      "expected_output": "The md_task menu still exists but has zero menu_link_content links (a menu_link_content query on menu_name = md_task returns none)."
+    },
+    {
+      "id": "menu_delete-partial",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "site-builder",
+      "prompt": "The menu 'md_part' has four links: 'MD Keep A', 'MD Del B', 'MD Del C', and 'MD Keep D'. Delete only the two links whose titles start with 'MD Del', keeping the two 'MD Keep' links. Apply the change on the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/menu_delete-partial-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/menu_delete-partial-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/menu_delete-partial-cleanup.sh",
+      "expected_output": "After deletion the md_part menu contains 'MD Keep A' and 'MD Keep D' only; 'MD Del B' and 'MD Del C' are gone."
+    }
+  ]
+}

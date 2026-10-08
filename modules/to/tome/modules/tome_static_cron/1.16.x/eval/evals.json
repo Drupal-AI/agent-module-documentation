@@ -1,0 +1,58 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "tome_static_cron",
+  "version": "1.16.x",
+  "note": "Tome Static Cron generates the Tome Static site incrementally on cron using a queue worker. Its only configuration is the config object tome_static_cron.settings with a single required key, base_url (validated as a URL by the settings form at /admin/config/services/tome_static_cron/settings, permission 'use tome static'). If base_url is empty, hook_cron does nothing. It queues uncached paths into the 'tome_static_cron' queue and TomeStaticQueueWorker renders them on later cron runs. It adds no Drush command. Medium reads the configured base_url; hard sets a valid base_url. Both are pure-config operations (no rendering), so they are safe and reliable on the shared host. The reset/cleanup delete the config object, restoring the shipped baseline where no base_url is set.",
+  "evals": [
+    {
+      "id": "tome_static_cron-config-key",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "After enabling the tome_static_cron module, what must you configure for cron to actually generate static HTML, and at which admin path?",
+      "must_contain_any": ["base_url", "Base URL", "/admin/config/services/tome_static_cron/settings"],
+      "must_not_contain": [],
+      "expected_output": "Set the Base URL (config key base_url in tome_static_cron.settings) at /admin/config/services/tome_static_cron/settings. If base_url is empty, hook_cron does nothing."
+    },
+    {
+      "id": "tome_static_cron-how-it-works",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "How does tome_static_cron generate the static site differently from running 'drush tome:static'? Mention the queue it uses.",
+      "must_contain_any": ["queue", "tome_static_cron", "queue worker", "TomeStaticQueueWorker", "cron"],
+      "must_not_contain": [],
+      "expected_output": "On each cron run it enqueues uncached paths into the 'tome_static_cron' queue and a TomeStaticQueueWorker renders them across subsequent cron runs (incremental, one cycle at a time), instead of a single blocking 'drush tome:static' build. Already-cached paths are skipped."
+    },
+    {
+      "id": "tome_static_cron-drush",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "Does tome_static_cron add its own Drush command, and what triggers a cron static build?",
+      "must_contain_any": ["no", "cron", "drush cron", "hook_cron"],
+      "must_not_contain": [],
+      "expected_output": "No, it adds no Drush command. Builds are triggered by Drupal cron (system cron or 'drush cron') via hook_cron(), provided base_url is set."
+    },
+    {
+      "id": "tome_static_cron-configured-base-url",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "This site already has Tome Static Cron configured. Inspect the live configuration and report the Base URL it will use for cron static generation.",
+      "must_contain_any": ["static.example.org"],
+      "must_not_contain": [],
+      "setup": "agent-module-documentation/evaluation/verify/tome_static_cron-base-url-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/tome_static_cron-base-url-cleanup.sh",
+      "expected_output": "https://static.example.org — stored at tome_static_cron.settings:base_url (read with 'drush cget tome_static_cron.settings base_url')."
+    },
+    {
+      "id": "tome_static_cron-set-base-url",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "Enable cron-driven static generation on this site by configuring Tome Static Cron with a valid Base URL (use https://cron-build.example.com). Apply it to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/tome_static_cron-base-url-cleanup.sh",
+      "verify": "agent-module-documentation/evaluation/verify/tome_static_cron-base-url-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/tome_static_cron-base-url-cleanup.sh",
+      "expected_output": "Set tome_static_cron.settings:base_url to a valid absolute URL (e.g. https://cron-build.example.com) via the settings form or 'drush cset tome_static_cron.settings base_url https://cron-build.example.com -y'. Verify passes when base_url is a non-empty valid URL."
+    }
+  ]
+}

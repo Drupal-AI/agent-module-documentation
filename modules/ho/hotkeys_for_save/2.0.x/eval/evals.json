@@ -1,0 +1,97 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "hotkeys_for_save",
+  "version": "2.0.x",
+  "note": "Hotkeys for Save is a pure-JS module: on Ctrl+S/Cmd+S (keyCode 83 + ctrl/meta) it preventDefault()s the browser Save As dialog and clicks a submit button, trying save-and-continue ids (#edit-save-continue/#edit-next/#edit-continue) first, then plain save ids (#edit-submit/#edit-save/#edit-actions-save/#edit-return/#edit-actions-submit/#edit-delete-entities) and Gin data-drupal-selector fallbacks, plus CKEditor listeners. The library hotkeys_for_save/hotkeys_for_save is attached in hook_page_attachments only when the user has permission 'use hotkeys for save' (granted to the administrator role on install). No configure route, no config object, no Drush, no plugins. Its only stateful config is which roles hold 'use hotkeys for save', so medium/hard cases are grounded in namespaced role config (hfs_role/hfs_target/hfs_revoke).",
+  "evals": [
+    {
+      "id": "hotkeys_for_save-keys",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "What keyboard shortcut does the hotkeys_for_save module add, and what does it do when pressed on a Drupal form?",
+      "must_contain_any": [
+        "Ctrl+S",
+        "Cmd+S",
+        "ctrlKey",
+        "metaKey"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Ctrl+S (Windows/Linux) or Cmd+S (Mac) clicks the form's Save/submit button and calls preventDefault() so the browser's native 'Save As' dialog does not open (keydown with keyCode 83 and ctrlKey/metaKey)."
+    },
+    {
+      "id": "hotkeys_for_save-button-priority",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "When I press the save hotkey and a page has both a 'Save' and a 'Save and continue' button, which does hotkeys_for_save click, and which selectors/ids does it look for?",
+      "must_contain_any": [
+        "edit-save-continue",
+        "edit-continue",
+        "edit-next",
+        "edit-submit",
+        "data-drupal-selector"
+      ],
+      "must_not_contain": [],
+      "expected_output": "It prefers the 'Save and continue' button first (checks #edit-save-continue, #edit-next, #edit-continue), and only if none exists falls back to plain Save buttons (#edit-submit, #edit-save, #edit-actions-save, #edit-return, #edit-actions-submit, #edit-delete-entities) and data-drupal-selector fallbacks (edit-submit / edit-actions-submit / edit-save) used by themes like Gin."
+    },
+    {
+      "id": "hotkeys_for_save-permission",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "How is the save hotkey turned on for a user in hotkeys_for_save, which permission controls it, and who gets it by default?",
+      "must_contain_any": [
+        "use hotkeys for save"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The library is attached (in hook_page_attachments) only for users with the 'use hotkeys for save' permission. That permission is granted to the administrator role on install; the module warns not to give it to ordinary users because it suppresses the browser Save As dialog."
+    },
+    {
+      "id": "hotkeys_for_save-which-role",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "On this site a custom role has been given the hotkeys_for_save save-hotkey permission. Inspect the live role configuration and tell me the machine name of that role.",
+      "must_contain_any": [
+        "hfs_role"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The role hfs_role has the 'use hotkeys for save' permission (user.role.hfs_role:permissions includes it).",
+      "setup": "agent-module-documentation/evaluation/verify/hotkeys_for_save-role-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/hotkeys_for_save-role-cleanup.sh"
+    },
+    {
+      "id": "hotkeys_for_save-which-perm",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "The role hfs_role on this site has been granted the permission that enables the hotkeys_for_save Ctrl+S/Cmd+S shortcut. Inspect the role and give the exact machine name of that permission.",
+      "must_contain_any": [
+        "use hotkeys for save"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The permission is 'use hotkeys for save' (drush config:get user.role.hfs_role permissions).",
+      "setup": "agent-module-documentation/evaluation/verify/hotkeys_for_save-role-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/hotkeys_for_save-role-cleanup.sh"
+    },
+    {
+      "id": "hotkeys_for_save-grant",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this site, create a role with the machine name 'hfs_target' and give it exactly the permission that enables the hotkeys_for_save save shortcut, so members of that role can use Ctrl+S/Cmd+S to save. Apply it to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/hotkeys_for_save-grant-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/hotkeys_for_save-grant-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/hotkeys_for_save-grant-cleanup.sh",
+      "expected_output": "A role hfs_target exists and holds the 'use hotkeys for save' permission (create the role, grantPermission('use hotkeys for save'), save; or drush role:create hfs_target + drush role:perm:add hfs_target 'use hotkeys for save')."
+    },
+    {
+      "id": "hotkeys_for_save-revoke",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "The role 'hfs_revoke' on this site currently has the hotkeys_for_save save-shortcut permission. Remove that permission from the role (keep the role itself) so its members can no longer use the Ctrl+S/Cmd+S save hotkey. Apply the change live.",
+      "reset": "agent-module-documentation/evaluation/verify/hotkeys_for_save-revoke-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/hotkeys_for_save-revoke-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/hotkeys_for_save-revoke-cleanup.sh",
+      "expected_output": "The role hfs_revoke still exists but no longer has 'use hotkeys for save' (revokePermission('use hotkeys for save')->save(), or drush role:perm:remove hfs_revoke 'use hotkeys for save')."
+    }
+  ]
+}

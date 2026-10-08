@@ -1,0 +1,103 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "pdf_api",
+  "version": "2.4.x",
+  "note": "PDF API defines a PdfGenerator plugin type (manager plugin.manager.pdf_generator, dir Plugin/PdfGenerator, annotation @PdfGenerator, interface PdfGeneratorInterface, base PdfGeneratorBase) with bundled backends dompdf/mpdf/tcpdf/wkhtmltopdf. Its only bundled UI is the Dompdf settings form (route pdf_api.settings at /admin/config/system/pdf-api, permission 'administer site configuration') persisting to the config object pdf_api.dom_pdf.settings. Medium/hard cases are grounded in that real config object (keys dpi, defaultFont, isRemoteEnabled, isJavascriptEnabled with shipped defaults 96 / serif / true / true); introspection reads a known value back, execution changes a value and verifies the live config. No shared entities are touched, so cases are namespaced by using only pdf_api's own config.",
+  "evals": [
+    {
+      "id": "pdf_api-config-object",
+      "mode": "recipe",
+      "prompt": "On a Drupal 11 site with the pdf_api (PDF API) module, where are the Dompdf backend settings stored and at what admin path are they edited?",
+      "must_contain_any": [
+        "pdf_api.dom_pdf.settings",
+        "/admin/config/system/pdf-api",
+        "pdf_api.settings"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The Dompdf settings form (route pdf_api.settings) lives at /admin/config/system/pdf-api and saves to the config object pdf_api.dom_pdf.settings (keys such as defaultFont, dpi, pdfBackend, isRemoteEnabled, isJavascriptEnabled).",
+      "difficulty": "easy"
+    },
+    {
+      "id": "pdf_api-backends",
+      "mode": "recipe",
+      "prompt": "Which PDF generator backends ship with the Drupal pdf_api module, and how would I load one from code to generate a PDF?",
+      "must_contain_any": [
+        "dompdf",
+        "mpdf",
+        "tcpdf",
+        "wkhtmltopdf",
+        "plugin.manager.pdf_generator"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Four backends ship: dompdf, mpdf, tcpdf, wkhtmltopdf (plus puphpeteer from the submodule). Load one via the plugin manager service plugin.manager.pdf_generator, e.g. \\Drupal::service('plugin.manager.pdf_generator')->createInstance('dompdf'), then call addPage()/save()/stream().",
+      "difficulty": "easy"
+    },
+    {
+      "id": "pdf_api-new-backend",
+      "mode": "recipe",
+      "prompt": "How do I add a brand-new PDF backend to the Drupal pdf_api module? Name the plugin annotation, the directory plugins are discovered from, and the interface/base class to use.",
+      "must_contain_any": [
+        "@PdfGenerator",
+        "Plugin/PdfGenerator",
+        "PdfGeneratorInterface",
+        "PdfGeneratorBase"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Create a plugin class in src/Plugin/PdfGenerator/ annotated with @PdfGenerator (id, module, title, description, required_class), implementing Drupal\\pdf_api\\Plugin\\PdfGeneratorInterface and extending PdfGeneratorBase. The manager plugin.manager.pdf_generator discovers it; clear caches to register.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "pdf_api-known-dpi",
+      "mode": "introspection",
+      "prompt": "This Drupal site's pdf_api Dompdf backend has had its image DPI changed from the default. Inspect the live pdf_api configuration and state the current DPI value and the current default font.",
+      "must_contain_any": [
+        "150"
+      ],
+      "must_not_contain": [],
+      "expected_output": "In pdf_api.dom_pdf.settings the dpi is 150 (default is 96) and defaultFont is 'DejaVu Sans'. Read with: drush cget pdf_api.dom_pdf.settings dpi.",
+      "setup": "agent-module-documentation/evaluation/verify/pdf_api-known-dpi-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/pdf_api-known-dpi-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "pdf_api-remote-disabled",
+      "mode": "introspection",
+      "prompt": "For security review: on this site, is the Dompdf backend of pdf_api currently allowed to load remote images/stylesheets? Inspect the live configuration and answer which setting controls it and its current value.",
+      "must_contain_any": [
+        "isRemoteEnabled",
+        "false",
+        "disabled",
+        "not allowed",
+        "no"
+      ],
+      "must_not_contain": [],
+      "expected_output": "No — isRemoteEnabled is false in pdf_api.dom_pdf.settings (default is true). Read with: drush cget pdf_api.dom_pdf.settings isRemoteEnabled.",
+      "setup": "agent-module-documentation/evaluation/verify/pdf_api-remote-disabled-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/pdf_api-remote-disabled-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "pdf_api-set-dpi-font",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, configure the pdf_api Dompdf backend so that generated PDFs use an image DPI of 300 and a default font of 'sans-serif'. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/pdf_api-set-dpi-font-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/pdf_api-set-dpi-font-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/pdf_api-set-dpi-font-cleanup.sh",
+      "expected_output": "In pdf_api.dom_pdf.settings set dpi to 300 (integer) and defaultFont to 'sans-serif' (e.g. drush cset -y pdf_api.dom_pdf.settings dpi 300 and drush cset -y pdf_api.dom_pdf.settings defaultFont sans-serif, or via the form at /admin/config/system/pdf-api)."
+    },
+    {
+      "id": "pdf_api-disable-js",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "Harden the pdf_api Dompdf backend on this site by disabling inline JavaScript execution in generated PDFs. Apply the change to the live configuration.",
+      "reset": "agent-module-documentation/evaluation/verify/pdf_api-disable-js-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/pdf_api-disable-js-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/pdf_api-disable-js-cleanup.sh",
+      "expected_output": "In pdf_api.dom_pdf.settings set isJavascriptEnabled to false (drush cset -y pdf_api.dom_pdf.settings isJavascriptEnabled 0, or untick 'Enable inline JavaScript' on the form). The default is true."
+    }
+  ]
+}

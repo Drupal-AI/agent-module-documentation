@@ -1,0 +1,80 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "entity_access_by_role_field",
+  "version": "2.0.x",
+  "note": "Entity Access by Role Field provides a field type entity_access_by_role_field whose values are role_id + access (allowed|forbidden), enforced by hook_entity_access (entity_access_by_role_field_entity_access). Per field instance you set 'operations' (subset of view/update/delete; edit=update) and 'empty_roles_access_fallback' (neutral|allowed|forbidden). One restricted permission 'bypass entity_access_by_role_field permissions'. No configure route. It does NOT alter Views queries. All medium/hard cases are grounded in real field-instance config on node.article: introspection reads back a field's fallback and operations settings; execution changes a field's fallback and creates a new field of the type, verified against live FieldConfig. Fields are namespaced field_eabrf_*.",
+  "evals": [
+    {
+      "id": "entity_access_by_role_field-mechanism",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "How does the Drupal module entity_access_by_role_field decide whether a user can access an entity? What field does it add and which access hook enforces it?",
+      "must_contain_any": ["hook_entity_access", "entity_access_by_role_field_entity_access", "hook entity access"],
+      "must_not_contain": [],
+      "expected_output": "It adds a field of type entity_access_by_role_field holding role_id + access (allowed/forbidden) pairs, and enforces it in hook_entity_access() (entity_access_by_role_field_entity_access), intersecting the entity's selected roles with the current user's roles."
+    },
+    {
+      "id": "entity_access_by_role_field-instance-settings",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "When configuring an 'Entity Access by Role' field instance in entity_access_by_role_field, which two per-field settings control which operations are governed and what happens when no role is selected? Give their setting keys and possible values.",
+      "must_contain_any": ["operations", "empty_roles_access_fallback"],
+      "must_not_contain": [],
+      "expected_output": "operations (a subset of view/update/delete; edit is 'update') and empty_roles_access_fallback (neutral | allowed | forbidden)."
+    },
+    {
+      "id": "entity_access_by_role_field-bypass-perm",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "Which permission lets a user skip all of entity_access_by_role_field's per-entity access checks, and what does it do?",
+      "must_contain_any": ["bypass entity_access_by_role_field permissions"],
+      "must_not_contain": [],
+      "expected_output": "The restricted permission 'bypass entity_access_by_role_field permissions' — a user who has it is always allowed and the field logic is short-circuited."
+    },
+    {
+      "id": "entity_access_by_role_field-fallback",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "On this Drupal site, the Article content type has an Entity Access by Role field named field_eabrf_fb. When a content editor leaves its roles empty, what access fallback applies? Inspect the live field configuration.",
+      "must_contain_any": ["forbidden"],
+      "must_not_contain": [],
+      "expected_output": "forbidden — field.field.node.article.field_eabrf_fb settings.empty_roles_access_fallback is 'forbidden'.",
+      "setup": "agent-module-documentation/evaluation/verify/entity_access_by_role_field-fallback-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/entity_access_by_role_field-fallback-cleanup.sh"
+    },
+    {
+      "id": "entity_access_by_role_field-operations",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "On this Drupal site, the Article content type has an Entity Access by Role field named field_eabrf_ops. Which entity operations does that field actually control access for? Inspect the live field configuration.",
+      "must_contain_any": ["view"],
+      "must_not_contain": [],
+      "expected_output": "Only 'view' — field.field.node.article.field_eabrf_ops settings.operations has view enabled while update and delete are '0'.",
+      "setup": "agent-module-documentation/evaluation/verify/entity_access_by_role_field-operations-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/entity_access_by_role_field-operations-cleanup.sh"
+    },
+    {
+      "id": "entity_access_by_role_field-set-fallback",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, the Article content type has an Entity Access by Role field field_eabrf_task. Change its instance setting so that when no role is selected on an entity, access is denied (the empty-roles fallback becomes 'forbidden'). Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/entity_access_by_role_field-set-fallback-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/entity_access_by_role_field-set-fallback-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/entity_access_by_role_field-set-fallback-cleanup.sh",
+      "expected_output": "field.field.node.article.field_eabrf_task settings.empty_roles_access_fallback is set to 'forbidden' (e.g. load the FieldConfig, setSetting('empty_roles_access_fallback','forbidden') and save)."
+    },
+    {
+      "id": "entity_access_by_role_field-create-field",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, add an 'Entity Access by Role' field named field_eabrf_new to the Article content type so editors can control per-node role access. Create the field storage and instance on the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/entity_access_by_role_field-create-field-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/entity_access_by_role_field-create-field-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/entity_access_by_role_field-create-field-cleanup.sh",
+      "expected_output": "A FieldStorageConfig node.field_eabrf_new of type entity_access_by_role_field plus a FieldConfig on node.article exist (e.g. FieldStorageConfig::create([...'type'=>'entity_access_by_role_field'])->save() then FieldConfig::create([...bundle 'article'])->save())."
+    }
+  ]
+}

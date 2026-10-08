@@ -1,0 +1,80 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "select2_all",
+  "version": "1.6.x",
+  "note": "Select2 (select2_all) is a front-end module with NO config, schema, permissions, or Drush. hook_element_info_alter() adds Select2::preRenderSelect as a #pre_render on the 'select' element type (and types starting select_ / ending _select); it attaches the select2_all/drupal.select2 library (which depends on select2_all/select2) mainly in admin context. Per-element opt-in/out uses the #select2 FAPI property or the select2-enable / select2-disable CSS classes. The only server-observable, module-specific state is which source the 'select2' library resolves to: hook_library_info_alter() replaces the CDN (jsDelivr select2@4.1.0-rc.0) with a LOCAL copy when DRUPAL_ROOT/libraries/select2/dist exists, pointing js/css at /libraries/select2/dist/... . medium cases inspect the resolved library (local vs CDN) via \\Drupal::service('library.discovery'); hard cases install the library locally and verify the 'select2' library JS resolves to /libraries/select2/dist. easy cases are grounded in the opt-in/out mechanism and targeting rules.",
+  "evals": [
+    {
+      "id": "select2_all-targeting",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "How does the Drupal select2_all module decide which form elements get the Select2 widget, and in what context does it apply by default?",
+      "must_contain_any": ["element_info_alter", "select", "pre_render", "preRenderSelect", "admin"],
+      "must_not_contain": [],
+      "expected_output": "It uses hook_element_info_alter() to add a #pre_render callback (Select2::preRenderSelect) to the 'select' element type (plus types starting select_ or ending _select). By default it applies in admin context — an admin route, or when the active theme is the admin theme."
+    },
+    {
+      "id": "select2_all-opt-out",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "I want one specific select element to NOT be turned into a Select2 widget by select2_all. What is the recommended way to opt a single element out (and how would I force one in)?",
+      "must_contain_any": ["select2-disable", "#select2", "select2-enable"],
+      "must_not_contain": [],
+      "expected_output": "Opt out by setting the FAPI property #select2 => FALSE or adding the CSS class 'select2-disable' to the element (preRenderSelect returns early and attaches no library). Force it on with #select2 => TRUE or the class 'select2-enable'."
+    },
+    {
+      "id": "select2_all-library-source",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "Where does select2_all load the Select2 JavaScript library from by default, and how do I make Drupal serve it locally instead?",
+      "must_contain_any": ["libraries/select2/dist", "CDN", "jsDelivr", "library_info_alter"],
+      "must_not_contain": [],
+      "expected_output": "By default the 'select2' library loads from the jsDelivr CDN (select2@4.1.0-rc.0). hook_library_info_alter() switches to a local copy if DRUPAL_ROOT/libraries/select2/dist exists, pointing js/css at /libraries/select2/dist/js/select2.min.js and .../css/select2.min.css. Place the library there and rebuild caches."
+    },
+    {
+      "id": "select2_all-detect-local",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "On this site, inspect the resolved select2_all 'select2' library definition and state whether the Select2 JavaScript is currently being served from the external CDN or from a local path.",
+      "must_contain_any": ["local", "/libraries/select2/dist"],
+      "must_not_contain": [],
+      "setup": "agent-module-documentation/evaluation/verify/select2_all-local-lib-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/select2_all-local-lib-cleanup.sh",
+      "expected_output": "It is served locally: \\Drupal::service('library.discovery')->getLibraryByName('select2_all','select2') resolves the JS to /libraries/select2/dist/js/select2.min.js, because select2_all_library_info_alter() found web/libraries/select2/dist."
+    },
+    {
+      "id": "select2_all-local-js-path",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "The Select2 library on this site is being served from a local copy. Inspect the live library definition and give the exact JavaScript path (URL) that the select2_all 'select2' library now resolves to.",
+      "must_contain_any": ["/libraries/select2/dist/js/select2.min.js"],
+      "must_not_contain": [],
+      "setup": "agent-module-documentation/evaluation/verify/select2_all-local-lib-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/select2_all-local-lib-cleanup.sh",
+      "expected_output": "The JS resolves to /libraries/select2/dist/js/select2.min.js (from getLibraryByName('select2_all','select2') -> js[0]['data'])."
+    },
+    {
+      "id": "select2_all-serve-local-expert",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "Configure this site so the select2_all module serves the Select2 library from a LOCAL copy instead of the jsDelivr CDN. Place the library where select2_all_library_info_alter() expects it (DRUPAL_ROOT/libraries/select2/dist, with js/select2.min.js and css/select2.min.css) and rebuild caches so the 'select2' library resolves to the local files.",
+      "reset": "agent-module-documentation/evaluation/verify/select2_all-serve-local-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/select2_all-serve-local-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/select2_all-serve-local-cleanup.sh",
+      "expected_output": "After placing web/libraries/select2/dist/js/select2.min.js (and css/select2.min.css) and running drush cr, getLibraryByName('select2_all','select2') resolves its JS to /libraries/select2/dist/js/select2.min.js instead of the external CDN URL."
+    },
+    {
+      "id": "select2_all-serve-local-layman",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "site-owner",
+      "prompt": "Our site can't load scripts from outside CDNs. Make the searchable dropdowns (the Select2 module) load their JavaScript from our own server instead of the internet, and make the change take effect.",
+      "reset": "agent-module-documentation/evaluation/verify/select2_all-serve-local-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/select2_all-serve-local-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/select2_all-serve-local-cleanup.sh",
+      "expected_output": "Same end state as the expert case: the Select2 library is installed locally under web/libraries/select2/dist and, after a cache rebuild, the select2_all 'select2' library serves its JS from /libraries/select2/dist/js/select2.min.js (no external CDN)."
+    }
+  ]
+}

@@ -1,0 +1,95 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "bp_statistics",
+  "version": "5.0.x",
+  "note": "bp_statistics is a config-only submodule of bootstrap_paragraphs and the only one that installs TWO paragraph types: an outer bp_statistics container and an inner bp_stat item. The outer bundle carries the shared bootstrap_paragraphs styling fields bp_header/bp_width/bp_background plus bp_statistic — an entity_reference_revisions storage with cardinality 4 whose handler_settings.target_bundles allows only bp_stat, edited with the entity_reference_paragraphs widget (edit_mode closed, add_mode dropdown, default_paragraph_type bp_stat). The inner bp_stat bundle has three plain string fields: bp_statistic_header, bp_statistic_item, bp_statistic_description. Layout is decided in twig: field--paragraph--bp-statistic.html.twig wraps each item in paragraph--type--bp-statistics__{{ loop.length }}col, so three stats render as __3col and four as __4col. There is no configure route, settings form, permission, Drush command or plugin; PHP is only hook_theme() + hook_help(). Config ships in config/optional so it survives uninstall. Medium and hard cases are grounded in that real nested structure on live content.",
+  "evals": [
+    {
+      "id": "bp_statistics-stat-fields",
+      "mode": "recipe",
+      "prompt": "On a Drupal 11 site with the Bootstrap Paragraphs Statistics (bp_statistics) module installed, an individual statistic is its own paragraph bundle. What are the machine names of the three fields on that inner bundle, and what field type are they?",
+      "must_contain_any": [
+        "bp_statistic_header",
+        "bp_statistic_item",
+        "bp_statistic_description"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The inner bundle is bp_stat, and its three fields are bp_statistic_header, bp_statistic_item and bp_statistic_description — all plain core `string` fields with max_length 255, cardinality 1, rendered with the string formatter.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "bp_statistics-column-count",
+      "mode": "recipe",
+      "prompt": "The Bootstrap Paragraphs Statistics module renders its statistics in columns, but there is no column-count setting anywhere in the admin UI. How does it decide how many columns to use, and what CSS class does it emit for a row containing three statistics?",
+      "must_contain_any": [
+        "loop.length",
+        "__3col",
+        "3col",
+        "paragraph--type--bp-statistics__"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The field template field--paragraph--bp-statistic.html.twig wraps each item in a div whose class is built from the twig loop counter: paragraph--type--bp-statistics__{{ loop.length }}col. loop.length is the number of stats in the field, so three statistics produce paragraph--type--bp-statistics__3col and four produce __4col. The shipped CSS turns those into 33.33% / 25% floated columns above 768px.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "bp_statistics-nesting-field",
+      "mode": "recipe",
+      "prompt": "In the Drupal module bp_statistics, how does the outer Statistics paragraph hold its individual stats? Name the field type used for that relationship, the widget used to edit them inline, and the maximum number of stats one Statistics paragraph can hold.",
+      "must_contain_any": [
+        "entity_reference_revisions",
+        "entity_reference_paragraphs"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The outer bp_statistics bundle has a field bp_statistic of type entity_reference_revisions (storage field.storage.paragraph.bp_statistic) with cardinality 4, whose handler_settings.target_bundles allows only bp_stat. It is edited inline with the entity_reference_paragraphs widget (title 'Stat', edit_mode closed, add_mode dropdown, default_paragraph_type bp_stat). Raise the storage cardinality to allow more than four.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "bp_statistics-known-stat",
+      "mode": "introspection",
+      "prompt": "This Drupal site has an article titled 'BP Statistics Eval Node' containing a Bootstrap Paragraphs Statistics band with several nested Stat paragraphs. Inspect the live site and tell me the Statistic value (the bp_statistic_item) belonging to the stat whose header is 'Uptime'.",
+      "must_contain_any": [
+        "99.98"
+      ],
+      "must_not_contain": [],
+      "expected_output": "99.98%. The node's field_bpstat_a references a bp_statistics paragraph whose bp_statistic field holds three bp_stat children; the one with bp_statistic_header 'Uptime' has bp_statistic_item '99.98%'.",
+      "setup": "agent-module-documentation/evaluation/verify/bp_statistics-known-stat-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/bp_statistics-known-stat-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "bp_statistics-known-background",
+      "mode": "introspection",
+      "prompt": "On this Drupal site there is an article titled 'BP Statistics Background Node' whose Bootstrap Paragraphs Statistics paragraph has a Background option selected. Inspect the live site and give the exact value stored in that paragraph's bp_background field.",
+      "must_contain_any": [
+        "paragraph--color--info"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The stored value is `paragraph--color paragraph--color--info` (the 'Brand Info Color' option from the shared bootstrap_paragraphs bp_background allowed values). The paragraph is referenced from the node's field_bpstat_b field.",
+      "setup": "agent-module-documentation/evaluation/verify/bp_statistics-known-background-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/bp_statistics-known-background-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "bp_statistics-attach-field",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, add a Paragraphs field named field_bpstat_panel to the Article content type for Bootstrap Paragraphs Statistics bands. It must be an entity_reference_revisions field targeting paragraphs with cardinality 1, and it must allow ONLY the outer Statistics bundle (not the inner Stat bundle, which is reached through the Statistics paragraph's own field). Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/bp_statistics-attach-field-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/bp_statistics-attach-field-verify.sh",
+      "expected_output": "field.storage.node.field_bpstat_panel is entity_reference_revisions with target_type paragraph and cardinality 1, and field.field.node.article.field_bpstat_panel has handler 'default:paragraph' with handler_settings.target_bundles == {bp_statistics: bp_statistics}."
+    },
+    {
+      "id": "bp_statistics-build-stats",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "site-builder",
+      "prompt": "This Drupal site's Article type has a Paragraphs field field_bpstat_task that accepts Bootstrap Paragraphs Statistics bands. Create a published Article titled exactly 'BP Statistics Task' containing one Statistics band whose header is 'By The Numbers' and whose width is set to the Bootstrap Paragraphs 'Wide' option. The band must contain exactly three statistics: Uptime = 99.9%, Customers = 4,200, and Regions = 12. Save it to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/bp_statistics-build-stats-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/bp_statistics-build-stats-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/bp_statistics-build-stats-cleanup.sh",
+      "expected_output": "An article 'BP Statistics Task' whose field_bpstat_task references a bp_statistics paragraph with bp_header 'By The Numbers' and bp_width 'paragraph--width--wide', whose bp_statistic field holds exactly three bp_stat paragraphs with bp_statistic_header/bp_statistic_item pairs Uptime/99.9%, Customers/4,200 and Regions/12."
+    }
+  ]
+}

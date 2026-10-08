@@ -1,0 +1,43 @@
+#!/usr/bin/env bash
+# Block committing private security artifacts, or adding a NEW public leak pointer.
+# Bypass (only if you are 100% sure) with:  git commit --no-verify
+set -u
+HERE="$(cd "$(dirname "$0")" && pwd)"
+. "$HERE/_leak-guard.sh"
+
+fail=0
+
+# (1) staged private artifacts
+while IFS= read -r p; do
+  [ -z "$p" ] && continue
+  if is_private_artifact "$p"; then
+    echo "BLOCKED: refusing to commit PRIVATE security artifact: $p" >&2
+    echo "         Security findings are local-only and must never enter the repo." >&2
+    fail=1
+  fi
+done < <(git diff --cached --name-only --diff-filter=AM)
+
+# (2) new leak pointers added inside public docs (added lines only -> existing
+#     committed leaks do NOT trip this; only NEW additions do)
+while IFS= read -r p; do
+  [ -z "$p" ] && continue
+  is_public_doc "$p" || continue
+  while IFS= read -r added; do
+    # strip leading '+'
+    line="${added:1}"
+    hit="$(line_has_leak_pointer "$line")"
+    if [ -n "$hit" ]; then
+      echo "BLOCKED: new security pointer in PUBLIC doc $p:" >&2
+      echo "         > ${line}" >&2
+      echo "         Move the finding to the module-root security.md (local-only); keep public docs security-silent." >&2
+      fail=1
+    fi
+  done < <(git diff --cached -U0 -- "$p" | grep -E '^\+' | grep -vE '^\+\+\+')
+done < <(git diff --cached --name-only --diff-filter=AM)
+
+if [ "$fail" -ne 0 ]; then
+  echo "" >&2
+  echo "Commit aborted by leak-guard. To override intentionally: git commit --no-verify" >&2
+  exit 1
+fi
+exit 0

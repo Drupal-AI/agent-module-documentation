@@ -1,0 +1,102 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "publication_date",
+  "version": "3.1.x",
+  "note": "Publication Date adds a single revisionable, translatable `published_at` timestamp base field to nodes (no settings form, no config objects, no Drush). Cases span three tiers: `easy`/recipe (response-graded facts from 3.1.x/agent/ — field name, token, lifecycle behavior), `medium`/introspection (a setup script creates KNOWN nodes with set/unset published_at on the live site, the agent inspects via drush to answer, cleanup restores baseline), and `hard`/execution (reset clears state, the agent mutates live state — back-dates a node, grants a permission, configures a display — and a verify script checks the result). The module is deliberately small, so hard cases exercise its real surface: the field value, its permissions, and its display.",
+  "evals": [
+    {
+      "id": "publication_date-field-name",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "On a Drupal 11 site with the Publication Date module, what is the machine name of the field it adds to nodes, and which entity type does it attach to? What does the field record?",
+      "must_contain_any": ["published_at"],
+      "must_not_contain": [],
+      "expected_output": "It adds a base field `published_at` (label 'Published on') to the node entity type, recording the timestamp of when the node was first published."
+    },
+    {
+      "id": "publication_date-token",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "Publication Date exposes a token for a node's publication date so I can use it in metatags or patterns. What is the token?",
+      "must_contain_any": ["[node:published]", "node:published"],
+      "must_not_contain": [],
+      "expected_output": "The `[node:published]` token (with date sub-tokens like `[node:published:custom:Y-m-d]`), added via publication_date_token_info_alter()/publication_date_tokens()."
+    },
+    {
+      "id": "publication_date-lifecycle",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "With the Publication Date module, what value does a node's published_at field hold while the node is unpublished, and when does it get set? Does editing a published node later change it?",
+      "must_contain_any": ["NULL", "null", "empty", "first published", "first time", "not overwritten", "does not change", "stays the same"],
+      "must_not_contain": [],
+      "expected_output": "published_at is NULL/empty while the node is unpublished; it is stamped with the current request time the first time the node is saved published, and is not overwritten by later edits/unpublish/re-publish (unless set explicitly)."
+    },
+    {
+      "id": "publication_date-introspect-known-date",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "persona": "drupal-expert",
+      "prompt": "Inspect this running Drupal site (drush available). There is an Article titled `PD Known Post`. Using the Publication Date module's field, what is its publication date? Answer from the node's actual stored value.",
+      "setup": "agent-module-documentation/evaluation/verify/publication_date-known-date-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/publication_date-known-date-cleanup.sh",
+      "must_contain_any": ["2021", "1625400000"],
+      "must_not_contain": [],
+      "expected_output": "The node's published_at is 1625400000, i.e. 4 July 2021 (year 2021). Read from $node->get('published_at')->value."
+    },
+    {
+      "id": "publication_date-introspect-draft-null",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "persona": "drupal-expert",
+      "prompt": "Inspect this running Drupal site (drush available). Does the Article titled `PD Draft Post` have a publication date recorded by the Publication Date module yet? Answer from its actual stored value.",
+      "setup": "agent-module-documentation/evaluation/verify/publication_date-draft-null-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/publication_date-draft-null-cleanup.sh",
+      "must_contain_any": ["NULL", "null", "no publication date", "not set", "not been published", "empty", "unpublished", "no date"],
+      "must_not_contain": [],
+      "expected_output": "No — `PD Draft Post` is unpublished, so its published_at is NULL/empty; Publication Date only stamps the date on the first published save."
+    },
+    {
+      "id": "publication_date-introspect-earliest",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "persona": "drupal-expert",
+      "prompt": "Inspect this running Drupal site (drush available). Two Articles exist: `PD First Post` and `PD Second Post`. Using the Publication Date module's published_at field, which one was published earlier?",
+      "setup": "agent-module-documentation/evaluation/verify/publication_date-earliest-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/publication_date-earliest-cleanup.sh",
+      "must_contain_any": ["PD First Post"],
+      "must_not_contain": [],
+      "expected_output": "`PD First Post` was published earlier: its published_at is 1514808000 (2018) versus `PD Second Post` at 1656936000 (2022)."
+    },
+    {
+      "id": "publication_date-backdate-article",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site (drush available), create a PUBLISHED Article titled `PD Backdated Article` and set its Publication Date (the module's published_at field) to 1 January 2020, so it shows an original publication date in the past rather than today. Apply it to the live site; don't just describe it. One-line summary.",
+      "reset": "agent-module-documentation/evaluation/verify/publication_date-backdate-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/publication_date-backdate-verify.sh",
+      "expected_output": "A published Article `PD Backdated Article` exists whose published_at timestamp falls on 1 January 2020 (set explicitly, e.g. $node->set('published_at', <ts>)). Verified against live node state."
+    },
+    {
+      "id": "publication_date-grant-permission",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site (drush available) there is a role `pd_evaluator`. Using the Publication Date module's permissions, grant that role the ability to change the 'Published on' date for any content type. Apply it to the live site; don't just describe it. One-line summary.",
+      "reset": "agent-module-documentation/evaluation/verify/publication_date-grant-perm-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/publication_date-grant-perm-verify.sh",
+      "expected_output": "The pd_evaluator role holds `set any published on date` (or the per-type `set article published on date` / `administer publication date`). Verified against live role config."
+    },
+    {
+      "id": "publication_date-show-on-display",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site (drush available), make the Publication Date (published_at) show up on the Article content type's default display, formatted as an absolute date/time (the `timestamp` formatter). The field ships hidden by default. Apply it to the live site config; don't just describe it. One-line summary.",
+      "reset": "agent-module-documentation/evaluation/verify/publication_date-show-field-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/publication_date-show-field-verify.sh",
+      "expected_output": "The node.article default view display renders published_at with a timestamp formatter (`timestamp` or `timestamp_ago`) instead of being hidden. Verified against the live entity view display config."
+    }
+  ]
+}

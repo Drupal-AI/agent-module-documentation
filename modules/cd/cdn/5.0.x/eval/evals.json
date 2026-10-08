@@ -1,0 +1,80 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "cdn",
+  "version": "5.0.x",
+  "note": "All cases are grounded in the cdn.settings config object. Baseline (config/install/cdn.settings.yml): status=false, mapping={type:simple, domain:null, conditions:{not:{extensions:[css,js]}}}, scheme='//', farfuture.status=true, stream_wrappers=[public]. Medium/hard cases only read/write local Drupal config (no real CDN is contacted). Reset/cleanup scripts restore that shipped baseline explicitly.",
+  "evals": [
+    {
+      "id": "cdn-enable-flag",
+      "mode": "recipe",
+      "prompt": "I installed the Drupal cdn module and set a CDN domain, but files are still served from my own server. Which single config setting actually turns CDN URL rewriting on, and in which config object does it live?",
+      "must_contain_any": ["status", "cdn.settings"],
+      "must_not_contain": [],
+      "expected_output": "Set cdn.settings:status to TRUE (the master 'Serve files from CDN' switch). It ships as false.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "cdn-mapping-types",
+      "mode": "recipe",
+      "prompt": "What are the three CDN mapping types the cdn module supports for deciding which files go to which CDN domain?",
+      "must_contain_any": ["simple", "complex", "auto-balanced"],
+      "must_not_contain": [],
+      "expected_output": "simple (one domain, optional extension conditions), complex (a fallback_domain plus nested per-extension mappings), and auto-balanced (spread matching extensions across several domains via consistent hashing).",
+      "difficulty": "easy"
+    },
+    {
+      "id": "cdn-scheme",
+      "mode": "recipe",
+      "prompt": "The cdn module has a 'scheme' setting for the file URLs it generates. What are its allowed values and which is the default?",
+      "must_contain_any": ["//", "https://", "http://"],
+      "must_not_contain": [],
+      "expected_output": "cdn.settings:scheme is one of '//' (scheme-relative, the default), 'https://', or 'http://'. It is validated by a Choice constraint.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "cdn-known-domain",
+      "mode": "introspection",
+      "prompt": "On this Drupal site the cdn module is enabled and actively serving files from a CDN. Inspect the live configuration and tell me the CDN domain that files are being served from.",
+      "must_contain_any": ["cdn-medium.example.com"],
+      "must_not_contain": [],
+      "expected_output": "cdn-medium.example.com: cdn.settings has status=true and mapping.domain='cdn-medium.example.com' (simple mapping).",
+      "setup": "agent-module-documentation/evaluation/verify/cdn-known-domain-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/cdn-known-domain-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "cdn-scheme-value",
+      "mode": "introspection",
+      "prompt": "On this Drupal site, inspect the cdn module configuration and tell me which URL scheme it is configured to use for CDN file URLs.",
+      "must_contain_any": ["https://"],
+      "must_not_contain": [],
+      "expected_output": "https:// — cdn.settings:scheme is 'https://'.",
+      "setup": "agent-module-documentation/evaluation/verify/cdn-scheme-value-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/cdn-scheme-value-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "cdn-serve-all-from-domain",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, configure the cdn module to actually serve files from the CDN domain cdn-hard.example.com using a simple mapping, and turn CDN serving on. Apply the change to the live configuration.",
+      "reset": "agent-module-documentation/evaluation/verify/cdn-serve-all-from-domain-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/cdn-serve-all-from-domain-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/cdn-serve-all-from-domain-cleanup.sh",
+      "expected_output": "cdn.settings has status=TRUE, mapping.type='simple', and mapping.domain='cdn-hard.example.com'."
+    },
+    {
+      "id": "cdn-set-https-scheme",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "site-builder",
+      "prompt": "On this Drupal site, configure the cdn module so that it generates absolute https:// URLs for CDN files (instead of scheme-relative URLs). Apply the change to the live configuration.",
+      "reset": "agent-module-documentation/evaluation/verify/cdn-set-https-scheme-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/cdn-set-https-scheme-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/cdn-set-https-scheme-cleanup.sh",
+      "expected_output": "cdn.settings:scheme is set to 'https://'."
+    }
+  ]
+}

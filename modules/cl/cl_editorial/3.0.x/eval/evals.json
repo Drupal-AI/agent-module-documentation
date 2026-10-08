@@ -1,0 +1,93 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "cl_editorial",
+  "version": "3.0.x",
+  "note": "cl_editorial is a developer toolkit for low-code SDC UIs: no configure route, no config entities, no permissions, no Drush, no plugin types of its own. Its API surface is the cl_component_selector Form API element, the NoThemeComponentManager service (decorates plugin.manager.sdc; getFilteredComponents(allowed, forbidden, statuses)), the cl_editorial_component_mappings_form() helper (props+slots), the ComponentFiltersFormTrait, and Util::isPropOrSlot(). It bundles a demo SDC 'cl_editorial:component-card' (metadata name 'Component Card', status stable) and the sdc_tags submodule. Because there is no config, medium cases introspect the live SDC/component registry via the module's own service, and hard cases require the agent to actually call NoThemeComponentManager and write the result to a namespaced file that verify checks.",
+  "evals": [
+    {
+      "id": "cl_editorial-selector-element",
+      "mode": "recipe",
+      "prompt": "I'm building a Drupal form and want to let the user pick a Single Directory Component using the cl_editorial module. What Form API element type does cl_editorial provide for that, and roughly what value does it submit?",
+      "must_contain_any": [
+        "cl_component_selector"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Use '#type' => 'cl_component_selector' (the ComponentSelectorElement). It renders a searchable radio list of SDC components and submits an array whose 'machine_name' key holds the chosen component's plugin id. You can constrain it with '#filters' (allowed, forbidden, statuses).",
+      "difficulty": "easy"
+    },
+    {
+      "id": "cl_editorial-notheme-manager",
+      "mode": "recipe",
+      "prompt": "Which cl_editorial service lists Single Directory Components independent of the active theme, and what method do I call to get components filtered by allow/forbid lists and lifecycle status?",
+      "must_contain_any": [
+        "NoThemeComponentManager",
+        "getFilteredComponents"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The Drupal\\cl_editorial\\NoThemeComponentManager service (it decorates plugin.manager.sdc). Call getFilteredComponents($allowed, $forbidden, $statuses) which returns [plugin_id => Component] for the matching components.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "cl_editorial-mappings-form",
+      "mode": "recipe",
+      "prompt": "With cl_editorial, how do I generate an editor form for a chosen SDC component's props and slots?",
+      "must_contain_any": [
+        "cl_editorial_component_mappings_form",
+        "props",
+        "slots"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Call cl_editorial_component_mappings_form($component_id, $current_input, $form, $form_state, $supported_token_types). It builds form fields for the component's props from its JSON schema (via the cl_editorial.form_generator / SchemaForms service) and adds a text_format element per slot, plus a token tree when the Token module is present.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "cl_editorial-bundled-component",
+      "mode": "introspection",
+      "prompt": "Inspect this running Drupal site: cl_editorial ships one demo Single Directory Component. What is that component's SDC plugin id?",
+      "must_contain_any": [
+        "cl_editorial:component-card"
+      ],
+      "must_not_contain": [],
+      "expected_output": "cl_editorial:component-card (provider cl_editorial, machine name component-card). It is discoverable through the SDC component manager / cl_editorial's NoThemeComponentManager.",
+      "setup": "agent-module-documentation/evaluation/verify/cl_editorial-bundled-component-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/cl_editorial-bundled-component-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "cl_editorial-component-status",
+      "mode": "introspection",
+      "prompt": "Using cl_editorial's theme-independent component manager on this site, what lifecycle status (stable, experimental, deprecated, or obsolete) is reported for the bundled cl_editorial:component-card component?",
+      "must_contain_any": [
+        "stable"
+      ],
+      "must_not_contain": [],
+      "expected_output": "stable. NoThemeComponentManager::getFilteredComponents([], [], ['stable']) includes cl_editorial:component-card, and the component metadata status is 'stable'.",
+      "setup": "agent-module-documentation/evaluation/verify/cl_editorial-component-status-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/cl_editorial-component-status-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "cl_editorial-list-stable",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this server, use cl_editorial's component manager (the service that lists Single Directory Components regardless of the active theme) to collect the SDC plugin ids of every component whose lifecycle status is 'stable', and write them one per line to the file /tmp/cl_editorial_stable_ids.txt.",
+      "reset": "agent-module-documentation/evaluation/verify/cl_editorial-list-stable-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/cl_editorial-list-stable-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/cl_editorial-list-stable-cleanup.sh",
+      "expected_output": "Call \\Drupal::service(Drupal\\cl_editorial\\NoThemeComponentManager::class)->getFilteredComponents([], [], ['stable']), take array_keys(), and write them to /tmp/cl_editorial_stable_ids.txt. The file must include the line cl_editorial:component-card."
+    },
+    {
+      "id": "cl_editorial-card-name",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "The cl_editorial module bundles one demo Single Directory Component. Look that component up through cl_editorial's component manager and write its human-readable component name to the file /tmp/cl_editorial_card_name.txt on the server.",
+      "reset": "agent-module-documentation/evaluation/verify/cl_editorial-card-name-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/cl_editorial-card-name-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/cl_editorial-card-name-cleanup.sh",
+      "expected_output": "Load cl_editorial:component-card via the component manager (e.g. NoThemeComponentManager::createInstanceAndCatch('cl_editorial:component-card') or find()) and write $component->metadata->name — 'Component Card' — to /tmp/cl_editorial_card_name.txt."
+    }
+  ]
+}

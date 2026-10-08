@@ -1,0 +1,92 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "masquerade_log",
+  "version": "2.0.x",
+  "note": "Masquerade Log is a trivial, ZERO-CONFIG glue module (no settings form, configure=null, no permissions, no config object, no plugins, no Drush). It works purely by service decoration: MasqueradeLogServiceProvider (a ServiceModifierInterface) wraps every 'logger'-tagged service in a MasqueradeLogLogger decorator that, while masquerading, appends '[masquerading <user>, uid <uid>]' to the message and adds context @original_uid / @original_username. Because it has no configuration to build and no persistent state, medium cases are grounded in the one observable live fact: the running container's logger.dblog service is the MasqueradeLogLogger decorator (get_class(\\Drupal::service('logger.dblog'))). The runtime message-rewrite depends on a real masquerade SESSION and is not reproducible from a bare drush/CLI process, so cases do not assert on rewritten log text. The single hard case (enable the module so loggers are decorated) is authored but its reset/verify was NOT smoke-tested here: uninstalling/re-enabling a module triggers a full container + router rebuild that this shared site currently cannot complete (an unrelated workbench_moderation ParamConverter fatal), and toggling it would risk breaking the site for other agents.",
+  "evals": [
+    {
+      "id": "masquerade-log-what-it-does",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "What does the masquerade_log module add to Drupal's logging, and does it need any configuration?",
+      "must_contain_any": [
+        "original user",
+        "masquerading",
+        "no configuration",
+        "original_uid",
+        "original_username"
+      ],
+      "must_not_contain": [],
+      "expected_output": "It makes log entries created while a user is masquerading also record the ORIGINAL (real) user. It needs no configuration at all — no settings form, permissions, or config object; enabling it (with Masquerade) is the whole setup. While masquerading, log messages get a '[masquerading <user>, uid <uid>]' suffix plus context variables @original_uid and @original_username."
+    },
+    {
+      "id": "masquerade-log-suffix-format",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "When a user is masquerading, what exactly does masquerade_log add to a log message, and which extra context variables does it provide to structured loggers like DbLog?",
+      "must_contain_any": [
+        "masquerading",
+        "@original_uid",
+        "@original_username",
+        "uid"
+      ],
+      "must_not_contain": [],
+      "expected_output": "It appends a suffix of the form '[masquerading <username>, uid <uid>]' (with a link to the original user) to the message, and adds two context variables, @original_uid and @original_username, so loggers that store variables (e.g. DbLog) also capture the original user."
+    },
+    {
+      "id": "masquerade-log-mechanism",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "Technically, how does masquerade_log get the original user into every log channel without any configuration?",
+      "must_contain_any": [
+        "decorat",
+        "ServiceModifierInterface",
+        "logger",
+        "MasqueradeLogLogger",
+        "tagged"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Its MasqueradeLogServiceProvider (a ServiceModifierInterface) finds every service tagged 'logger' and wraps it with a MasqueradeLogLogger decorator (a PSR LoggerInterface). The decorator checks the session masquerade state on each log() call and, when masquerading, rewrites the message/context before delegating to the real logger."
+    },
+    {
+      "id": "masquerade-log-dblog-decorator",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "On this running site, which PHP class is currently handling the database-log (dblog) logger service — i.e. what has masquerade_log wrapped logger.dblog with? Inspect the live container and give the fully-qualified class name.",
+      "must_contain_any": [
+        "MasqueradeLogLogger",
+        "Drupal\\masquerade_log\\MasqueradeLogLogger"
+      ],
+      "must_not_contain": [],
+      "expected_output": "get_class(\\Drupal::service('logger.dblog')) is Drupal\\masquerade_log\\MasqueradeLogLogger — masquerade_log has decorated the dblog logger backend.",
+      "setup": "agent-module-documentation/evaluation/verify/masquerade_log-dblog-decorator-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/masquerade_log-dblog-decorator-cleanup.sh"
+    },
+    {
+      "id": "masquerade-log-decorator-is-psr",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "Confirm from the live container that masquerade_log's replacement for logger.dblog is a genuine PSR logger (so normal logging still works): does the class handling logger.dblog implement Psr\\Log\\LoggerInterface, and what is it?",
+      "must_contain_any": [
+        "MasqueradeLogLogger",
+        "LoggerInterface"
+      ],
+      "must_not_contain": [],
+      "expected_output": "logger.dblog resolves to Drupal\\masquerade_log\\MasqueradeLogLogger, which implements Psr\\Log\\LoggerInterface (it uses LoggerTrait and delegates to the inner logger), so logging keeps working while the original user is recorded during masquerade.",
+      "setup": "agent-module-documentation/evaluation/verify/masquerade_log-decorator-is-psr-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/masquerade_log-decorator-is-psr-cleanup.sh"
+    },
+    {
+      "id": "masquerade-log-enable",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "This site uses Masquerade for support staff to impersonate users, but log entries only show the impersonated account. Make it so the site's loggers also record the original (masquerading) user. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/masquerade_log-enable-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/masquerade_log-enable-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/masquerade_log-enable-cleanup.sh",
+      "expected_output": "Enable the masquerade_log module (drush en masquerade_log -y). It requires no configuration; once enabled its service provider decorates the logger backends, so get_class(\\Drupal::service('logger.dblog')) becomes Drupal\\masquerade_log\\MasqueradeLogLogger and masquerade sessions add the original user to log entries."
+    }
+  ]
+}

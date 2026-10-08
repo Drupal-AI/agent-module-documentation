@@ -1,0 +1,102 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "better_normalizers",
+  "version": "2.0.x",
+  "note": "better_normalizers replaces three core HAL normalizers (registered via BetterNormalizersServiceProvider::alter, not config) and only affects the hal_json format. FileEntityNormalizer adds a base64 'data' property of the file contents on normalize and writes the bytes back on denormalize; FileItemNormalizer keeps file-field description/display; MenuLinkContentNormalizer embeds a menu link's target/parent entity. No config, routes, permissions, Drush or UI. Node creation is unavailable on this shared test site (a broken content-moderation stack), so medium/hard cases are grounded in File entities only: introspection serializes a known File entity created by setup; execution normalizes a File entity to hal_json (verify: base64 contents embedded) and denormalizes a HAL document back into a reconstructed file on disk (verify: bytes restored).",
+  "evals": [
+    {
+      "id": "better_normalizers-what",
+      "mode": "recipe",
+      "prompt": "What does the better_normalizers Drupal module change, and which serialization format does it affect?",
+      "must_contain_any": [
+        "hal",
+        "normalizer",
+        "file",
+        "menu link"
+      ],
+      "must_not_contain": [],
+      "expected_output": "It replaces three core HAL normalizers (for the hal_json format only): File entities (embed base64 contents), file field items (keep description/display), and menu_link_content (embed the linked/parent entity). It requires the hal module and has no config/UI.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "better_normalizers-file-data",
+      "mode": "recipe",
+      "prompt": "When better_normalizers serializes a File entity to hal_json, what extra does it include compared to core, and how can the file be recreated from that output?",
+      "must_contain_any": [
+        "base64",
+        "data",
+        "contents",
+        "denormalize"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Its FileEntityNormalizer adds a 'data' property containing the base64-encoded file contents on normalize; on denormalize it base64-decodes that and writes the bytes back to disk, so the file is recreated from the HAL JSON alone.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "better_normalizers-menu-embed",
+      "mode": "recipe",
+      "prompt": "How does better_normalizers improve HAL serialization of menu_link_content links, and which class handles it?",
+      "must_contain_any": [
+        "MenuLinkContentNormalizer",
+        "embed",
+        "target",
+        "parent"
+      ],
+      "must_not_contain": [],
+      "expected_output": "MenuLinkContentNormalizer embeds the entity a menu link points at (pseudo-field menu_link_content_target_entity, adding target_uuid) and the parent menu link, and resolves those back to ids/UUIDs on denormalize. It is only registered when menu_link_content is enabled.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "better_normalizers-inspect-property",
+      "mode": "introspection",
+      "prompt": "This Drupal site has a File entity named bnrm-eval-marker.txt. Using the site's serializer, serialize it to the hal_json format and state which JSON property carries the file's actual contents.",
+      "must_contain_any": [
+        "data",
+        "base64"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The hal_json output includes a top-level 'data' property (e.g. \"data\":[{\"value\":\"<base64>\"}]) holding the base64-encoded file contents, added by better_normalizers' FileEntityNormalizer.",
+      "setup": "agent-module-documentation/evaluation/verify/better_normalizers-file-marker-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/better_normalizers-file-marker-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "better_normalizers-inspect-normalizer",
+      "mode": "introspection",
+      "prompt": "better_normalizers is enabled on this site. Which core HAL normalizer does it override for File entities, and what does that override add to the serialized output? (A File entity bnrm-eval-marker.txt exists that you can serialize to check.)",
+      "must_contain_any": [
+        "FileEntityNormalizer",
+        "base64",
+        "contents"
+      ],
+      "must_not_contain": [],
+      "expected_output": "It overrides core's HAL file-entity normalizer with FileEntityNormalizer (service serializer.normalizer.entity.file_entity, priority 30), which adds the base64-encoded file contents under the 'data' property.",
+      "setup": "agent-module-documentation/evaluation/verify/better_normalizers-file-marker-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/better_normalizers-file-marker-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "better_normalizers-serialize-file",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "This site has a File entity whose filename is bnrm-eval-spec.txt. Using the site's serializer, normalize that File entity to the hal_json format (the format better_normalizers enhances) and write the resulting JSON to the file /tmp/bnrm-eval/file-out.json. The output must embed the file's contents.",
+      "reset": "agent-module-documentation/evaluation/verify/better_normalizers-normalize-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/better_normalizers-normalize-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/better_normalizers-normalize-cleanup.sh",
+      "expected_output": "/tmp/bnrm-eval/file-out.json contains the hal_json for the file including a 'data' property whose base64 value decodes to the file's contents (BNRM-EVAL-CONTENT-42) -- produced by \\Drupal::service('serializer')->serialize($file, 'hal_json'). This only appears because better_normalizers' FileEntityNormalizer is active."
+    },
+    {
+      "id": "better_normalizers-restore-file",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "A HAL JSON document describing a File entity (with its contents embedded) is saved at /tmp/bnrm-eval/in.json. Using the site's serializer, deserialize/denormalize it back into a File entity and save it, so the file is written to disk. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/better_normalizers-denormalize-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/better_normalizers-denormalize-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/better_normalizers-denormalize-cleanup.sh",
+      "expected_output": "Deserializing /tmp/bnrm-eval/in.json to Drupal\\file\\Entity\\File in hal_json and saving it re-creates public://bnrm_eval/restore.txt on disk with its original bytes (RESTORE-BYTES-88), because better_normalizers' FileEntityNormalizer::denormalize base64-decodes the 'data' property and writes the file."
+    }
+  ]
+}

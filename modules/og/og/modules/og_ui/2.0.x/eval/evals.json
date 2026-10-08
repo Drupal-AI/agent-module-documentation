@@ -1,0 +1,96 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "og_ui",
+  "version": "2.0.x",
+  "note": "og_ui is the admin UI for og: no entities, no permissions of its own (every route requires og's 'administer organic groups'), configure: og_ui.admin_index. Real ids used below: routes og_ui.admin_index (/admin/config/group), og_ui.settings (/admin/config/group/settings, AdminSettingsForm over og.settings), og_ui.roles_permissions_overview (/admin/config/group/{roles|permissions}), og_ui.permissions_overview (/admin/config/group/permissions/{entity_type_id}/{bundle_id}, OgPermissionsForm) and og_ui.permissions_edit_form; bundle-form values og_is_group, og_membership_type, og_group_content_bundle, og_target_type, og_target_bundles translated by og_ui_entity_insert()/update() into Og:: API calls. The medium/hard cases are grounded in the two things the UI actually writes: OgRole config entities (og.og_role.<entity_type>-<bundle>-<name>.permissions) and og.settings. The permission hard case is verified with a real og.access check for a plain member (group owned by uid 0 so group_manager_full_access cannot mask it) and additionally asserts the member's roles were not changed to administrator.",
+  "evals": [
+    {
+      "id": "og_ui-where-settings",
+      "difficulty": "easy",
+      "mode": "recipe",
+      "prompt": "I enabled the og_ui module on a Drupal 11 site. Where are the Organic Groups admin screens, and which config object does the OG settings form actually write to?",
+      "must_contain_any": [
+        "/admin/config/group",
+        "og.settings"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Everything hangs off /admin/config/group (route og_ui.admin_index, the module's configure route): /admin/config/group/settings (og_ui.settings, the AdminSettingsForm), /admin/config/group/roles and /admin/config/group/permissions. The settings form is a ConfigFormBase over og.settings (group_manager_full_access, node_access_strict, delete_orphans, delete_orphans_plugin_id, auto_add_group_owner_membership). All routes require the og permission 'administer organic groups'."
+    },
+    {
+      "id": "og_ui-bundle-form",
+      "difficulty": "easy",
+      "mode": "recipe",
+      "prompt": "With og_ui enabled, how do I turn a Drupal content type into an Organic Groups group through the UI, and what does that checkbox actually do behind the scenes?",
+      "must_contain_any": [
+        "og_is_group",
+        "Organic groups",
+        "addGroup"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Edit the content type and open the 'Organic groups' vertical tab added by og_ui_form_alter() / BundleEntityFormAlter, then tick 'Group' (form value og_is_group) and save. og_ui_entity_insert()/og_ui_entity_update() then call Og::groupTypeManager()->addGroup($entity_type_id, $bundle) - the same thing as doing it in code. The tab also offers og_membership_type, og_group_content_bundle, og_target_type and og_target_bundles."
+    },
+    {
+      "id": "og_ui-permissions-screen",
+      "difficulty": "easy",
+      "mode": "recipe",
+      "prompt": "In og_ui, where do I grant a group-level permission (for example 'manage members') to the member role of one specific group type, and what configuration does saving that form change?",
+      "must_contain_any": [
+        "og.og_role",
+        "permissions",
+        "/admin/config/group/permissions"
+      ],
+      "must_not_contain": [],
+      "expected_output": "On the permission matrix at /admin/config/group/permissions/{entity_type_id}/{bundle_id} (route og_ui.permissions_overview, OgPermissionsForm), or the single-role form at /admin/config/group/permissions/{entity_type_id}/{bundle_id}/{role_name}. Saving writes the `permissions` sequence of the OgRole config entity og.og_role.<entity_type>-<bundle>-<role_name>, e.g. og.og_role.node-club-member."
+    },
+    {
+      "id": "og_ui-known-role-perms",
+      "difficulty": "medium",
+      "mode": "introspection",
+      "prompt": "This Drupal site has an Organic Groups group type built on the node bundle ogui_grp. Inspect the live OG role configuration and tell me (a) which non-default OG role exists for that group type and what permission it holds, and (b) which extra group permission the plain 'member' role has been given.",
+      "must_contain_any": [
+        "node-ogui_grp-editor",
+        "editor"
+      ],
+      "must_not_contain": [],
+      "expected_output": "(a) The custom role node-ogui_grp-editor ('OG UI Editor') holds 'update group'. (b) node-ogui_grp-member has been granted 'manage members' (on top of the stock roles, where only non-member has 'subscribe'). Read with drush cget og.og_role.node-ogui_grp-editor permissions.",
+      "setup": "agent-module-documentation/evaluation/verify/og_ui-known-role-perms-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/og_ui-known-role-perms-cleanup.sh"
+    },
+    {
+      "id": "og_ui-known-settings",
+      "difficulty": "medium",
+      "mode": "introspection",
+      "prompt": "On this Drupal site, what will happen to group content when a group is deleted, and does the person who created a group get full permissions inside it? Answer from the live Organic Groups configuration that the og_ui settings form edits, and name the keys you read.",
+      "must_contain_any": [
+        "cron"
+      ],
+      "must_not_contain": [],
+      "expected_output": "og.settings has delete_orphans: true with delete_orphans_plugin_id: cron - orphaned group content is queued (og_orphaned_group_content) and deleted by cron - and group_manager_full_access: false, so group managers do NOT automatically get every permission in their group.",
+      "setup": "agent-module-documentation/evaluation/verify/og_ui-known-settings-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/og_ui-known-settings-cleanup.sh"
+    },
+    {
+      "id": "og_ui-grant-permission",
+      "difficulty": "hard",
+      "mode": "execution",
+      "persona": "site-owner",
+      "prompt": "On our Drupal site, ordinary members of the group 'OG UI Task Club' (node type ogui_tgrp) should be able to manage that group's member list. The account ogui_task_user is a normal member and currently cannot. Change it for ALL ordinary members of this group type - do not promote that one user to group administrator. Apply it to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/og_ui-grant-permission-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/og_ui-grant-permission-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/og_ui-grant-permission-cleanup.sh",
+      "expected_output": "Grant the group permission 'manage members' to the OgRole node-ogui_tgrp-member - via /admin/config/group/permissions/node/ogui_tgrp or OgRole::load('node-ogui_tgrp-member')->grantPermission('manage members')->save(). Verified live: the role holds the permission, og.access userAccess($group, 'manage members', $user) is allowed, and the user's membership still carries only node-ogui_tgrp-member."
+    },
+    {
+      "id": "og_ui-og-settings",
+      "difficulty": "hard",
+      "mode": "execution",
+      "persona": "drupal-expert",
+      "prompt": "Using the Organic Groups settings that og_ui exposes, configure this Drupal site so that (1) group content is deleted when its group is deleted, (2) that deletion is queued and processed by cron rather than happening in the same request, and (3) users who create a group are NOT automatically made members of it. Apply the changes to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/og_ui-og-settings-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/og_ui-og-settings-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/og_ui-og-settings-cleanup.sh",
+      "expected_output": "In og.settings set delete_orphans: true, delete_orphans_plugin_id: 'cron' and auto_add_group_owner_membership: false - via /admin/config/group/settings (AdminSettingsForm) or drush cset og.settings ... -y."
+    }
+  ]
+}

@@ -1,0 +1,101 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "dependent_fields",
+  "version": "1.0.x",
+  "note": "Dependent fields provides an EntityReferenceSelection plugin dependent_fields_selection ('Make field dependent using views', class ViewsSelection). A child entity-reference field's Reference method is set to this handler; its settings.handler_settings.dependent_fields_view holds view_name, display_name (an Entity Reference View display), parent_field, reference_parent_by_uuid (bool) and arguments (extra view args). hook_field_widget_single_element_form_alter attaches AJAX to the parent widget and ViewsSelection::updateDependentField re-runs the view (parent value as first contextual argument) to refresh child options (UpdateOptionsCommand / ReplaceCommand for select_tagify). Only Select/Checkboxes/Radios widgets, not autocomplete. Requires Views. No config page/permissions/Drush/services. All state is the child field_config handler settings (schema entity_reference_selection.dependent_fields_selection). Medium/hard cases are grounded in real field.field.node.article.field_df*_child handler settings on namespaced fields.",
+  "evals": [
+    {
+      "id": "dependent_fields-handler-id",
+      "mode": "recipe",
+      "prompt": "Using the Dependent fields module, I want one entity-reference field's selectable options to depend on another field's value (cascading dropdowns). What do I set as the field's Reference method / selection handler, and what is that plugin's machine id?",
+      "must_contain_any": [
+        "dependent_fields_selection",
+        "Make field dependent using views"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Set the child entity-reference field's Reference method to 'Make field dependent using views' — the EntityReferenceSelection plugin id dependent_fields_selection. Its handler_settings.dependent_fields_view records the view/display, the parent_field, arguments and reference_parent_by_uuid.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "dependent_fields-requirements",
+      "mode": "recipe",
+      "prompt": "For the Dependent fields module's cascading options to work, what does the referenced View need, and which form widgets are supported (and which is NOT)?",
+      "must_contain_any": [
+        "contextual filter",
+        "argument",
+        "Entity Reference",
+        "Select list",
+        "autocomplete"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The View must have an Entity Reference display whose first contextual filter (argument) receives the parent field's value. The dependent field's widget must be Select list or Check boxes/radio buttons; the autocomplete widget is not supported. Views is required.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "dependent_fields-storage",
+      "mode": "recipe",
+      "prompt": "Where is a Dependent fields configuration stored, and which handler_settings keys record the view and the parent field it depends on?",
+      "must_contain_any": [
+        "handler_settings",
+        "dependent_fields_view",
+        "parent_field",
+        "field_config"
+      ],
+      "must_not_contain": [],
+      "expected_output": "In the child field's field_config (field.field.<entity>.<bundle>.<field>): settings.handler = dependent_fields_selection and settings.handler_settings.dependent_fields_view with view_name, display_name, parent_field, reference_parent_by_uuid, arguments.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "dependent_fields-read-handler",
+      "mode": "introspection",
+      "prompt": "On this site the Article content type has a field 'field_dfx_child' configured with the Dependent fields module. Inspect the live field configuration and tell me (a) its selection handler plugin id and (b) which field it depends on (its parent field).",
+      "must_contain_any": [
+        "field_dfx_parent"
+      ],
+      "must_not_contain": [],
+      "expected_output": "field_dfx_child uses handler dependent_fields_selection and depends on parent field field_dfx_parent (settings.handler_settings.dependent_fields_view.parent_field).",
+      "setup": "agent-module-documentation/evaluation/verify/dependent_fields-known-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/dependent_fields-known-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "dependent_fields-read-args",
+      "mode": "introspection",
+      "prompt": "The Article field 'field_dfa_child' is a Dependent fields dependent field. Inspect the live configuration and tell me whether it references its parent by UUID (rather than entity ID) and what extra View arguments are configured for it.",
+      "must_contain_any": [
+        "published",
+        "UUID",
+        "uuid",
+        "true"
+      ],
+      "must_not_contain": [],
+      "expected_output": "reference_parent_by_uuid is true (it references the parent by UUID), and the configured extra View arguments are ['published'] (settings.handler_settings.dependent_fields_view.arguments).",
+      "setup": "agent-module-documentation/evaluation/verify/dependent_fields-args-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/dependent_fields-args-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "dependent_fields-configure",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site the Article content type has two entity-reference fields: field_dft_parent and field_dft_child (currently using the default reference method). Using the Dependent fields module, configure field_dft_child so its options depend on field_dft_parent via a View. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/dependent_fields-configure-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/dependent_fields-configure-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/dependent_fields-configure-cleanup.sh",
+      "expected_output": "field.field.node.article.field_dft_child has settings.handler = dependent_fields_selection and settings.handler_settings.dependent_fields_view.parent_field = field_dft_parent (plus a view_name/display_name). E.g. FieldConfig::loadByName(...)->setSetting('handler','dependent_fields_selection')->setSetting('handler_settings',['dependent_fields_view'=>[...'parent_field'=>'field_dft_parent'...]])->save()."
+    },
+    {
+      "id": "dependent_fields-uuid",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "The Article field field_dfu_child is already a Dependent fields dependent field (depending on field_dfu_parent) but it currently references the parent by entity ID. The View argument now expects UUIDs, so reconfigure field_dfu_child to reference the parent by UUID instead of entity ID. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/dependent_fields-uuid-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/dependent_fields-uuid-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/dependent_fields-uuid-cleanup.sh",
+      "expected_output": "field.field.node.article.field_dfu_child keeps handler dependent_fields_selection with parent_field field_dfu_parent, and settings.handler_settings.dependent_fields_view.reference_parent_by_uuid is set to true."
+    }
+  ]
+}

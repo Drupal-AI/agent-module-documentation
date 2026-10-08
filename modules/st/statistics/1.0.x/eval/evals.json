@@ -1,0 +1,95 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "statistics",
+  "version": "1.0.x",
+  "note": "Statistics (formerly Drupal core, now contrib) logs how many times each node is viewed. Its whole persistent surface is small and concrete: the config object statistics.settings (count_content_views on/off, display_max_age) and the node_counter database table (nid, totalcount, daycount, timestamp) reached through the swappable service statistics.storage.node implementing Drupal\\statistics\\StatisticsStorageInterface (recordView/fetchView/fetchViews/fetchAll/deleteViews/maxTotalCount). Easy cases quiz the counter/config/API out of the box; medium cases set a known config value or a known node view count and ask the agent to read it back live; hard cases (persona drupal-expert) make the agent flip the config switch and record a view through the service, both verified against live state.",
+  "evals": [
+    {
+      "id": "statistics-node-counter",
+      "mode": "recipe",
+      "prompt": "The Drupal contrib module 'statistics' counts how many times content is viewed. Which database table stores the per-node view counts, and which columns hold the total views, today's views, and the time of the last view?",
+      "must_contain_any": [
+        "node_counter",
+        "totalcount",
+        "daycount"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The node_counter table stores one row per node keyed by nid, with columns totalcount (all-time views), daycount (views today, reset daily by cron) and timestamp (unix time of the last view).",
+      "difficulty": "easy"
+    },
+    {
+      "id": "statistics-enable-setting",
+      "mode": "recipe",
+      "prompt": "I just enabled the Drupal 'statistics' module but no view counts are being recorded. Which config object and key do I set to switch content-view counting on, and what value turns it on?",
+      "must_contain_any": [
+        "count_content_views",
+        "statistics.settings"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Counting is off by default. Set statistics.settings:count_content_views to 1 (e.g. `drush cset statistics.settings count_content_views 1`, or the 'Count content views' checkbox on the settings form at /admin/config/system/statistics). Value 0 disables it.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "statistics-read-count-api",
+      "mode": "recipe",
+      "prompt": "In custom Drupal code, how do I read the total number of views the 'statistics' module has recorded for a single node? Name the service and the method, and how to get the total from the result.",
+      "must_contain_any": [
+        "statistics.storage.node",
+        "fetchView",
+        "StatisticsStorageInterface"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Call the statistics.storage.node service (Drupal\\statistics\\StatisticsStorageInterface): $result = \\Drupal::service('statistics.storage.node')->fetchView($nid); then $result->getTotalCount() (or getDayCount()/getTimestamp()). fetchView() returns FALSE if the node has no recorded views yet.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "statistics-counting-enabled",
+      "mode": "introspection",
+      "prompt": "On this Drupal site the 'statistics' module is installed. Is content-view counting currently switched ON or OFF, and which config value tells you? Inspect the live configuration to answer.",
+      "must_contain_any": [
+        "on",
+        "enabled",
+        "count_content_views"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Counting is ON: statistics.settings:count_content_views is set to 1 (the non-default value; the install default is 0 = off).",
+      "setup": "agent-module-documentation/evaluation/verify/statistics-counting-enabled-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/statistics-counting-enabled-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "statistics-node-viewcount",
+      "mode": "introspection",
+      "prompt": "This Drupal site uses the 'statistics' module. A node titled 'Statistics Eval Popular Post' exists. How many total views has the Statistics module recorded for that node? Inspect the live view-count storage to answer.",
+      "must_contain_any": [
+        "42"
+      ],
+      "must_not_contain": [],
+      "expected_output": "42 total views. The node's row in the node_counter table (also readable via statistics.storage.node fetchView()->getTotalCount()) has totalcount = 42.",
+      "setup": "agent-module-documentation/evaluation/verify/statistics-node-viewcount-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/statistics-node-viewcount-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "statistics-enable-counting",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site the 'statistics' module is enabled but content-view counting is turned off. Configure the live site so the Statistics module records node views: set statistics.settings:count_content_views to 1. Apply the change to the running site.",
+      "reset": "agent-module-documentation/evaluation/verify/statistics-enable-counting-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/statistics-enable-counting-verify.sh",
+      "expected_output": "statistics.settings:count_content_views is 1 in live config (e.g. via `drush cset statistics.settings count_content_views 1 -y`), so the module now records node views."
+    },
+    {
+      "id": "statistics-record-view",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site with the 'statistics' module enabled, a node titled 'Statistics Hard Record Target' exists but has no recorded views. Using the Statistics storage service (statistics.storage.node), record a view for that node so its total view count becomes at least 1. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/statistics-record-view-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/statistics-record-view-verify.sh",
+      "expected_output": "After calling \\Drupal::service('statistics.storage.node')->recordView($nid) for the target node, its node_counter row exists with totalcount >= 1 (readable back via fetchView()->getTotalCount())."
+    }
+  ]
+}

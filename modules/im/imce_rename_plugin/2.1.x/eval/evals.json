@@ -1,0 +1,80 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "imce_rename_plugin",
+  "version": "2.1.x",
+  "note": "imce_rename_plugin implements IMCE's ImcePlugin type (id=rename, operation rename->opRename) to add Rename to the IMCE file browser. It has no configure route (configure=null), no permissions.yml, no schema, no Drush. Its two permissions rename_files/rename_folders are IMCE folder permissions declared via the plugin's permissionInfo(), stored per folder on imce_profile config entities at imce.profile.<id>.conf.folders[N].permissions.rename_files/.rename_folders (booleans), managed at /admin/config/media/imce. Medium/hard cases are grounded in namespaced imce_profile config entities (imcerp_*): introspection reads which profile/permission is granted; execution grants rename_files/rename_folders on a folder and is verified against the live imce_profile config.",
+  "evals": [
+    {
+      "id": "imce-rename-plugin-permissions",
+      "mode": "recipe",
+      "prompt": "What permissions does the imce_rename_plugin module add so users can rename files and folders in IMCE, and where are those permissions configured?",
+      "must_contain_any": ["rename_files", "rename_folders"],
+      "must_not_contain": [],
+      "expected_output": "It adds two IMCE folder permissions, rename_files and rename_folders (from the Rename plugin's permissionInfo()). They are per-folder checkboxes on each IMCE profile, configured at Configuration > Media > IMCE (/admin/config/media/imce), stored at imce.profile.<id>.conf.folders[N].permissions.rename_files/.rename_folders. There is no configure route on the module itself.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "imce-rename-plugin-plugin-type",
+      "mode": "recipe",
+      "prompt": "How does imce_rename_plugin integrate with IMCE technically? What plugin does it provide, and what is the plugin id and the operation it handles?",
+      "must_contain_any": ["ImcePlugin", "opRename", "rename"],
+      "must_not_contain": [],
+      "expected_output": "It implements IMCE's ImcePlugin plugin type with a Rename plugin: @ImcePlugin(id = \"rename\", operations = { \"rename\" = \"opRename\" }). buildPage() attaches the rename JS/toolbar button when the user has rename_files/rename_folders, and the 'rename' operation is handled by opRename(), which dispatches to renameFile() or renameFolder().",
+      "difficulty": "easy"
+    },
+    {
+      "id": "imce-rename-plugin-sanitize",
+      "mode": "recipe",
+      "prompt": "When a user renames a file with imce_rename_plugin, how is the new name sanitized before it is applied?",
+      "must_contain_any": ["transliterat", "50", "dash", "special", "time()"],
+      "must_not_contain": [],
+      "expected_output": "getNewName() crops the posted name to 50 characters (mb_substr), transliterates it to ASCII, replaces spaces with dashes, strips anything not matching [\\w_-] via preg_replace, and falls back to time() (a timestamp) if the result is empty. For files the original extension is re-appended.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "imce-rename-plugin-mixed-profile",
+      "mode": "introspection",
+      "prompt": "This site has an IMCE profile with id imcerp_mixed. Inspect the live IMCE configuration and state which of the two rename permissions (rename_files or rename_folders) is granted on that profile's folder, and which is not.",
+      "must_contain_any": ["rename_files"],
+      "must_not_contain": [],
+      "expected_output": "In imce.profile.imcerp_mixed the folder's permissions have rename_files: true and rename_folders: false, so renaming files is allowed but renaming folders is not.",
+      "setup": "agent-module-documentation/evaluation/verify/imce_rename_plugin-mixed-profile-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/imce_rename_plugin-mixed-profile-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "imce-rename-plugin-which-profile",
+      "mode": "introspection",
+      "prompt": "This site has two IMCE profiles for testing: imcerp_a and imcerp_b. Exactly one of them allows renaming files (rename_files). Inspect the live IMCE profile configuration and name the profile that grants rename_files.",
+      "must_contain_any": ["imcerp_b"],
+      "must_not_contain": [],
+      "expected_output": "imcerp_b grants rename_files (its folder permissions have rename_files: true), whereas imcerp_a has rename_files: false.",
+      "setup": "agent-module-documentation/evaluation/verify/imce_rename_plugin-which-profile-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/imce_rename_plugin-which-profile-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "imce-rename-plugin-grant-files",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "This site has an IMCE profile imcerp_task with one folder that currently does NOT allow renaming files. Using imce_rename_plugin's rename_files permission, grant that profile's folder the ability to rename files. Apply the change to the live IMCE configuration.",
+      "reset": "agent-module-documentation/evaluation/verify/imce_rename_plugin-grant-files-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/imce_rename_plugin-grant-files-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/imce_rename_plugin-grant-files-cleanup.sh",
+      "expected_output": "In imce.profile.imcerp_task the first folder's permissions.rename_files is set to TRUE (e.g. load the imce_profile, set conf.folders[0].permissions.rename_files = TRUE, save)."
+    },
+    {
+      "id": "imce-rename-plugin-grant-both",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "site-owner",
+      "prompt": "On this site there is an IMCE file-browser profile called imcerp_both. I want people using that profile to be able to rename BOTH files and folders in the browser. Turn on both rename abilities for that profile's folder and save it to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/imce_rename_plugin-grant-both-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/imce_rename_plugin-grant-both-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/imce_rename_plugin-grant-both-cleanup.sh",
+      "expected_output": "In imce.profile.imcerp_both the first folder's permissions have BOTH rename_files: TRUE and rename_folders: TRUE (the two permissions added by imce_rename_plugin)."
+    }
+  ]
+}

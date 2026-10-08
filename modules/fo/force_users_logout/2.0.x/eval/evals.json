@@ -1,0 +1,94 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "force_users_logout",
+  "version": "2.0.x",
+  "note": "Force Users Logout is UI-only: three ConfigFormBase forms (IndividualUserLogoutForm, RoleBasedLogoutForm, AllOtherUsersLogoutForm) plus a JSON autocomplete controller, all under /admin/config/force-users-logout/* and all gated by the CORE permission 'administer users' (the module defines no permissions.yml, no config schema, no services, no plugins, no Drush). Every submit handler ends in \\Drupal::service('session_manager')->delete($uid), which deletes that uid's rows from the core `sessions` table; only active (status = 1) users are targeted and the administrator/authenticated/anonymous roles are excluded from the role option lists. Medium cases therefore introspect real live state (rows in `sessions`, which role holds 'administer users'); hard cases require the agent to actually destroy the right sessions and leave the others alone, verified against the `sessions` table.",
+  "evals": [
+    {
+      "id": "force_users_logout-mechanism",
+      "mode": "recipe",
+      "prompt": "The Drupal contrib module force_users_logout can force another user to be logged out. What does it technically do to that user's account, and which Drupal service and database table are involved?",
+      "must_contain_any": [
+        "session_manager",
+        "sessions",
+        "SessionManager"
+      ],
+      "must_not_contain": [],
+      "expected_output": "It does nothing to the account itself: each form calls \\Drupal::service('session_manager')->delete($uid), which deletes that user's rows from the core `sessions` table, so their browser is anonymous on the next request. No permissions, no config and no logging are involved.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "force_users_logout-permission",
+      "mode": "recipe",
+      "prompt": "Which Drupal permission does a role need in order to reach the Force Users Logout admin pages under /admin/config/force-users-logout, and does the force_users_logout module define a permission of its own?",
+      "must_contain_any": [
+        "administer users"
+      ],
+      "must_not_contain": [],
+      "expected_output": "All four routes declare _permission: 'administer users' — the core User module permission. force_users_logout ships no *.permissions.yml, so it defines no permission of its own.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "force_users_logout-excluded-roles",
+      "mode": "recipe",
+      "prompt": "In force_users_logout, which roles never appear as options on the 'Role Based' logout form, and which users does the 'All Other Users' form skip when it logs everybody out?",
+      "must_contain_any": [
+        "administrator",
+        "authenticated",
+        "anonymous"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The Role Based form builds its checkbox options from Role::loadMultiple() but skips the role ids 'administrator', 'authenticated' and 'anonymous'. The All Other Users form queries active users with roles <> 'administrator' and roles <> 'anonymous', so members of the administrator role are skipped — and blocked (status = 0) users are skipped by both, since every query filters status = 1.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "force_users_logout-active-session",
+      "mode": "introspection",
+      "prompt": "This Drupal site has two accounts whose names start with ful_intro_. Exactly one of them currently has an active session that the force_users_logout module would destroy. Inspect the running site and give the username of that account.",
+      "must_contain_any": [
+        "ful_intro_active"
+      ],
+      "must_not_contain": [],
+      "expected_output": "ful_intro_active — it has a row in the core `sessions` table (ful_intro_idle has none). Discoverable with `drush sql:query \"SELECT uid FROM sessions\"` joined against the account uids, or via a database select on `sessions` filtered by the two uids.",
+      "setup": "agent-module-documentation/evaluation/verify/force_users_logout-active-session-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/force_users_logout-active-session-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "force_users_logout-role-access",
+      "mode": "introspection",
+      "prompt": "This Drupal site has two custom roles whose machine names start with ful_intro_. Only one of them can currently open the Force Users Logout admin forms at /admin/config/force-users-logout/*. Inspect the live role configuration and give that role's machine name.",
+      "must_contain_any": [
+        "ful_intro_ops"
+      ],
+      "must_not_contain": [],
+      "expected_output": "ful_intro_ops — every force_users_logout route requires the core permission 'administer users', and only ful_intro_ops has been granted it (ful_intro_view only has 'access content'). Check with `drush role:list` or `drush config:get user.role.ful_intro_ops permissions`.",
+      "setup": "agent-module-documentation/evaluation/verify/force_users_logout-role-access-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/force_users_logout-role-access-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "force_users_logout-logout-user",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site the accounts ful_task_target and ful_task_keep both currently have an active session. Using what the force_users_logout module does, force ful_task_target to be logged out on the live site while leaving ful_task_keep's session untouched. Do not block or delete either account.",
+      "reset": "agent-module-documentation/evaluation/verify/force_users_logout-logout-user-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/force_users_logout-logout-user-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/force_users_logout-logout-user-cleanup.sh",
+      "expected_output": "Resolve the uid of ful_task_target and call \\Drupal::service('session_manager')->delete($uid) (what IndividualUserLogoutForm does), leaving ful_task_keep's row in `sessions` in place. Verified by counting rows in the core `sessions` table per uid."
+    },
+    {
+      "id": "force_users_logout-logout-role",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "site-owner-layman",
+      "prompt": "Some people on my Drupal site belong to a group called ful_task_role and I need every one of them kicked out of the site right now so they have to sign in again — but the account ful_task_other is not in that group and must stay signed in. Please make that happen on the live site without deleting or blocking anybody.",
+      "reset": "agent-module-documentation/evaluation/verify/force_users_logout-logout-role-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/force_users_logout-logout-role-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/force_users_logout-logout-role-cleanup.sh",
+      "expected_output": "What RoleBasedLogoutForm does: query active users with the role ful_task_role (entityQuery('user')->condition('status', 1)->condition('roles', 'ful_task_role')) and call \\Drupal::service('session_manager')->delete($uid) for each — ful_task_member1 and ful_task_member2 lose their `sessions` rows, ful_task_other keeps its own."
+    }
+  ]
+}

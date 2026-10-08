@@ -1,0 +1,58 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "jsonapi_search_api_facets",
+  "version": "1.0.x",
+  "note": "Submodule of jsonapi_search_api. No settings form (configure=null), no permissions, no Drush, no config of its own; defines no plugin TYPE. It provides Facets plugins: facet source 'jsonapi_search_api_facets' (derived per facets-capable index -> jsonapi_search_api_facets:<index>), widget 'jsonapi_search_api', url_processor 'json_api'; plus event subscribers that add facet aggregations to the Search API query (QUERY_PRE_EXECUTE) and inject facets into the JSON:API response meta.facets (jsonapi_search_api.add_search_meta). Its presave hooks are the verifiable behaviour: a facets_facet whose facet_source_id starts 'jsonapi_search_api_facets' and has no widget is forced to the jsonapi_search_api widget; a jsonapi_search_api_facets:* facet SOURCE is forced to filter key 'filter' + url processor 'json_api'. Medium/hard ground in a facets_facet config entity: config does not validate the source, so cases reference the existing enabled index source jsonapi_search_api_facets:primary without depending on a live external search server. Requires facets + jsonapi_search_api (both enabled).",
+  "evals": [
+    {
+      "id": "jsonapi_search_api_facets-where-facets-appear",
+      "mode": "recipe",
+      "prompt": "With jsonapi_search_api_facets, where do facet results appear in a JSON:API Search API response, and how does a client select a facet value?",
+      "must_contain_any": ["meta.facets", "meta", "filter", "filter["],
+      "must_not_contain": [],
+      "expected_output": "Facet data is added to the search response under meta.facets (via the jsonapi_search_api.add_search_meta event). A client selects a facet value through the JSON:API filter parameter (e.g. filter[type]=article), read by the json_api URL processor.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "jsonapi_search_api_facets-plugins",
+      "mode": "recipe",
+      "prompt": "Which Facets plugins does jsonapi_search_api_facets provide (facet source, widget, URL processor), and how is the facet source named per index?",
+      "must_contain_any": ["jsonapi_search_api_facets:", "jsonapi_search_api", "json_api", "facet source", "widget"],
+      "must_not_contain": [],
+      "expected_output": "A facet source jsonapi_search_api_facets, derived per facets-capable index as jsonapi_search_api_facets:<index_id>; a widget jsonapi_search_api (renders facets as JSON); and a URL processor json_api (reads/writes facets via the JSON:API filter param).",
+      "difficulty": "easy"
+    },
+    {
+      "id": "jsonapi_search_api_facets-auto-widget",
+      "mode": "recipe",
+      "prompt": "When I create a Facets facet whose source is a jsonapi_search_api_facets:* source, which widget and URL processor does jsonapi_search_api_facets set automatically?",
+      "must_contain_any": ["jsonapi_search_api", "json_api", "presave", "widget"],
+      "must_not_contain": [],
+      "expected_output": "On presave the submodule defaults such a facet to the jsonapi_search_api widget, and forces the facet source to filter key 'filter' with the json_api URL processor (form alters also lock these).",
+      "difficulty": "easy"
+    },
+    {
+      "id": "jsonapi_search_api_facets-known-facet",
+      "mode": "introspection",
+      "prompt": "This Drupal site has a Facets facet named jsaf_known that uses a jsonapi_search_api_facets source. Inspect the live facet configuration and state which widget it uses.",
+      "must_contain_any": ["jsonapi_search_api"],
+      "must_not_contain": [],
+      "expected_output": "Facet jsaf_known (source jsonapi_search_api_facets:primary) uses the jsonapi_search_api widget, which jsonapi_search_api_facets assigned automatically on presave.",
+      "setup": "agent-module-documentation/evaluation/verify/jsonapi_search_api_facets-known-facet-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/jsonapi_search_api_facets-known-facet-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "jsonapi_search_api_facets-add-facet",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, create a Facets facet with id jsaf_task on the JSON:API Search API facet source (facet_source_id jsonapi_search_api_facets:primary) for the field 'type', and save it to the live site so jsonapi_search_api_facets configures it as a JSON:API facet.",
+      "reset": "agent-module-documentation/evaluation/verify/jsonapi_search_api_facets-add-facet-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/jsonapi_search_api_facets-add-facet-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/jsonapi_search_api_facets-add-facet-cleanup.sh",
+      "expected_output": "A facets_facet config entity jsaf_task with facet_source_id jsonapi_search_api_facets:primary and field_identifier 'type'. Because the source starts with jsonapi_search_api_facets, the submodule's presave sets its widget to jsonapi_search_api (create with Facet::create([...])->save() leaving the widget unset, or via the Facets UI)."
+    }
+  ]
+}

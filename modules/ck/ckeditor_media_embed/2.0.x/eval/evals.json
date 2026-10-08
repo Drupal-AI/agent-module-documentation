@@ -1,0 +1,101 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "ckeditor_media_embed",
+  "version": "2.0.x",
+  "note": "CKEditor Media Embed adds CKEditor 5's Media Embed to Drupal. Authors insert a media URL; CKEditor stores an <oembed url> tag; the reversible text filter filter_ckeditor_media_embed ('Convert Oembed tags to media embeds') converts it to embed HTML at render time by resolving each URL through the configurable oEmbed provider (config ckeditor_media_embed.settings -> embed_provider, Iframely by default). The CKEditor plugin JS is NOT bundled and is downloaded with 'drush ckeditor_media_embed:install' / ':update'. Config object is ckeditor_media_embed.settings (embed_provider, ckeditor_version, plugins_version_installed). Settings route ckeditor_media_embed.ckeditor_media_embed_settings_form at /admin/config/media/ckeditor-media-embed/settings (permission administer filters). Also provides a link field formatter ckeditor_media_embed_link_formatter and hook_ckeditor_media_embed_object_alter(). Medium cases read back the live embed_provider value and which text format enables the filter; hard cases switch the provider to Noembed and enable the filter on a text format, both verified against live config.",
+  "evals": [
+    {
+      "id": "ckeditor_media_embed-how-renders",
+      "mode": "recipe",
+      "prompt": "On a Drupal 11 site using the ckeditor_media_embed module, an author inserted a YouTube URL and CKEditor saved an <oembed url=\"...\"> tag into the body. What must be enabled on that text format so the stored <oembed> tag actually renders as embedded media, and what is that filter's machine id?",
+      "must_contain_any": [
+        "filter_ckeditor_media_embed",
+        "Convert Oembed tags to media embeds",
+        "filter"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The 'Convert Oembed tags to media embeds' text filter (id filter_ckeditor_media_embed), a reversible transform filter, must be enabled on that text format. It calls the ckeditor_media_embed service to fetch each <oembed> URL from the configured provider and replace the tag with embed HTML at render time.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "ckeditor_media_embed-set-provider",
+      "mode": "recipe",
+      "prompt": "How do I change which oEmbed service the ckeditor_media_embed module uses to resolve media URLs (e.g. from Iframely to Noembed), and where is that setting stored?",
+      "must_contain_any": [
+        "embed_provider",
+        "ckeditor_media_embed.settings",
+        "Provider URL",
+        "/admin/config/media/ckeditor-media-embed/settings"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Set the Provider URL on the settings form at /admin/config/media/ckeditor-media-embed/settings (route ckeditor_media_embed.ckeditor_media_embed_settings_form, permission 'administer filters'), or set the embed_provider key on the ckeditor_media_embed.settings config object (e.g. drush cset). The template uses {url} and {callback} tokens; only one provider is active at a time.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "ckeditor_media_embed-install-plugin-js",
+      "mode": "recipe",
+      "prompt": "After enabling ckeditor_media_embed on Drupal 11 the Media embed button doesn't work and the Status Report says plugins are missing. Why, and what command fixes it?",
+      "must_contain_any": [
+        "ckeditor_media_embed:install",
+        "drush",
+        "libraries",
+        "download"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The CKEditor 5 media-embed plugin JavaScript is not bundled with the module; it must be downloaded into libraries/ckeditor5/plugins/. Run 'drush ckeditor_media_embed:install' (and 'drush ckeditor_media_embed:update' after a core CKEditor version change). Until then hook_requirements/hook_ckeditor_plugin_info_alter flag the plugin as missing.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "ckeditor_media_embed-current-provider",
+      "mode": "introspection",
+      "prompt": "On this Drupal site the ckeditor_media_embed module is configured with a non-default oEmbed provider. Inspect the live configuration and report the exact Provider URL that ckeditor_media_embed will use to resolve media embeds.",
+      "must_contain_any": [
+        "noembed.com",
+        "ckme_probe=CKMEPROBE1",
+        "//noembed.com/embed?url={url}&callback={callback}&ckme_probe=CKMEPROBE1"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The embed_provider in ckeditor_media_embed.settings is //noembed.com/embed?url={url}&callback={callback}&ckme_probe=CKMEPROBE1 (readable with `drush cget ckeditor_media_embed.settings embed_provider`).",
+      "setup": "agent-module-documentation/evaluation/verify/ckeditor_media_embed-provider-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/ckeditor_media_embed-provider-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "ckeditor_media_embed-which-format",
+      "mode": "introspection",
+      "prompt": "This Drupal site has a text format that will convert CKEditor <oembed> tags into embedded media. Inspect the live filter-format configuration and state which text format (machine name) has the ckeditor_media_embed conversion filter enabled, and the filter's id.",
+      "must_contain_any": [
+        "ckme_probe_format",
+        "filter_ckeditor_media_embed"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The text format ckme_probe_format has filter_ckeditor_media_embed ('Convert Oembed tags to media embeds') enabled (status: true) in filter.format.ckme_probe_format.",
+      "setup": "agent-module-documentation/evaluation/verify/ckeditor_media_embed-filter-format-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/ckeditor_media_embed-filter-format-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "ckeditor_media_embed-configure-noembed",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, configure the ckeditor_media_embed module to resolve media embeds through the Noembed service instead of Iframely. Set its oEmbed Provider URL to exactly //noembed.com/embed?url={url}&callback={callback} and apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/ckeditor_media_embed-set-provider-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/ckeditor_media_embed-set-provider-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/ckeditor_media_embed-set-provider-cleanup.sh",
+      "expected_output": "Set embed_provider on the ckeditor_media_embed.settings config to //noembed.com/embed?url={url}&callback={callback} (via the settings form at /admin/config/media/ckeditor-media-embed/settings or `drush cset ckeditor_media_embed.settings embed_provider '//noembed.com/embed?url={url}&callback={callback}'`)."
+    },
+    {
+      "id": "ckeditor_media_embed-enable-filter",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "This Drupal site has a text format with machine name ckme_hard_format that does not yet convert CKEditor media embeds. Using the ckeditor_media_embed module, make that text format convert <oembed> tags into embedded media, and apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/ckeditor_media_embed-enable-filter-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/ckeditor_media_embed-enable-filter-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/ckeditor_media_embed-enable-filter-cleanup.sh",
+      "expected_output": "Enable the filter_ckeditor_media_embed ('Convert Oembed tags to media embeds') filter on the ckme_hard_format text format (via /admin/config/content/formats/manage/ckme_hard_format or by setting filters.filter_ckeditor_media_embed.status: true), so filter.format.ckme_hard_format carries that filter enabled."
+    }
+  ]
+}

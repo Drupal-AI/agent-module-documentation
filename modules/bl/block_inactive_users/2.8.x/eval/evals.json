@@ -1,0 +1,80 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "block_inactive_users",
+  "version": "2.8.x",
+  "note": "Block Inactive Users blocks accounts idle for N months on cron (with warn + reactivation emails) and offers a separate bulk Cancel Users tool. Two config objects: block_inactive_users.settings (key block_inactive_users_idle_time = idle months as a STRING; send_email bool; email_subject; exclude_roles; warn keys; days_until_blocked) and block_inactive_users.settings_cancel_users (idle_time; disable_account_method = a core user_cancel method id; include_roles/status; whitelists; cancel_email). Shipped defaults: settings idle_time '3', send_email false, email_subject 'User disabled.'; settings_cancel_users idle_time '0', disable_account_method 'user_cancel_delete'. Settings forms at /admin/config/people/block_inactive_users (+ /cancel_users) gated by 'administer site configuration'. Medium/hard cases read and write those real config keys (no users are actually blocked).",
+  "evals": [
+    {
+      "id": "biu-trigger-and-idle",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "In the block_inactive_users module, what triggers inactive accounts to actually get blocked, and which config key sets the inactivity threshold (and in what unit)?",
+      "must_contain_any": ["cron", "block_inactive_users_idle_time", "month"],
+      "must_not_contain": [],
+      "expected_output": "hook_cron runs the block sweep (or the 'Disable inactive users' button runs it immediately). The threshold is block_inactive_users_idle_time, measured in whole MONTHS; users whose last access is at least that many months old are blocked."
+    },
+    {
+      "id": "biu-two-forms",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "block_inactive_users provides two admin screens under People. What are they and how do they differ?",
+      "must_contain_any": ["/admin/config/people/block_inactive_users", "cancel", "settings_cancel_users"],
+      "must_not_contain": [],
+      "expected_output": "The main settings form (/admin/config/people/block_inactive_users, config block_inactive_users.settings) configures the cron auto-block. A separate Cancel Users tool (/admin/config/people/block_inactive_users/cancel_users, config block_inactive_users.settings_cancel_users) bulk-cancels accounts via core user_cancel() by role/status/whitelist rules."
+    },
+    {
+      "id": "biu-reactivation",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "When block_inactive_users blocks a user and email is enabled, how can that user get their account back?",
+      "must_contain_any": ["reactivat", "activation-link", "/reactivate"],
+      "must_not_contain": [],
+      "expected_output": "The block email (using the [activation-link] token) contains a signed reactivation URL (route block_inactive_users.reactivate_confirm at /reactivate/{user}/confirm/{timestamp}/{hashed_pass}) the user can follow to request re-activation."
+    },
+    {
+      "id": "biu-idle-known",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "On this Drupal site, the block_inactive_users auto-block settings have been customized. Inspect the live configuration and report the inactivity threshold (idle time, in months) currently configured for automatically blocking users.",
+      "must_contain_any": ["9"],
+      "must_not_contain": [],
+      "expected_output": "block_inactive_users.settings:block_inactive_users_idle_time is '9' (months), and email notification is enabled. Read with `drush cget block_inactive_users.settings block_inactive_users_idle_time`.",
+      "setup": "agent-module-documentation/evaluation/verify/biu-idle-known-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/biu-idle-known-cleanup.sh"
+    },
+    {
+      "id": "biu-cancel-method-known",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "On this site, the block_inactive_users bulk 'Cancel Users' tool has been configured. Inspect the live configuration and report which account cancellation method it will use.",
+      "must_contain_any": ["user_cancel_block"],
+      "must_not_contain": [],
+      "expected_output": "block_inactive_users.settings_cancel_users:block_inactive_users_disable_account_method is 'user_cancel_block' (with idle time 18 months).",
+      "setup": "agent-module-documentation/evaluation/verify/biu-cancel-method-known-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/biu-cancel-method-known-cleanup.sh"
+    },
+    {
+      "id": "biu-configure-block",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, configure block_inactive_users so that accounts inactive for 6 months are automatically blocked, an email notification is sent to blocked users, and the block email subject is 'Account disabled due to inactivity'. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/biu-configure-block-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/biu-configure-block-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/biu-configure-block-cleanup.sh",
+      "expected_output": "block_inactive_users.settings has block_inactive_users_idle_time '6', block_inactive_users_send_email true, and block_inactive_users_email_subject 'Account disabled due to inactivity'."
+    },
+    {
+      "id": "biu-configure-cancel",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, configure the block_inactive_users bulk 'Cancel Users' tool so it targets accounts inactive for 12 months and cancels them using the 'block' method (user_cancel_block). Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/biu-configure-cancel-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/biu-configure-cancel-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/biu-configure-cancel-cleanup.sh",
+      "expected_output": "block_inactive_users.settings_cancel_users has block_inactive_users_idle_time '12' and block_inactive_users_disable_account_method 'user_cancel_block'."
+    }
+  ]
+}

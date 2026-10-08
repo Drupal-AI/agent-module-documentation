@@ -1,0 +1,80 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "unused_modules",
+  "version": "1.6.x",
+  "note": "Unused Modules is a read-only development helper. It reports modules/projects on disk that are fully disabled and safe to delete via (a) the Drush command 'drush unused:modules [projects|modules] [disabled|all]' (aliases um, unused-modules; supports --format=json) and (b) admin pages under /admin/config/development/unused_modules/... gated by the core 'administer modules' permission (configure route unused_modules.overview.projects.disabled). A module is unused when disabled; a project is safe-to-delete only when NONE of its modules are enabled. Core modules are never listed. Service unused_modules.helper -> getModulesByProject() returns UnusedModulesExtensionDecorator[] (properties moduleIsEnabled, projectName, projectPath, projectHasEnabledModules, parsingError). No permissions of its own, no config schema, no config entities. Because the module never mutates the site, medium/hard are grounded in a disabled fixture module: the eval scripts create web/modules/custom/um_fixture (its own project, intentionally NEVER enabled, safe to delete since disabled) so unused_modules reports it. Medium reads back that um_fixture is reported unused; hard cases use the module's Drush command to write the list of disabled modules / unused projects to a public file that verify checks contains um_fixture.",
+  "evals": [
+    {
+      "id": "unused_modules-drush",
+      "mode": "recipe",
+      "prompt": "Which Drush command does the Unused Modules module provide to list projects that are safe to delete, and what are its arguments and aliases?",
+      "must_contain_any": ["unused:modules", "unused-modules", "drush um"],
+      "must_not_contain": [],
+      "expected_output": "drush unused:modules [projects|modules] [disabled|all] (aliases um, unused-modules). e.g. 'drush unused:modules projects disabled' lists projects with no enabled modules; add --format=json for machine output.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "unused_modules-report-path",
+      "mode": "recipe",
+      "prompt": "Where is the Unused Modules admin report, and which permission is required to view it?",
+      "must_contain_any": ["/admin/config/development/unused_modules", "administer modules", "unused_modules.overview"],
+      "must_not_contain": [],
+      "expected_output": "Under Configuration > Development > Unused Modules at /admin/config/development/unused_modules/projects/disabled (route unused_modules.overview.projects.disabled), with Projects/Modules and Fully-disabled/Also-enabled tabs. It requires the core 'administer modules' permission.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "unused_modules-project-vs-module",
+      "mode": "recipe",
+      "prompt": "In the Unused Modules module, when is a whole project considered 'safe to delete' versus just a single module being unused? Are core modules ever listed?",
+      "must_contain_any": ["all", "none", "enabled", "no enabled modules", "core"],
+      "must_not_contain": [],
+      "expected_output": "A module is 'unused' when it is disabled; a project is safe to delete only when NONE of its modules are enabled (e.g. a project with a disabled submodule but an enabled main module is NOT deletable). Core modules are never listed.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "unused_modules-which-unused",
+      "mode": "introspection",
+      "prompt": "On this Drupal site, one non-core module is present on disk but disabled, so it is safe to delete. Use the Unused Modules module to inspect the site and give the machine name of that unused module.",
+      "must_contain_any": ["um_fixture"],
+      "must_not_contain": [],
+      "expected_output": "um_fixture — it appears in 'drush unused:modules modules disabled' (and projects disabled) as a disabled module whose project has no enabled modules.",
+      "setup": "agent-module-documentation/evaluation/verify/unused_modules-report-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/unused_modules-report-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "unused_modules-unused-path",
+      "mode": "introspection",
+      "prompt": "On this Drupal site the Unused Modules module reports a disabled module that is safe to delete. Use Unused Modules to find it and give the project path on disk that the report shows for it.",
+      "must_contain_any": ["modules/custom/um_fixture"],
+      "must_not_contain": [],
+      "expected_output": "The um_fixture module/project is reported with path modules/custom/um_fixture (the 'path' column of 'drush unused:modules modules disabled').",
+      "setup": "agent-module-documentation/evaluation/verify/unused_modules-report-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/unused_modules-report-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "unused_modules-modules-list",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, use the Unused Modules module to produce the list of disabled (unused) modules and save that report to the public files directory as um_report.txt (public://um_report.txt). Apply it on the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/unused_modules-modules-list-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/unused_modules-modules-list-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/unused_modules-modules-list-cleanup.sh",
+      "expected_output": "Run 'drush unused:modules modules disabled' (any format) and write its output to public://um_report.txt. Verify passes when that file exists and lists the unused module um_fixture."
+    },
+    {
+      "id": "unused_modules-projects-list",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, use the Unused Modules module to produce the list of projects that are fully disabled and safe to delete, and save that report to the public files directory as um_projects.txt (public://um_projects.txt). Apply it on the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/unused_modules-projects-list-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/unused_modules-projects-list-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/unused_modules-projects-list-cleanup.sh",
+      "expected_output": "Run 'drush unused:modules projects disabled' (any format) and write its output to public://um_projects.txt. Verify passes when that file exists and lists the safe-to-delete project um_fixture."
+    }
+  ]
+}

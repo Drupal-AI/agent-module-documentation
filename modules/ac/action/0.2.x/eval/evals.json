@@ -1,0 +1,111 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "action",
+  "version": "0.2.x",
+  "note": "Actions UI (contrib continuation of core's removed `action` module) supplies the admin UI for the core `action` config entity plus three configurable 'advanced action' plugins (node_assign_owner_action, node_unpublish_by_keyword_action, comment_unpublish_by_keyword_action). Cases span three tiers: `easy`/recipe (response-graded facts from 0.2.x/agent/), `medium`/introspection (a setup script installs a KNOWN action config entity, the agent inspects the running site via drush to answer, a cleanup script removes it), and `hard`/execution (a reset script deletes any matching action config entity, the agent creates the advanced action on the live site, a verify script checks live state — reset -> model -> verify). Grounded in module source; the module defines no permissions/services/Drush of its own, so easy cases lean on the config-entity + plugin surface.",
+  "evals": [
+    {
+      "id": "action-shipped-plugins",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "On a Drupal 11 site with the Actions UI (`action`) contrib module, which configurable 'advanced action' plugins does the module itself ship? Give their plugin ids and what each does.",
+      "must_contain_any": ["node_unpublish_by_keyword_action", "node_assign_owner_action", "comment_unpublish_by_keyword_action"],
+      "must_not_contain": [],
+      "expected_output": "It ships three configurable Action plugins: node_assign_owner_action (Change the author of content), node_unpublish_by_keyword_action (Unpublish content containing keyword(s)), and comment_unpublish_by_keyword_action (Unpublish comment containing keyword(s))."
+    },
+    {
+      "id": "action-ui-route-permission",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "On a Drupal 11 site using the Actions UI (`action`) module, at what admin path do you manage actions, and which permission is required to reach it?",
+      "must_contain_any": ["/admin/config/system/actions", "administer actions", "entity.action.collection"],
+      "must_not_contain": [],
+      "expected_output": "The actions admin page is /admin/config/system/actions (route entity.action.collection), gated by the core `administer actions` permission."
+    },
+    {
+      "id": "action-config-entity-shape",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "An 'advanced action' created through the Actions UI module is stored as which Drupal config entity, and which keys identify the Action plugin it runs and the settings it was configured with?",
+      "must_contain_any": ["action.action", "plugin", "configuration"],
+      "must_not_contain": [],
+      "expected_output": "It is stored as an `action` config entity (action.action.{id}); the `plugin` key names the Action plugin id and the `configuration` key holds its per-instance settings (with `type` giving the target entity type and `label` the display name)."
+    },
+    {
+      "id": "action-write-configurable-plugin",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "I want to add my own configurable 'advanced action' (one that has a settings form in the Actions UI) in a custom Drupal 11 module. Which base class and attribute do I use, and which interface gives it the configuration form?",
+      "must_contain_any": ["ConfigurableActionBase", "PluginFormInterface", "#[Action"],
+      "must_not_contain": [],
+      "expected_output": "Extend Drupal\\Core\\Action\\ConfigurableActionBase, declare the #[Action(...)] attribute (id/label/type), and implement PluginFormInterface (buildConfigurationForm/validate/submit) plus defaultConfiguration(); the Actions UI edit form embeds that config form."
+    },
+    {
+      "id": "action-introspect-keywords",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "persona": "drupal-expert",
+      "prompt": "This Drupal site has an advanced action configured that unpublishes nodes containing certain keywords (drush available). Inspect the running site and tell me exactly which keyword phrases that action is configured to match.",
+      "setup": "agent-module-documentation/evaluation/verify/action-introspect-keywords-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/action-introspect-keywords-cleanup.sh",
+      "must_contain_any": ["forbidden", "spamword"],
+      "must_not_contain": [],
+      "expected_output": "The node_unpublish_by_keyword_action advanced action (config entity `eval_kw_action`) is configured with keywords `forbidden` and `spamword` (read from its configuration.keywords list)."
+    },
+    {
+      "id": "action-introspect-plugin",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site there is an advanced action whose config entity id is `eval_owner_action` (drush available). Inspect the running site and tell me which Action plugin it uses and what that plugin does.",
+      "setup": "agent-module-documentation/evaluation/verify/action-introspect-plugin-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/action-introspect-plugin-cleanup.sh",
+      "must_contain_any": ["node_assign_owner_action"],
+      "must_not_contain": [],
+      "expected_output": "The `eval_owner_action` action uses the node_assign_owner_action plugin (Change the author of content), configured with owner_uid = 1."
+    },
+    {
+      "id": "action-introspect-type",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site an advanced action with config entity id `eval_comment_action` is configured (drush available). Inspect the running site and tell me which entity type this action operates on.",
+      "setup": "agent-module-documentation/evaluation/verify/action-introspect-type-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/action-introspect-type-cleanup.sh",
+      "must_contain_any": ["comment"],
+      "must_not_contain": [],
+      "expected_output": "The `eval_comment_action` action operates on the `comment` entity type (its `type` is comment; it uses the comment_unpublish_by_keyword_action plugin)."
+    },
+    {
+      "id": "action-create-unpublish-keyword",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site (drush available), use the Actions UI module to create an advanced action that unpublishes any content (node) containing banned keywords. Configure it with the two keywords `spam` and `casino`, and give it a clear label. Apply it to the live site as an `action` config entity; don't just describe it. One-line summary.",
+      "reset": "agent-module-documentation/evaluation/verify/action-unpublish-keyword-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/action-unpublish-keyword-verify.sh",
+      "expected_output": "An `action` config entity exists with plugin node_unpublish_by_keyword_action, type node, and configuration.keywords containing both `spam` and `casino`. Verified against live site state."
+    },
+    {
+      "id": "action-create-assign-owner",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site (drush available), use the Actions UI module to create an advanced action that reassigns the author of a node to the admin user (user id 1). Save it as an `action` config entity on the live site; don't just describe it. One-line summary.",
+      "reset": "agent-module-documentation/evaluation/verify/action-assign-owner-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/action-assign-owner-verify.sh",
+      "expected_output": "An `action` config entity exists with plugin node_assign_owner_action, type node, and configuration.owner_uid = \"1\". Verified against live site state."
+    },
+    {
+      "id": "action-create-comment-keyword",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site (drush available), use the Actions UI module to create an advanced action that unpublishes any comment containing the keyword `profanity`. Save it as an `action` config entity on the live site; don't just describe it. One-line summary.",
+      "reset": "agent-module-documentation/evaluation/verify/action-comment-keyword-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/action-comment-keyword-verify.sh",
+      "expected_output": "An `action` config entity exists with plugin comment_unpublish_by_keyword_action, type comment, and configuration.keywords containing `profanity`. Verified against live site state."
+    }
+  ]
+}

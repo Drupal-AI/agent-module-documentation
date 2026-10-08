@@ -1,0 +1,80 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "commerce_giftcard",
+  "version": "2.0.x",
+  "note": "Commerce Gift Card defines a commerce_giftcard_type config entity (config prefix commerce_giftcard.giftcard_type.*; exported keys id, label, display_label, generate.length [default 8]), the commerce_giftcard and commerce_giftcard_transaction content entities, a checkout redemption pane (commerce_giftcard_redemption) whose order processor (priority -1000) applies a commerce_giftcard adjustment, and a code generator service (commerce_giftcard.code_generator) + bulk generate form at /admin/commerce/giftcards/generate. Medium/hard cases are grounded in the real commerce_giftcard_type config object. NOTE: on this shared site the commerce_giftcard entity SCHEMA is not installed (the commerce_giftcard/_transaction tables and the commerce_order 'commerce_giftcards' base field are pending install), so the eval scripts operate on the giftcard_type CONFIG object via the config API (drush cget/cset / configFactory) and avoid content-entity creation and full cache rebuilds. On a correctly installed site the same cases can be satisfied via the entity API or the admin UI.",
+  "evals": [
+    {
+      "id": "cg-type-config",
+      "mode": "recipe",
+      "prompt": "In Drupal Commerce Gift Card (commerce_giftcard), what config entity represents a kind of gift card, and which setting controls the length of the codes generated for that type? Give the config object name.",
+      "must_contain_any": ["commerce_giftcard_type", "commerce_giftcard.giftcard_type", "generate.length"],
+      "must_not_contain": [],
+      "expected_output": "The config entity is commerce_giftcard_type (config objects commerce_giftcard.giftcard_type.<id>). Its generate.length setting controls the generated code length (default 8).",
+      "difficulty": "easy"
+    },
+    {
+      "id": "cg-redemption",
+      "mode": "recipe",
+      "prompt": "How does Commerce Gift Card let a customer redeem a gift card during checkout, and how is the redeemed amount subtracted from the order total?",
+      "must_contain_any": ["commerce_giftcard_redemption", "adjustment", "order processor", "-1000"],
+      "must_not_contain": [],
+      "expected_output": "A checkout pane commerce_giftcard_redemption (with an inline form) collects the code; a low-priority order processor (commerce_giftcard.order_processor, priority -1000) then applies a commerce_giftcard adjustment to the order so gift cards are deducted after other adjustments.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "cg-generate-codes",
+      "mode": "recipe",
+      "prompt": "How do you bulk-generate a batch of unique gift-card codes in commerce_giftcard? Name the service or the admin form involved.",
+      "must_contain_any": ["commerce_giftcard.code_generator", "/admin/commerce/giftcards/generate", "generateCodes"],
+      "must_not_contain": [],
+      "expected_output": "Use the Generate gift cards form at /admin/commerce/giftcards/generate (route entity.commerce_giftcard.generate_form), which uses the commerce_giftcard.code_generator service (generateCodes($type, $quantity)) to produce unique codes of the type's generate.length.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "cg-type-length-read",
+      "mode": "introspection",
+      "prompt": "On this Drupal Commerce site, a Commerce Gift Card type has been configured. Inspect the live gift-card type configuration and report the generated code length configured for it.",
+      "must_contain_any": ["16"],
+      "must_not_contain": [],
+      "expected_output": "The code length is 16: commerce_giftcard.giftcard_type.cg_holiday has generate.length = 16.",
+      "setup": "agent-module-documentation/evaluation/verify/commerce_giftcard-type-length-read-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/commerce_giftcard-type-length-read-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "cg-display-label-read",
+      "mode": "introspection",
+      "prompt": "On this Drupal Commerce site, a Commerce Gift Card type has a customer-facing display label configured that differs from its admin label. Inspect the live gift-card type configuration and report the display label.",
+      "must_contain_any": ["eGift Voucher"],
+      "must_not_contain": [],
+      "expected_output": "The display label is 'eGift Voucher': commerce_giftcard.giftcard_type.cg_promo has display_label = 'eGift Voucher' (admin label differs).",
+      "setup": "agent-module-documentation/evaluation/verify/commerce_giftcard-display-label-read-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/commerce_giftcard-display-label-read-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "cg-create-type",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal Commerce site, create a Commerce Gift Card type with the machine id 'cg_task' and label 'Task Gift Card' whose generated codes are 12 characters long. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/commerce_giftcard-create-type-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/commerce_giftcard-create-type-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/commerce_giftcard-create-type-cleanup.sh",
+      "expected_output": "The config object commerce_giftcard.giftcard_type.cg_task exists with generate.length = 12 (created via GiftcardType::create([...'generate'=>['length'=>12]]) / the Add gift card type UI, or the config API)."
+    },
+    {
+      "id": "cg-set-code-length",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal Commerce site there is a Commerce Gift Card type with machine id 'cg_len'. Change its generated code length to 20 characters and apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/commerce_giftcard-set-code-length-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/commerce_giftcard-set-code-length-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/commerce_giftcard-set-code-length-cleanup.sh",
+      "expected_output": "commerce_giftcard.giftcard_type.cg_len has generate.length = 20."
+    }
+  ]
+}

@@ -1,0 +1,80 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "views_sort_null_field",
+  "version": "1.3.x",
+  "note": "Views Sort Null Field registers one Views sort plugin, null_sort (@ViewsSort), and via hook_field_views_data_alter() exposes a <column>_null_sort sort for each nullable field column (e.g. field_foo_value_null_sort on node__field_foo). The handler adds ORDER BY '<table>.<column> IS NULL': ASC = NULLs last, DESC = NULLs first. No config UI, permissions or schema. Medium cases create a real nullable integer field on Article plus a view whose sorts include a null_sort, and the agent introspects the stored view config. Hard cases give the agent a view that has a plain field sort but no null_sort and require adding a null_sort with the correct order, verified against the saved view entity.",
+  "evals": [
+    {
+      "id": "views_sort_null_field-empty-last",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "In a Drupal View I sort nodes ascending by an optional integer field, but rows with no value show up at the top. Using the views_sort_null_field module, how do I make the empty ones appear at the bottom instead?",
+      "must_contain_any": ["null sort", "null_sort", "NULL last", "IS NULL"],
+      "must_not_contain": [],
+      "expected_output": "Add the field's 'null sort' handler (the Sort criteria list shows '<Label> null sort', plugin null_sort) and set it to ASC ('Sort NULL last'), then keep your normal field sort after it. ASC orders by '<table>.<column> IS NULL' so populated rows (0) come before empty rows (1)."
+    },
+    {
+      "id": "views_sort_null_field-plugin-id",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "What is the machine name of the Views sort plugin that views_sort_null_field provides, and how does its sort handler appear in the Views data for a field like field_weight?",
+      "must_contain_any": ["null_sort", "_null_sort", "field_weight_value_null_sort"],
+      "must_not_contain": [],
+      "expected_output": "The plugin id is null_sort (class NullSort, @ViewsSort(\"null_sort\")). hook_field_views_data_alter() adds a '<column>_null_sort' sort to each nullable column, e.g. field_weight_value_null_sort on table node__field_weight."
+    },
+    {
+      "id": "views_sort_null_field-asc-desc",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "For the views_sort_null_field 'null sort' handler, what is the difference between sorting ASC and DESC?",
+      "must_contain_any": ["NULL last", "NULL first", "Sort NULL last", "Sort NULL first"],
+      "must_not_contain": [],
+      "expected_output": "ASC ('Sort NULL last') puts empty/NULL rows at the bottom; DESC ('Sort NULL first') puts them at the top. It orders by the expression '<table>.<column> IS NULL' which is 1 for empty rows and 0 for populated rows."
+    },
+    {
+      "id": "views_sort_null_field-known-plugin",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "This site has a View with machine name 'vsnf_known' that uses views_sort_null_field. Inspect the live view configuration and state the machine name of the Views sort plugin used by its null-based sort criterion.",
+      "must_contain_any": ["null_sort"],
+      "must_not_contain": [],
+      "expected_output": "The view vsnf_known has a sort on field_vsnf_known_value_null_sort whose plugin_id is null_sort (table node__field_vsnf_known).",
+      "setup": "agent-module-documentation/evaluation/verify/views_sort_null_field-known-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/views_sort_null_field-known-cleanup.sh"
+    },
+    {
+      "id": "views_sort_null_field-known-order",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "The View 'vsnf_known' on this site has a views_sort_null_field null sort configured on its integer field. Inspect the running site and say whether empty (NULL) values are sorted to the TOP or the BOTTOM of the results, based on that sort's configured order.",
+      "must_contain_any": ["top", "first", "NULL first", "DESC"],
+      "must_not_contain": [],
+      "expected_output": "The null_sort is configured with order DESC, which is 'Sort NULL first' — empty values go to the TOP of the results.",
+      "setup": "agent-module-documentation/evaluation/verify/views_sort_null_field-known-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/views_sort_null_field-known-cleanup.sh"
+    },
+    {
+      "id": "views_sort_null_field-add-null-last",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "This site has a View 'vsnf_task' listing Article nodes, sorted ascending by the integer field field_vsnf_task, but nodes with an empty value currently appear first. Using views_sort_null_field, add a null sort to the default display so that empty (NULL) values are ordered LAST, and save the view.",
+      "reset": "agent-module-documentation/evaluation/verify/views_sort_null_field-add-null-last-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/views_sort_null_field-add-null-last-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/views_sort_null_field-add-null-last-cleanup.sh",
+      "expected_output": "Add a sort with plugin_id null_sort on field_vsnf_task_value_null_sort (table node__field_vsnf_task) to the default display of view vsnf_task with order ASC (NULL last), and save. The verify checks the saved view's default display has a null_sort sort with order ASC."
+    },
+    {
+      "id": "views_sort_null_field-add-null-first",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "site-owner",
+      "prompt": "On my site there is a View called 'vsnf_taskb' listing articles by an optional number field (field_vsnf_taskb). For a data-cleanup screen I want the records that are MISSING that number to show up at the very top. Please adjust the view to do that using the views_sort_null_field feature, and save it.",
+      "reset": "agent-module-documentation/evaluation/verify/views_sort_null_field-add-null-first-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/views_sort_null_field-add-null-first-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/views_sort_null_field-add-null-first-cleanup.sh",
+      "expected_output": "Add a sort with plugin_id null_sort on field_vsnf_taskb_value_null_sort (table node__field_vsnf_taskb) to the default display of view vsnf_taskb with order DESC (NULL first), and save. The verify checks the saved view has a null_sort sort with order DESC."
+    }
+  ]
+}

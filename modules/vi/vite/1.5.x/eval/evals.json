@@ -1,0 +1,94 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "vite",
+  "version": "1.5.x",
+  "note": "Vite is a dev-asset integration: it rewrites opted-in Drupal asset libraries so source paths (src/app.ts, src/style.scss) are served from Vite's hashed dist build via manifest.json, or from a running Vite dev server (HMR). It has NO admin UI, permission, config entity, Drush, or plugin type; enablement/config live in .info.yml (vite.enableInAllLibraries / enableInAllComponents), *.libraries.yml (vite: true or a vite: map with enabled/viteRoot/distDir/manifestPath/baseUrl/devServerUrl/devDependencies), and $settings['vite'] in settings.php. Because there is no running Vite server in this environment, all cases are grounded in the CONFIG + MANIFEST mechanics, not a live server. Medium introspection reads the module's shipped HMR dev-client library (vite/vite-dev-client -> @vite/client) via library.discovery, and reads a real Vite manifest.json fixture with the module's Manifest class. Hard execution has the agent use vite's Manifest to resolve a source entry's built JS path and its associated CSS, writing the result to a Drupal state key verified live. Fixtures/state are namespaced with vite_eval_*.",
+  "evals": [
+    {
+      "id": "vite-enable-single-library",
+      "mode": "recipe",
+      "prompt": "I have a Drupal theme with a Vite build. How do I make just one asset library in my theme.libraries.yml use Vite, and what do I change about the asset paths in that library?",
+      "must_contain_any": [
+        "vite: true",
+        "vite:"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Add `vite: true` to that library entry in theme.libraries.yml (or a `vite:` config map with `enabled: true`), and replace the built asset paths with the SOURCE paths (e.g. js: src/script.ts, css: src/scss/style.scss). The module rewrites them to the hashed dist output from manifest.json at runtime.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "vite-enable-all",
+      "mode": "recipe",
+      "prompt": "With the Vite module, how do I turn on Vite for ALL asset libraries of a theme (and separately for all its SDC components) without editing each library entry? Which file and keys?",
+      "must_contain_any": [
+        "enableInAllLibraries",
+        "enableInAllComponents"
+      ],
+      "must_not_contain": [],
+      "expected_output": "In the theme's (or module's) .info.yml add a `vite:` section: `enableInAllLibraries: true` enables Vite for all normal asset libraries, `enableInAllComponents: true` enables it for all SDC component libraries.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "vite-get-chunk",
+      "mode": "recipe",
+      "prompt": "Using the Vite module, how can I get the built (hashed) path of a single asset (for example an image) that is processed by Vite but referenced outside a library definition — from PHP and from a Twig template?",
+      "must_contain_any": [
+        "getChunk",
+        "vite_get_chunk_path"
+      ],
+      "must_not_contain": [],
+      "expected_output": "PHP: \\Drupal::service('vite.vite')->getChunk($extension, $library, $chunk) — e.g. getChunk('frontend','global','assets/logo.svg'). Twig: the vite_get_chunk_path(extension, library, chunk) function, e.g. {{ vite_get_chunk_path('frontend','global','assets/logo.svg') }}. Both take the source path and return the built/dev-server path.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "vite-dev-client-library",
+      "mode": "introspection",
+      "prompt": "On this running Drupal site, the Vite module ships an asset library used for hot module reload during development. Inspect the live library definitions and tell me the library name and the JS source it loads.",
+      "must_contain_any": [
+        "@vite/client",
+        "vite-dev-client"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The library is vite/vite-dev-client (defined in vite.libraries.yml, header: true, vite: true) and it loads the JS source '@vite/client'. Discoverable via \\Drupal::service('library.discovery')->getLibraryByName('vite','vite-dev-client'). It is attached automatically when the Vite dev server is active.",
+      "setup": "agent-module-documentation/evaluation/verify/vite-dev-client-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/vite-dev-client-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "vite-manifest-read",
+      "mode": "introspection",
+      "prompt": "A Vite manifest.json has been placed on this site; its absolute path is stored in the Drupal state key 'vite_eval_manifest_path'. Using the Vite module's Manifest class, what built (dist) file does the source entry 'src/main.ts' map to, and what CSS file is associated with it?",
+      "must_contain_any": [
+        "assets/main-ABC123.js"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Load the path from state and construct \\Drupal\\vite\\Manifest($path). getChunk('src/main.ts') returns 'assets/main-ABC123.js' and getStyles('src/main.ts') returns ['assets/main-DEF456.css'].",
+      "setup": "agent-module-documentation/evaluation/verify/vite-manifest-read-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/vite-manifest-read-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "vite-resolve-chunk",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "A Vite manifest.json fixture is on this site with its absolute path in the Drupal state key 'vite_eval_hard_manifest'. Using the Vite module's manifest handling, resolve the built (dist) file path that the source entry 'src/app.ts' maps to, and save that resolved path into the Drupal state key 'vite_eval_hard_result'. Apply it to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/vite-resolve-chunk-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/vite-resolve-chunk-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/vite-resolve-chunk-cleanup.sh",
+      "expected_output": "Read the manifest path from state, construct \\Drupal\\vite\\Manifest($path), call getChunk('src/app.ts') (returns 'assets/app-XYZ789.js'), and \\Drupal::state()->set('vite_eval_hard_result', 'assets/app-XYZ789.js')."
+    },
+    {
+      "id": "vite-resolve-styles",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "A Vite manifest.json fixture is on this site with its absolute path in the Drupal state key 'vite_eval_css_manifest'. The entry 'src/widget.ts' has an associated CSS file. Using the Vite module's manifest handling, determine that associated CSS file and store it in the Drupal state key 'vite_eval_css_result'. Apply it to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/vite-resolve-styles-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/vite-resolve-styles-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/vite-resolve-styles-cleanup.sh",
+      "expected_output": "Construct \\Drupal\\vite\\Manifest from the state path and call getStyles('src/widget.ts'), which returns ['assets/widget-CSS111.css']; store that value (the single CSS path 'assets/widget-CSS111.css') in state key vite_eval_css_result."
+    }
+  ]
+}

@@ -1,0 +1,80 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "sharedemail",
+  "version": "3.2.x",
+  "note": "Shared Email replaces core's UserMailUnique constraint on the user 'mail' field with SharedEmailUnique, letting one email back multiple accounts. Its persistent config is the object sharedemail.settings with two keys: sharedemail_msg (warning text) and sharedemail_allowed (comma-separated allowlist; empty = any). Configure route sharedemail.settings_form at /admin/config/people/shared-email. Three permissions: administer shared email, access shared email message, create shared email account (the uniqueness bypass). Medium cases seed a known value into sharedemail.settings and read it back; hard cases require writing specific values, verified against live config. Baselines are restored explicitly (allowlist '' and the shipped default message).",
+  "evals": [
+    {
+      "id": "sharedemail-what-it-does",
+      "mode": "recipe",
+      "prompt": "On a Drupal 11 site I want more than one user account to be able to use the same email address. The Shared Email module is installed. In terms of validation, what does it change to make duplicate emails possible?",
+      "must_contain_any": ["UserMailUnique", "SharedEmailUnique", "unique constraint", "uniqueness"],
+      "must_not_contain": [],
+      "expected_output": "It removes core's UserMailUnique constraint from the user 'mail' base field (via hook_entity_base_field_info_alter) and adds its own SharedEmailUnique constraint, which allows duplicates under its permission/allowlist rules.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "sharedemail-where-configured",
+      "mode": "recipe",
+      "prompt": "Where is the Shared Email settings form in the Drupal admin, and which two configuration keys can I set there?",
+      "must_contain_any": ["/admin/config/people/shared-email", "sharedemail_allowed", "sharedemail_msg"],
+      "must_not_contain": [],
+      "expected_output": "Settings are at /admin/config/people/shared-email (route sharedemail.settings_form), config object sharedemail.settings with keys sharedemail_msg (warning text) and sharedemail_allowed (comma-separated allowlist).",
+      "difficulty": "easy"
+    },
+    {
+      "id": "sharedemail-bypass-permission",
+      "mode": "recipe",
+      "prompt": "With the Shared Email module, which permission does a user need so that they can save an account using an email address that already belongs to another user?",
+      "must_contain_any": ["create shared email account"],
+      "must_not_contain": [],
+      "expected_output": "The 'create shared email account' permission. Even then, the address must be on the sharedemail_allowed allowlist (or the allowlist must be empty).",
+      "difficulty": "easy"
+    },
+    {
+      "id": "sharedemail-known-allowlist",
+      "mode": "introspection",
+      "prompt": "On this Drupal site the Shared Email module has an allowlist configured that restricts which email addresses may be shared. Inspect the live configuration and give the email address on that allowlist.",
+      "must_contain_any": ["vip-sharedemail@example.com"],
+      "must_not_contain": [],
+      "expected_output": "sharedemail.settings.sharedemail_allowed is 'vip-sharedemail@example.com'.",
+      "setup": "agent-module-documentation/evaluation/verify/sharedemail-known-allowlist-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/sharedemail-known-allowlist-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "sharedemail-known-message",
+      "mode": "introspection",
+      "prompt": "The Shared Email module shows a warning message to permitted users when they save an already-used email. On this site that message has been customised. Inspect the live configuration and quote the configured warning message.",
+      "must_contain_any": ["SHAREDEMAIL_KNOWN_MSG_7F3"],
+      "must_not_contain": [],
+      "expected_output": "sharedemail.settings.sharedemail_msg is set to the custom string containing 'SHAREDEMAIL_KNOWN_MSG_7F3 This address is shared.'",
+      "setup": "agent-module-documentation/evaluation/verify/sharedemail-known-message-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/sharedemail-known-message-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "sharedemail-set-allowlist",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "Configure the Shared Email module so that only the addresses shared-h1@example.com and team-h1@example.com may be reused across accounts (the shared-email allowlist). Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/sharedemail-set-allowlist-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/sharedemail-set-allowlist-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/sharedemail-set-allowlist-cleanup.sh",
+      "expected_output": "Set sharedemail.settings.sharedemail_allowed to a comma-separated list containing shared-h1@example.com and team-h1@example.com (e.g. drush config:set sharedemail.settings sharedemail_allowed 'shared-h1@example.com,team-h1@example.com')."
+    },
+    {
+      "id": "sharedemail-set-message",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "site-owner-layman",
+      "prompt": "In the Shared Email module I want the message that warns people they are using an email already tied to another account to say exactly: This email is shared by more than one account. Please set that message.",
+      "reset": "agent-module-documentation/evaluation/verify/sharedemail-set-message-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/sharedemail-set-message-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/sharedemail-set-message-cleanup.sh",
+      "expected_output": "Set sharedemail.settings.sharedemail_msg to 'This email is shared by more than one account.'"
+    }
+  ]
+}

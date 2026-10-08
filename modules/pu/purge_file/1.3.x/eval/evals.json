@@ -1,0 +1,65 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "purge_file",
+  "version": "1.3.x",
+  "note": "Purge File auto-invalidates file entity URLs/paths through the Purge module on file insert/update/delete. It defines a settings config object, a Purge processor and queuer, and one alter hook. Cases are `recipe` (response-graded) — they probe documented facts an agent would otherwise read source to answer; no site mutation.",
+  "evals": [
+    {
+      "id": "purge-file-prerequisites",
+      "mode": "recipe",
+      "prompt": "On a Drupal 11 site, what must already be enabled/configured before Purge File can actually purge anything?",
+      "must_contain_any": ["purge", "purger", "processor"],
+      "must_not_contain": [],
+      "expected_output": "The Purge module must be enabled, plus at least one purger that supports a URL-oriented invalidation type (url, wildcardurl, path, or wildcardpath) and at least one purge processor."
+    },
+    {
+      "id": "purge-file-config-route",
+      "mode": "recipe",
+      "prompt": "What is the settings route name and admin path for Purge File, and which permission gates it?",
+      "must_contain_any": ["purge_file.settings", "/admin/config/development/performance/purge-file"],
+      "must_not_contain": [],
+      "expected_output": "Route purge_file.settings at /admin/config/development/performance/purge-file, gated by the core 'administer site configuration' permission (the module defines no permissions of its own)."
+    },
+    {
+      "id": "purge-file-workflow-key",
+      "mode": "recipe",
+      "prompt": "Which config key on purge_file.settings decides whether invalidations run immediately or go through the Purge queue, and what are its values?",
+      "must_contain_any": ["workflow"],
+      "must_not_contain": [],
+      "expected_output": "The 'workflow' key on purge_file.settings: 'immediate' uses the module's immediate processor (purge_file_immediate_processor); 'queue' adds invalidations via the purge_file_queuer for later processing (e.g. cron)."
+    },
+    {
+      "id": "purge-file-invalidation-type",
+      "mode": "recipe",
+      "prompt": "How do I make Purge File append a wildcard so all query-string variants of a file URL are purged?",
+      "must_contain_any": ["invalidation_type", "wildcardurl", "wildcardpath"],
+      "must_not_contain": [],
+      "expected_output": "Set invalidation_type to wildcardurl (or wildcardpath) on purge_file.settings; when that type is enabled by a purger the module appends '*' to each purge URL. (The old boolean 'wildcard' key was replaced by invalidation_type in update 10002.)"
+    },
+    {
+      "id": "purge-file-update-triggers",
+      "mode": "recipe",
+      "prompt": "When a file entity is updated, under what condition does Purge File actually purge, and does it purge the old URL?",
+      "must_contain_any": ["uri", "size"],
+      "must_not_contain": [],
+      "expected_output": "On update it purges only if the file's URI or size changed; if the new file URL differs from the original's URL it also purges the original file's URL. Temporary-stream (temporary://) files are skipped."
+    },
+    {
+      "id": "purge-file-base-urls-hook",
+      "mode": "recipe",
+      "prompt": "In a custom module I want to add an extra CDN domain to the URLs Purge File invalidates for each file. Which hook do I implement?",
+      "must_contain_any": ["hook_purge_file_base_urls_alter", "purge_file_base_urls_alter"],
+      "must_not_contain": [],
+      "expected_output": "Implement hook_purge_file_base_urls_alter(array &$base_urls, FileInterface $file) and append your domain to $base_urls (affects the url/wildcardurl invalidation types)."
+    },
+    {
+      "id": "purge-file-base-urls-config",
+      "mode": "recipe",
+      "prompt": "My site's public front URL differs from the back-office URL. How do I tell Purge File which host(s) to purge?",
+      "must_contain_any": ["base_urls"],
+      "must_not_contain": [],
+      "expected_output": "Set the 'base_urls' key on purge_file.settings to a comma-separated list of base URLs. If left empty the module uses the current request's scheme+host+base path. Used only for url/wildcardurl types."
+    }
+  ]
+}

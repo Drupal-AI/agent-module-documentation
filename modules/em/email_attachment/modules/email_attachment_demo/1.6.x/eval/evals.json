@@ -1,0 +1,73 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "email_attachment_demo",
+  "version": "1.6.x",
+  "note": "email_attachment_demo is a non-production example submodule of email_attachment. Its EmailAttachmentDemoHooks::mailAlter() adds $message['params']['attachment'] = ['filename' => __FILE__] for messages whose id is 'contact_page_mail', so the parent email_attachment module (which runs its mail_alter last) turns the core contact form email into multipart/mixed with the demo's own hook source file (EmailAttachmentDemoHooks.php) attached. hook_install seeds a placeholder recipient on contact.form.feedback. It depends on email_attachment and on the hidden core test module contact_test, so it cannot be enabled on this site; therefore it is documented from source, the introspection case reads a seeded State spec, and the execution case has the agent re-create the demo's attachment through the parent module and store the result in State (email_attachment_demo_eval.result) for verification. Brief mandates a light 3 easy / 1 medium / 1 hard suite for this demo submodule.",
+  "evals": [
+    {
+      "id": "email_attachment_demo-what",
+      "mode": "recipe",
+      "prompt": "What does the email_attachment_demo submodule demonstrate, and which email does it attach a file to?",
+      "must_contain_any": [
+        "contact",
+        "contact_page_mail",
+        "hook_mail_alter"
+      ],
+      "must_not_contain": [],
+      "expected_output": "It is an example submodule of email_attachment. Its hook_mail_alter (EmailAttachmentDemoHooks::mailAlter) targets the core contact form mail (message id contact_page_mail) and adds params['attachment'] pointing at its own source file, so email_attachment then sends that mail as multipart/mixed with the file attached.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "email_attachment_demo-how-attaches",
+      "mode": "recipe",
+      "prompt": "In email_attachment_demo, how does the code attach the file, and why does the attachment actually end up on the sent email?",
+      "must_contain_any": [
+        "params",
+        "attachment",
+        "__FILE__",
+        "runs last"
+      ],
+      "must_not_contain": [],
+      "expected_output": "It sets $message['params']['attachment'] = ['filename' => __FILE__] inside its hook_mail_alter. It ends up attached because the parent email_attachment module deliberately runs its own mail_alter last (via hook_module_implements_alter), so it sees the params the demo added and converts the message to multipart/mixed.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "email_attachment_demo-enable",
+      "mode": "recipe",
+      "prompt": "Can the email_attachment_demo module be enabled on a normal Drupal site? What are its dependencies?",
+      "must_contain_any": [
+        "contact_test",
+        "email_attachment",
+        "test module"
+      ],
+      "must_not_contain": [],
+      "expected_output": "It depends on email_attachment and on the hidden core test module contact_test. Because Drupal hides *_test modules, it generally cannot be enabled on a standard site and is meant to be read as example code, not installed.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "email_attachment_demo-known-spec",
+      "mode": "introspection",
+      "prompt": "On this Drupal site, a spec describing the email_attachment_demo behavior has been stored in State under email_attachment_demo_eval.spec. Inspect the live site and report which mail message id the demo attaches a file to.",
+      "must_contain_any": [
+        "contact_page_mail"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The State value email_attachment_demo_eval.spec records message_id = 'contact_page_mail' (and attached_file = 'EmailAttachmentDemoHooks.php'), i.e. the demo attaches its hook file to the core contact form mail.",
+      "setup": "agent-module-documentation/evaluation/verify/email_attachment_demo-known-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/email_attachment_demo-known-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "email_attachment_demo-replicate",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "The email_attachment_demo submodule cannot be enabled here (it needs the hidden contact_test module), so replicate what it does manually. Build an email message with id 'contact_page_mail', attach the demo's hook source file (EmailAttachmentDemoHooks.php) to it the way the demo does, run the message through the email_attachment module's mail-alter processing, and store the resulting message array in Drupal State under email_attachment_demo_eval.result.",
+      "reset": "agent-module-documentation/evaluation/verify/email_attachment_demo-attach-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/email_attachment_demo-attach-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/email_attachment_demo-attach-cleanup.sh",
+      "expected_output": "Build $message = ['id' => 'contact_page_mail', 'headers' => ['Content-Type' => 'text/plain'], 'body' => ['...'], 'params' => ['attachment' => ['filename' => 'EmailAttachmentDemoHooks.php', 'filecontent' => '<any bytes>']]] (or point filename at the real demo hook file), call \\Drupal::service(\\Drupal\\email_attachment\\Hook\\EmailAttachmentHooks::class)->mailAlter($message), then \\Drupal::state()->set('email_attachment_demo_eval.result', $message). The result must be multipart/mixed, id contact_page_mail, with an attachment named EmailAttachmentDemoHooks.php."
+    }
+  ]
+}

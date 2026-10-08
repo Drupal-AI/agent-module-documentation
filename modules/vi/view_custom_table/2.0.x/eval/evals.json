@@ -1,0 +1,94 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "view_custom_table",
+  "version": "2.0.x",
+  "note": "Views Custom Table implements hook_views_data() to expose registered database tables as Views base tables. Registrations live in the view_custom_table.tables config object, keyed by table name with table_name/table_database/description/column_relations(PHP-serialized)/created_by. Date columns use the module's mysql_date Views field+filter plugins; numeric columns listed in column_relations become Views relationships to entities (base = entity data table) or other custom tables. Medium cases read back a real registration's description and its live Views-data group; hard cases register a real (pre-created) table so it becomes a Views base table, and register a table with a uid->user relation verified against live Views data. All artifacts are namespaced vct_* and cleaned up.",
+  "evals": [
+    {
+      "id": "view_custom_table-how-and-where",
+      "mode": "recipe",
+      "prompt": "How does the Views Custom Table (view_custom_table) module make a non-entity/custom database table available to Drupal Views, and in which configuration object are the registered tables stored?",
+      "must_contain_any": [
+        "hook_views_data",
+        "view_custom_table.tables",
+        "base table"
+      ],
+      "must_not_contain": [],
+      "expected_output": "It implements hook_views_data() (view_custom_table_views_data), reading the view_custom_table.tables config object and turning each registered table into a Views base table (group 'Custom Table Views'), introspecting the table's columns via information_schema and mapping them to Views handlers by SQL type.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "view_custom_table-requirements-datehandler",
+      "mode": "recipe",
+      "prompt": "For Views Custom Table: what does a database table need in order to be registered and behave correctly, and which Views handler does the module use for the table's date/time columns?",
+      "must_contain_any": [
+        "primary key",
+        "mysql_date"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Each table must have a primary key, and any column used as an entity/table relation must be numeric. Date/time columns (date, datetime, timestamp, time, year) are handled by the module's mysql_date Views field and filter plugins; integer columns get numeric handlers and text columns get standard/string handlers.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "view_custom_table-ui-and-permission",
+      "mode": "recipe",
+      "prompt": "Where in the Drupal admin UI do you register a custom table for Views Custom Table, and what permission does a user need to add one?",
+      "must_contain_any": [
+        "/admin/structure/views/custom_table",
+        "add custom table in views"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Manage them at Structure -> Views -> View Custom Table (/admin/structure/views/custom_table, configure route view_custom_table.customtable); the Add form is at /admin/structure/views/custom_table/add and requires the 'add custom table in views' permission. Other permissions: remove custom table in views, administer own/all custom table in views.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "view_custom_table-known-description",
+      "mode": "introspection",
+      "prompt": "This Drupal site has a table registered with Views Custom Table. Inspect the live view_custom_table configuration and tell me the exact description stored for the registered custom table named vct_known.",
+      "must_contain_any": [
+        "VCT Known Report"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The description is 'VCT Known Report'. Read it via `drush config:get view_custom_table.tables vct_known` (vct_known.description).",
+      "setup": "agent-module-documentation/evaluation/verify/view_custom_table-known-desc-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/view_custom_table-known-desc-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "view_custom_table-views-group",
+      "mode": "introspection",
+      "prompt": "A custom table named vct_grp has been registered with Views Custom Table on this site. Inspect the live Views data and tell me under which Views group (the base-table group label) the vct_grp table appears.",
+      "must_contain_any": [
+        "Custom Table Views"
+      ],
+      "must_not_contain": [],
+      "expected_output": "It appears under the 'Custom Table Views' group. Inspect via `\\Drupal::service('views.views_data')->get('vct_grp')['table']['group']`, which the module sets to t('Custom Table Views').",
+      "setup": "agent-module-documentation/evaluation/verify/view_custom_table-views-group-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/view_custom_table-views-group-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "view_custom_table-register-table",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site a database table named vct_task already exists (in the default database) but is not yet usable in Views. Using the Views Custom Table module, register the vct_task table so it becomes a Views base table, and apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/view_custom_table-register-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/view_custom_table-register-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/view_custom_table-register-cleanup.sh",
+      "expected_output": "Add a vct_task entry to the view_custom_table.tables config (table_name=vct_task, table_database=default, a description, column_relations=serialize([]), created_by) via the Add Custom Table form or configFactory, then clear caches / Views data. The module's hook_views_data then exposes vct_task with table.base set (group 'Custom Table Views')."
+    },
+    {
+      "id": "view_custom_table-register-relation",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "A database table vct_rel exists (default database) with a numeric uid column that stores a Drupal user id. Using Views Custom Table, register vct_rel and declare that its uid column is related to the User entity, so that a Views relationship from vct_rel to the users table becomes available. Apply the change to the live configuration.",
+      "reset": "agent-module-documentation/evaluation/verify/view_custom_table-relation-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/view_custom_table-relation-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/view_custom_table-relation-cleanup.sh",
+      "expected_output": "Register vct_rel with column_relations = serialize(['uid' => 'user']) (via the Add / Edit Table Relations form or configFactory), then clear Views data. hook_views_data then adds a relationship on vct_rel.uid whose base is the user entity data table (users_field_data), joining custom-table rows to user accounts."
+    }
+  ]
+}

@@ -1,0 +1,94 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "unpublished_404",
+  "version": "2.0.x",
+  "note": "Unpublished 404 is a single exception subscriber (unpublished_404.not_found, class Drupal\\unpublished_404\\EventSubscriber\\NotFound extending HttpExceptionSubscriberBase). Its on403() converts a 403 to a NotFoundHttpException (404) only when: the current user lacks 'view own unpublished content', the request has a 'node' route param, and that node is unpublished. No config, no permissions of its own, no Drush, no plugins. Medium cases read back real state (a role granted the exempting permission; an unpublished node). Hard cases: (H1) create an unpublished node and verify the subscriber turns its anonymous 403 into a 404 (verified by invoking NotFound::on403 directly, robust to unrelated error-page rendering); (H2) create a role granted 'view own unpublished content'.",
+  "evals": [
+    {
+      "id": "unpublished_404-status-code",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "What does the unpublished_404 module change about how Drupal responds when an unauthorized visitor requests an unpublished node? What HTTP status would they get with the module versus without it?",
+      "must_contain_any": [
+        "404",
+        "not found"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Without it, an unauthorized visitor to an unpublished node gets a 403 (Access Denied), which reveals the node exists. With unpublished_404 they get a 404 (Not Found) instead, hiding the node's existence. It does this via an exception subscriber that replaces the 403 with a NotFoundHttpException."
+    },
+    {
+      "id": "unpublished_404-permission-gate",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "Which permission decides whether the unpublished_404 module turns a node 403 into a 404 for a given user, and what other two conditions must be true for the conversion to happen?",
+      "must_contain_any": [
+        "view own unpublished content"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The conversion happens only when the current user does NOT have the 'view own unpublished content' permission, AND the request resolved a 'node' route parameter, AND that node is unpublished. Users with that permission keep getting the normal 403 (not 404)."
+    },
+    {
+      "id": "unpublished_404-mechanism",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "How is the unpublished_404 module implemented? Name the class/base class it uses, the event method, its priority, and which response formats it handles.",
+      "must_contain_any": [
+        "HttpExceptionSubscriberBase",
+        "on403",
+        "NotFoundHttpException",
+        "1000"
+      ],
+      "must_not_contain": [],
+      "expected_output": "It is an exception subscriber: Drupal\\unpublished_404\\EventSubscriber\\NotFound extends HttpExceptionSubscriberBase, implements on403() (priority 1000), handles only the 'html' format, and calls $event->setThrowable(new NotFoundHttpException()) to turn the 403 into a 404. Registered as service unpublished_404.not_found."
+    },
+    {
+      "id": "unpublished_404-which-role-exempt",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "On this Drupal site, one custom role has been granted the permission that makes unpublished_404 NOT convert a user's node 403 into a 404 (i.e. its users can still reach unpublished content the normal way). Inspect the live configuration and name that role.",
+      "must_contain_any": [
+        "u404_editor"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The role u404_editor has the 'view own unpublished content' permission (drush role:list / config user.role.u404_editor). Its holders are exempt from the 403->404 conversion.",
+      "setup": "agent-module-documentation/evaluation/verify/unpublished_404-perm-role-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/unpublished_404-perm-role-cleanup.sh"
+    },
+    {
+      "id": "unpublished_404-find-draft",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "This site has one unpublished Article node created for testing unpublished_404. Inspect the site and report that node's title and confirm it is unpublished.",
+      "must_contain_any": [
+        "u404 medium draft"
+      ],
+      "must_not_contain": [],
+      "expected_output": "There is an unpublished Article titled 'u404 medium draft' (status=0), findable via drush (e.g. an entityQuery on node by status=0, or sql/content listing).",
+      "setup": "agent-module-documentation/evaluation/verify/unpublished_404-draft-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/unpublished_404-draft-cleanup.sh"
+    },
+    {
+      "id": "unpublished_404-create-hidden-draft",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "site-owner",
+      "prompt": "On this Drupal site (which has the unpublished_404 module enabled), create an Article node titled exactly 'U404 Hard Draft' and keep it as an unpublished draft, so that an anonymous visitor who guesses its URL is told the page does not exist (a 404) rather than that access is denied (a 403). Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/unpublished_404-hard-draft-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/unpublished_404-hard-draft-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/unpublished_404-hard-draft-cleanup.sh",
+      "expected_output": "An unpublished (status=0) Article node titled 'U404 Hard Draft' exists. Because it is unpublished and the visitor is anonymous (lacking 'view own unpublished content'), the unpublished_404 subscriber converts the 403 into a 404 NotFoundHttpException for it. If the node is published or missing, verify fails."
+    },
+    {
+      "id": "unpublished_404-grant-exempt-role",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, editors need to reach their own unpublished nodes normally (getting the usual access-denied behavior, not a 404 from unpublished_404). Create a role with machine name 'u404_viewer' and grant it the core permission that exempts a user from the unpublished_404 403->404 conversion. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/unpublished_404-hard-role-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/unpublished_404-hard-role-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/unpublished_404-hard-role-cleanup.sh",
+      "expected_output": "A role user.role.u404_viewer exists and has the 'view own unpublished content' permission (e.g. drush role:create u404_viewer 'U404 Viewer' then drush role:perm:add u404_viewer 'view own unpublished content')."
+    }
+  ]
+}

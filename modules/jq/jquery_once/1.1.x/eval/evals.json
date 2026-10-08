@@ -1,0 +1,93 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "jquery_once",
+  "version": "1.1.x",
+  "note": "Bring Back jQuery.once() is a single hook_library_info_alter() implementation and two bundled JS files. It has NO configuration whatsoever: no settings form, configure=null, no permissions, no services, no plugins, no Drush, no config schema, no submodules. Its only observable state is the live asset library registry, where it re-defines core/jquery (3.7.1 -> modules/contrib/jquery_once/lib/jquery_3.7.1_jquery.min.js, weight -20) and re-adds core/jquery.once (2.2.3 -> modules/contrib/jquery_once/lib/jquery-once-2.2.3/jquery.once.min.js, weight -19, depends on core/jquery); the same pair is also declared as jquery_once/jquery and jquery_once/jquery.once. Because there is no config object to seed, the introspection cases target that registry: one reads the altered core library directly, the other installs a fixture module whose library depends on core/jquery.once so the agent must resolve the dependency against the running site. The execution cases require building real custom modules whose effect is checked through library.discovery.",
+  "evals": [
+    {
+      "id": "jquery_once-what-it-restores",
+      "mode": "recipe",
+      "prompt": "After upgrading a Drupal site to 10/11 my custom JavaScript throws \"$(...).once is not a function\". The jquery_once contrib module is suggested as a fix. What exactly does it restore, and which asset library do I depend on in my *.libraries.yml to get it?",
+      "must_contain_any": [
+        "core/jquery.once",
+        "jquery_once/jquery.once"
+      ],
+      "must_not_contain": [],
+      "expected_output": "It re-registers the jquery.once plugin that Drupal 10 removed. Depend on core/jquery.once (which the module re-adds via hook_library_info_alter) - or on its own namespace jquery_once/jquery.once. That restores $(sel).once(id), .findOnce(id) and .removeOnce(id).",
+      "difficulty": "easy"
+    },
+    {
+      "id": "jquery_once-versions",
+      "mode": "recipe",
+      "prompt": "Which library versions does the Drupal jquery_once module ship, and which two core asset libraries does it (re)define?",
+      "must_contain_any": [
+        "2.2.3",
+        "3.7.1"
+      ],
+      "must_not_contain": [],
+      "expected_output": "It redefines core/jquery at version 3.7.1 (serving lib/jquery_3.7.1_jquery.min.js at weight -20) and re-adds core/jquery.once at version 2.2.3 (serving lib/jquery-once-2.2.3/jquery.once.min.js at weight -19, depending on core/jquery). The same pair is also declared as jquery_once/jquery and jquery_once/jquery.once.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "jquery_once-mechanism-and-once",
+      "mode": "recipe",
+      "prompt": "How does the Drupal jquery_once module technically add these libraries back, is there anything to configure, and does it interfere with Drupal 10's own once() / Drupal.once API?",
+      "must_contain_any": [
+        "library_info_alter",
+        "hook_library_info_alter"
+      ],
+      "must_not_contain": [],
+      "expected_output": "It is one implementation of hook_library_info_alter() (jquery_once_library_info_alter) that rewrites $libraries['jquery'] and $libraries['jquery.once'] when $extension === 'core'. There is nothing to configure - no settings form, no configure route, no permissions, no Drush; just install it and rebuild caches. It does not touch core/once / Drupal.once, so the modern once() API keeps working alongside it.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "jquery_once-core-library",
+      "mode": "introspection",
+      "prompt": "On this running Drupal site, inspect the live asset library registry and tell me what the core/jquery.once library currently resolves to: which version it declares and the exact JavaScript file path it loads.",
+      "must_contain_any": [
+        "jquery-once-2.2.3/jquery.once.min.js"
+      ],
+      "must_not_contain": [],
+      "expected_output": "core/jquery.once is version 2.2.3 and loads modules/contrib/jquery_once/lib/jquery-once-2.2.3/jquery.once.min.js (it depends on core/jquery, which is likewise redirected to modules/contrib/jquery_once/lib/jquery_3.7.1_jquery.min.js at 3.7.1). Readable with \\Drupal::service('library.discovery')->getLibraryByName('core', 'jquery.once').",
+      "setup": "agent-module-documentation/evaluation/verify/jquery_once-core-library-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/jquery_once-core-library-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "jquery_once-probe-module",
+      "mode": "introspection",
+      "prompt": "A module called jqonce_probe is installed on this Drupal site and it declares an asset library that depends on core/jquery.once. Inspect the running site and tell me which module actually supplies that dependency and which JavaScript file will be served for it.",
+      "must_contain_any": [
+        "jquery-once-2.2.3"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The jquery_once contrib module supplies it: jqonce_probe/probe depends on core/jquery.once, and on this site core/jquery.once resolves (via jquery_once_library_info_alter) to modules/contrib/jquery_once/lib/jquery-once-2.2.3/jquery.once.min.js at version 2.2.3.",
+      "setup": "agent-module-documentation/evaluation/verify/jquery_once-probe-module-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/jquery_once-probe-module-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "jquery_once-legacy-module",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, create and enable a custom module named jqonce_legacy under web/modules/custom. It must declare an asset library that depends on core/jquery.once (the library restored by the jquery_once module) and ship a real JavaScript file that uses the legacy $(selector).once() API in a Drupal behaviour. Apply it to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/jquery_once-legacy-module-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/jquery_once-legacy-module-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/jquery_once-legacy-module-cleanup.sh",
+      "expected_output": "web/modules/custom/jqonce_legacy with jqonce_legacy.info.yml, a jqonce_legacy.libraries.yml declaring a library whose dependencies include core/jquery.once, and the JS file it references actually present on disk; the module installed and caches rebuilt so library.discovery reports the library and core/jquery.once still resolves to jquery_once's jquery.once.min.js."
+    },
+    {
+      "id": "jquery_once-alter-dependency",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, make the core asset library core/drupal.debounce also depend on core/jquery.once (the legacy jQuery Once library that the jquery_once module restores), so that anything attaching drupal.debounce gets $.fn.once as well. Do it from a custom module named jqonce_addonce under web/modules/custom, enable it, and make sure the change is visible in the live library registry.",
+      "reset": "agent-module-documentation/evaluation/verify/jquery_once-alter-dependency-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/jquery_once-alter-dependency-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/jquery_once-alter-dependency-cleanup.sh",
+      "expected_output": "web/modules/custom/jqonce_addonce implementing hook_library_info_alter() that appends 'core/jquery.once' to $libraries['drupal.debounce']['dependencies'] when $extension === 'core', installed and cache-rebuilt, so \\Drupal::service('library.discovery')->getLibraryByName('core','drupal.debounce')['dependencies'] contains core/jquery.once."
+    }
+  ]
+}

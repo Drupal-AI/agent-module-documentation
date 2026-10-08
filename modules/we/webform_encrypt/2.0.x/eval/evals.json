@@ -1,0 +1,100 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "webform_encrypt",
+  "version": "2.0.x",
+  "note": "Webform Encrypt encrypts individual webform element values at rest using an Encrypt encryption profile. It has NO settings form and NO configure route (configure=null). Its only persistent config is a per-element third-party setting on the webform: webform.webform.<id> -> third_party_settings.webform_encrypt.element.<key> = {encrypt: true, encrypt_profile: <profile_id>}. At runtime hook_entity_type_alter swaps the webform_submission storage class to WebformEncryptSubmissionStorage (encrypts in doPreSave, decrypts in doPostSave/loadData; serialized as {data, encrypt_profile}) and the access handler to WebformEncryptSubmissionAccessControlHandler. The single permission 'view encrypted values' gates decrypting values (placeholder '[Value Encrypted]' otherwise) and editing submissions containing encrypted elements. Medium/hard cases are grounded in that real third-party-settings config, verified against the live webform config entity. Setup/reset scripts create an Encrypt profile we_test_profile (+ key we_test_key) and webforms prefixed we_encrypt_.",
+  "evals": [
+    {
+      "id": "webform_encrypt-where-stored",
+      "mode": "recipe",
+      "prompt": "In Drupal, I enabled the webform_encrypt module but there is no settings page for it. How do I turn on encryption for one field of a webform, and where exactly is that choice stored in configuration?",
+      "must_contain_any": [
+        "third_party_settings",
+        "third party setting",
+        "webform_encrypt",
+        "encrypt_profile",
+        "Advanced"
+      ],
+      "must_not_contain": [],
+      "expected_output": "There is no configure route. On the element's Advanced tab tick 'Encrypt this field's value' and choose an encryption profile. It is stored as a per-element third-party setting on the webform: webform.webform.<id> -> third_party_settings.webform_encrypt.element.<element_key> = {encrypt: true, encrypt_profile: <id>}.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "webform_encrypt-view-permission",
+      "mode": "recipe",
+      "prompt": "With the Drupal webform_encrypt module, which permission controls whether a user sees the real decrypted submission values, and what do users without it see?",
+      "must_contain_any": [
+        "view encrypted values",
+        "[Value Encrypted]",
+        "Value Encrypted"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The 'view encrypted values' permission. Users lacking it see the placeholder text '[Value Encrypted]' instead of decrypted data, and are also forbidden from editing (updating) submissions that contain encrypted elements.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "webform_encrypt-how-runtime",
+      "mode": "recipe",
+      "prompt": "How does the Drupal webform_encrypt module actually encrypt submission data when a webform is saved? Which entity handler does it replace and where does the encryption happen?",
+      "must_contain_any": [
+        "WebformEncryptSubmissionStorage",
+        "storage",
+        "doPreSave",
+        "hook_entity_type_alter",
+        "storage class"
+      ],
+      "must_not_contain": [],
+      "expected_output": "hook_entity_type_alter swaps the webform_submission storage class to WebformEncryptSubmissionStorage, which encrypts flagged element values in doPreSave() (using core's 'encryption' service and the element's encryption profile) and decrypts them again in doPostSave()/loadData(). It also swaps the access control handler to WebformEncryptSubmissionAccessControlHandler.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "webform_encrypt-which-element",
+      "mode": "introspection",
+      "prompt": "On this Drupal site there is a webform with machine name 'we_encrypt_known' that has one element configured to be encrypted by webform_encrypt. Inspect the live webform configuration and give the machine name (key) of the encrypted element.",
+      "must_contain_any": [
+        "ssn"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The element is 'ssn'. In webform.webform.we_encrypt_known the third_party_settings.webform_encrypt.element.ssn entry has encrypt: true (profile we_test_profile).",
+      "setup": "agent-module-documentation/evaluation/verify/webform_encrypt-known-element-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/webform_encrypt-known-element-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "webform_encrypt-which-profile",
+      "mode": "introspection",
+      "prompt": "The webform 'we_encrypt_profile' on this site encrypts its 'card' element with webform_encrypt. Inspect the live configuration and state which encryption profile is used to encrypt that element.",
+      "must_contain_any": [
+        "we_test_profile"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The encryption profile is we_test_profile: webform.webform.we_encrypt_profile -> third_party_settings.webform_encrypt.element.card.encrypt_profile = we_test_profile.",
+      "setup": "agent-module-documentation/evaluation/verify/webform_encrypt-known-profile-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/webform_encrypt-known-profile-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "webform_encrypt-enable-encryption",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site the webform 'we_encrypt_task' has elements 'name' and 'ssn' and an encryption profile 'we_test_profile' already exists. Using the webform_encrypt module, configure the webform so that the 'ssn' element's submitted value is encrypted. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/webform_encrypt-encrypt-element-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/webform_encrypt-encrypt-element-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/webform_encrypt-encrypt-element-cleanup.sh",
+      "expected_output": "Set third_party_settings.webform_encrypt.element.ssn = {encrypt: true, encrypt_profile: we_test_profile} on webform.webform.we_encrypt_task (via $webform->setThirdPartySetting('webform_encrypt','element', [...])->save(), or by ticking 'Encrypt this field's value' on the ssn element's Advanced tab)."
+    },
+    {
+      "id": "webform_encrypt-encrypt-with-profile",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site the webform 'we_encrypt_task2' has a 'notes' textarea element, and an encryption profile named 'we_test_profile' exists. Use webform_encrypt to encrypt the 'notes' element specifically with the 'we_test_profile' encryption profile, and apply it to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/webform_encrypt-encrypt-with-profile-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/webform_encrypt-encrypt-with-profile-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/webform_encrypt-encrypt-with-profile-cleanup.sh",
+      "expected_output": "On webform.webform.we_encrypt_task2 set third_party_settings.webform_encrypt.element.notes = {encrypt: true, encrypt_profile: we_test_profile} and save."
+    }
+  ]
+}

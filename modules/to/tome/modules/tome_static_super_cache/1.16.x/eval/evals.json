@@ -1,0 +1,58 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "tome_static_super_cache",
+  "version": "1.16.x",
+  "note": "Tome Static Super Cache has no config, permissions, or Drush command; it works by decorating cache.tome_static (SuperStaticCache) and cache_tags.invalidator, and by providing a Views cache plugin 'Smart tag based' with id tome_static_super_cache_smart_tag. Full rebuilds are forced via the 'Fully clear caches' button at /admin/config/development/performance (the tscr / tome:super-cache-rebuild command exists but is registered only for Drupal Console, not Drush). Easy cases test that knowledge. Medium introspects the live Views cache plugin registry for the smart_tag plugin. Hard has the agent assign the smart_tag cache plugin to a namespaced probe View (reset creates view tome_ssc_probe with cache type 'none'; verify checks the display's cache type became tome_static_super_cache_smart_tag; cleanup deletes the view). This is pure Views config, no rendering, safe on the shared host.",
+  "evals": [
+    {
+      "id": "tome_static_super_cache-problem",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "Why would a Tome Static site enable tome_static_super_cache? What two core caching behaviors does it change?",
+      "must_contain_any": ["node_list", "list cache tag", "drush cr", "full", "wipe", "clear all caches"],
+      "must_not_contain": [],
+      "expected_output": "It stops a full cache clear (drush cr / 'Clear all caches') from wiping the Tome Static cache bin, and stops list cache tags (e.g. node_list) from invalidating every View's cache on any node save. It does this by decorating cache.tome_static and cache_tags.invalidator."
+    },
+    {
+      "id": "tome_static_super_cache-views-plugin",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "tome_static_super_cache adds a Views caching plugin to avoid list cache tags. What is the plugin's id / label?",
+      "must_contain_any": ["tome_static_super_cache_smart_tag", "Smart tag based", "Smart tag"],
+      "must_not_contain": [],
+      "expected_output": "The Views cache plugin id is tome_static_super_cache_smart_tag, labelled 'Smart tag based'. Assign it to a View's caching so only a View-specific tag is cleared when an entity that actually appears in the View changes."
+    },
+    {
+      "id": "tome_static_super_cache-full-rebuild",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "With tome_static_super_cache enabled, a normal 'drush cr' no longer fully clears the Tome Static cache. How do you force a genuine full cache rebuild?",
+      "must_contain_any": ["Fully clear caches", "/admin/config/development/performance", "performance", "tscr", "super-cache-rebuild"],
+      "must_not_contain": [],
+      "expected_output": "Use the 'Fully clear caches' button on /admin/config/development/performance (or drupal_flush_all_caches() with the FULL_REBUILD_KEY global). The tscr / tome:super-cache-rebuild command does the same but is only registered for Drupal Console, not Drush."
+    },
+    {
+      "id": "tome_static_super_cache-plugin-available",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "Inspect this running site's Views caching plugins. Which cache plugin id does tome_static_super_cache make available for use on a View display?",
+      "must_contain_any": ["tome_static_super_cache_smart_tag"],
+      "must_not_contain": [],
+      "setup": "agent-module-documentation/evaluation/verify/tome_static_super_cache-plugin-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/tome_static_super_cache-plugin-cleanup.sh",
+      "expected_output": "tome_static_super_cache_smart_tag ('Smart tag based') is registered with the Views cache plugin manager (plugin.manager.views.cache); check with hasDefinition('tome_static_super_cache_smart_tag')."
+    },
+    {
+      "id": "tome_static_super_cache-assign-plugin",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "This site has a View with machine name 'tome_ssc_probe' whose default display currently uses the 'none' caching plugin. Switch its default display to use Tome Static Super Cache's 'Smart tag based' caching plugin, and apply it to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/tome_static_super_cache-view-cache-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/tome_static_super_cache-view-cache-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/tome_static_super_cache-view-cache-cleanup.sh",
+      "expected_output": "Set the tome_ssc_probe view's default display display_options.cache.type to 'tome_static_super_cache_smart_tag' (via Views UI Advanced > Caching, config edit, or the entity API) and save."
+    }
+  ]
+}

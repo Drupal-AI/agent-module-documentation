@@ -1,0 +1,95 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "msqrole",
+  "version": "1.0.x",
+  "note": "Masquerade as Role lets a user view the site with different roles while keeping their own uid. One config object msqrole.settings (key tags_to_invalidate, text, default ''). Three static permissions (masquerade role, create masquerade role link, administer masquerade role) plus a dynamic 'masquerade as <role_id>' per configurable role (excludes anonymous/authenticated/administrator). Service msqrole.manager (RoleManagerInterface): setActive/setRoles/isActive/generateUrl/getRolesForKey; masquerade links stored in the msqrole.urls key/value collection (persistent key = sha256 of comma-joined role ids). NOTE on this shared site, saving user roles / config entities currently throws 'Table information not available for commerce_giftcards' (a pre-existing pending entity-update from another module), so these evals deliberately avoid creating roles: they use the existing content_editor role and only touch msqrole.settings config and the msqrole.urls key/value store, which work fine.",
+  "evals": [
+    {
+      "id": "msqrole-vs-masquerade",
+      "mode": "recipe",
+      "prompt": "How does the Drupal 'Masquerade as Role' (msqrole) module differ from the Masquerade module, and which permission lets a user actually impersonate a particular role?",
+      "must_contain_any": [
+        "role",
+        "masquerade as",
+        "getRoles"
+      ],
+      "must_not_contain": [],
+      "expected_output": "msqrole changes the current user's effective roles while keeping the same user id (it overrides the user entity's getRoles() and the current_user service), whereas Masquerade switches to a different user. Impersonating a specific role requires the dynamically generated 'masquerade as <role_id>' permission (plus 'masquerade role' to use the form).",
+      "difficulty": "easy"
+    },
+    {
+      "id": "msqrole-cache-tags",
+      "mode": "recipe",
+      "prompt": "In the msqrole module, some blocks show or hide incorrectly right after switching roles because of the render cache. Which config object and key let an administrator add extra cache tags to invalidate on masquerade?",
+      "must_contain_any": [
+        "tags_to_invalidate",
+        "msqrole.settings"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Add the tags at /admin/config/people/masquerade-role; they are stored in the config object msqrole.settings under the key tags_to_invalidate (in addition to the module's hardcoded TAGS_TO_INVALIDATE list).",
+      "difficulty": "easy"
+    },
+    {
+      "id": "msqrole-generate-link",
+      "mode": "recipe",
+      "prompt": "Which msqrole service and method do I call to programmatically generate a shareable link that puts a user into a given set of roles, and where are those link keys stored?",
+      "must_contain_any": [
+        "msqrole.manager",
+        "generateUrl",
+        "msqrole.urls"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Call the msqrole.manager service (RoleManagerInterface) generateUrl($roles, $single_usage) which returns a Url to the msqrole.set route with a ?key= hash; the entries are stored in the 'msqrole.urls' key/value collection.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "msqrole-known-tags",
+      "mode": "introspection",
+      "prompt": "On this Drupal site, msqrole has been configured to invalidate a specific extra cache tag when a user masquerades as a role. Inspect the live configuration and give that cache tag.",
+      "must_contain_any": [
+        "config:block.block.olivero_account_menu"
+      ],
+      "must_not_contain": [],
+      "expected_output": "msqrole.settings tags_to_invalidate is 'config:block.block.olivero_account_menu'.",
+      "setup": "agent-module-documentation/evaluation/verify/msqrole-known-tags-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/msqrole-known-tags-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "msqrole-known-link",
+      "mode": "introspection",
+      "prompt": "A shareable msqrole masquerade-role link has already been generated on this site. Inspect the module's link storage (the msqrole.urls key/value collection) and state which role that link grants.",
+      "must_contain_any": [
+        "content_editor"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The stored entry in the msqrole.urls key/value collection has roles = ['content_editor'], so the link masquerades as content_editor.",
+      "setup": "agent-module-documentation/evaluation/verify/msqrole-known-link-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/msqrole-known-link-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "msqrole-set-tags",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, configure the msqrole module so that the cache tag 'config:block.block.sidebar' is also invalidated whenever a user activates or resets masquerade. Apply the change live.",
+      "reset": "agent-module-documentation/evaluation/verify/msqrole-set-tags-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/msqrole-set-tags-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/msqrole-set-tags-cleanup.sh",
+      "expected_output": "msqrole.settings key tags_to_invalidate contains 'config:block.block.sidebar' (e.g. drush cset msqrole.settings tags_to_invalidate 'config:block.block.sidebar')."
+    },
+    {
+      "id": "msqrole-create-link",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "Using the msqrole manager service, generate a reusable (persistent, not single-use) masquerade-role link that puts a user into the existing 'content_editor' role, and store it on the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/msqrole-create-link-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/msqrole-create-link-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/msqrole-create-link-cleanup.sh",
+      "expected_output": "The msqrole.urls key/value collection contains an entry whose roles include 'content_editor' (e.g. \\Drupal::service('msqrole.manager')->generateUrl(['content_editor'], FALSE))."
+    }
+  ]
+}

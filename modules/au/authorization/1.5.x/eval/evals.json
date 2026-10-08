@@ -1,0 +1,78 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "authorization",
+  "version": "1.5.x",
+  "note": "Authorization is a framework that maps external identity data (e.g. LDAP groups) to Drupal-side grants (e.g. roles) via authorization_profile config entities pairing one @AuthorizationProvider plugin with one @AuthorizationConsumer plugin plus a mapping table. No providers ship in-project (LDAP comes from ldap_authorization), so provider fields are left empty; the only bundled consumer is authorization_drupal_roles. Easy cases are response-graded (no site changes). Medium cases stage a known authorization_profile config entity and ask the agent to read it back from live config (cleanup deletes it). Hard cases have the agent CREATE an authorization_profile using the drupal_roles consumer with a role mapping, verified against live config (exit 0 = pass).",
+  "evals": [
+    {
+      "id": "authorization-config-entity",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "In the Drupal Authorization module, what is the name of the configuration entity type that stores a mapping setup, and what two plugins does each one pair together?",
+      "must_contain_any": ["authorization_profile"],
+      "must_not_contain": [],
+      "expected_output": "The config entity type is authorization_profile (config prefix authorization.authorization_profile.*). Each profile pairs exactly one provider plugin (@AuthorizationProvider, supplies proposals about a user, e.g. LDAP groups) with one consumer plugin (@AuthorizationConsumer, grants/revokes a Drupal-side target, e.g. roles), plus a mapping table between them."
+    },
+    {
+      "id": "authorization-plugin-types",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "What are the two plugin types the Authorization module defines, and what is the annotation and role of each? Where does each ship from?",
+      "must_contain_any": ["AuthorizationProvider", "AuthorizationConsumer"],
+      "must_not_contain": [],
+      "expected_output": "Provider plugins (@AuthorizationProvider, manager plugin.manager.authorization.provider, dir Plugin/authorization/Provider) return proposals about a user from an external identity source — the canonical one, LDAP, ships in ldap_authorization. Consumer plugins (@AuthorizationConsumer, manager plugin.manager.authorization.consumer, dir Plugin/authorization/Consumer) grant/revoke a Drupal-side target — the only bundled consumer is authorization_drupal_roles (Drupal roles)."
+    },
+    {
+      "id": "authorization-consumer-in-project",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "Out of the box, which authorization consumer plugin ships inside the Authorization project, and what does it grant? What dependency does the framework itself require?",
+      "must_contain_any": ["authorization_drupal_roles", "Drupal Roles"],
+      "must_not_contain": [],
+      "expected_output": "The bundled consumer is authorization_drupal_roles (label 'Drupal Roles'), provided by the authorization_drupal_roles submodule; it grants/revokes Drupal roles. The authorization framework depends on the externalauth module."
+    },
+    {
+      "id": "authorization-known-profile-consumer",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "This Drupal 11 site already has an Authorization profile configured. Inspect the live configuration and report: which consumer plugin does the authorization_profile use, and which Drupal role does its consumer mapping grant?",
+      "setup": "agent-module-documentation/evaluation/verify/authorization-known-profile-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/authorization-known-profile-cleanup.sh",
+      "must_contain_any": ["authorization_drupal_roles"],
+      "must_not_contain": [],
+      "expected_output": "The profile (id known_ldap_editors) uses the consumer plugin authorization_drupal_roles (Drupal Roles), and its consumer mapping grants the 'editor' role."
+    },
+    {
+      "id": "authorization-known-profile-id",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "On this live site, list the authorization_profile config entities that exist and give the machine id and label of each one. What config object name stores it?",
+      "setup": "agent-module-documentation/evaluation/verify/authorization-known-profile-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/authorization-known-profile-cleanup.sh",
+      "must_contain_any": ["known_ldap_editors"],
+      "must_not_contain": [],
+      "expected_output": "There is one profile: machine id known_ldap_editors, label 'Known LDAP Editors'. It is stored in the config object authorization.authorization_profile.known_ldap_editors."
+    },
+    {
+      "id": "authorization-create-profile-expert",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal 11 site with the Authorization and authorization_drupal_roles modules enabled, create an authorization_profile config entity (any machine id, e.g. staff_roles) that uses the Drupal Roles consumer plugin (authorization_drupal_roles) with a consumer mapping that grants the 'editor' role. Leave the provider empty since no provider is installed. It just needs to exist as config wired to the drupal_roles consumer with that role mapping.",
+      "reset": "agent-module-documentation/evaluation/verify/authorization-create-profile-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/authorization-create-profile-verify.sh",
+      "expected_output": "An authorization_profile config entity exists whose consumer is authorization_drupal_roles and whose consumer_mappings include a row naming a role (e.g. editor)."
+    },
+    {
+      "id": "authorization-create-profile-layman",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "We use the Authorization module to hand out roles automatically. Set up one of its mapping profiles so that it hands people the 'editor' role, using the built-in Drupal Roles option as what it grants. There's no directory hooked up yet, so leave the source side blank — I just need the profile saved and pointed at the Drupal roles grant with that role.",
+      "reset": "agent-module-documentation/evaluation/verify/authorization-create-profile-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/authorization-create-profile-verify.sh",
+      "expected_output": "An authorization_profile config entity exists whose consumer is authorization_drupal_roles and whose consumer_mappings include a row naming a role (e.g. editor)."
+    }
+  ]
+}

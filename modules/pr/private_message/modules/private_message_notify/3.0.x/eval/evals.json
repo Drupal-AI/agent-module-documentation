@@ -1,0 +1,58 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "private_message_notify",
+  "version": "3.0.x",
+  "note": "private_message_notify is the Private Message submodule that emails thread members when a new message arrives, via the Message + Message Notify stack. Service private_message_notify.notifier (PrivateMessageNotifierInterface::notify($message,$thread)). Its shouldSend() reads private_message.settings keys (enable_notifications, notify_by_default, notify_when_using, number_of_seconds_considered_away) plus per-user user.data. The notification is a 'message' entity of template 'private_message_notification' (fields field_message_private_message, field_message_pm_thread) sent through message_notify.sender. hook_private_message_notify_exclude() lets modules exclude recipients. No routes/permissions/schema of its own; it drives the parent's config. This is a submodule glue over message_notify, so it uses 3 easy / 1 medium / 1 hard, grounded in the private_message.settings flags shouldSend() reads.",
+  "evals": [
+    {
+      "id": "private_message_notify-trigger-recipe",
+      "mode": "recipe",
+      "prompt": "In the Drupal private_message_notify submodule, what triggers an email notification when a new private message is posted, and which service/method does the work?",
+      "must_contain_any": ["private_message_notify.notifier", "notify", "hook_private_message_new_message", "message_notify"],
+      "must_not_contain": [],
+      "expected_output": "When a new message is added to a thread (hook_private_message_new_message), the private_message_notify.notifier service's notify($message, $thread) runs. It builds a 'message' entity of template private_message_notification and sends it through message_notify.sender to eligible thread members.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "private_message_notify-conditions-recipe",
+      "mode": "recipe",
+      "prompt": "Which private_message.settings flags decide whether private_message_notify actually sends a notification to a recipient?",
+      "must_contain_any": ["enable_notifications", "notify_by_default", "notify_when_using", "number_of_seconds_considered_away"],
+      "must_not_contain": [],
+      "expected_output": "shouldSend() sends only when private_message.settings:enable_notifications is TRUE, the recipient is eligible (their user.data 'receive_notification' is on, or unset while notify_by_default is TRUE), and either notify_when_using is 'yes' or the recipient has been away longer than number_of_seconds_considered_away. Per-user user.data overrides the system defaults.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "private_message_notify-exclude-recipe",
+      "mode": "recipe",
+      "prompt": "How can another module stop private_message_notify from emailing a particular recipient about a new message?",
+      "must_contain_any": ["hook_private_message_notify_exclude", "exclude"],
+      "must_not_contain": [],
+      "expected_output": "Implement hook_private_message_notify_exclude(PrivateMessageInterface $privateMessage, PrivateMessageThreadInterface $thread, array &$exclude): add the recipient's UID to the &$exclude array (e.g. based on a mute flag). getNotificationRecipients() drops those UIDs.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "private_message_notify-default-off-introspect",
+      "mode": "introspection",
+      "prompt": "On this Drupal site, inspect the Private Message configuration and state whether new users are notified of private messages by default (the notify-by-default setting that private_message_notify's shouldSend() consults).",
+      "must_contain_any": ["notify_by_default", "false", "off", "not notified", "no"],
+      "must_not_contain": [],
+      "expected_output": "notify-by-default is OFF: private_message.settings:notify_by_default is FALSE (shipped default is TRUE). So a user who has made no personal choice will NOT receive notifications. Read it with drush config:get private_message.settings notify_by_default.",
+      "setup": "agent-module-documentation/evaluation/verify/private_message_notify-default-off-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/private_message_notify-default-off-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "private_message_notify-enable-execute",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, make private message email notifications work by default: turn notifications ON site-wide and make them apply to users who have not set a personal preference. Apply the change to the live configuration.",
+      "reset": "agent-module-documentation/evaluation/verify/private_message_notify-enable-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/private_message_notify-enable-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/private_message_notify-enable-cleanup.sh",
+      "expected_output": "Set private_message.settings:enable_notifications to TRUE and notify_by_default to TRUE (e.g. drush config:set private_message.settings enable_notifications 1 -y; drush config:set private_message.settings notify_by_default 1 -y) - the two flags the notifier's shouldSend() requires to email by default. Verify checks both are TRUE."
+    }
+  ]
+}

@@ -1,0 +1,99 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "entityqueue_form_widget",
+  "version": "2.1.x",
+  "note": "Entityqueue Form Widget is one hook-service class (EntityqueueFormWidgetHooks, hook_form_node_form_alter) that adds an 'Entityqueues settings' details element to the node form's advanced/sidebar group with a checkbox per subqueue whose queue targets the node's entity type+bundle; on submit it addItem/removeItem on the EntitySubqueue. No configure route, no own permissions (reuses Entityqueue's 'update <queue> entityqueue' / 'manipulate all entityqueues'), no plugins, no Drush. Evals ground in real Entityqueue config: introspection reads a queue that would show on Article forms; execution creates a node/article-targeting queue and verifies the widget offers its checkbox by rendering the Article node form as user 1.",
+  "evals": [
+    {
+      "id": "entityqueue_form_widget-where-appears",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "After enabling the entityqueue_form_widget module on a Drupal site, where does its queue widget show up for editors, and on which forms?",
+      "must_contain_any": [
+        "node",
+        "sidebar",
+        "advanced",
+        "add/edit",
+        "Entityqueues settings"
+      ],
+      "must_not_contain": [],
+      "expected_output": "It implements hook_form_node_form_alter(), so it appears on node add/edit forms as an 'Entityqueues settings' details element placed in the advanced group (the right sidebar), listing checkboxes for the matching entityqueues."
+    },
+    {
+      "id": "entityqueue_form_widget-which-queues",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "With entityqueue_form_widget, what determines whether a given entityqueue's checkbox shows up on a particular node's edit form?",
+      "must_contain_any": [
+        "target_type",
+        "target_bundles",
+        "bundle",
+        "entity type"
+      ],
+      "must_not_contain": [],
+      "expected_output": "A subqueue's checkbox shows only when its parent queue's entity settings target_type equals the node's entity type (node) AND the queue's handler_settings.target_bundles is empty or contains the node's bundle (getAllowedSubqueueList()). Additionally the user must have 'update <queue> entityqueue' or 'manipulate all entityqueues'."
+    },
+    {
+      "id": "entityqueue_form_widget-permissions",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "Does the entityqueue_form_widget module define its own permissions? Which permission must an editor have to see and use a queue's checkbox on the node form?",
+      "must_contain_any": [
+        "manipulate all entityqueues",
+        "update",
+        "entityqueue"
+      ],
+      "must_not_contain": [],
+      "expected_output": "No, it defines no permissions of its own. It reuses Entityqueue's permissions: an editor needs 'update <queue_id> entityqueue' (per queue) or 'manipulate all entityqueues' for that queue's checkbox to be rendered."
+    },
+    {
+      "id": "entityqueue_form_widget-which-queue-intro",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "On this Drupal site, an entityqueue is configured that the Entityqueue Form Widget would display on Article node edit forms. Inspect the live entityqueue configuration and give the machine name of that queue and the bundle it targets.",
+      "must_contain_any": [
+        "eqfw_intro"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The queue is eqfw_intro; its entity_settings.target_type is node and handler_settings.target_bundles contains article, so the widget lists it on Article node forms. Discoverable via `drush cget entityqueue.entity_queue.eqfw_intro` or `drush config:status | grep entity_queue`.",
+      "setup": "agent-module-documentation/evaluation/verify/entityqueue_form_widget-queue-intro-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/entityqueue_form_widget-queue-intro-cleanup.sh"
+    },
+    {
+      "id": "entityqueue_form_widget-queue-target-type",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "On this Drupal site there is an entityqueue (eqfw_intro) that the Entityqueue Form Widget would surface on node forms. Inspect the live entityqueue configuration and state which entity type its parent queue targets (the value that decides which node forms show its checkbox).",
+      "must_contain_any": [
+        "node"
+      ],
+      "must_not_contain": [],
+      "expected_output": "eqfw_intro's parent queue has entity_settings.target_type = node, which is why the widget only shows it on node forms (and, via target_bundles=article, only on Article). Discoverable via `drush cget entityqueue.entity_queue.eqfw_intro entity_settings.target_type`.",
+      "setup": "agent-module-documentation/evaluation/verify/entityqueue_form_widget-queue-intro-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/entityqueue_form_widget-queue-intro-cleanup.sh"
+    },
+    {
+      "id": "entityqueue_form_widget-make-appear",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, make the Entityqueue Form Widget offer a queue named eqfw_task on Article node add/edit forms. Create an entityqueue with machine id eqfw_task that targets Article nodes, so the widget renders its checkbox. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/entityqueue_form_widget-appears-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/entityqueue_form_widget-appears-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/entityqueue_form_widget-appears-cleanup.sh",
+      "expected_output": "An entityqueue eqfw_task exists with entity_settings.target_type=node and handler_settings.target_bundles including article (e.g. EntityQueue::create(['id'=>'eqfw_task','label'=>...,'handler'=>'simple','entity_settings'=>['target_type'=>'node','handler'=>'default','handler_settings'=>['target_bundles'=>['article'=>'article']]]])->save()). Rendering the Article node form then includes $form['entityqueue_form_widget']['entityqueues']['eqfw_task']."
+    },
+    {
+      "id": "entityqueue_form_widget-make-appear-layman",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "site-owner",
+      "prompt": "I use the Entityqueue Form Widget so my editors can tick a box on the article page to feature it. Right now there is no queue for articles. Please set up a content queue for my Article posts (call it eqfw_task) so the tick-box appears on the article editing screen. Save it live.",
+      "reset": "agent-module-documentation/evaluation/verify/entityqueue_form_widget-appears-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/entityqueue_form_widget-appears-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/entityqueue_form_widget-appears-cleanup.sh",
+      "expected_output": "Same verified end state as the expert phrasing: an Article-targeting entityqueue eqfw_task exists so the widget renders its checkbox on the Article node form."
+    }
+  ]
+}

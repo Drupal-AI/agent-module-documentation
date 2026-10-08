@@ -1,0 +1,101 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "pagerer",
+  "version": "3.1.x",
+  "note": "Pagerer provides configurable pager styles. State is all config: pagerer_preset config entities (pagerer.preset.<id>, key 'panes' = {left,center,right} each {style,config}), the pagerer.settings config object (core_override_preset default 'core'; url_querystring with core_override/querystring_key 'pg'/index_base 0/encode_method), and style plugins (standard, basic, progressive, adaptive base + multipane composite) discovered by pagerer.style.manager. Evals are grounded in that: recipe covers styles/override/URL; introspection reads back a known preset and a known url_querystring setting; execution builds a preset with a progressive center pane and configures one-based URL paging, both verified against live config. Fixtures use namespaced pagerer_preset ids pgr_* and the pagerer.settings url_querystring block is restored to shipped defaults on cleanup/reset.",
+  "evals": [
+    {
+      "id": "pagerer-builtin-styles",
+      "mode": "recipe",
+      "prompt": "What pager styles does the Pagerer module ship out of the box, and what plugin type are they? Which one is a composite that combines the others?",
+      "must_contain_any": [
+        "multipane",
+        "progressive",
+        "adaptive",
+        "PagererStyle"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Built-in @PagererStyle plugins (pagerer.style.manager): standard, basic, progressive, adaptive (style_type base) and multipane (style_type composite), which combines base styles across left/center/right panes.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "pagerer-core-override",
+      "mode": "recipe",
+      "prompt": "With Pagerer installed, how do I make one of my Pagerer presets replace Drupal's default core pager everywhere on the site? Which config setting controls that and what is its default?",
+      "must_contain_any": [
+        "core_override_preset",
+        "core pager",
+        "override"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Set pagerer.settings:core_override_preset to the preset id (e.g. drush cset pagerer.settings core_override_preset my_pager). Its default is 'core', which means no override (the standard core pager). Set it back to 'core' to restore the default.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "pagerer-one-based-url-recipe",
+      "mode": "recipe",
+      "prompt": "Historically Drupal pager URLs use ?page=0 (zero-based). With Pagerer, how can I make paginated URLs start at page 1 and use a custom query key like 'pg' instead of 'page'?",
+      "must_contain_any": [
+        "url_querystring",
+        "index_base",
+        "querystring_key",
+        "one-based",
+        "core_override"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Use the URL settings (route pagerer.url_settings) / pagerer.settings:url_querystring: enable core_override, set querystring_key to 'pg' and index_base to 1 (one-based). That turns ?page=0 into ?pg=1.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "pagerer-known-preset",
+      "mode": "introspection",
+      "prompt": "This Drupal site has a Pagerer preset configured. Inspect the live pagerer_preset config entities and give the machine id of the preset whose CENTER pane uses the 'adaptive' pager style.",
+      "must_contain_any": [
+        "pgr_known"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The preset is pgr_known: pagerer.preset.pgr_known has panes.center.style = 'adaptive' (left and right are 'none').",
+      "setup": "agent-module-documentation/evaluation/verify/pagerer-known-preset-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/pagerer-known-preset-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "pagerer-known-url-setting",
+      "mode": "introspection",
+      "prompt": "On this site Pagerer's URL querystring override has been configured. Inspect pagerer.settings on the running site and report the custom query key it uses and whether page numbering is zero-based or one-based.",
+      "must_contain_any": [
+        "pgr_q",
+        "one-based",
+        "index_base"
+      ],
+      "must_not_contain": [],
+      "expected_output": "pagerer.settings:url_querystring has core_override = TRUE, querystring_key = 'pgr_q' and index_base = 1 (one-based paging), so pager URLs read like ?pgr_q=1.",
+      "setup": "agent-module-documentation/evaluation/verify/pagerer-url-querystring-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/pagerer-url-querystring-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "pagerer-build-preset",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, create a Pagerer preset with machine id 'pgr_task' whose CENTER pane uses the 'progressive' pager style (left and right panes can be empty). Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/pagerer-build-preset-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/pagerer-build-preset-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/pagerer-build-preset-cleanup.sh",
+      "expected_output": "A pagerer_preset config entity 'pgr_task' exists (pagerer.preset.pgr_task) with panes.center.style = 'progressive' (e.g. create the entity and set panes, or add it via /admin/config/user-interface/pagerer)."
+    },
+    {
+      "id": "pagerer-one-based-url",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "site-owner",
+      "prompt": "On my site I want the page numbers in paginated URLs to start at 1 instead of 0. Using Pagerer, turn on its URL querystring override and make paging one-based. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/pagerer-one-based-url-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/pagerer-one-based-url-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/pagerer-one-based-url-cleanup.sh",
+      "expected_output": "pagerer.settings:url_querystring has core_override = TRUE and index_base = 1 (one-based), e.g. drush cset pagerer.settings url_querystring.core_override 1 and url_querystring.index_base 1, or via the URL settings tab."
+    }
+  ]
+}

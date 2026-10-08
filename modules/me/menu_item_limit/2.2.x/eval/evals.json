@@ -1,0 +1,80 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "menu_item_limit",
+  "version": "2.2.x",
+  "note": "Menu Item Limit adds an 'Item Limitation' field to the core menu_edit_form and stores the value in the menu_item_limit.settings config object keyed by menu machine name (menu_item_limit.settings:<menu> = <int>; 0/empty = unlimited). Enforcement: hook_entity_type_alter adds a MenuItemOverLimit constraint to menu_link_content; MenuItemOverLimitValidator blocks a NEW menu_link_content when the menu's loaded tree count >= limit, with message 'New link cannot be added because the menu item limit has been reached.' No configure route, no permission, no drush, no config schema. Medium/hard cases create namespaced menus (mil_*) and read/write the menu_item_limit.settings keys.",
+  "evals": [
+    {
+      "id": "mil-set-limit",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "Using the menu_item_limit module on Drupal 11, how do I set a maximum number of items for a specific menu, and what value means 'no limit'? Where is that setting stored?",
+      "must_contain_any": ["Item Limitation", "menu_item_limit.settings", "edit menu", "menu_edit_form", "0"],
+      "must_not_contain": [],
+      "expected_output": "Edit the menu (Structure -> Menus -> Edit menu, menu_edit_form) and enter a number in the 'Item Limitation' field; 0 (or empty) means unlimited. It is stored in the menu_item_limit.settings config object under a key equal to the menu machine name, e.g. menu_item_limit.settings:main = 5."
+    },
+    {
+      "id": "mil-enforcement",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "With menu_item_limit, what actually stops a menu from exceeding its configured item count, and what message does a user see when a menu is full?",
+      "must_contain_any": ["constraint", "MenuItemOverLimit", "validation", "limit has been reached", "menu_link_content"],
+      "must_not_contain": [],
+      "expected_output": "A MenuItemOverLimit validation constraint added to the menu_link_content entity type (via hook_entity_type_alter). When a new link would exceed the menu's limit, MenuItemOverLimitValidator adds the violation 'New link cannot be added because the menu item limit has been reached.'"
+    },
+    {
+      "id": "mil-new-only",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "Does menu_item_limit's cap apply to menu links that already exist in a menu, or only when adding new ones? Briefly, how does the validator decide?",
+      "must_contain_any": ["new", "isNew", "existing", "only"],
+      "must_not_contain": [],
+      "expected_output": "Only new items are blocked: MenuItemOverLimitValidator returns early when !$entity->isNew(), so existing menu_link_content links can still be saved/moved and an already-over-limit menu is not retroactively invalidated. For a new link it loads the menu tree, counts items and blocks when count >= limit."
+    },
+    {
+      "id": "mil-known-limit",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "This Drupal site uses menu_item_limit and has a custom menu with machine name 'mil_known' that has an item limit configured. Inspect the live configuration and state the maximum number of items allowed in the mil_known menu.",
+      "must_contain_any": ["3"],
+      "must_not_contain": [],
+      "expected_output": "The limit is 3: menu_item_limit.settings has key mil_known = 3.",
+      "setup": "agent-module-documentation/evaluation/verify/menu_item_limit-known-limit-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/menu_item_limit-known-limit-cleanup.sh"
+    },
+    {
+      "id": "mil-configured-cap",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "A menu with machine name 'mil_seven' on this site has been given a menu_item_limit cap. Read the live site configuration and report the configured item limit for the mil_seven menu.",
+      "must_contain_any": ["7"],
+      "must_not_contain": [],
+      "expected_output": "The limit is 7: menu_item_limit.settings has key mil_seven = 7.",
+      "setup": "agent-module-documentation/evaluation/verify/menu_item_limit-configured-cap-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/menu_item_limit-configured-cap-cleanup.sh"
+    },
+    {
+      "id": "mil-set-cap",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "This site has a custom menu with machine name 'mil_task' that currently has no item limit. Using the menu_item_limit module, configure that menu so it allows at most 2 items, and apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/menu_item_limit-set-cap-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/menu_item_limit-set-cap-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/menu_item_limit-set-cap-cleanup.sh",
+      "expected_output": "Set menu_item_limit.settings:mil_task = 2 (e.g. via the menu's 'Item Limitation' field on /admin/structure/menu/manage/mil_task, or \\Drupal::configFactory()->getEditable('menu_item_limit.settings')->set('mil_task', 2)->save())."
+    },
+    {
+      "id": "mil-make-unlimited",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "site-owner",
+      "prompt": "A menu with machine name 'mil_free' on this site is currently limited to 1 item by the menu_item_limit module. Change it so this menu can hold an unlimited number of items again, and apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/menu_item_limit-make-unlimited-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/menu_item_limit-make-unlimited-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/menu_item_limit-make-unlimited-cleanup.sh",
+      "expected_output": "Set the mil_free limit to 0 (unlimited): menu_item_limit.settings:mil_free = 0 (or clear the key). e.g. set the 'Item Limitation' field to 0, or \\Drupal::configFactory()->getEditable('menu_item_limit.settings')->set('mil_free', 0)->save()."
+    }
+  ]
+}

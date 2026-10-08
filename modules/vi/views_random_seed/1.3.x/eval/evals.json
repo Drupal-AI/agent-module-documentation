@@ -1,0 +1,101 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "views_random_seed",
+  "version": "1.3.x",
+  "note": "Views random seed adds a Views sort plugin views_random_seed_random ('Random seed', exposed as the random_seed field on the 'views' table) that orders rows randomly using a PERSISTED seed, so paged random listings stay consistent across pages (fixes core Global: Random). Requires core Views. No configure route (configure=null), no settings form, no permissions, no Drush. Query uses RAND(seed) on MySQL and setseed()+RANDOM() on PostgreSQL. Sort options: user_seed_type (same_per_user|diff_per_user), anonymous_session (bool), reset_seed_int (-1 never, 0 custom, 3600 hourly, 28800 8h, 86400 daily), reset_seed_custom (seconds), reuse_seed (<viewid>-<displayid>). Seed stored by the views_random_seed.seed_calculator service in key-value collection 'views_random_seed' (or the session for diff_per_user). Medium/hard cases are grounded in real view config on namespaced views (vrs_*).",
+  "evals": [
+    {
+      "id": "views_random_seed-why",
+      "mode": "recipe",
+      "prompt": "In Drupal Views, a random-sorted listing shows duplicate items across pager pages because core's Global: Random reshuffles every query. Which module fixes this, and how does it keep the order consistent while paging?",
+      "must_contain_any": [
+        "views_random_seed",
+        "Random seed",
+        "seed",
+        "RAND"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Use the Views random seed module. It adds a 'Random seed' sort (views_random_seed_random) that orders with a persisted seed (RAND(seed) on MySQL, setseed()+RANDOM() on PostgreSQL), so every page of the pager uses the same random order and items don't repeat or vanish between pages.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "views_random_seed-add",
+      "mode": "recipe",
+      "prompt": "How do I add seeded random ordering to a view with views_random_seed - what is the sort called in the Views UI and what is the sort plugin id?",
+      "must_contain_any": [
+        "Random seed",
+        "views_random_seed_random",
+        "sort"
+      ],
+      "must_not_contain": [],
+      "expected_output": "In the view's Sort criteria, Add the 'Random seed' sort (from the Global/views table, field random_seed). Its plugin id is views_random_seed_random. There is no settings page; configure it in the Views UI.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "views_random_seed-reset-options",
+      "mode": "recipe",
+      "prompt": "What options control how often a views_random_seed 'Random seed' sort reshuffles, and how do you make it reshuffle once per day versus never?",
+      "must_contain_any": [
+        "reset_seed",
+        "86400",
+        "Never",
+        "-1"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The reset_seed_int option controls it: -1 = Never, 0 = Custom (uses reset_seed_custom seconds), 3600 = hourly, 28800 = every 8 hours, 86400 = daily. Set it to 86400 for once per day, or -1 to fix the order permanently.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "views_random_seed-read-reset",
+      "mode": "introspection",
+      "prompt": "On this Drupal site, the view 'vrs_eval' uses the Views random seed sort. Inspect the live view configuration and state how often its random order reshuffles (the reset interval).",
+      "must_contain_any": [
+        "86400",
+        "daily",
+        "day"
+      ],
+      "must_not_contain": [],
+      "expected_output": "It reshuffles daily: the Random seed sort in views.view.vrs_eval has reset_seed_int: 86400 (86400 seconds = 1 day).",
+      "setup": "agent-module-documentation/evaluation/verify/views_random_seed-reset-interval-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/views_random_seed-reset-interval-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "views_random_seed-read-per-user",
+      "mode": "introspection",
+      "prompt": "On this site the view 'vrs_user' uses views_random_seed. Inspect its live configuration and state whether every visitor sees the same random order or a different one per user.",
+      "must_contain_any": [
+        "diff_per_user",
+        "different"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Each user sees a different random order: the Random seed sort in views.view.vrs_user has user_seed_type: diff_per_user (with anonymous_session enabled so anonymous visitors also get their own order).",
+      "setup": "agent-module-documentation/evaluation/verify/views_random_seed-per-user-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/views_random_seed-per-user-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "views_random_seed-add-sort",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site there is a view 'vrs_task' that currently sorts by created date. Using the views_random_seed module, add its 'Random seed' sort to the view's default display so the rows are ordered randomly with a seed that keeps the pager consistent. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/views_random_seed-add-sort-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/views_random_seed-add-sort-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/views_random_seed-add-sort-cleanup.sh",
+      "expected_output": "Add a sort handler on the default display backed by the views_random_seed_random plugin (table 'views', field 'random_seed'), i.e. the 'Random seed' sort, and save the view. Verified by finding that sort in views.view.vrs_task."
+    },
+    {
+      "id": "views_random_seed-set-daily",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site the view 'vrs_task2' already uses the Views random seed 'Random seed' sort, but it currently reshuffles every hour. Reconfigure that sort so the random order reshuffles once per day instead. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/views_random_seed-daily-reset-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/views_random_seed-daily-reset-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/views_random_seed-daily-reset-cleanup.sh",
+      "expected_output": "Set the Random seed sort's reset_seed_int to 86400 (Every day) in views.view.vrs_task2 and save the view."
+    }
+  ]
+}

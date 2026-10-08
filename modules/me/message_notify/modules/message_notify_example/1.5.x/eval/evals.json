@@ -1,0 +1,97 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "message_notify_example",
+  "version": "1.5.x",
+  "note": "Demonstration submodule of Message Notify. Its only behavior is a hook_comment_insert() that, when a comment is posted on a node, creates a Message of template example_create_comment owned by the node's author, sets field_comment_reference (to the comment) and field_published, saves it, and sends it via message_notify.sender (email). Easy cases cover that flow and its dependencies. Medium cases introspect the live shipped config the example depends on (the example_create_comment template from message_example and the fields the example sets on it) - node-free and smoke-tested. Hard cases exercise the real comment->notify flow (a node owned by a real user + a comment) and verify a saved example_create_comment message for that author; they were AUTHORED and their FAIL-on-empty path smoke-tested, but the PASS path could NOT be smoke-tested on this shared site because node creation currently fails site-wide (six node-access modules - content_access, nodeaccess, node_view_permissions, permissions_by_term, domain_access, unpublished_node_permissions - emit duplicate 'all/0' grants, raising a node_access integrity violation). The reset/verify/cleanup scripts are written to work once node creation is restored.",
+  "evals": [
+    {
+      "id": "message_notify_example-what-triggers",
+      "mode": "recipe",
+      "prompt": "What does the Drupal 'Message notify example' module do, and which Drupal hook triggers it?",
+      "must_contain_any": [
+        "comment",
+        "hook_comment_insert",
+        "comment_insert"
+      ],
+      "must_not_contain": [],
+      "expected_output": "It is a demo submodule of Message Notify. Its hook_comment_insert() fires when a new comment is posted on a node and sends an email notification to that node's author using Message Notify.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "message_notify_example-template-used",
+      "mode": "recipe",
+      "prompt": "In the Message notify example module, which Message template is used to build the notification when a comment is posted, and which service actually sends it?",
+      "must_contain_any": [
+        "example_create_comment",
+        "message_notify.sender"
+      ],
+      "must_not_contain": [],
+      "expected_output": "It creates a Message of template example_create_comment (provided by message_example), sets field_comment_reference and field_published on it, saves it, and sends it with the message_notify.sender service (default 'email' notifier).",
+      "difficulty": "easy"
+    },
+    {
+      "id": "message_notify_example-anon-owner",
+      "mode": "recipe",
+      "prompt": "In the Message notify example, who receives the notification email when someone comments on a node, and why would it fail if the node's author is anonymous?",
+      "must_contain_any": [
+        "node",
+        "author",
+        "owner",
+        "anonymous"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The recipient is the node's author (the message uid is set to the node owner, and the email notifier uses that user's email). If the node owner is anonymous (uid 0) with no email, the email notifier throws MessageNotifyException because there is no recipient address.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "message_notify_example-fields-set",
+      "mode": "introspection",
+      "prompt": "The Message notify example sends notifications using a specific Message template. Inspect this Drupal site and name the fields that exist on that message template for referencing the comment and its published state (the ones the example populates).",
+      "must_contain_any": [
+        "field_comment_reference",
+        "field_published"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The template is example_create_comment; it has fields field_comment_reference (entity reference to the comment) and field_published (boolean) - the two fields the example module sets. (It also has field_node_reference.)",
+      "setup": "agent-module-documentation/evaluation/verify/message_notify_example-ensure-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/message_notify_example-ensure-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "message_notify_example-template-present",
+      "mode": "introspection",
+      "prompt": "The Message notify example depends on a Message template being present on the site to build its comment notifications. Inspect the live site and give the machine name of that message template.",
+      "must_contain_any": [
+        "example_create_comment"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The message template is example_create_comment (a message_template config entity provided by the message_example module), which the example loads via Message::create(['template' => 'example_create_comment', ...]).",
+      "setup": "agent-module-documentation/evaluation/verify/message_notify_example-ensure-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/message_notify_example-ensure-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "message_notify_example-comment-notify",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site a content type mne_post has a comment field, and a node of that type is owned by the user mne_author. Post a comment on that node so that the Message notify example module sends a notification to the node's author. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/message_notify_example-comment-notify-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/message_notify_example-comment-notify-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/message_notify_example-comment-notify-cleanup.sh",
+      "expected_output": "Save a Comment on the mne_post node's comment field; the example's hook_comment_insert() then creates and sends a Message of template example_create_comment owned by mne_author. Verified by a persisted example_create_comment message whose uid is mne_author's."
+    },
+    {
+      "id": "message_notify_example-comment-reference",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-layman",
+      "prompt": "Someone should get an email when a new comment lands on their post. On this site there is a post (an mne_post node) owned by the user 'mne_author'. Add a comment to that post so the site emails the post's owner about it.",
+      "reset": "agent-module-documentation/evaluation/verify/message_notify_example-comment-notify-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/message_notify_example-comment-reference-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/message_notify_example-comment-notify-cleanup.sh",
+      "expected_output": "Posting a comment triggers message_notify_example_comment_insert(), which builds an example_create_comment message for mne_author with field_comment_reference pointing at the new comment and sends it. Verified by a persisted example_create_comment message owned by mne_author whose field_comment_reference is populated."
+    }
+  ]
+}

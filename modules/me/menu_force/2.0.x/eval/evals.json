@@ -1,0 +1,102 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "menu_force",
+  "version": "2.0.x",
+  "note": "Menu Force depends on core menu_ui and is a pure form-alter module: no configure route (configure=null), no settings form, no permissions, no Drush, no plugins. Its entire persistent state is two booleans stored as third-party settings on the node.type.<bundle> config entity: third_party_settings.menu_force.menu_force (make Menu settings mandatory) and menu_force_parent (also lock the Default parent item). On the node add/edit form it forces the menu fieldset open, checks+disables 'Provide a menu link', and makes the menu link title required. All medium/hard cases are grounded in that real config on namespaced content types (menu_force_*).",
+  "evals": [
+    {
+      "id": "menu_force-how-to-require",
+      "mode": "recipe",
+      "prompt": "On a Drupal 11 site I want the core 'Menu settings' to be mandatory for the Article content type, so an Article cannot be saved without a menu link. Which contrib module does this, how do I enable it for a content type, and where is that choice stored in config?",
+      "must_contain_any": [
+        "menu_force",
+        "third_party_settings",
+        "third party setting",
+        "node.type",
+        "Menu settings"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Use the Menu Force module. It has no settings page; on the content type edit form (Menu settings tab) tick 'Make the Menu Settings mandatory for this content type'. It is stored on the node type: node.type.<bundle> -> third_party_settings.menu_force.menu_force: true. On the node form it makes the menu link required.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "menu_force-parent-lock",
+      "mode": "recipe",
+      "prompt": "In the Menu Force module, what does the second option 'Lock the \"Default parent item\" as well' (menu_force_parent) do, and what happens on the node form when it is on?",
+      "must_contain_any": [
+        "menu_force_parent",
+        "parent",
+        "menu_parent",
+        "disabled",
+        "lock"
+      ],
+      "must_not_contain": [],
+      "expected_output": "menu_force_parent (stored alongside menu_force on node.type.<bundle>) locks the parent-item choice: on the node add/edit form the menu_parent selector is disabled so all new content of that type is pinned under the chosen default parent menu item.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "menu_force-deps-and-scope",
+      "mode": "recipe",
+      "prompt": "Which core module does menu_force require, and does forcing menu placement also block programmatic node saves via Node::create()->save()? Does menu_force add its own settings/config page?",
+      "must_contain_any": [
+        "menu_ui",
+        "form",
+        "no settings page",
+        "no configure",
+        "UI"
+      ],
+      "must_not_contain": [],
+      "expected_output": "It depends on core menu_ui. It has no configure route or settings page (configure=null). Enforcement is purely at the node add/edit FORM level (it makes the menu link title #required), so programmatic Node::create()->save() calls are not blocked.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "menu_force-which-type-forced",
+      "mode": "introspection",
+      "prompt": "On this Drupal site, one content type has Menu Force enabled so that placing the node in a menu is mandatory. Inspect the live configuration and give the machine name of that content type and the config key that stores the setting.",
+      "must_contain_any": [
+        "menu_force_evt"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The content type is menu_force_evt: node.type.menu_force_evt has third_party_settings.menu_force.menu_force: true (menu_force_parent is false).",
+      "setup": "agent-module-documentation/evaluation/verify/menu_force-forced-type-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/menu_force-forced-type-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "menu_force-which-locks-parent",
+      "mode": "introspection",
+      "prompt": "This site has two content types, menu_force_a and menu_force_b, that both force menu placement via Menu Force. On exactly one of them the 'Default parent item' is also locked. Inspect the live config and state which content type locks the parent.",
+      "must_contain_any": [
+        "menu_force_b"
+      ],
+      "must_not_contain": [],
+      "expected_output": "menu_force_b locks the parent: node.type.menu_force_b has third_party_settings.menu_force.menu_force_parent: true, whereas menu_force_a has menu_force_parent: false.",
+      "setup": "agent-module-documentation/evaluation/verify/menu_force-parent-locked-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/menu_force-parent-locked-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "menu_force-enable-require",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site there is a content type menu_force_task. Using the Menu Force module, make the core Menu settings mandatory for this content type so that nodes of this type cannot be saved without a menu link. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/menu_force-require-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/menu_force-require-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/menu_force-require-cleanup.sh",
+      "expected_output": "Set node.type.menu_force_task third_party_settings.menu_force.menu_force to TRUE (e.g. $type->setThirdPartySetting('menu_force','menu_force',TRUE)->save(), or tick 'Make the Menu Settings mandatory for this content type' on the content type edit form)."
+    },
+    {
+      "id": "menu_force-lock-parent-too",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site there is a content type menu_force_lock. Using Menu Force, make menu placement mandatory for it AND also lock the default parent menu item, so editors cannot change the parent. Apply the change to the live default configuration.",
+      "reset": "agent-module-documentation/evaluation/verify/menu_force-lock-parent-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/menu_force-lock-parent-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/menu_force-lock-parent-cleanup.sh",
+      "expected_output": "On node.type.menu_force_lock set BOTH third_party_settings.menu_force.menu_force AND third_party_settings.menu_force.menu_force_parent to TRUE (setThirdPartySetting for both keys, or tick both checkboxes in the Menu settings tab of the content type edit form)."
+    }
+  ]
+}

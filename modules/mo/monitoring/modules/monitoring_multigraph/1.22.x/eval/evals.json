@@ -1,0 +1,96 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "monitoring_multigraph",
+  "version": "1.22.x",
+  "note": "Defines the monitoring_multigraph config entity (prefix monitoring_multigraph.multigraph.<id>) that groups sensors via a 'sensors' map {sensor_id:{weight,label}}. Admin at /admin/config/system/monitoring/multigraphs (perm administer monitoring). Baseline: submodule not enabled. Medium cases enable it, seed a known multigraph, and read it back; hard cases create a multigraph aggregating named sensors, verified against live config. Grounded in real entity/config keys and shipped sensor ids (core_cron_last_run_age, system_load_average, user_failed_logins).",
+  "evals": [
+    {
+      "id": "mmg-what",
+      "mode": "recipe",
+      "prompt": "What does the monitoring_multigraph submodule let you do, and what kind of Drupal entity does it store a multigraph as?",
+      "must_contain_any": [
+        "aggregate",
+        "group",
+        "config entity",
+        "monitoring_multigraph"
+      ],
+      "must_not_contain": [],
+      "expected_output": "It groups several Monitoring sensors into one 'multigraph' for aggregated reporting/graphing. A multigraph is a monitoring_multigraph config entity with a sensors map.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "mmg-admin-path",
+      "mode": "recipe",
+      "prompt": "Where in the Drupal admin UI do you manage multigraphs provided by monitoring_multigraph, and which permission is required?",
+      "must_contain_any": [
+        "/admin/config/system/monitoring/multigraphs",
+        "administer monitoring"
+      ],
+      "must_not_contain": [],
+      "expected_output": "At /admin/config/system/monitoring/multigraphs (list/add/edit/delete), gated by the 'administer monitoring' permission.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "mmg-api",
+      "mode": "recipe",
+      "prompt": "Which methods on the Multigraph entity add or remove a sensor from a multigraph in code?",
+      "must_contain_any": [
+        "addSensor",
+        "removeSensor"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Multigraph::addSensor($name, $label = NULL) and Multigraph::removeSensor($name); read them with getSensors()/getSensorsRaw().",
+      "difficulty": "easy"
+    },
+    {
+      "id": "mmg-live-sensors",
+      "mode": "introspection",
+      "prompt": "This site has a multigraph named 'mg_probe'. Inspect the live configuration and list the sensor ids it aggregates.",
+      "must_contain_any": [
+        "core_cron_last_run_age",
+        "system_load_average"
+      ],
+      "must_not_contain": [],
+      "expected_output": "mg_probe aggregates core_cron_last_run_age and system_load_average (monitoring_multigraph.multigraph.mg_probe:sensors).",
+      "setup": "agent-module-documentation/evaluation/verify/mmg-probe-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/mmg-probe-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "mmg-live-label",
+      "mode": "introspection",
+      "prompt": "Inspect the multigraph 'mg_probe' on this site and report its human-readable label.",
+      "must_contain_any": [
+        "MG Probe Label"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The label is 'MG Probe Label' (monitoring_multigraph.multigraph.mg_probe:label).",
+      "setup": "agent-module-documentation/evaluation/verify/mmg-probe-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/mmg-probe-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "mmg-create",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "Using monitoring_multigraph, create a multigraph with machine id 'mg_task' that aggregates the two sensors core_cron_last_run_age and system_load_average. Apply it to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/mmg-create-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/mmg-create-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/mmg-create-cleanup.sh",
+      "expected_output": "A monitoring_multigraph entity 'mg_task' exists whose sensors map includes both core_cron_last_run_age and system_load_average (e.g. Multigraph::create(['id'=>'mg_task','label'=>'...'])->addSensor('core_cron_last_run_age')->addSensor('system_load_average')->save())."
+    },
+    {
+      "id": "mmg-create-logins",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "layman",
+      "prompt": "I want to watch my failed-login health check and my page-not-found (404) health check together on one combined graph. The sensors are user_failed_logins and dblog_404. Please set that up.",
+      "reset": "agent-module-documentation/evaluation/verify/mmg-logins-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/mmg-logins-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/mmg-logins-cleanup.sh",
+      "expected_output": "A monitoring_multigraph entity exists whose sensors map includes user_failed_logins (and dblog_404), created via the multigraph UI or Multigraph::addSensor(). Both sensors must exist as sensor configs on the site."
+    }
+  ]
+}

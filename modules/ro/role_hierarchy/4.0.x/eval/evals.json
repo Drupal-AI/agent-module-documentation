@@ -1,0 +1,80 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "role_hierarchy",
+  "version": "4.0.x",
+  "note": "Role Hierarchy enforces that a user can only edit/delete users, and grant/revoke roles, at or below their own rank, where rank is the role weight order at /admin/people/roles (lower weight = more powerful by default). Enforcement: hook_ENTITY_TYPE_access() for user (update/delete), user_form/user_register_form alters (strip un-grantable role checkboxes), and hook_action_info_alter() overriding the core add/remove-role bulk actions. All via the role_hierarchy.helper service (RoleHierarchyHelper). Behaviour is tuned by role_hierarchy.settings keys invert (edit roles above instead of below), strict (cannot edit equal roles), non_hierarchical_roles (roles excluded from the hierarchy). That config is created only when the People>Roles form is saved (absent by default). Permissions: bypass role hierarchy (exempt), edit user roles (show roles element). User 1 always protected. Cases ground in role_hierarchy.settings and namespaced roles (rh_free, rh_bypass); the site has no 'article' type but core roles exist.",
+  "evals": [
+    {
+      "id": "role_hierarchy-how-defined",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "How does the role_hierarchy module decide which users a given user is allowed to edit? Where do I set up the hierarchy of roles?",
+      "must_contain_any": ["admin/people/roles", "People", "order", "weight"],
+      "must_not_contain": [],
+      "expected_output": "The hierarchy is the role weight order on /admin/people/roles (People > Roles): reorder roles there. By default a user can only edit users / grant roles at or below their own most-powerful role (lower in the list = less powerful)."
+    },
+    {
+      "id": "role_hierarchy-bypass",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "With role_hierarchy enabled, which permission lets a role ignore the hierarchy entirely so it can edit any user and grant any role?",
+      "must_contain_any": ["bypass role hierarchy"],
+      "must_not_contain": [],
+      "expected_output": "The 'bypass role hierarchy' permission: RoleHierarchyHelper::hasRoleEditAccess()/hasEditAccess() return TRUE immediately for accounts that have it, so they are exempt from all checks."
+    },
+    {
+      "id": "role_hierarchy-invert-strict",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "The role_hierarchy module has 'Invert hierarchy' and 'Strict hierarchy check' options on the roles form. What does each one do?",
+      "must_contain_any": ["invert", "strict", "above", "equal"],
+      "must_not_contain": [],
+      "expected_output": "Invert makes a role edit the roles ABOVE it instead of below (weights are negated on save). Strict means a role can no longer edit EQUAL roles, only strictly higher/lower. They are stored as role_hierarchy.settings invert and strict."
+    },
+    {
+      "id": "role_hierarchy-nonhier",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "On this site, one role has been configured in role_hierarchy as 'non hierarchical' (excluded from the hierarchy). Inspect the live role_hierarchy configuration and tell me which role that is (its machine name).",
+      "must_contain_any": ["rh_free"],
+      "must_not_contain": [],
+      "expected_output": "rh_free - role_hierarchy.settings non_hierarchical_roles contains rh_free, so that role is excluded from the hierarchy.",
+      "setup": "agent-module-documentation/evaluation/verify/role_hierarchy-nonhier-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/role_hierarchy-nonhier-cleanup.sh"
+    },
+    {
+      "id": "role_hierarchy-invert-state",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "Inspect this site's role_hierarchy settings: is the hierarchy inverted? In other words, can a role edit roles ABOVE it or BELOW it? Answer based on the live configuration.",
+      "must_contain_any": ["above", "invert"],
+      "must_not_contain": [],
+      "expected_output": "The hierarchy is inverted (role_hierarchy.settings invert = true), so a role edits the roles ABOVE it rather than below.",
+      "setup": "agent-module-documentation/evaluation/verify/role_hierarchy-invert-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/role_hierarchy-invert-cleanup.sh"
+    },
+    {
+      "id": "role_hierarchy-enable-strict",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, turn on the role_hierarchy module's 'Strict hierarchy check' so that roles can no longer edit equal-ranked roles. Apply the change to the live configuration.",
+      "reset": "agent-module-documentation/evaluation/verify/role_hierarchy-strict-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/role_hierarchy-strict-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/role_hierarchy-strict-cleanup.sh",
+      "expected_output": "role_hierarchy.settings strict = true (set via the 'Strict hierarchy check' checkbox on the People > Roles form, or by editing the config)."
+    },
+    {
+      "id": "role_hierarchy-mark-nonhier",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "This site has a role with machine name 'rh_bypass'. Using role_hierarchy, configure it as a non-hierarchical role (excluded from the hierarchy so it does not affect edit permissions). Apply the change to the live configuration.",
+      "reset": "agent-module-documentation/evaluation/verify/role_hierarchy-mark-nonhier-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/role_hierarchy-mark-nonhier-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/role_hierarchy-mark-nonhier-cleanup.sh",
+      "expected_output": "role_hierarchy.settings non_hierarchical_roles includes rh_bypass with a truthy value (ticked under 'Non hierarchy roles' on the People > Roles form, or set in config)."
+    }
+  ]
+}

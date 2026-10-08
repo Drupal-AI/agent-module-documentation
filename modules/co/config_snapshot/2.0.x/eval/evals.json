@@ -1,0 +1,99 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "config_snapshot",
+  "version": "2.0.x",
+  "note": "Configuration Snapshot is a developer API module (depends on core config). No UI, no configure route (configure=null), no permissions, no Drush, no plugin types. It stores per-extension snapshots of configuration as config_snapshot config entities (config_snapshot.snapshot.<set>.<type>.<name>; entity id <set>.<type>.<name>) and exposes each as a core StorageInterface via ConfigSnapshotStorage. A snapshot is addressed by snapshotSet + extensionType (module/theme) + extensionName; items are {collection,name,data}. Get a storage with ConfigSnapshotStorageTrait::getConfigSnapshotStorage(); ConfigSnapshotServiceProvider registers a service per snapshot. Medium/hard cases are grounded in real snapshot entities created via ConfigSnapshotStorage, namespaced cs_*.",
+  "evals": [
+    {
+      "id": "config_snapshot-what",
+      "mode": "recipe",
+      "prompt": "What does the Drupal config_snapshot module provide, and does it have an admin UI or Drush commands? What Drupal interface do its snapshots implement so you can read/write config through them?",
+      "must_contain_any": [
+        "StorageInterface",
+        "snapshot",
+        "config entity",
+        "no UI",
+        "developer"
+      ],
+      "must_not_contain": [],
+      "expected_output": "It is a developer API module that stores per-extension snapshots of configuration as config_snapshot config entities. It has no admin UI, no route, and no Drush commands. Each snapshot is exposed as a core StorageInterface via ConfigSnapshotStorage (read/write/listAll). Other modules like Features use it to detect config drift.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "config_snapshot-get-storage",
+      "mode": "recipe",
+      "prompt": "In code, what is the recommended way to obtain a config snapshot storage in the config_snapshot module (the trait and method), and why is it preferred over just calling `new ConfigSnapshotStorage(...)`?",
+      "must_contain_any": [
+        "ConfigSnapshotStorageTrait",
+        "getConfigSnapshotStorage",
+        "ConfigSnapshotStorage"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Use ConfigSnapshotStorageTrait::getConfigSnapshotStorage($set, $type, $name, $collection). It returns the registered container service config_snapshot.<set>.<type>.<name> when available, and falls back to a fresh ConfigSnapshotStorage object when the service does not exist yet (e.g. right after an extension is installed, before the container is rebuilt).",
+      "difficulty": "easy"
+    },
+    {
+      "id": "config_snapshot-coordinates",
+      "mode": "recipe",
+      "prompt": "A config_snapshot snapshot is identified by three parts. What are they, and what is the resulting config entity id / config object name format?",
+      "must_contain_any": [
+        "snapshotSet",
+        "extensionType",
+        "extensionName",
+        "snapshot set"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The three parts are snapshotSet (namespace per consuming module), extensionType (module or theme) and extensionName. The config entity id is <set>.<type>.<name> and it is persisted as config_snapshot.snapshot.<set>.<type>.<name>.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "config_snapshot-find-id",
+      "mode": "introspection",
+      "prompt": "On this Drupal site there is exactly one config_snapshot snapshot present. Inspect the live configuration and give the config snapshot entity id (in the form snapshotSet.extensionType.extensionName).",
+      "must_contain_any": [
+        "cs_eval.module.cs_evalmod"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The snapshot entity id is cs_eval.module.cs_evalmod (stored as config object config_snapshot.snapshot.cs_eval.module.cs_evalmod). snapshotSet=cs_eval, extensionType=module, extensionName=cs_evalmod.",
+      "setup": "agent-module-documentation/evaluation/verify/config_snapshot-list-id-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/config_snapshot-list-id-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "config_snapshot-item-name",
+      "mode": "introspection",
+      "prompt": "On this site a config_snapshot snapshot with id cs_eval2.module.cs_eval2mod captures a single configuration object. Inspect the live snapshot and give the name of the config object it stores.",
+      "must_contain_any": [
+        "cs_eval2.demo.settings"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The snapshot stores the config object named cs_eval2.demo.settings (in its default collection). It is visible in the config_snapshot.snapshot.cs_eval2.module.cs_eval2mod entity's items as {collection:'', name:'cs_eval2.demo.settings', data:{...}}.",
+      "setup": "agent-module-documentation/evaluation/verify/config_snapshot-item-name-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/config_snapshot-item-name-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "config_snapshot-create-snapshot",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, use the config_snapshot module's ConfigSnapshotStorage API to create a configuration snapshot for snapshot set 'cs_task', extension type 'module', extension name 'cs_taskmod', and store the config object 'cs_task.demo' with data ['flag' => TRUE] in the default collection. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/config_snapshot-create-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/config_snapshot-create-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/config_snapshot-create-cleanup.sh",
+      "expected_output": "Create the storage and write the item, e.g. (new \\Drupal\\config_snapshot\\ConfigSnapshotStorage('cs_task','module','cs_taskmod'))->write('cs_task.demo', ['flag' => TRUE]); which produces the config entity config_snapshot.snapshot.cs_task.module.cs_taskmod with that item in the default collection."
+    },
+    {
+      "id": "config_snapshot-two-items",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, use config_snapshot to create a snapshot for snapshot set 'cs_task2', extension type 'module', extension name 'cs_task2mod', and store TWO config objects in its default collection: 'cs_task2.a' with data ['n' => 1] and 'cs_task2.b' with data ['n' => 2]. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/config_snapshot-two-items-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/config_snapshot-two-items-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/config_snapshot-two-items-cleanup.sh",
+      "expected_output": "$s = new \\Drupal\\config_snapshot\\ConfigSnapshotStorage('cs_task2','module','cs_task2mod'); $s->write('cs_task2.a', ['n' => 1]); $s->write('cs_task2.b', ['n' => 2]); producing config_snapshot.snapshot.cs_task2.module.cs_task2mod holding both items."
+    }
+  ]
+}

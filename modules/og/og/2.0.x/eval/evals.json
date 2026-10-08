@@ -1,0 +1,93 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "og",
+  "version": "2.0.x",
+  "note": "All ids below were read from the installed 2.0.2 code and verified on the live site. Group registry: og.settings:groups.<entity_type>[] = <bundle>, written by Og::groupTypeManager()->addGroup(). Group content = a bundle carrying an OG audience field; Og::createField(OgGroupAudienceHelperInterface::DEFAULT_FIELD='og_audience', ...) creates field.storage.node.og_audience (type og_standard_reference, cardinality -1) plus the field, form display and view display. addGroup() also creates the OgRole config entities <entity_type>-<bundle>-{member,non-member,administrator}; note addGroup() THROWS if the bundle is already a group, which the setup/reset scripts guard against. Membership is the fieldable og_membership content entity (states active|pending|blocked, multi-value roles reference). Medium cases install real bundles/memberships so the answer must be read off the live site; hard cases are verified through Og::isGroup/isGroupContent, the OgRole entities, the og_membership entity and a real og.access userAccess() check.",
+  "evals": [
+    {
+      "id": "og-make-bundle-group",
+      "difficulty": "easy",
+      "mode": "recipe",
+      "prompt": "Using the Drupal contrib module Organic Groups (og) 2.x programmatically, how do I declare the node bundle 'club' to be a group, and how do I make the node bundle 'post' group content? Give the API calls and say what config each one changes.",
+      "must_contain_any": [
+        "addGroup",
+        "createField",
+        "og_audience"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Og::groupTypeManager()->addGroup('node', 'club') (adds 'club' to og.settings:groups.node and creates the OgRoles node-club-member / -non-member / -administrator), and Og::createField(OgGroupAudienceHelperInterface::DEFAULT_FIELD, 'node', 'post') which creates the og_audience field (type og_standard_reference, handler og:default) plus its form and view display components."
+    },
+    {
+      "id": "og-membership-entity",
+      "difficulty": "easy",
+      "mode": "recipe",
+      "prompt": "In Organic Groups 2.x, how is the relationship between a user and a group stored? Name the entity type, its possible states, and where a user's OG roles for a group are kept.",
+      "must_contain_any": [
+        "og_membership"
+      ],
+      "must_not_contain": [],
+      "expected_output": "In the fieldable content entity og_membership (bundle entity og_membership_type, default bundle 'default'). It stores uid, the group's entity_type/entity_bundle/entity_id, a state of active | pending | blocked (OgMembershipInterface::STATE_ACTIVE/STATE_PENDING/STATE_BLOCKED) and a multi-value `roles` reference to OgRole entities - so OG roles live on the membership, not on the user account."
+    },
+    {
+      "id": "og-check-permission",
+      "difficulty": "easy",
+      "mode": "recipe",
+      "prompt": "In Organic Groups 2.x, what is the correct way to check whether a user has the group-level permission 'manage members' on a given group entity, and why is loading the OgRole and calling hasPermission() on it not enough?",
+      "must_contain_any": [
+        "og.access",
+        "userAccess"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Use the og.access service: \\Drupal::service('og.access')->userAccess($group, 'manage members', $user) which returns a cacheable AccessResult. OgRole::hasPermission() alone ignores user 1, the global 'administer organic groups' permission, og.settings:group_manager_full_access for the group owner, roles flagged is_admin, and hook_og_user_access_alter()."
+    },
+    {
+      "id": "og-known-bundles",
+      "difficulty": "medium",
+      "mode": "introspection",
+      "prompt": "This Drupal site has three node types whose machine names start with og_. Inspect the running site and tell me which of them is registered as an Organic Groups GROUP, which one is GROUP CONTENT, and which is neither - and name the config/field you used to decide.",
+      "must_contain_any": [
+        "og_grp"
+      ],
+      "must_not_contain": [],
+      "expected_output": "og_grp is the group (listed in og.settings:groups.node, and the OgRoles node-og_grp-member / -non-member / -administrator exist). og_gcontent is group content (it has the og_audience field of type og_standard_reference). og_plain is neither. Og::isGroup('node', $bundle) / Og::isGroupContent('node', $bundle) confirm it.",
+      "setup": "agent-module-documentation/evaluation/verify/og-known-bundles-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/og-known-bundles-cleanup.sh"
+    },
+    {
+      "id": "og-known-membership",
+      "difficulty": "medium",
+      "mode": "introspection",
+      "prompt": "On this Drupal site the user og_probe_user has an Organic Groups membership in the group node titled 'OG Probe Club'. Inspect the live site and tell me the membership's state and which OG role id it carries besides the required member role.",
+      "must_contain_any": [
+        "pending"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The og_membership is in state 'pending' and carries the role node-og_mgrp-administrator (in addition to the required node-og_mgrp-member). Load it with \\Drupal::service('og.membership_manager')->getMembership($group, $uid, OgMembershipInterface::ALL_STATES) and read getState() / getRolesIds().",
+      "setup": "agent-module-documentation/evaluation/verify/og-known-membership-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/og-known-membership-cleanup.sh"
+    },
+    {
+      "id": "og-make-group",
+      "difficulty": "hard",
+      "mode": "execution",
+      "persona": "drupal-expert",
+      "prompt": "This Drupal site has two node types, og_task_group and og_task_content, that are not yet wired into Organic Groups. Using the og module, register og_task_group as an OG group and make og_task_content group content by attaching the default OG audience field. Apply the changes to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/og-make-group-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/og-make-group-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/og-make-group-cleanup.sh",
+      "expected_output": "Og::groupTypeManager()->addGroup('node', 'og_task_group') and Og::createField(OgGroupAudienceHelperInterface::DEFAULT_FIELD, 'node', 'og_task_content'). Verified live: Og::isGroup / Og::isGroupContent both TRUE, the OgRoles node-og_task_group-member/-non-member/-administrator exist, and og.group_audience_helper reports an audience field on og_task_content."
+    },
+    {
+      "id": "og-add-member",
+      "difficulty": "hard",
+      "mode": "execution",
+      "persona": "site-owner",
+      "prompt": "On our Drupal site there is a group page called 'OG Task Club' and a user account named og_task_member. Please make that user a full, active member of that group and make them the group's administrator, so they can manage the group's members. Apply it to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/og-add-member-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/og-add-member-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/og-add-member-cleanup.sh",
+      "expected_output": "Create the membership - Og::createMembership($group, $user) then $membership->addRole(OgRole::loadByGroupAndName($group, OgRoleInterface::ADMINISTRATOR))->save() - leaving the state at the default 'active'. Verified live: an og_membership exists for og_task_member in the group, state active, roles include node-og_agrp-administrator, and og.access userAccess($group, 'manage members', $user) is allowed."
+    }
+  ]
+}

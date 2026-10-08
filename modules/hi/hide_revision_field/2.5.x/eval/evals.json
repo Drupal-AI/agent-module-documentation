@@ -1,0 +1,109 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "hide_revision_field",
+  "version": "2.5.x",
+  "note": "Hide Revision Field has no settings form (configure=null). It registers one field widget, hide_revision_field_log_widget, assigned via hook_entity_base_field_info_alter() to the revision_log_message base field on every revisionable entity type, so all behavior lives in the core form-display config entity core.entity_form_display.{entity_type}.{bundle}.default, on the revision_log component's settings (show, hide_revision, permission_based, allow_user_settings, default). It also defines two permissions: 'access revision field' (gates the field when permission_based is on) and 'administer revision field personalization' (per-user overrides on the profile form). Medium/hard cases are grounded in these two real mechanisms: the per-bundle widget 'show'/'hide_revision' settings and the permission grant. No fabrication.",
+  "evals": [
+    {
+      "id": "hide_revision_field-permissions",
+      "mode": "recipe",
+      "prompt": "The Drupal contrib module hide_revision_field defines two permissions. Name them and say what each one controls.",
+      "must_contain_any": [
+        "access revision field",
+        "administer revision field personalization"
+      ],
+      "must_not_contain": [],
+      "expected_output": "'access revision field' — when a bundle's widget has permission_based enabled, the revision log field is shown only to users with this permission. 'administer revision field personalization' — lets a user override revision-field visibility per entity type/bundle on their own user profile form (when allow_user_settings is enabled).",
+      "difficulty": "easy"
+    },
+    {
+      "id": "hide_revision_field-how-to-hide",
+      "mode": "recipe",
+      "prompt": "I installed hide_revision_field on a Drupal 11 site but it has no settings page. How do I actually hide the revision log message field on the Article content type's add/edit form, and where is that setting stored?",
+      "must_contain_any": [
+        "form display",
+        "form-display",
+        "Manage form display",
+        "core.entity_form_display",
+        "show"
+      ],
+      "must_not_contain": [],
+      "expected_output": "There is no dedicated config page (configure route is null). On the Article Manage form display (/admin/structure/types/manage/article/form-display) open the settings of the 'Revision log message' widget and uncheck 'Show'. That sets the `show` setting to false on the revision_log component of the config entity core.entity_form_display.node.article.default; the widget type is hide_revision_field_log_widget.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "hide_revision_field-hide-whole-tab",
+      "mode": "recipe",
+      "prompt": "In hide_revision_field, which widget setting hides the ENTIRE revision information tab (including the 'Create new revision' checkbox) rather than just the revision log message field, and what is the prerequisite for it to take effect?",
+      "must_contain_any": [
+        "hide_revision",
+        "Hide whole revision tab"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The `hide_revision` setting ('Hide whole revision tab'). It only takes effect when the field is already hidden, i.e. when `show` is false; then hook_form_alter() converts the revision checkbox to a hidden element and drops the empty revision fieldset.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "hide_revision_field-article-hidden",
+      "mode": "introspection",
+      "prompt": "On this Drupal site, is the revision log message field shown or hidden on the Article (node) add/edit form according to the hide_revision_field configuration? Inspect the live form-display configuration to answer.",
+      "must_contain_any": [
+        "hidden",
+        "not shown",
+        "show is false",
+        "show=false",
+        "show = false"
+      ],
+      "must_not_contain": [],
+      "expected_output": "It is hidden: in core.entity_form_display.node.article.default the revision_log component uses the hide_revision_field_log_widget widget with settings.show = false, so the revision log field does not render on Article forms.",
+      "setup": "agent-module-documentation/evaluation/verify/hide_revision_field-article-hidden-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/hide_revision_field-article-hidden-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "hide_revision_field-perm-role",
+      "mode": "introspection",
+      "prompt": "This site uses hide_revision_field. One non-admin role has been granted the module's 'access revision field' permission (which controls whether the revision log field is shown when a bundle uses permission-based display). Which role holds that permission? Inspect the live site to answer.",
+      "must_contain_any": [
+        "content_editor",
+        "Content editor"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The 'Content editor' role (machine name content_editor) has the 'access revision field' permission.",
+      "setup": "agent-module-documentation/evaluation/verify/hide_revision_field-perm-role-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/hide_revision_field-perm-role-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "hide_revision_field-hide-page",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, hide_revision_field is enabled. Configure the Basic page content type (node bundle `page`) so that the revision log message field is HIDDEN on its add/edit form. Apply the change to the live site (the revision_log widget is hide_revision_field_log_widget on core.entity_form_display.node.page.default).",
+      "reset": "agent-module-documentation/evaluation/verify/hide_revision_field-hide-page-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/hide_revision_field-hide-page-verify.sh",
+      "expected_output": "In core.entity_form_display.node.page.default the revision_log component keeps the hide_revision_field_log_widget widget and its settings.show is set to false, so the revision log field is hidden on Basic page forms."
+    },
+    {
+      "id": "hide_revision_field-hide-tab",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site with hide_revision_field enabled, configure the Article content type (node bundle `article`) so that the ENTIRE revision information tab is hidden on its add/edit form — not just the log message field. Apply the change live. Recall this needs the revision log field hidden AND the 'hide whole revision tab' option enabled on the hide_revision_field_log_widget for core.entity_form_display.node.article.default.",
+      "reset": "agent-module-documentation/evaluation/verify/hide_revision_field-hide-tab-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/hide_revision_field-hide-tab-verify.sh",
+      "expected_output": "In core.entity_form_display.node.article.default the revision_log component's widget settings have show=false AND hide_revision=true, so the whole revision fieldset/tab (including the Create new revision checkbox) is removed from Article forms."
+    },
+    {
+      "id": "hide_revision_field-grant-perm",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site with hide_revision_field enabled, grant the 'Content editor' role (machine name content_editor) the module's 'access revision field' permission, so that on bundles using permission-based display the revision log field is shown to content editors. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/hide_revision_field-grant-perm-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/hide_revision_field-grant-perm-verify.sh",
+      "expected_output": "The content_editor role has the 'access revision field' permission granted (visible in user.role.content_editor config / drush role:perm)."
+    }
+  ]
+}

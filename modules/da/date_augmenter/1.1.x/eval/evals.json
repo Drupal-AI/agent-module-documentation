@@ -1,0 +1,80 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "date_augmenter",
+  "version": "1.1.x",
+  "note": "Date Augmenter API is a plugin API (no settings form, no configure route, no permissions, no Drush). Plugin type: manager plugin.manager.dateaugmenter, discovery dir Plugin/DateAugmenter, attribute Drupal\\date_augmenter\\Attribute\\DateAugmenter, interface DateAugmenterInterface::augmentOutput(). A formatter opts in via a supportsDateAugmenter() method; the chosen config is stored as third_party_settings.date_augmenter on the entity view display formatter component (schema field.formatter.third_party.date_augmenter, with instances/rule sets; each set has status/weights/settings). The actual augmenter plugins ship in separate contrib modules, so getDefinitions() is empty here; medium/hard cases therefore ground in the module's real third-party-settings config surface, seeded/verified directly on node.article.default view display. Fields are namespaced field_da_* and removed by name in cleanup (no field_purge_batch).",
+  "evals": [
+    {
+      "id": "date_augmenter-plugin-type",
+      "mode": "recipe",
+      "prompt": "In the Drupal date_augmenter module, what plugin type does it define — name the manager service, the plugin directory, and the interface method a plugin must implement.",
+      "must_contain_any": ["plugin.manager.dateaugmenter", "Plugin/DateAugmenter", "DateAugmenterInterface", "augmentOutput"],
+      "must_not_contain": [],
+      "expected_output": "It defines the DateAugmenter plugin type: manager service plugin.manager.dateaugmenter, plugins live in src/Plugin/DateAugmenter/, and each implements DateAugmenterInterface::augmentOutput(array &$output, DrupalDateTime $start, ?DrupalDateTime $end, array $options).",
+      "difficulty": "easy"
+    },
+    {
+      "id": "date_augmenter-register-plugin",
+      "mode": "recipe",
+      "prompt": "How do I register a new date augmenter plugin on Drupal 11 with date_augmenter? Show the PHP attribute and the base class to extend.",
+      "must_contain_any": ["#[DateAugmenter", "Attribute\\DateAugmenter", "DateAugmenterBase", "attribute"],
+      "must_not_contain": [],
+      "expected_output": "Add a class in src/Plugin/DateAugmenter/ extending DateAugmenterBase and annotate it with the #[DateAugmenter(id: ..., label: ..., description: ..., weight: ...)] attribute (Drupal\\date_augmenter\\Attribute\\DateAugmenter); a legacy @DateAugmenter annotation also works.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "date_augmenter-formatter-optin",
+      "mode": "recipe",
+      "prompt": "With date_augmenter, how does a date field formatter opt in to showing the augmenter configuration UI, and where are the chosen augmenter settings stored?",
+      "must_contain_any": ["supportsDateAugmenter", "third_party_settings", "third-party setting", "third party setting"],
+      "must_not_contain": [],
+      "expected_output": "The formatter plugin must implement a supportsDateAugmenter() method returning a truthy value (or an array of set names). The module then injects the augmenter UI and stores the selection as third_party_settings under the 'date_augmenter' namespace on the formatter component (schema field.formatter.third_party.date_augmenter).",
+      "difficulty": "easy"
+    },
+    {
+      "id": "date_augmenter-known-field",
+      "mode": "introspection",
+      "prompt": "On this Drupal site, exactly one Date/time field on the Article content type has date_augmenter augmenter settings configured on its display formatter. Inspect the live default view display for Article and give the machine name of that field.",
+      "must_contain_any": ["field_da_known"],
+      "must_not_contain": [],
+      "expected_output": "field_da_known: in core.entity_view_display.node.article.default its component carries third_party_settings.date_augmenter (instances.status.add_to_calendar = true).",
+      "setup": "agent-module-documentation/evaluation/verify/date_augmenter-known-field-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/date_augmenter-known-field-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "date_augmenter-enabled-vs-not",
+      "mode": "introspection",
+      "prompt": "The Article content type has two Date/time fields, field_da_on and field_da_off. Exactly one has date_augmenter augmenter settings on its display formatter. Inspect the live view-display configuration and state which field has date augmenters configured.",
+      "must_contain_any": ["field_da_on"],
+      "must_not_contain": [],
+      "expected_output": "field_da_on: its component in core.entity_view_display.node.article.default has third_party_settings.date_augmenter (instances.status enabled), whereas field_da_off has none.",
+      "setup": "agent-module-documentation/evaluation/verify/date_augmenter-enabled-vs-not-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/date_augmenter-enabled-vs-not-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "date_augmenter-enable-on-field",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, the Article content type has a Date/time field field_da_task shown with the datetime_default formatter on the default view display. Using the date_augmenter API's third-party settings mechanism, configure that formatter component so at least one date augmenter (use the id add_to_calendar) is enabled on it. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/date_augmenter-enable-task-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/date_augmenter-enable-task-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/date_augmenter-enable-task-cleanup.sh",
+      "expected_output": "On core.entity_view_display.node.article.default set the field_da_task component's third_party_settings.date_augmenter so an augmenter status is truthy, e.g. third_party_settings.date_augmenter.instances.status.add_to_calendar = true (setComponent(...)->save())."
+    },
+    {
+      "id": "date_augmenter-enable-on-rule-set",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, the Article Date/time field field_da_recurring uses the datetime_default formatter on the default view display. Using date_augmenter's third-party settings, enable a date augmenter (id add_to_calendar) specifically on the recurring 'rule' set for this field, and apply it to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/date_augmenter-enable-rule-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/date_augmenter-enable-rule-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/date_augmenter-enable-rule-cleanup.sh",
+      "expected_output": "On core.entity_view_display.node.article.default set field_da_recurring's third_party_settings.date_augmenter.rule.status.add_to_calendar = true (the 'rule' set targets recurring-rule dates, distinct from the 'instances' set)."
+    }
+  ]
+}

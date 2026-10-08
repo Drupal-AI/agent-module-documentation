@@ -1,0 +1,65 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "replicate",
+  "version": "1.3.x",
+  "note": "Replicate is a developer-only API (no UI/config/permissions) exposing one service and four events. Cases are `recipe` (response-graded): they probe documented facts an agent would otherwise read the source to answer; no site mutation.",
+  "evals": [
+    {
+      "id": "replicate-clone-service",
+      "mode": "recipe",
+      "prompt": "On a Drupal 11 site, which service do I use to duplicate a content entity in code, and which method clones AND saves it versus returning an unsaved clone?",
+      "must_contain_any": ["replicate.replicator", "Replicator"],
+      "must_not_contain": [],
+      "expected_output": "The replicate.replicator service (Drupal\\replicate\\Replicator). replicateEntity()/replicateByEntityId() clone and save; cloneEntity()/cloneByEntityId() return an unsaved clone."
+    },
+    {
+      "id": "replicate-clone-by-id",
+      "mode": "recipe",
+      "prompt": "In PHP, replicate (clone and save) node 1 on a Drupal 11 site using the Replicate module. Show the code.",
+      "must_contain_any": ["replicateByEntityId", "replicate.replicator"],
+      "must_not_contain": [],
+      "expected_output": "Get \\Drupal::service('replicate.replicator') and call replicateByEntityId('node', 1) (or load the node and call replicateEntity($node))."
+    },
+    {
+      "id": "replicate-field-event",
+      "mode": "recipe",
+      "prompt": "Using the Replicate module, I want to control how one specific field type is duplicated when an entity is cloned. Which event do I subscribe to and what does the listener receive?",
+      "must_contain_any": ["replicate__entity_field__", "ReplicateEntityFieldEvent", "replicateEntityField"],
+      "must_not_contain": [],
+      "expected_output": "Subscribe to replicate__entity_field__{field_type} (built via ReplicatorEvents::replicateEntityField()); the listener gets a ReplicateEntityFieldEvent with getFieldItemList() (the field on the clone) and getEntity() (the clone)."
+    },
+    {
+      "id": "replicate-entity-event",
+      "mode": "recipe",
+      "prompt": "With the Replicate module, which event lets me change how a whole entity of a given type is replicated (for example append ' [clone]' to every cloned node title), and what class is dispatched?",
+      "must_contain_any": ["replicate__entity__", "ReplicateEntityEvent", "replicateEntityEvent", "replicate__alter", "ReplicateAlterEvent"],
+      "must_not_contain": [],
+      "expected_output": "Subscribe to replicate__entity__{entity_type_id} (ReplicateEntityEvent, carries the original) or replicate__alter (ReplicateAlterEvent, carries clone + original) to adjust the whole cloned entity."
+    },
+    {
+      "id": "replicate-deep-vs-shallow",
+      "mode": "recipe",
+      "prompt": "When Replicate clones an entity, are entity-reference fields deep-cloned or shallow by default, and how do I make a referenced entity be deep-cloned instead?",
+      "must_contain_any": ["createDuplicate", "shallow", "deep", "replicate__entity_field__"],
+      "must_not_contain": [],
+      "expected_output": "By default the clone is shallow (createDuplicate copies reference values, so targets are shared). To deep-clone, subscribe to the reference field's replicate__entity_field__ event and replace each target with a fresh clone by re-invoking replicate.replicator (recursion), as the Layout Builder inline-block subscriber does."
+    },
+    {
+      "id": "replicate-no-ui",
+      "mode": "recipe",
+      "prompt": "Does the Replicate module provide an admin UI, configuration form, or permissions for cloning content, or is it a developer API?",
+      "must_contain_any": ["developer", "no UI", "no user interface", "API"],
+      "must_not_contain": [],
+      "expected_output": "It is a developer-only API: no admin UI, no configuration, no permissions. Cloning is done in code via the replicate.replicator service; UI modules like Quick Node Clone / Entity Clone build on this pattern."
+    },
+    {
+      "id": "replicate-after-save",
+      "mode": "recipe",
+      "prompt": "With Replicate, which event fires after a replicated entity has been saved so I can react (log, queue, notify), and which constant names it?",
+      "must_contain_any": ["replicate__after_save", "AFTER_SAVE", "AfterSaveEvent"],
+      "must_not_contain": [],
+      "expected_output": "The replicate__after_save event (ReplicatorEvents::AFTER_SAVE), dispatched as an AfterSaveEvent whose getEntity() is the saved clone; it only fires from the replicate* (save) methods."
+    }
+  ]
+}

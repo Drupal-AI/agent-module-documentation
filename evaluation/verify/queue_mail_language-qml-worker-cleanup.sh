@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+# Introspection CLEANUP: leave queue_mail_language enabled (its baseline for this suite).
+set -uo pipefail
+cd /var/www/html
+drush pm:list --status=enabled --field=name 2>/dev/null | grep -qx queue_mail_language || drush en queue_mail_language -y >/dev/null 2>&1
+echo "cleanup: queue_mail_language left enabled (baseline)"

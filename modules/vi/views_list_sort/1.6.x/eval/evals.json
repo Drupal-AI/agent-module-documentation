@@ -1,0 +1,80 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "views_list_sort",
+  "version": "1.6.x",
+  "note": "Provides one Views sort handler id 'sort_allowed_values' (Drupal\\views_list_sort\\Plugin\\views\\sort\\SortAllowedValues) that sorts a list_string field by its allowed-values order using SQL FIELD(). hook_field_views_data_alter() sets the sort id to sort_allowed_values for every list_string field's _value column, so the option appears automatically when the field is added as a Views sort. Two per-sort options: allowed_values (0/1 toggle) and null_heavy (0/1, sort empty values last), registered on views.sort.* by hook_config_schema_info_alter(). No configure route, no permissions, no Drush, no schema file. State lives in the view config entity display.<id>.display_options.sorts.<field>_value (plugin_id sort_allowed_values, allowed_values, null_heavy). Medium reads a seeded view's sort config; hard turns 'Sort by allowed values' on, and enables null_heavy, verified against the live view entity.",
+  "evals": [
+    {
+      "id": "views_list_sort-what-it-does",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "In a Drupal View I have a List (text) field with allowed values low/medium/high, but sorting by it comes out alphabetically. Which module lets me sort by the order the allowed values are defined, and what do I enable?",
+      "must_contain_any": ["views_list_sort", "allowed values", "Sort by allowed values", "sort_allowed_values"],
+      "must_not_contain": [],
+      "expected_output": "Views List Sort. Add the List field as a Views sort criterion, then set its 'Sort by allowed values' option to Yes; it orders rows by each key's position in the field's allowed-values list (via a SQL FIELD() expression) using the sort_allowed_values handler."
+    },
+    {
+      "id": "views_list_sort-options",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "For the views_list_sort sort handler, name the two options it adds to a Views sort criterion and what each does. Which field types does it apply to?",
+      "must_contain_any": ["allowed_values", "null_heavy"],
+      "must_not_contain": [],
+      "expected_output": "It applies to List (text) / list_string fields. Options: 'Sort by allowed values' (allowed_values) enables ordering by the allowed-values index; 'Treat null values as heavier than the allowed values' (null_heavy) reverses the FIELD() order so empty/unknown values sort last."
+    },
+    {
+      "id": "views_list_sort-mechanism",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "How does views_list_sort actually produce the custom sort order at the database level, and how does the option become available on the right fields automatically?",
+      "must_contain_any": ["FIELD(", "FIELD", "hook_field_views_data_alter", "views data"],
+      "must_not_contain": [],
+      "expected_output": "SortAllowedValues::query() builds a SQL FIELD(column, key1, key2, ...) expression from the field's allowed-values keys and adds it as the order-by. hook_field_views_data_alter() swaps the sort id to sort_allowed_values for every list_string field's _value column, so the extra options appear automatically when you add that field as a sort."
+    },
+    {
+      "id": "views_list_sort-known-plugin",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "On this Drupal site there is a view with machine name vls_known_view that sorts by a List field. Inspect the live view configuration and state which Views sort plugin its sort criterion uses and whether 'sort by allowed values' is turned on.",
+      "must_contain_any": ["sort_allowed_values"],
+      "must_not_contain": [],
+      "setup": "agent-module-documentation/evaluation/verify/views_list_sort-known-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/views_list_sort-known-cleanup.sh",
+      "expected_output": "The sort on field_vls_known_value uses plugin_id sort_allowed_values with allowed_values = '1', i.e. Sort by allowed values is enabled."
+    },
+    {
+      "id": "views_list_sort-known-field",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "The view vls_known_view on this site uses views_list_sort. Inspect the live configuration and report the machine name of the List field its allowed-values sort is applied to.",
+      "must_contain_any": ["field_vls_known"],
+      "must_not_contain": [],
+      "setup": "agent-module-documentation/evaluation/verify/views_list_sort-known-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/views_list_sort-known-cleanup.sh",
+      "expected_output": "The sort criterion is on field_vls_known (sort key field_vls_known_value) in vls_known_view's default display."
+    },
+    {
+      "id": "views_list_sort-enable",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site the view vls_task_view sorts by the List field field_vls_task, but 'Sort by allowed values' is currently off (so it sorts alphabetically). Using views_list_sort, turn on sorting by the field's allowed-values order and save the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/views_list_sort-enable-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/views_list_sort-enable-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/views_list_sort-enable-cleanup.sh",
+      "expected_output": "In views.view.vls_task_view the sort on field_vls_task_value uses plugin_id sort_allowed_values with allowed_values set to '1' (Sort by allowed values = Yes), saved to the live view."
+    },
+    {
+      "id": "views_list_sort-nullheavy",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "The view vls_null_view on this site already sorts by a List field's allowed values (views_list_sort). Change it so that rows with an empty/null value sort last (treat null values as heavier than the allowed values), and apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/views_list_sort-nullheavy-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/views_list_sort-nullheavy-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/views_list_sort-nullheavy-cleanup.sh",
+      "expected_output": "In vls_null_view the sort on field_vls_null_value keeps allowed_values = '1' and sets null_heavy = '1', so empty values sort last, saved to the live view."
+    }
+  ]
+}

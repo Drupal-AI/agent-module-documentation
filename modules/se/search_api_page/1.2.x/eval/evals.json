@@ -1,0 +1,80 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "search_api_page",
+  "version": "1.2.x",
+  "note": "Search API Pages creates standalone search pages: each is a 'search_api_page' config entity (stored as config object search_api_page.search_api_page.<id>) that binds one Search API index to a URL path. Its only hard dependency is search_api. Easy cases are response-graded (no site changes). Medium cases stage a known search_api_page entity (self-contained DB server + index to bind, since no external search service is available here) and ask the agent to read its path/index/style/limit back from live config; cleanup removes the page + throwaway server/index. Hard cases have the agent CREATE a search_api_page config entity at a specific path bound to the index the reset script guarantees (sap_eval_index); verify reads config and passes (exit 0) only when the page exists with the right path and bound index.",
+  "evals": [
+    {
+      "id": "search_api_page-what-is-entity",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "On a Drupal 11 site with the Search API Pages (search_api_page) module, what kind of thing is a 'search page' internally — what entity type / config object represents one, and what two things does each one bind together?",
+      "must_contain_any": ["search_api_page", "config entity", "configuration entity"],
+      "must_not_contain": [],
+      "expected_output": "Each search page is a 'search_api_page' configuration entity (stored as the config object search_api_page.search_api_page.<id>). It binds one Search API index (its 'index' key) to a URL path (its 'path' key), so submitting keywords at that path runs a Search API query against that index."
+    },
+    {
+      "id": "search_api_page-bind-index-to-path",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "Using Search API Pages, how does a search page connect a Search API index to a URL, and which config keys control the path and the index? Where in the admin UI are these pages managed, and what must already exist first?",
+      "must_contain_any": ["path", "index"],
+      "must_not_contain": [],
+      "expected_output": "A search_api_page entity's 'path' key is the URL it serves (e.g. search/content, no leading slash) and its 'index' key is the machine id of the bound Search API index; saving the entity rebuilds the router so the path becomes a live route. Pages are managed at /admin/config/search/search-api-pages. A Search API index must already exist to bind to."
+    },
+    {
+      "id": "search_api_page-styles-and-block",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "With Search API Pages, what are the two ways search results can be rendered (the 'style' setting), and how do you place a reusable search box that redirects to one of these pages?",
+      "must_contain_any": ["view_modes", "search_results", "search_api_page_form_block"],
+      "must_not_contain": [],
+      "expected_output": "The 'style' key is either 'view_modes' (results rendered as entity view modes) or 'search_results' (excerpt snippets). To place a search box, add the 'search_api_page_form_block' block ('Search Api Page search block form'); its search_api_page setting selects which page id submissions redirect to."
+    },
+    {
+      "id": "search_api_page-known-staff-page",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "This Drupal 11 site already has a Search API Pages search page configured for a staff directory. Inspect the live configuration and report: what URL path does it serve, and which Search API index is it bound to?",
+      "setup": "agent-module-documentation/evaluation/verify/search_api_page-staff-page-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/search_api_page-staff-page-cleanup.sh",
+      "must_contain_any": ["search/staff"],
+      "must_not_contain": [],
+      "expected_output": "The 'staff_directory_search' search_api_page entity serves the path search/staff and is bound to the Search API index sap_medium_index."
+    },
+    {
+      "id": "search_api_page-known-snippet-page",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "A Search API Pages search page named 'Knowledge base search' is configured on this live site. Inspect its configuration and report how its results are rendered (the style), how many results it shows per page, and whether it lists all results when no keywords are entered.",
+      "setup": "agent-module-documentation/evaluation/verify/search_api_page-snippet-page-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/search_api_page-snippet-page-cleanup.sh",
+      "must_contain_any": ["search_results"],
+      "must_not_contain": [],
+      "expected_output": "The 'knowledge_base_search' page uses style 'search_results' (excerpt snippets), limit 25 per page, and show_all_when_no_keys is TRUE (it lists all results when no search is performed)."
+    },
+    {
+      "id": "search_api_page-create-site-search-expert",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal 11 site, create a Search API Pages search page: a search_api_page config entity with machine id 'site_search', label 'Site search', that serves the path search/site and is bound to the existing Search API index 'sap_eval_index'. Leave the other options at their defaults.",
+      "reset": "agent-module-documentation/evaluation/verify/search_api_page-create-page-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/search_api_page-create-page-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/search_api_page-create-page-cleanup.sh",
+      "expected_output": "A search_api_page.search_api_page.site_search config entity exists with path 'search/site' and index 'sap_eval_index'."
+    },
+    {
+      "id": "search_api_page-create-site-search-plain",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "I want visitors to be able to search my whole site at the URL /search/site, using the site's existing search index called sap_eval_index. Set that up with the Search API Pages module. Use 'site_search' as the internal id and 'Site search' as the name.",
+      "reset": "agent-module-documentation/evaluation/verify/search_api_page-create-page-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/search_api_page-create-page-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/search_api_page-create-page-cleanup.sh",
+      "expected_output": "A search_api_page.search_api_page.site_search config entity exists with path 'search/site' bound to index 'sap_eval_index'."
+    }
+  ]
+}

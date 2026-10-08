@@ -1,0 +1,96 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "readonly_field_widget",
+  "version": "2.1.x",
+  "note": "Read-only Field Widget provides a single Field Widget plugin, `readonly_field_widget`, applicable to nearly all field types (hook_field_widget_info_alter merges in every registered formatter's field types). Assigning it to a field on an entity's form display replaces the editable input with the field's chosen FORMATTER output, rendered read-only, on the edit form. It has no configure route, no settings form/page of its own beyond the normal widget-settings UI, no permissions, no Drush, and no plugin types. Its entire persistent state is the widget's `settings` (label, formatter_type, formatter_settings, show_description, error_validation) on an entity_form_display component whose `type` is `readonly_field_widget` (e.g. core.entity_form_display.node.article.default -> content.<field>.type/settings), validated by the field.widget.settings.readonly_field_widget config schema. All medium/hard cases are grounded in that real config: introspection reads back which field has the readonly widget and its formatter_type; execution switches a field from a normal widget (string_textfield) to readonly_field_widget, verified against the live entity_form_display.",
+  "evals": [
+    {
+      "id": "readonly_field_widget-what-it-does",
+      "mode": "recipe",
+      "prompt": "The Drupal contrib module readonly_field_widget adds a field widget plugin. What is its plugin id, and what does it actually render on the entity edit form instead of an editable input?",
+      "must_contain_any": [
+        "readonly_field_widget",
+        "read-only",
+        "readonly"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The module provides one Field Widget plugin with id `readonly_field_widget`. Instead of an editable input, it calls the entity view builder and renders the field using its configured FORMATTER (the widget's own `formatter_type` setting), producing the same read-only markup you'd see when viewing the entity, directly on the edit form.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "readonly_field_widget-where-stored",
+      "mode": "recipe",
+      "prompt": "I set a field's widget to readonly_field_widget in Drupal 11 but there's no separate admin settings page for the module. Where exactly is that widget choice stored, and what settings keys live alongside it?",
+      "must_contain_any": [
+        "entity_form_display",
+        "form display",
+        "form-display",
+        "Manage form display"
+      ],
+      "must_not_contain": [],
+      "expected_output": "There is no configure route (configure=null). The choice lives on the field's component inside the entity_form_display config entity, e.g. core.entity_form_display.node.article.default -> content.<field>.type: readonly_field_widget, with content.<field>.settings holding label, formatter_type, formatter_settings, show_description, and error_validation, validated by the field.widget.settings.readonly_field_widget schema.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "readonly_field_widget-choose-formatter",
+      "mode": "recipe",
+      "prompt": "When a field uses the readonly_field_widget widget, how do I control which formatter is used to render its read-only value on the edit form? Is there a separate configuration page for this?",
+      "must_contain_any": [
+        "formatter_type",
+        "Format"
+      ],
+      "must_not_contain": [],
+      "expected_output": "There is no separate configure page. You pick the formatter in the widget's own settings form (the gear/cog on Manage form display) via the 'Format' select, which is stored as the settings.formatter_type key on the field's entity_form_display component; that formatter's own options are stored in formatter_settings, keyed by the formatter's plugin id.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "readonly_field_widget-known-field",
+      "mode": "introspection",
+      "prompt": "On this Drupal site, the Article content type has a field configured with the readonly_field_widget widget on its default form display. Inspect the live configuration and give the machine name of that field and the formatter_type it is set to render with.",
+      "must_contain_any": [
+        "field_rofw_known"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The field is field_rofw_known, rendered with formatter_type 'string': in core.entity_form_display.node.article.default its component has type: readonly_field_widget and settings.formatter_type: string.",
+      "setup": "agent-module-documentation/evaluation/verify/readonly_field_widget-known-field-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/readonly_field_widget-known-field-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "readonly_field_widget-on-vs-off",
+      "mode": "introspection",
+      "prompt": "The Article content type on this site has two fields, field_rofw_on and field_rofw_off. Exactly one of them uses the readonly_field_widget widget on the default form display; the other uses a normal editable widget. Inspect the live form-display configuration and state which field is the read-only one.",
+      "must_contain_any": [
+        "field_rofw_on"
+      ],
+      "must_not_contain": [],
+      "expected_output": "field_rofw_on is the read-only field: in core.entity_form_display.node.article.default its component has type: readonly_field_widget, whereas field_rofw_off's component has type: string_textfield (a normal editable widget).",
+      "setup": "agent-module-documentation/evaluation/verify/readonly_field_widget-on-vs-off-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/readonly_field_widget-on-vs-off-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "readonly_field_widget-enable-task",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, the Article content type has a plain text field field_rofw_task currently using the normal 'Text field' (string_textfield) widget on the default form display. Using the readonly_field_widget module, switch this field's widget to Readonly so it renders as read-only markup on the edit form instead of an editable input. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/readonly_field_widget-enable-task-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/readonly_field_widget-enable-task-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/readonly_field_widget-enable-task-cleanup.sh",
+      "expected_output": "In core.entity_form_display.node.article.default the field_rofw_task component's type is set to readonly_field_widget (e.g. via setComponent() with settings.formatter_type set to a formatter valid for a string field, such as 'string', or by choosing 'Readonly' as the widget in Manage form display and saving)."
+    },
+    {
+      "id": "readonly_field_widget-enable-desc",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, the Article content type has a plain text field field_rofw_desc currently using the normal 'Text field' (string_textfield) widget on the default form display. Switch this field's widget to readonly_field_widget, and configure it to render the value using the 'string' field formatter (Format: Plain text). Apply the change to the live default form display.",
+      "reset": "agent-module-documentation/evaluation/verify/readonly_field_widget-enable-desc-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/readonly_field_widget-enable-desc-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/readonly_field_widget-enable-desc-cleanup.sh",
+      "expected_output": "In core.entity_form_display.node.article.default the field_rofw_desc component has type: readonly_field_widget and settings.formatter_type: string (set via setComponent() with those settings, or by choosing 'Readonly' as the widget and 'Plain text' as the Format in Manage form display, then Update and Save)."
+    }
+  ]
+}

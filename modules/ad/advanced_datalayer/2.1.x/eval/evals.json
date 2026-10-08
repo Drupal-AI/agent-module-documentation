@@ -1,0 +1,80 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "advanced_datalayer",
+  "version": "2.1.x",
+  "note": "Advanced Datalayer builds GTM's window.dataLayer from plugin-defined tags with per-page-type defaults. Values are assigned in advanced_datalayer_defaults config entities (one per context: global, front, node, taxonomy_term, 403, 404, login, register, pass) via a 'tags' map of tag_id => value (tokens allowed). Output happens in hook_page_attachments (var dataLayer_tags = {...}; window.dataLayer.push(dataLayer_tags)). Two plugin types: @AdvancedDatalayerTag (manager plugin.manager.advanced_datalayer.tag) and @AdvancedDatalayerGroup. Permission: 'administer advanced datalayer defaults settings'. The base module ships NO tags; example_advanced_datalayer is enabled on this site and provides tag ids: event, site_Name, site_Category, page_Name, page_Category, response_Code, ga_client_id. All shipped default contexts have tags:{} at baseline. Medium cases set a known tag value on a context and read it back; hard cases set a tag value on a context, verified against the live advanced_datalayer_defaults config entity.",
+  "evals": [
+    {
+      "id": "advanced_datalayer-js-target",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "What does the Drupal 'Advanced Datalayer' module actually output on the page, and what JavaScript object does it populate (the one Google Tag Manager reads)?",
+      "must_contain_any": ["window.dataLayer", "dataLayer.push", "dataLayer"],
+      "must_not_contain": [],
+      "expected_output": "In hook_page_attachments it injects two head scripts: 'var dataLayer_tags = {...}' (the resolved tag values as JSON) and 'window.dataLayer = window.dataLayer || []; window.dataLayer.push(dataLayer_tags);' — populating GTM's window.dataLayer."
+    },
+    {
+      "id": "advanced_datalayer-where-config",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "In Advanced Datalayer, how do I set different dataLayer variable values for different page types (front page vs node pages vs 404)? What kind of configuration object holds those values?",
+      "must_contain_any": ["advanced_datalayer_defaults", "page-variables", "page variables"],
+      "must_not_contain": [],
+      "expected_output": "Values are stored in advanced_datalayer_defaults config entities, one per page context (global, front, node, taxonomy_term, 403, 404, login, register, pass), each with a 'tags' map of tag_id => value. Manage them at /admin/config/search/advanced-datalayer/page-variables."
+    },
+    {
+      "id": "advanced_datalayer-permission",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "Which permission does the Advanced Datalayer module use to control who can edit the dataLayer page-variable defaults?",
+      "must_contain_any": ["administer advanced datalayer defaults settings"],
+      "must_not_contain": [],
+      "expected_output": "'administer advanced datalayer defaults settings' (restricted). It gates the settings form and all the advanced_datalayer_defaults add/edit/delete/collection routes."
+    },
+    {
+      "id": "advanced_datalayer-node-value",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "On this Drupal site, Advanced Datalayer has a value configured for the 'page_Name' dataLayer tag on node pages. Inspect the live configuration for the node page context and report the value that is set for page_Name.",
+      "must_contain_any": ["[node:title]-ADLMARK", "ADLMARK", "[node:title]"],
+      "must_not_contain": [],
+      "expected_output": "advanced_datalayer.advanced_datalayer_defaults.node -> tags.page_Name = '[node:title]-ADLMARK' (drush cget advanced_datalayer.advanced_datalayer_defaults.node tags).",
+      "setup": "agent-module-documentation/evaluation/verify/advanced_datalayer-node-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/advanced_datalayer-node-cleanup.sh"
+    },
+    {
+      "id": "advanced_datalayer-global-value",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "On this Drupal site, a global dataLayer variable for the site name has been configured in Advanced Datalayer. Inspect the live global page-variable configuration and report the value set for the site_Name tag.",
+      "must_contain_any": ["ACME-EVAL"],
+      "must_not_contain": [],
+      "expected_output": "advanced_datalayer.advanced_datalayer_defaults.global -> tags.site_Name = 'ACME-EVAL'.",
+      "setup": "agent-module-documentation/evaluation/verify/advanced_datalayer-global-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/advanced_datalayer-global-cleanup.sh"
+    },
+    {
+      "id": "advanced_datalayer-set-front",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, use Advanced Datalayer to make the front page push a dataLayer variable: set the 'page_Name' tag to the literal value 'Homepage' for the front-page context. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/advanced_datalayer-front-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/advanced_datalayer-front-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/advanced_datalayer-front-cleanup.sh",
+      "expected_output": "advanced_datalayer.advanced_datalayer_defaults.front -> tags.page_Name = 'Homepage'. E.g. load the advanced_datalayer_defaults entity 'front', set tags to ['page_Name' => 'Homepage'] and save."
+    },
+    {
+      "id": "advanced_datalayer-set-event",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, configure Advanced Datalayer so that node pages emit an 'event' dataLayer variable with the value 'pageview'. Set the 'event' tag on the node page context and apply it to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/advanced_datalayer-event-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/advanced_datalayer-event-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/advanced_datalayer-event-cleanup.sh",
+      "expected_output": "advanced_datalayer.advanced_datalayer_defaults.node -> tags.event = 'pageview' (load the 'node' advanced_datalayer_defaults entity, set tags.event = 'pageview', save)."
+    }
+  ]
+}

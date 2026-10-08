@@ -1,0 +1,96 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "entity_usage_views_field",
+  "version": "3.0.x",
+  "note": "Entity Usage Views Field adds one Views field 'Entity usage count' (plugin id entity_usage_views_field, a NumericField handler) via hook_views_data_alter(), on the base Views table of every entity type that has views_data - or, if entity_usage.settings:track_enabled_target_entity_types is non-empty, only those types. The field is computed in PHP per row (revision-aware, counting only usages against each source entity's default revision) so it is NOT sortable/filterable. The only writable state that changes this module's behavior is entity_usage.settings:track_enabled_target_entity_types, which controls which entity types expose the field; medium/hard cases are grounded in that config (baseline: empty list = track/expose for all types). NOTE: this shared site currently has broken contrib modules (vefl_bef, commerce_cart_api) that fatal when Views or serializer plugins are rebuilt, so evals deliberately avoid saving/rendering Views and assert on the entity_usage config value instead of live Views data.",
+  "evals": [
+    {
+      "id": "euvf-how-to-add",
+      "mode": "recipe",
+      "prompt": "On a Drupal site with the entity_usage_views_field module enabled, how do I show how many times each entity is used in a view, and what is the machine name of the field/plugin I add?",
+      "must_contain_any": [
+        "entity_usage_views_field",
+        "Entity usage count",
+        "hook_views_data_alter"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Add the 'Entity usage count' field (Views field plugin id entity_usage_views_field) to a view whose base table is the entity type you want counts for. The field is registered on every trackable entity type by hook_views_data_alter().",
+      "difficulty": "easy"
+    },
+    {
+      "id": "euvf-not-sortable",
+      "mode": "recipe",
+      "prompt": "Why can't I sort or filter a Drupal view by the entity_usage_views_field 'Entity usage count' column, and what exactly does the number count?",
+      "must_contain_any": [
+        "not sortable",
+        "computed in PHP",
+        "revision",
+        "default revision"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The count is computed in PHP per row (from the entity_usage table) to stay revision-aware - it counts usages recorded against each source entity's default/current revision - so it never appears in the SQL query and cannot be sorted or filtered on. The handler registers no sort/filter, only a NumericField field handler.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "euvf-modal-link",
+      "mode": "recipe",
+      "prompt": "How do I make the entity_usage_views_field usage count render as a link that opens the entity's Entity Usage report in a modal dialog?",
+      "must_contain_any": [
+        "use-ajax",
+        "Rewrite",
+        "custom link",
+        "data-dialog-type"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Add a field that outputs the usage URL (e.g. /node/{{ id }}/usage) before the count field, then edit the 'Entity usage count' field, enable 'Rewrite results' > 'Output this field as a custom link' and use that URL token. The handler's renderAsLink() adds class use-ajax, data-dialog-type=modal and data-dialog-options width 700.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "euvf-tracked-types-node",
+      "mode": "introspection",
+      "prompt": "On this Drupal site, Entity Usage tracking has been restricted, which controls the entity types on which entity_usage_views_field exposes its 'Entity usage count' field. Inspect the live Entity Usage configuration and state which target entity type(s) are currently tracked.",
+      "must_contain_any": [
+        "node"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Only 'node' is tracked: entity_usage.settings:track_enabled_target_entity_types is ['node'], so the usage-count field is exposed only on the node Views table.",
+      "setup": "agent-module-documentation/evaluation/verify/entity_usage_views_field-tracked-types-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/entity_usage_views_field-tracked-types-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "euvf-tracked-types-media",
+      "mode": "introspection",
+      "prompt": "Entity Usage on this site is configured so that entity_usage_views_field's 'Entity usage count' field is available for only one entity type. Inspect the running configuration and name that entity type.",
+      "must_contain_any": [
+        "media"
+      ],
+      "must_not_contain": [],
+      "expected_output": "It is 'media': entity_usage.settings:track_enabled_target_entity_types is ['media'], so only the media Views base table exposes the usage-count field (node and others do not).",
+      "setup": "agent-module-documentation/evaluation/verify/entity_usage_views_field-tracked-media-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/entity_usage_views_field-tracked-media-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "euvf-restrict-node",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, configure Entity Usage so that entity_usage_views_field's 'Entity usage count' field is exposed for the node entity type ONLY (and not for media or any other type). Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/entity_usage_views_field-restrict-node-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/entity_usage_views_field-restrict-node-verify.sh",
+      "expected_output": "Set entity_usage.settings:track_enabled_target_entity_types to exactly ['node'] (e.g. drush cset entity_usage.settings track_enabled_target_entity_types '[node]', or via the Entity Usage settings form / configFactory). The usage-count Views field is then registered only on the node table."
+    },
+    {
+      "id": "euvf-expose-node-and-media",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "Configure Entity Usage on this site so that the entity_usage_views_field 'Entity usage count' field is available for the node and media entity types (and only those two). Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/entity_usage_views_field-expose-two-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/entity_usage_views_field-expose-two-verify.sh",
+      "expected_output": "Set entity_usage.settings:track_enabled_target_entity_types to exactly ['node','media'] (order irrelevant). hook_views_data_alter() then exposes the usage-count field on the node and media Views base tables only."
+    }
+  ]
+}

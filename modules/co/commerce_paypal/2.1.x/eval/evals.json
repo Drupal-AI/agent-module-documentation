@@ -1,0 +1,88 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "commerce_paypal",
+  "version": "2.1.x",
+  "note": "Commerce PayPal adds PayPal payment gateways to Drupal Commerce (depends on commerce_payment). It ships commerce_payment_gateway plugin implementations — paypal_checkout, paypal_fastlane, paypal_express_checkout, paypal_payflow, paypal_payflow_link — each configured as a commerce_payment.commerce_payment_gateway.* config entity whose top-level 'plugin' property is the plugin id and whose 'configuration' array holds 'mode' (test = Sandbox / live) plus product-specific credentials (client_id/secret for Checkout & Fastlane, api_username/password/signature for Express Checkout, partner/vendor/user/password for Payflow). LIMITATION: a live PayPal transaction requires real credentials and outbound network access, which this environment does not have — so medium/hard cases are grounded ENTIRELY in the payment gateway config entity (plugin id + mode + credentials), which can be created, inspected, and verified WITHOUT contacting PayPal. Easy cases are response-graded (no site changes). Medium cases stage a known gateway config entity and ask the agent to read it back (cleanup deletes it). Hard cases have the agent CREATE a gateway config entity for a specific PayPal plugin in sandbox mode, verified against live config (exit 0 = pass).",
+  "evals": [
+    {
+      "id": "commerce_paypal-plugin-ids",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "On a Drupal 11 Commerce site with Commerce PayPal installed, what are the machine ids of the commerce_payment_gateway plugins this module provides, and which one is the preferred/actively-developed PayPal gateway?",
+      "must_contain_any": ["paypal_checkout"],
+      "must_not_contain": [],
+      "expected_output": "The gateway plugin ids are paypal_checkout (PayPal Checkout / Smart Payment Buttons — the preferred, actively developed one), paypal_fastlane (Fastlane by PayPal), and the legacy paypal_express_checkout, paypal_payflow, and paypal_payflow_link."
+    },
+    {
+      "id": "commerce_paypal-checkout-config-keys",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "For the PayPal Checkout gateway (plugin paypal_checkout) in Commerce PayPal, how do you tell it to use PayPal Sandbox versus production, and which two credential keys hold the REST app credentials? Where in the payment gateway config entity does the mode live versus the plugin id?",
+      "must_contain_any": ["client_id", "secret"],
+      "must_not_contain": [],
+      "expected_output": "Set the gateway's mode to 'test' for Sandbox or 'live' for production. The REST credentials are client_id and secret. On the commerce_payment.commerce_payment_gateway.* config entity, the plugin id is the top-level 'plugin' property while 'mode', client_id, and secret live inside the 'configuration' array."
+    },
+    {
+      "id": "commerce_paypal-registration",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "How do the PayPal payment gateways in Commerce PayPal register themselves, and where does a site admin add/configure one? Does the module define its own plugin type?",
+      "must_contain_any": ["commerce_payment_gateway", "CommercePaymentGateway"],
+      "must_not_contain": [],
+      "expected_output": "They are commerce_payment_gateway plugin implementations declared with a CommercePaymentGateway annotation/attribute (managed by Commerce Payment's plugin.manager.commerce_payment_gateway) — the module does NOT define its own plugin type. Enabling the module makes them discoverable; an admin adds one at /admin/commerce/config/payment-gateways (permission 'administer commerce payment gateway'), which writes a commerce_payment.commerce_payment_gateway.<id> config entity."
+    },
+    {
+      "id": "commerce_paypal-known-gateway-plugin-mode",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "This Drupal Commerce site has a PayPal payment gateway configured with the machine id 'paypal_known'. Inspect the live configuration and report: which PayPal gateway plugin does it use, and is it in Sandbox or Live mode?",
+      "setup": "agent-module-documentation/evaluation/verify/commerce_paypal-known-gateway-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/commerce_paypal-known-gateway-cleanup.sh",
+      "must_contain_any": ["paypal_checkout"],
+      "must_not_contain": [],
+      "expected_output": "The paypal_known gateway uses the paypal_checkout plugin and is in Sandbox mode (configuration.mode = test)."
+    },
+    {
+      "id": "commerce_paypal-known-gateway-credentials",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "On this live Commerce site, the PayPal payment gateway 'paypal_known' stores REST API credentials. Inspect the payment gateway config entity and report the Client ID it is configured with.",
+      "setup": "agent-module-documentation/evaluation/verify/commerce_paypal-known-gateway-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/commerce_paypal-known-gateway-cleanup.sh",
+      "must_contain_any": ["SB-KNOWN-CLIENT-1234567890"],
+      "must_not_contain": [],
+      "expected_output": "The paypal_known gateway's configuration.client_id is SB-KNOWN-CLIENT-1234567890 (stored inside the configuration array of commerce_payment.commerce_payment_gateway.paypal_known)."
+    },
+    {
+      "id": "commerce_paypal-create-checkout-expert",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "Add a PayPal Checkout payment gateway to this Drupal Commerce site. Create a commerce_payment_gateway config entity with the machine id 'paypal_sandbox' using the paypal_checkout plugin, in Sandbox mode (mode 'test'). Use placeholder sandbox credentials (client_id/secret) — it does not need to reach PayPal, the config entity just needs to exist and be wired to the paypal_checkout plugin in test mode.",
+      "reset": "agent-module-documentation/evaluation/verify/commerce_paypal-create-checkout-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/commerce_paypal-create-checkout-verify.sh",
+      "expected_output": "A commerce_payment.commerce_payment_gateway.paypal_sandbox config entity exists with plugin = paypal_checkout and configuration.mode = test."
+    },
+    {
+      "id": "commerce_paypal-create-checkout-layman",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "I want to start accepting PayPal on my store, but only in test/sandbox mode for now so no real money moves. Set up the preferred PayPal payment option (the Smart Payment Buttons one) as a payment method called 'paypal_sandbox', pointed at PayPal's sandbox. Put in dummy credentials for now.",
+      "reset": "agent-module-documentation/evaluation/verify/commerce_paypal-create-checkout-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/commerce_paypal-create-checkout-verify.sh",
+      "expected_output": "A commerce_payment.commerce_payment_gateway.paypal_sandbox config entity exists with plugin = paypal_checkout (the preferred Smart Payment Buttons gateway) and configuration.mode = test."
+    },
+    {
+      "id": "commerce_paypal-create-fastlane-expert",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "Add a Fastlane by PayPal payment gateway to this Drupal Commerce site. Create a commerce_payment_gateway config entity with the machine id 'fastlane_sandbox' using the paypal_fastlane plugin, in Sandbox mode (mode 'test'). Placeholder client_id/secret are fine — the config entity just needs to exist and be wired to the paypal_fastlane plugin in test mode.",
+      "reset": "agent-module-documentation/evaluation/verify/commerce_paypal-create-fastlane-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/commerce_paypal-create-fastlane-verify.sh",
+      "expected_output": "A commerce_payment.commerce_payment_gateway.fastlane_sandbox config entity exists with plugin = paypal_fastlane and configuration.mode = test."
+    }
+  ]
+}

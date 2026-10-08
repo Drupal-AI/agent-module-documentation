@@ -1,0 +1,110 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "twitter_block",
+  "version": "4.0.x",
+  "note": "Twitter Block ships a single core Block plugin (id twitter_block) that embeds a Twitter/X timeline; there is no settings page, so all config lives per block instance in the `block` config entity under `settings`. Cases are tiered: easy=recipe (response-graded facts about the plugin id, its settings keys, and widget types), medium=introspection (a setup script places a known twitter_block instance, the agent inspects live via drush, cleanup removes it), hard=execution (the agent places a twitter_block block with specific settings, verified against the live block config entity).",
+  "evals": [
+    {
+      "id": "tb-plugin-id",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "On a Drupal 11 site with Twitter Block enabled, what is the machine id of the block plugin it provides, and under which block category does it appear when placing a block?",
+      "must_contain_any": ["twitter_block"],
+      "must_not_contain": [],
+      "expected_output": "The module provides one core Block plugin with id `twitter_block` (admin label \"Twitter block\"); it appears under the \"Twitter\" category on the Place block dialog."
+    },
+    {
+      "id": "tb-no-settings-page",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "Where do I configure Twitter Block? Is there a dedicated admin settings page, and what permission is needed?",
+      "must_contain_any": ["Block layout", "/admin/structure/block", "administer blocks", "no settings page"],
+      "must_not_contain": ["/admin/config/twitter_block"],
+      "expected_output": "There is no dedicated settings page (configure route is null); you place and configure each instance on Structure > Block layout (/admin/structure/block), gated by core's `administer blocks` permission."
+    },
+    {
+      "id": "tb-settings-keys",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "List the main configurable settings of a Twitter Block block instance and which is required.",
+      "must_contain_any": ["username", "theme", "tweet_limit", "chrome", "link_color"],
+      "must_not_contain": [],
+      "expected_output": "Per-instance settings include username (required), theme, link_color, border_color, chrome, related, tweet_limit, dnt, width, height, language, and polite. `username` is the only required field."
+    },
+    {
+      "id": "tb-widget-types",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "In the Twitter Block configuration form, what form widget types (#type) are used for the theme, tweet limit, chrome, and disable-tracking (dnt) settings?",
+      "must_contain_any": ["select", "checkboxes", "checkbox"],
+      "must_not_contain": [],
+      "expected_output": "theme and tweet_limit are `select` elements, chrome is a `checkboxes` element (noheader/nofooter/noborders/noscrollbar/transparent), and dnt is a single `checkbox`."
+    },
+    {
+      "id": "tb-theme-options",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "What theme options does a Twitter Block timeline support, and what config value selects the dark theme?",
+      "must_contain_any": ["dark"],
+      "must_not_contain": [],
+      "expected_output": "The `theme` select has two options: Default (empty string '') and Dark; set the `theme` setting to `dark` for the dark widget theme."
+    },
+    {
+      "id": "tb-intro-username",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "persona": "drupal-expert",
+      "prompt": "A Twitter Block block instance with machine id `eval_twtr_intro` is already placed on this Drupal site (drush available). Inspect the running site and tell me: which Twitter/X username does its timeline display?",
+      "setup": "agent-module-documentation/evaluation/verify/twitter_block-configured-timeline-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/twitter_block-configured-timeline-cleanup.sh",
+      "must_contain_any": ["drupalorg"],
+      "must_not_contain": [],
+      "expected_output": "The block `eval_twtr_intro` has settings.username = drupalorg."
+    },
+    {
+      "id": "tb-intro-theme",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "persona": "drupal-expert",
+      "prompt": "A Twitter Block block instance with machine id `eval_twtr_intro` is already placed on this Drupal site (drush available). Inspect the running site and tell me: which widget theme is its timeline configured to use?",
+      "setup": "agent-module-documentation/evaluation/verify/twitter_block-configured-timeline-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/twitter_block-configured-timeline-cleanup.sh",
+      "must_contain_any": ["dark"],
+      "must_not_contain": [],
+      "expected_output": "The block `eval_twtr_intro` has settings.theme = dark."
+    },
+    {
+      "id": "tb-intro-tweet-limit",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "persona": "drupal-expert",
+      "prompt": "A Twitter Block block instance with machine id `eval_twtr_intro` is already placed on this Drupal site (drush available). Inspect the running site and tell me: how many tweets is its timeline limited to (the configured tweet limit)?",
+      "setup": "agent-module-documentation/evaluation/verify/twitter_block-configured-timeline-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/twitter_block-configured-timeline-cleanup.sh",
+      "must_contain_any": ["7", "seven"],
+      "must_not_contain": [],
+      "expected_output": "The block `eval_twtr_intro` has settings.tweet_limit = 7."
+    },
+    {
+      "id": "tb-place-dark-timeline",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site (drush available), place a Twitter Block block that embeds the timeline of the `@drupal` account, using the dark widget theme and limited to 5 tweets. Apply it to the live site so the block instance really exists (any region/theme is fine); don't just describe it. One-line summary.",
+      "reset": "agent-module-documentation/evaluation/verify/twitter_block-place-dark-timeline-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/twitter_block-place-dark-timeline-verify.sh",
+      "expected_output": "A block config entity using the twitter_block plugin exists with settings username=drupal, theme=dark, tweet_limit=5. Verified against live site state."
+    },
+    {
+      "id": "tb-place-chrome-timeline",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site (drush available), place a Twitter Block block that embeds the `@wikipedia` timeline using the default (light) widget theme, with the widget header and footer hidden (the noheader and nofooter chrome options enabled). Apply it to the live site so the block instance really exists; don't just describe it. One-line summary.",
+      "reset": "agent-module-documentation/evaluation/verify/twitter_block-place-chrome-timeline-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/twitter_block-place-chrome-timeline-verify.sh",
+      "expected_output": "A block config entity using the twitter_block plugin exists with settings username=wikipedia, default theme, and chrome noheader+nofooter enabled. Verified against live site state."
+    }
+  ]
+}

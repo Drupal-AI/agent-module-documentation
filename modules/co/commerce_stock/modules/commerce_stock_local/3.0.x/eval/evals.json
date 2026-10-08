@@ -1,0 +1,98 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "commerce_stock_local",
+  "version": "3.0.x",
+  "note": "Commerce Stock Local Storage adds the database-backed local_stock service to Commerce Stock. Stock is modelled as commerce_stock_location content entities (bundled by commerce_stock_location_type config entities; a default type + location are created on install) plus append-only transactions (tables commerce_stock_transaction, commerce_stock_transaction_type, commerce_stock_location_level). Settings form at /admin/commerce/config/stock/local_stock_config (route commerce_stock_local.ls_config_form) edits commerce_stock_local.transactions (transactions_aggregation_mode cron|real-time; transactions_retention keep|delete) and commerce_stock_local.cron (cron_run_mode optimal|legacy, update_interval, update_batch_size). Medium/hard cases are grounded in that real local config + the stock location entity, verified by pure reads (no product data or external service). Cleanup restores shipped defaults / removes created entities.",
+  "evals": [
+    {
+      "id": "commerce_stock_local-what-it-adds",
+      "mode": "recipe",
+      "prompt": "What does the Commerce Stock Local Storage submodule add to Commerce Stock, and how is stock represented (levels, locations, transactions)?",
+      "must_contain_any": [
+        "local_stock",
+        "location",
+        "transaction",
+        "database"
+      ],
+      "must_not_contain": [],
+      "expected_output": "It registers the database-backed local_stock service. Stock is stored as commerce_stock_location entities (warehouses, bundled by commerce_stock_location_type) and append-only transactions in commerce_stock_transaction; a variation's available level is the sum of its transactions across locations (aggregated in commerce_stock_location_level).",
+      "difficulty": "easy"
+    },
+    {
+      "id": "commerce_stock_local-config-keys",
+      "mode": "recipe",
+      "prompt": "In Commerce Stock Local Storage, which config controls whether stock aggregation happens on cron vs immediately, and whether transactions are kept or deleted? Where is the settings form?",
+      "must_contain_any": [
+        "transactions_aggregation_mode",
+        "transactions_retention",
+        "commerce_stock_local.transactions",
+        "local_stock_config",
+        "real-time"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The form is at /admin/commerce/config/stock/local_stock_config (route commerce_stock_local.ls_config_form). commerce_stock_local.transactions has transactions_aggregation_mode (cron | real-time) and transactions_retention (keep | delete); commerce_stock_local.cron has cron_run_mode (optimal | legacy), update_interval and update_batch_size.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "commerce_stock_local-entities",
+      "mode": "recipe",
+      "prompt": "In Commerce Stock Local Storage, what entity represents a warehouse / stock location, and what config entity defines its type?",
+      "must_contain_any": [
+        "commerce_stock_location",
+        "commerce_stock_location_type"
+      ],
+      "must_not_contain": [],
+      "expected_output": "A stock location is the commerce_stock_location content entity; its bundle is the commerce_stock_location_type config entity. Install creates a default type and one default location; more can be added at /admin/commerce/config/stock/locations.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "commerce_stock_local-known-location",
+      "mode": "introspection",
+      "prompt": "On this Drupal site, a Commerce Stock (local) stock location has been created for a depot. Inspect the live stock locations and give the name of the location called out as the main depot.",
+      "must_contain_any": [
+        "CSL Main Depot"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The location is named 'CSL Main Depot' - a commerce_stock_location entity (type default) with that name.",
+      "setup": "agent-module-documentation/evaluation/verify/commerce_stock_local-known-location-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/commerce_stock_local-known-location-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "commerce_stock_local-known-retention",
+      "mode": "introspection",
+      "prompt": "On this Drupal site, how is Commerce Stock Local Storage configured to handle transaction retention - does it keep all stock transactions or delete unused ones? Inspect the live configuration and say which.",
+      "must_contain_any": [
+        "delete"
+      ],
+      "must_not_contain": [],
+      "expected_output": "It deletes unused transactions: commerce_stock_local.transactions transactions_retention is set to 'delete' (rather than 'keep').",
+      "setup": "agent-module-documentation/evaluation/verify/commerce_stock_local-retention-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/commerce_stock_local-retention-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "commerce_stock_local-set-realtime",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, configure Commerce Stock Local Storage so that stock level aggregation happens in real-time (immediately as transactions occur) instead of on cron. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/commerce_stock_local-realtime-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/commerce_stock_local-realtime-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/commerce_stock_local-realtime-cleanup.sh",
+      "expected_output": "commerce_stock_local.transactions transactions_aggregation_mode is set to real-time (e.g. choose 'Real-time' on /admin/commerce/config/stock/local_stock_config, or set the config key and save)."
+    },
+    {
+      "id": "commerce_stock_local-create-location",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, create a new Commerce Stock location (warehouse) named 'CSL West Warehouse' of the default stock location type, so stock can be tracked there. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/commerce_stock_local-create-location-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/commerce_stock_local-create-location-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/commerce_stock_local-create-location-cleanup.sh",
+      "expected_output": "A commerce_stock_location entity (type default) named 'CSL West Warehouse' exists (created via the Stock locations UI add form or the commerce_stock_location storage)."
+    }
+  ]
+}

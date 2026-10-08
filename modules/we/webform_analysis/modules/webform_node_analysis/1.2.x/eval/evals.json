@@ -1,0 +1,102 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "webform_node_analysis",
+  "version": "1.2.x",
+  "note": "webform_node_analysis is a glue submodule of webform_analysis that surfaces the Analysis feature for webforms embedded in nodes via a webform field. It adds route entity.node.webform.results_analysis (/node/{node}/webform/results/analysis/{field_name}), a per-field local task derived by WebformNodeAnalysisLocalTask, an access check (node must have the field + webform node results access), and block webform_node_analysis_block. It defines NO storage of its own: the analysis config (components, chart_type, start/end, in_draft) is stored as third-party settings on the referenced WEBFORM config entity (namespace webform_analysis) - the same storage the parent uses, because the WebformAnalysis handler resolves the webform. Medium/hard cases therefore configure/read those third-party settings on a fixture webform ('wanalysis_fixture', elements satisfaction/newsletter) that stands in for a node-embedded webform; toggling third-party settings on an existing webform is a clean, route-neutral op on this shared site. (Creating an actual node webform field could not be exercised here because unrelated pre-existing site corruption blocks field creation; the storage under test is identical.)",
+  "evals": [
+    {
+      "id": "webform_node_analysis-node-route",
+      "mode": "recipe",
+      "prompt": "With the webform_node_analysis module enabled, at what URL do you view the submission analysis for a webform that is embedded in a node through a webform field?",
+      "must_contain_any": [
+        "/node/{node}/webform/results/analysis",
+        "results/analysis",
+        "field_name"
+      ],
+      "must_not_contain": [],
+      "expected_output": "At /node/{node}/webform/results/analysis/{field_name} (route entity.node.webform.results_analysis) - an 'Analysis' tab under the node's Webform Results local tasks, one per webform field on the node.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "webform_node_analysis-requires-field",
+      "mode": "recipe",
+      "prompt": "What does webform_node_analysis need in order for its per-node 'Analysis' tab to appear, and how are those tabs generated?",
+      "must_contain_any": [
+        "webform field",
+        "field_config",
+        "deriver",
+        "local task",
+        "WebformNodeAnalysisLocalTask"
+      ],
+      "must_not_contain": [],
+      "expected_output": "It needs a node that has a webform field (provided by webform_node). A local-task deriver (WebformNodeAnalysisLocalTask) scans field_config for node fields of type 'webform' and creates one 'Analysis @field' tab per such field, plus a matching entity operation; depends on webform_node and webform_analysis.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "webform_node_analysis-storage-and-block",
+      "mode": "recipe",
+      "prompt": "When you configure analysis for a node's embedded webform using webform_node_analysis, where is that configuration actually stored, and what block does the submodule provide?",
+      "must_contain_any": [
+        "third party setting",
+        "third_party_settings",
+        "webform_analysis",
+        "webform_node_analysis_block"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The submodule stores nothing new: the config is saved as third-party settings on the referenced webform config entity (namespace webform_analysis: components, chart_type, start_date, end_date, in_draft), because the WebformAnalysis handler resolves the webform. It provides the block plugin webform_node_analysis_block.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "webform_node_analysis-introspect-chart",
+      "mode": "introspection",
+      "prompt": "On this site, a webform with id 'wanalysis_fixture' is used as an embeddable (node) webform and has its analysis configured. Inspect the live configuration and report the chart type and the analysed element(s) that its per-node Analysis tab would display.",
+      "must_contain_any": [
+        "ColumnChart",
+        "newsletter"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The wanalysis_fixture webform's third-party settings (namespace webform_analysis) have chart_type 'ColumnChart' and components ['newsletter'] - which is what its node Analysis tab renders.",
+      "setup": "agent-module-documentation/evaluation/verify/webform_node_analysis-introspect-chart-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/webform_node_analysis-introspect-chart-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "webform_node_analysis-introspect-draft",
+      "mode": "introspection",
+      "prompt": "The embeddable webform 'wanalysis_fixture' on this site has webform analysis configured for node display. Inspect the live configuration and state whether draft submissions are included in the analysis and which element(s) are analysed.",
+      "must_contain_any": [
+        "in_draft",
+        "draft",
+        "satisfaction"
+      ],
+      "must_not_contain": [],
+      "expected_output": "wanalysis_fixture's webform_analysis third-party settings have in_draft = true (draft submissions included) and components ['satisfaction'].",
+      "setup": "agent-module-documentation/evaluation/verify/webform_node_analysis-introspect-draft-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/webform_node_analysis-introspect-draft-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "webform_node_analysis-configure-column",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, the webform 'wanalysis_fixture' is embedded in nodes via a webform field. Using the webform analysis feature, configure it so that its 'newsletter' element is analysed and shown as a Column Chart on the node analysis tab. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/webform_node_analysis-configure-column-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/webform_node_analysis-configure-column-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/webform_node_analysis-configure-column-cleanup.sh",
+      "expected_output": "Set the wanalysis_fixture webform's webform_analysis third-party settings: components to include 'newsletter' and chart_type to 'ColumnChart', then save the webform (this is the storage the node analysis tab reads)."
+    },
+    {
+      "id": "webform_node_analysis-configure-pie",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-layman",
+      "prompt": "My site embeds the webform 'wanalysis_fixture' inside nodes. I want the 'newsletter' answers shown as a pie chart on the node's analysis page. Set that up with the webform analysis feature and save it.",
+      "reset": "agent-module-documentation/evaluation/verify/webform_node_analysis-configure-pie-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/webform_node_analysis-configure-pie-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/webform_node_analysis-configure-pie-cleanup.sh",
+      "expected_output": "Set the wanalysis_fixture webform's webform_analysis third-party settings: components to include 'newsletter' and chart_type to 'PieChart', then save the webform."
+    }
+  ]
+}

@@ -1,0 +1,80 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "commerce_usps",
+  "version": "2.0.x",
+  "note": "Commerce USPS provides two @CommerceShippingMethod plugins: usps (USPSDomestic) and usps_international (USPSInternational), sharing USPSBase. Config is stored on a commerce_shipping_method config entity's plugin configuration (schema commerce_usps.shipping_method_configuration): rate_label, api_information.{client_id,secret,mode}, rate_options.*, options.{tracking_url,log}. 2.x uses the current USPS OAuth API (Consumer key=client_id, Consumer secret, mode test/live). Event USPSEvents::BEFORE_RATE_REQUEST = commerce_usps.before_rate_request (USPSRateRequestEvent). Requires commerce_shipping. Medium/hard cases build/read a real commerce_shipping_method (cusps_*) attached to a throwaway store (cusps_store); they do NOT call the live USPS API (no credentials), only exercise the shipping-method configuration.",
+  "evals": [
+    {
+      "id": "commerce_usps-plugin-ids",
+      "mode": "recipe",
+      "prompt": "I want to add USPS shipping rates to a Drupal Commerce store. Which shipping-method plugins does the commerce_usps module provide, and how do they differ?",
+      "must_contain_any": ["usps_international", "usps"],
+      "must_not_contain": [],
+      "expected_output": "Two @CommerceShippingMethod plugins: usps (USPS Domestic / USPSDomestic) for US shipments and usps_international (USPS International / USPSInternational) for shipments outside the US. You add a Commerce shipping method and choose one of these plugins.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "commerce_usps-api-credentials",
+      "mode": "recipe",
+      "prompt": "What credentials does commerce_usps 2.x need to talk to the USPS API, and where are they entered? Is it the old USERID web-tools API?",
+      "must_contain_any": ["client_id", "Consumer key", "secret", "OAuth", "mode"],
+      "must_not_contain": [],
+      "expected_output": "The 2.x branch uses the current USPS OAuth API: a Consumer key (client_id), a Consumer secret (secret), and a mode (test or live), entered under 'API information' on the shipping method's plugin configuration. It is not the legacy USERID web-tools API.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "commerce_usps-alter-event",
+      "mode": "recipe",
+      "prompt": "In commerce_usps, how can custom code modify the request sent to USPS before rates are fetched? Name the event.",
+      "must_contain_any": ["before_rate_request", "BEFORE_RATE_REQUEST", "USPSRateRequestEvent"],
+      "must_not_contain": [],
+      "expected_output": "Subscribe to the USPSEvents::BEFORE_RATE_REQUEST event (event name 'commerce_usps.before_rate_request'), which dispatches a USPSRateRequestEvent you can use to alter the outgoing request.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "commerce_usps-known-label",
+      "mode": "introspection",
+      "prompt": "This Commerce site has a USPS shipping method configured (its entity name is cusps_known). Inspect the live shipping method and state the customer-facing rate label configured on it.",
+      "must_contain_any": ["USPS Priority (known)"],
+      "must_not_contain": [],
+      "expected_output": "The commerce_shipping_method named cusps_known uses plugin usps and its plugin configuration rate_label is 'USPS Priority (known)'.",
+      "setup": "agent-module-documentation/evaluation/verify/commerce_usps-known-label-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/commerce_usps-known-label-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "commerce_usps-known-mode",
+      "mode": "introspection",
+      "prompt": "This Commerce site has a USPS shipping method whose entity name is cusps_mode. Inspect its live configuration and state whether it is set to use the USPS API in test mode or live mode.",
+      "must_contain_any": ["live"],
+      "must_not_contain": [],
+      "expected_output": "The commerce_shipping_method named cusps_mode (plugin usps) has plugin configuration api_information.mode = 'live'. Inspect via the entity's plugin configuration (e.g. drush php:eval loading the shipping method by name and reading target_plugin_configuration.api_information.mode).",
+      "setup": "agent-module-documentation/evaluation/verify/commerce_usps-known-mode-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/commerce_usps-known-mode-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "commerce_usps-create-method",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "This site has a Commerce store named cusps_store. Create a Commerce shipping method with machine name (entity name) cusps_task that uses the USPS Domestic plugin (usps), attached to that store, and enable it. Apply the change to the live site. (No real USPS credentials are needed for this task.)",
+      "reset": "agent-module-documentation/evaluation/verify/commerce_usps-create-method-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/commerce_usps-create-method-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/commerce_usps-create-method-cleanup.sh",
+      "expected_output": "A commerce_shipping_method entity named cusps_task exists with plugin target_plugin_id 'usps' and stores including cusps_store (created via the Shipping methods UI or ShippingMethod::create)."
+    },
+    {
+      "id": "commerce_usps-set-label",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "site-owner",
+      "prompt": "My store already has a USPS shipping method set up (its name is cusps_label), but the label customers see at checkout still says a placeholder. Change the shipping rate label shown to customers to 'USPS Ground Advantage' and save it.",
+      "reset": "agent-module-documentation/evaluation/verify/commerce_usps-set-label-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/commerce_usps-set-label-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/commerce_usps-set-label-cleanup.sh",
+      "expected_output": "The commerce_shipping_method named cusps_label (plugin usps) has plugin configuration rate_label set to 'USPS Ground Advantage'."
+    }
+  ]
+}

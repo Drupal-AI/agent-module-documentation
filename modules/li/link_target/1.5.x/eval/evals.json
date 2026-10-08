@@ -1,0 +1,97 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "link_target",
+  "version": "1.5.x",
+  "note": "Link Target adds exactly one field widget plugin, link_target_field_widget ('Link with target'), which subclasses core's LinkWidget for the link field type. It has no configure route, no formatter, no service, no permissions, no Drush, and no hooks. Two different kinds of state matter: (1) the widget-level available_targets setting, an ordinary widget setting (not third-party) stored in entity_form_display -> content.<field>.settings.available_targets, restricting which of the four hard-coded targets (_self, _blank, parent, top) appear in the per-item dropdown; and (2) the actual target an editor picks for one specific link value, which is NOT config at all -- it is written into that link item's own field data at options.attributes.target, the same array core's Link field already uses for attributes, so no formatter change is needed to render it. All medium/hard cases use a dedicated namespaced content type, ltgt_ct, created by the case's own setup/reset script (never node.article), with link fields named field_ltgt_*.",
+  "evals": [
+    {
+      "id": "link_target-widget-not-formatter",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "The Drupal contrib module link_target lets editors pick an HTML target (e.g. open in a new window) for a Link field value. Does it implement this as a field TYPE, a field FORMATTER, or a field WIDGET? Give the plugin id.",
+      "must_contain_any": [
+        "link_target_field_widget",
+        "field widget",
+        "FieldWidget"
+      ],
+      "must_not_contain": [],
+      "expected_output": "It's a field widget plugin, id link_target_field_widget ('Link with target'), which subclasses core's LinkWidget. It is not a new field type and it defines no formatter at all."
+    },
+    {
+      "id": "link_target-where-target-stored",
+      "mode": "recipe",
+      "prompt": "On a Drupal 11 site using link_target, an editor picks 'New window (_blank)' from the target dropdown for one specific value of a multi-value link field. Is that choice stored in config, or as part of the entity's own field data? Which key inside the link item holds it?",
+      "must_contain_any": [
+        "options.attributes.target",
+        "attributes.target",
+        "options array",
+        "field data",
+        "not config"
+      ],
+      "must_not_contain": [],
+      "expected_output": "It is stored as entity/field data, not config: inside the link item's own options array, at options.attributes.target -- the same place core's Link field already stores link attributes, so no formatter change is needed to render it.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "link_target-four-keys-quirk",
+      "mode": "recipe",
+      "prompt": "link_target's widget has an available_targets setting restricting which targets appear in the per-item dropdown. Name the four target keys the plugin hard-codes, and say which of them are NOT stored with the underscore prefix real HTML target values use (i.e. would render target=\"parent\" instead of target=\"_parent\").",
+      "must_contain_any": [
+        "parent",
+        "top"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The four keys are _self, _blank, parent, top (from LinkTargetFieldWidget::getTargets()). _self and _blank are valid HTML5 target keywords as stored, but parent and top are stored without their leading underscore, so a link saved with either renders target=\"parent\" or target=\"top\" rather than the standard target=\"_parent\"/target=\"_top\".",
+      "difficulty": "easy"
+    },
+    {
+      "id": "link_target-known-restriction",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "On this Drupal site, content type ltgt_ct has a link field field_ltgt_url whose widget is link_target's 'Link with target'. Inspect the live default form display and state which target(s) editors are currently restricted to picking (the available_targets widget setting).",
+      "must_contain_any": [
+        "_blank"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Only _blank (\"New window\") is enabled: in core.entity_form_display.node.ltgt_ct.default the field_ltgt_url component (widget link_target_field_widget) has settings.available_targets containing only the _blank key.",
+      "setup": "agent-module-documentation/evaluation/verify/link_target-known-restriction-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/link_target-known-restriction-cleanup.sh"
+    },
+    {
+      "id": "link_target-widget-vs-plain",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "On this Drupal site, content type ltgt_ct has two link fields, field_ltgt_a and field_ltgt_b. Exactly one of them uses link_target's 'Link with target' widget (link_target_field_widget); the other uses core's plain Link widget (link_default). Inspect the live default form display and state which field uses link_target's widget.",
+      "must_contain_any": [
+        "field_ltgt_a"
+      ],
+      "must_not_contain": [],
+      "expected_output": "field_ltgt_a uses link_target_field_widget; field_ltgt_b uses core's plain link_default widget -- both visible in core.entity_form_display.node.ltgt_ct.default's content components.",
+      "setup": "agent-module-documentation/evaluation/verify/link_target-widget-vs-plain-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/link_target-widget-vs-plain-cleanup.sh"
+    },
+    {
+      "id": "link_target-switch-widget",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, content type ltgt_ct has a link field field_ltgt_task currently using core's plain Link widget on its default form display. Switch its widget to link_target's 'Link with target' (link_target_field_widget) and save the change to the live default form display.",
+      "reset": "agent-module-documentation/evaluation/verify/link_target-switch-widget-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/link_target-switch-widget-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/link_target-switch-widget-cleanup.sh",
+      "expected_output": "In core.entity_form_display.node.ltgt_ct.default the field_ltgt_task component's type is set to link_target_field_widget (e.g. via $display->setComponent('field_ltgt_task', ['type' => 'link_target_field_widget', ...])->save(), or by changing the widget on Manage form display)."
+    },
+    {
+      "id": "link_target-restrict-blank",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, content type ltgt_ct has a link field field_ltgt_promo already using link_target's 'Link with target' widget, but currently all four targets are available to editors. Restrict the widget so only 'New window (_blank)' can be picked, and save the change to the live default form display.",
+      "reset": "agent-module-documentation/evaluation/verify/link_target-restrict-blank-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/link_target-restrict-blank-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/link_target-restrict-blank-cleanup.sh",
+      "expected_output": "In core.entity_form_display.node.ltgt_ct.default the field_ltgt_promo component keeps type link_target_field_widget and its settings.available_targets is updated so only _blank is truthy (_self, parent, and top are unchecked/absent)."
+    }
+  ]
+}

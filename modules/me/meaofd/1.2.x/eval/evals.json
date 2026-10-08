@@ -1,0 +1,84 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "meaofd",
+  "version": "1.2.x",
+  "note": "meaofd (Mismatched entity and/or field definitions) has no config, no config schema, and no plugins. It wraps core entity.definition_update_manager: report page meaofd.report at /admin/reports/mismatched-entity-and-or-field-definitions, fix route meaofd.fix, Drush 'meaofd:fix <entity_type_id>' (option --no-cache-rebuild), and service meaofd.fixer (fix()/entityTypeHasChanges()/getChangeSummary()). Medium/hard cases are grounded in the module's exact purpose: the setup/reset scripts inject a phantom base field into node's LAST-INSTALLED field-storage definitions registry (never a real DB column), which makes core report a mismatched definition for node ('needs to be uninstalled'); the agent must read that live change summary (medium) or reconcile it with meaofd so no mismatch remains (hard). cleanup/verify use meaofd.fixer to restore baseline. NOTE for orchestrator: on this shared site, saving user roles fails (form_mode_control's permission provider throws getConfigDependencyName() on null), so role-based cases were intentionally avoided.",
+  "evals": [
+    {
+      "id": "meaofd-drush-fix",
+      "mode": "recipe",
+      "prompt": "On a Drupal 11 site the meaofd (Mismatched entity and/or field definitions) module is enabled. Which Drush command reconciles a single entity type's stored definitions with code, and what is the exact command to fix the Paragraph entity type?",
+      "must_contain_any": ["meaofd:fix", "drush meaofd:fix paragraph"],
+      "must_not_contain": [],
+      "expected_output": "Run `drush meaofd:fix <entity_type_id>`; for Paragraph it is `drush meaofd:fix paragraph`. An optional `--no-cache-rebuild` skips the entity cache rebuild.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "meaofd-service-api",
+      "mode": "recipe",
+      "prompt": "The meaofd module lets me fix a mismatched entity definition programmatically, for example from a hook_update_N(). Which service id do I call and which method, to reconcile the 'node' entity type?",
+      "must_contain_any": ["meaofd.fixer", "->fix("],
+      "must_not_contain": [],
+      "expected_output": "Call the meaofd.fixer service: \\Drupal::service('meaofd.fixer')->fix('node'). It installs/updates the entity type via core's entity.definition_update_manager only when entityTypeHasChanges() is TRUE.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "meaofd-report-and-perms",
+      "mode": "recipe",
+      "prompt": "Where is the meaofd report page in the Drupal admin, and which two permissions control viewing the report versus applying a fix?",
+      "must_contain_any": [
+        "/admin/reports/mismatched-entity-and-or-field-definitions",
+        "view mismatched entity and or field definitions",
+        "fix mismatched entity and or field definitions"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Report is under Reports at /admin/reports/mismatched-entity-and-or-field-definitions (route meaofd.report). 'view mismatched entity and or field definitions' gates the report; 'fix mismatched entity and or field definitions' gates the fix action/route.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "meaofd-inspect-mismatch",
+      "mode": "introspection",
+      "prompt": "This Drupal site currently reports a mismatched entity/field definition. Using what meaofd exposes (its report page, its fixer service, or Drush), inspect the live site and state exactly what change meaofd reports needs to be made.",
+      "must_contain_any": ["MEAOFD Probe", "meaofd_probe_field", "needs to be uninstalled", "uninstalled"],
+      "must_not_contain": [],
+      "expected_output": "meaofd.fixer->getChangeSummary() reports the node entity type with: 'The MEAOFD Probe field needs to be uninstalled.' (a phantom base field on node).",
+      "setup": "agent-module-documentation/evaluation/verify/meaofd-mismatch-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/meaofd-mismatch-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "meaofd-fix-command-for-affected",
+      "mode": "introspection",
+      "prompt": "This site reports a mismatched entity/field definition on exactly one entity type. Inspect the live site to find which entity type is affected, then give the exact single Drush command (provided by meaofd) that would fix that entity type.",
+      "must_contain_any": ["meaofd:fix node", "drush meaofd:fix node"],
+      "must_not_contain": [],
+      "expected_output": "The affected entity type is node, so the fix command is `drush meaofd:fix node`.",
+      "setup": "agent-module-documentation/evaluation/verify/meaofd-mismatch-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/meaofd-mismatch-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "meaofd-reconcile-node",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "This Drupal site reports a mismatched entity/field definition for the node entity type. Use the meaofd module to reconcile the node entity type's definitions so that no mismatched definition remains. Apply the fix to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/meaofd-fix-node-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/meaofd-fix-node-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/meaofd-fix-node-cleanup.sh",
+      "expected_output": "Run `drush meaofd:fix node` (or \\Drupal::service('meaofd.fixer')->fix('node')). Afterwards meaofd.fixer->entityTypeHasChanges('node') is FALSE."
+    },
+    {
+      "id": "meaofd-clear-status-warning",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "site-owner-layman",
+      "prompt": "My Drupal site's Status report is showing the red 'Mismatched entity and/or field definitions' warning. I installed the meaofd module to deal with exactly this. Please make that warning go away.",
+      "reset": "agent-module-documentation/evaluation/verify/meaofd-clear-warning-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/meaofd-clear-warning-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/meaofd-clear-warning-cleanup.sh",
+      "expected_output": "Fix the affected entity type (node) with meaofd: `drush meaofd:fix node`, or use the report page's Fix button, or call the meaofd.fixer service. Afterwards node has no pending definition changes and the Status report warning clears."
+    }
+  ]
+}

@@ -1,0 +1,96 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "commerce_authnet",
+  "version": "1.14.x",
+  "note": "Commerce Authorize.net provides Commerce payment gateway plugins: authorizenet_acceptjs (on-site cards, primary), authorizenet_accept_hosted (off-site iframe), authorizenet_echeck (ACH), authorizenet_visa_checkout (legacy/deprecated). Each is a commerce_payment_gateway config entity whose configuration carries api_login, transaction_key, client_key and a Commerce mode of 'test' or 'live' (schema in config/schema/commerce_authnet.schema.yml; acceptjs adds enable_credit_card_icons, accept_hosted adds captcha_security + card_code_required, visa_checkout adds visa_checkout_api_key). Accept.js defines workflow payment_acceptjs. IMPORTANT: live charges need a real Authorize.Net account and API creds we do NOT have, so every medium/hard case is grounded in the commerce_payment_gateway CONFIG ENTITY (which saves/loads without contacting Authorize.Net) and NEVER in live transactions. All fixtures use ca_-prefixed gateway ids.",
+  "evals": [
+    {
+      "id": "ca-gateway-plugins",
+      "mode": "recipe",
+      "prompt": "Which Commerce payment gateway plugins does the commerce_authnet module provide for Authorize.Net, and which one is the primary on-site credit card integration?",
+      "must_contain_any": [
+        "authorizenet_acceptjs",
+        "authorizenet_accept_hosted",
+        "authorizenet_echeck"
+      ],
+      "must_not_contain": [],
+      "expected_output": "authorizenet_acceptjs (on-site credit cards via Accept.js — the primary/recommended), authorizenet_accept_hosted (off-site hosted iframe form), authorizenet_echeck (ACH/eCheck), and the legacy/deprecated authorizenet_visa_checkout.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "ca-credentials",
+      "mode": "recipe",
+      "prompt": "To configure a commerce_authnet payment gateway, which Authorize.Net credential settings must be provided, and how do you make the gateway run against a sandbox instead of taking real payments?",
+      "must_contain_any": [
+        "api_login",
+        "transaction_key",
+        "client_key",
+        "test"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Provide api_login (API Login ID), transaction_key (Transaction Key) and client_key (public Client Key) on the gateway's configuration, and set the Commerce gateway mode to 'test' (sandbox) instead of 'live'.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "ca-hosted-vs-echeck",
+      "mode": "recipe",
+      "prompt": "In commerce_authnet, which gateway plugin renders an off-site hosted card form in an iframe, and which one takes bank-account (ACH/eCheck) payments?",
+      "must_contain_any": [
+        "authorizenet_accept_hosted",
+        "authorizenet_echeck"
+      ],
+      "must_not_contain": [],
+      "expected_output": "authorizenet_accept_hosted renders the off-site Accept Hosted iframe form; authorizenet_echeck handles ACH/eCheck payments (payment method type authnet_echeck).",
+      "difficulty": "easy"
+    },
+    {
+      "id": "ca-known-gateway",
+      "mode": "introspection",
+      "prompt": "This Drupal Commerce site has an Authorize.net payment gateway with machine name ca_known. Inspect the live payment gateway configuration and report which commerce_authnet gateway plugin it uses and whether it is in test or live mode.",
+      "must_contain_any": [
+        "authorizenet_acceptjs"
+      ],
+      "must_not_contain": [],
+      "expected_output": "ca_known uses the authorizenet_acceptjs plugin and is in test mode (commerce_payment_gateway.ca_known, configuration.mode = test).",
+      "setup": "agent-module-documentation/evaluation/verify/commerce_authnet-known-gateway-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/commerce_authnet-known-gateway-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "ca-known-credentials",
+      "mode": "introspection",
+      "prompt": "On this site there is an Authorize.net eCheck payment gateway with machine name ca_known2. Inspect the live configuration and report its Authorize.Net API Login ID and which gateway plugin it uses.",
+      "must_contain_any": [
+        "echeck_login_xyz"
+      ],
+      "must_not_contain": [],
+      "expected_output": "ca_known2 uses the authorizenet_echeck plugin with api_login 'echeck_login_xyz' (commerce_payment_gateway.ca_known2 configuration.api_login).",
+      "setup": "agent-module-documentation/evaluation/verify/commerce_authnet-known-credentials-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/commerce_authnet-known-credentials-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "ca-create-acceptjs",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal Commerce site, create an Authorize.net payment gateway using commerce_authnet. Make it a commerce_payment_gateway config entity with machine name ca_task using the Accept.js gateway plugin (authorizenet_acceptjs) in TEST mode, with the API Login ID, Transaction Key, and Client Key all set to placeholder values. Save it to the live site. (Do not attempt any live transaction.)",
+      "reset": "agent-module-documentation/evaluation/verify/commerce_authnet-create-acceptjs-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/commerce_authnet-create-acceptjs-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/commerce_authnet-create-acceptjs-cleanup.sh",
+      "expected_output": "A commerce_payment_gateway config entity ca_task exists with plugin authorizenet_acceptjs, mode test, and non-empty api_login, transaction_key and client_key in its configuration."
+    },
+    {
+      "id": "ca-create-accept-hosted",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "site-builder",
+      "prompt": "Using commerce_authnet, add an Authorize.net Accept Hosted payment gateway (plugin authorizenet_accept_hosted) to this Commerce site as a payment gateway config entity with machine name ca_hosted_task, configured in LIVE mode. Save it to the live site (no real payment should be attempted).",
+      "reset": "agent-module-documentation/evaluation/verify/commerce_authnet-create-hosted-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/commerce_authnet-create-hosted-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/commerce_authnet-create-hosted-cleanup.sh",
+      "expected_output": "A commerce_payment_gateway config entity ca_hosted_task exists with plugin authorizenet_accept_hosted and mode live."
+    }
+  ]
+}

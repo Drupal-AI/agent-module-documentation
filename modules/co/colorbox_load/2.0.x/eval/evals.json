@@ -1,0 +1,95 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "colorbox_load",
+  "version": "2.0.x",
+  "note": "Colorbox Load has no config object, no permissions, no plugins and no Drush commands of its own. It registers one service (colorbox_load.renderer) tagged render.main_content_renderer with format 'drupal_colorbox' and attribute 'ng_lightbox: Colorbox', which adds a 'Colorbox' option to NG Lightbox's Renderer select. All configuration therefore lives in the ng_lightbox.settings config object (patterns, renderer, default_width, lightbox_class, skip_admin_paths) -- colorbox_load.info.yml literally declares 'configure: ng_lightbox.settings'. colorbox_load_install() writes renderer=drupal_colorbox. At runtime NG Lightbox rewrites matching links with use-ajax + data-dialog-type=colorbox, Drupal\\colorbox_load\\Renderer returns an AjaxResponse with a colorboxLoadOpen command, and js/colorbox_load.js opens $.colorbox() with the returned HTML. All medium/hard cases are grounded in that real ng_lightbox.settings state.",
+  "evals": [
+    {
+      "id": "colorbox_load-renderer-id",
+      "mode": "recipe",
+      "prompt": "The Drupal contrib module colorbox_load plugs into ng_lightbox so that page links open in a Colorbox overlay. What does it actually register with the service container to make 'Colorbox' show up as a choice in NG Lightbox's Renderer select, and what is the renderer/format id?",
+      "must_contain_any": [
+        "drupal_colorbox",
+        "render.main_content_renderer",
+        "main content renderer"
+      ],
+      "must_not_contain": [],
+      "expected_output": "It defines the service colorbox_load.renderer (Drupal\\colorbox_load\\Renderer) tagged { name: render.main_content_renderer, format: drupal_colorbox, ng_lightbox: Colorbox }. The extra ng_lightbox attribute is collected by NG Lightbox's compiler pass into the ng_lightbox_renderers parameter, so 'Colorbox' appears in the Renderer select; the format/renderer id is drupal_colorbox.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "colorbox_load-where-configured",
+      "mode": "recipe",
+      "prompt": "I installed colorbox_load on Drupal 11 but I can't find a settings page called 'Colorbox Load'. Which configuration object and admin path control which links open in the Colorbox lightbox, and which key lists the paths?",
+      "must_contain_any": [
+        "ng_lightbox.settings",
+        "/admin/config/media/ng-lightbox",
+        "patterns"
+      ],
+      "must_not_contain": [],
+      "expected_output": "colorbox_load has no config of its own: its info.yml sets configure: ng_lightbox.settings, i.e. /admin/config/media/ng-lightbox. The config object is ng_lightbox.settings and the newline-separated list of leading-slash path patterns (wildcard *) is the 'patterns' key. Other keys: renderer, default_width, lightbox_class, skip_admin_paths.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "colorbox_load-ajax-command",
+      "mode": "recipe",
+      "prompt": "In the Drupal colorbox_load module, what happens between clicking a lightboxed link and the Colorbox appearing? Name the AJAX command the module defines and the JavaScript function that implements it.",
+      "must_contain_any": [
+        "colorboxLoadOpen",
+        "OpenCommand"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Drupal\\colorbox_load\\Renderer::renderResponse() renders the main content with renderInIsolation() and returns an AjaxResponse containing Drupal\\colorbox_load\\OpenCommand, whose render() emits ['command' => 'colorboxLoadOpen', 'data' => $html]. js/colorbox_load.js implements Drupal.AjaxCommands.prototype.colorboxLoadOpen, which calls $.colorbox() with that HTML at 90% x 90% and re-runs Drupal.attachBehaviors().",
+      "difficulty": "easy"
+    },
+    {
+      "id": "colorbox_load-known-paths",
+      "mode": "introspection",
+      "prompt": "This Drupal site has colorbox_load enabled. Inspect the live configuration and tell me exactly which path patterns are currently configured to open in a lightbox, and which renderer is selected.",
+      "must_contain_any": [
+        "/cbl-demo"
+      ],
+      "must_not_contain": [],
+      "expected_output": "ng_lightbox.settings:patterns is \"/cbl-demo/*\\n/cbl-demo-two\" and ng_lightbox.settings:renderer is drupal_colorbox (the renderer contributed by colorbox_load). Read it with: drush cget ng_lightbox.settings",
+      "setup": "agent-module-documentation/evaluation/verify/colorbox_load-known-paths-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/colorbox_load-known-paths-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "colorbox_load-known-style",
+      "mode": "introspection",
+      "prompt": "On this Drupal site the Colorbox lightbox opened by colorbox_load has been given a custom CSS class, a non-default width, and admin pages are no longer excluded. Inspect the running site and report the CSS class value that is configured.",
+      "must_contain_any": [
+        "cbl-eval-overlay"
+      ],
+      "must_not_contain": [],
+      "expected_output": "ng_lightbox.settings:lightbox_class is 'cbl-eval-overlay' (with default_width 845 and skip_admin_paths false). Read it with: drush cget ng_lightbox.settings",
+      "setup": "agent-module-documentation/evaluation/verify/colorbox_load-known-style-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/colorbox_load-known-style-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "colorbox_load-lightbox-path",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, colorbox_load, colorbox and ng_lightbox are all enabled but nothing is being lightboxed. Configure the live site so that every link whose path starts with /cbl-task/ opens in a Colorbox overlay served by colorbox_load (not the core modal). Apply the change to the running site.",
+      "reset": "agent-module-documentation/evaluation/verify/colorbox_load-lightbox-path-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/colorbox_load-lightbox-path-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/colorbox_load-lightbox-path-cleanup.sh",
+      "expected_output": "Set ng_lightbox.settings:renderer to drupal_colorbox and add a pattern line such as /cbl-task/* to ng_lightbox.settings:patterns, e.g. drush php:eval '\\Drupal::configFactory()->getEditable(\"ng_lightbox.settings\")->set(\"patterns\", \"/cbl-task/*\")->set(\"renderer\", \"drupal_colorbox\")->save();' (or via /admin/config/media/ng-lightbox)."
+    },
+    {
+      "id": "colorbox_load-overlay-style",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "site-owner",
+      "prompt": "On this Drupal site the pop-up overlays produced by colorbox_load need restyling: they should carry the CSS class cbl-wide, use a default width of 960, and they must also be allowed to appear on administration pages. Keep Colorbox as the thing that renders them. Make the change on the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/colorbox_load-overlay-style-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/colorbox_load-overlay-style-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/colorbox_load-overlay-style-cleanup.sh",
+      "expected_output": "In ng_lightbox.settings set lightbox_class: 'cbl-wide', default_width: 960, skip_admin_paths: false, renderer: 'drupal_colorbox' -- e.g. drush cset ng_lightbox.settings lightbox_class cbl-wide -y; drush cset ng_lightbox.settings default_width 960 -y; drush cset ng_lightbox.settings skip_admin_paths 0 -y."
+    }
+  ]
+}

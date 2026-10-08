@@ -1,0 +1,58 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "tome_sync",
+  "version": "1.16.x",
+  "note": "Tome Sync serialises content/config/files to flat files. drush tome:export / tome:import move everything; tome:export-content <type:id> exports a single entity to tome_content_directory (default ../content) as <entity_type>.<uuid>.json. No config object; directories are settings.php keys (tome_content_directory, tome_files_directory, tome_sync_encoder json|yaml). File handling is the swappable tome_sync.file_sync service (override with NullFileSync). Partial imports use the tome_sync_content_hash table. Permission 'use tome sync' gates the UI at /admin/config/tome/sync. Medium introspects node 1's on-disk export filename (setup exports node 1). Hard re-exports node 1 and verifies the JSON file. Grounded in existing node:1 (uuid 5528817f-2211-4569-91a2-af6f5da9da25); no fixtures created, no page rendering. NOTE: this site's tome_sync_content_hash table had been dropped by a prior run and was restored (drupal_install_schema) so tome:export-content completes cleanly.",
+  "evals": [
+    {
+      "id": "tome_sync-export-import",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "Using Tome Sync, what is the workflow to rebuild a Drupal site from its flat-file content export on a fresh database? Name the two key Drush commands.",
+      "must_contain_any": ["tome:import"],
+      "must_not_contain": [],
+      "expected_output": "Do the initial export once with 'drush tome:export'. To rebuild: reinstall Drupal ('drush si <profile> -y') then run 'drush tome:import' to import all config, content, and files from disk."
+    },
+    {
+      "id": "tome_sync-content-dir-encoder",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "Where does Tome Sync write exported content, and how do you switch the export format from JSON to YAML?",
+      "must_contain_any": ["tome_content_directory", "tome_sync_encoder"],
+      "must_not_contain": [],
+      "expected_output": "Content is written to tome_content_directory (default ../content) as <entity_type>.<uuid>.json. Set $settings['tome_sync_encoder'] = 'yaml' in settings.php to use the experimental YAML encoder (default is json). These are settings.php values, not a config object."
+    },
+    {
+      "id": "tome_sync-file-handling",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "I don't want Tome Sync to copy/delete my files on every export because I symlink my files directory. How can I change Tome Sync's file-handling behavior?",
+      "must_contain_any": ["NullFileSync", "tome_sync.file_sync", "services.yml"],
+      "must_not_contain": [],
+      "expected_output": "Override the tome_sync.file_sync service in your site services.yml to use Drupal\\tome_sync\\NullFileSync, which does nothing on file sync operations. (Related: 'drush tome:clean-files' removes unused exported files.)"
+    },
+    {
+      "id": "tome_sync-node-export-name",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "This site has Tome Sync content exports on disk. Inspect the content export directory and give the exact JSON filename Tome Sync uses for node 1's exported content.",
+      "must_contain_any": ["5528817f-2211-4569-91a2-af6f5da9da25", "node.5528817f-2211-4569-91a2-af6f5da9da25.json"],
+      "must_not_contain": [],
+      "setup": "agent-module-documentation/evaluation/verify/tome_sync-export-name-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/tome_sync-export-name-cleanup.sh",
+      "expected_output": "node.5528817f-2211-4569-91a2-af6f5da9da25.json — Tome Sync names content files <entity_type>.<uuid>.json in the tome_content_directory (../content). node 1's uuid is 5528817f-2211-4569-91a2-af6f5da9da25."
+    },
+    {
+      "id": "tome_sync-export-node",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "Using Tome Sync on this site, export the content entity 'node 1' to the on-disk JSON content store and apply it to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/tome_sync-export-node-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/tome_sync-export-node-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/tome_sync-export-node-cleanup.sh",
+      "expected_output": "Run 'drush tome:export-content node:1'. Tome Sync writes content/node.5528817f-2211-4569-91a2-af6f5da9da25.json as valid JSON in the tome_content_directory."
+    }
+  ]
+}

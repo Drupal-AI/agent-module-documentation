@@ -1,0 +1,65 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "protected_pages",
+  "version": "1.9.x",
+  "note": "Protected Pages stores protected paths in its own DB table (no config entity), guards them via a response event subscriber that redirects to a /protected-page password form, and keeps text/password/session settings in the protected_pages.settings config object. Cases are `recipe` (response-graded) probing documented facts an agent would otherwise read source for; no site mutation.",
+  "evals": [
+    {
+      "id": "protected-pages-add-path",
+      "mode": "recipe",
+      "prompt": "On a Drupal 11 site with the Protected Pages module, where in the admin UI do I add a new password-protected path, and what are the field requirements for the path?",
+      "must_contain_any": ["admin/config/system/protected_pages/add", "admin/config/system/protected_pages", "protected_pages_add"],
+      "must_not_contain": [],
+      "expected_output": "Add one at Admin > Configuration > System > Protected Pages > Add (/admin/config/system/protected_pages/add). The relative path must start with '/', e.g. /node/5, and may use '*' wildcards like /new-events/* or /* for the whole site; you also set a per-page password."
+    },
+    {
+      "id": "protected-pages-wildcard",
+      "mode": "recipe",
+      "prompt": "Using Protected Pages, how do I password-protect an entire section of the site (all pages under /members) with one rule?",
+      "must_contain_any": ["/members/*", "wildcard", "*"],
+      "must_not_contain": [],
+      "expected_output": "Add a protected page with the path /members/* — the '*' wildcard matches all pages under that path (the subscriber uses the core path matcher). /* protects the whole site."
+    },
+    {
+      "id": "protected-pages-prompt-redirect",
+      "mode": "recipe",
+      "prompt": "In Protected Pages, what happens when an anonymous visitor requests a protected path, and which mechanism enforces it?",
+      "must_contain_any": ["protected-page", "event subscriber", "KernelEvents::RESPONSE", "ProtectedPagesSubscriber", "RedirectResponse"],
+      "must_not_contain": [],
+      "expected_output": "A response event subscriber (ProtectedPagesSubscriber on KernelEvents::RESPONSE) detects the protected path and redirects the visitor to the /protected-page password form (with the page id and a destination). Entering the correct password unlocks it for the session."
+    },
+    {
+      "id": "protected-pages-bypass-permission",
+      "mode": "recipe",
+      "prompt": "Which Protected Pages permission lets a trusted role skip the password prompt entirely and view all protected pages directly?",
+      "must_contain_any": ["bypass pages password protection"],
+      "must_not_contain": [],
+      "expected_output": "The 'bypass pages password protection' permission — the subscriber returns early for users who have it, so they are never prompted."
+    },
+    {
+      "id": "protected-pages-session-length",
+      "mode": "recipe",
+      "prompt": "How do I control how long a visitor stays unlocked after entering a Protected Pages password before being prompted again? Give the config key and its default meaning.",
+      "must_contain_any": ["protected_pages_session_expire_time", "session expire", "protected_pages.settings"],
+      "must_not_contain": [],
+      "expected_output": "Set the session expire time (in minutes) at the settings form, key password.protected_pages_session_expire_time on protected_pages.settings; default 0 means unlimited (unlock lasts the whole session)."
+    },
+    {
+      "id": "protected-pages-global-password",
+      "mode": "recipe",
+      "prompt": "In Protected Pages, how do I make one single global password unlock every protected page instead of a separate password per page?",
+      "must_contain_any": ["only_global", "per_page_or_global", "global password"],
+      "must_not_contain": [],
+      "expected_output": "On the settings form set the Global password setting (password.per_page_or_global) to 'only_global' and set the global password; then only the global password is accepted for every protected page. 'per_page_or_global' accepts either."
+    },
+    {
+      "id": "protected-pages-storage-service",
+      "mode": "recipe",
+      "prompt": "I want to add a Protected Pages rule programmatically in Drupal. Which service and method do I use, and how is the password handled?",
+      "must_contain_any": ["protected_pages.storage", "insertProtectedPage", "ProtectedPagesStorage"],
+      "must_not_contain": [],
+      "expected_output": "Use the protected_pages.storage service (ProtectedPagesStorage) and call insertProtectedPage(['password'=>..., 'title'=>..., 'path'=>...]); the password must be pre-hashed with the core 'password' service. Protected pages are DB rows, not config entities."
+    }
+  ]
+}

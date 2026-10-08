@@ -1,0 +1,129 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "google_tag",
+  "version": "2.0.x",
+  "note": "Google Tag configures tag delivery through `google_tag_container` config entities plus a `GoogleTagEvent` plugin type; recipe (response-graded) cases probe the load-bearing config/plugin/permission facts.",
+  "evals": [
+    {
+      "id": "googletag-container-entity",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "On a Drupal 11 site using the Google Tag (2.0.x) module, which config entity holds a GA4 `G-…` or GTM `GTM-…` tag ID, and which property on it stores the one-or-more Google tag IDs? Name the entity type and the property key.",
+      "must_contain_any": [
+        "google_tag_container",
+        "tag_container_ids"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The `google_tag_container` config entity (Drupal\\google_tag\\Entity\\TagContainer) stores the IDs in its `tag_container_ids` property."
+    },
+    {
+      "id": "googletag-admin-route",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "Where do I configure Google Tag's global settings in the Drupal admin UI, and what is the route name for that settings form? Give the admin path and the route.",
+      "must_contain_any": [
+        "google_tag.settings_form",
+        "/admin/config/services/google-tag"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Admin → Configuration → Services → Google Tag at /admin/config/services/google-tag/settings, route google_tag.settings_form."
+    },
+    {
+      "id": "googletag-permission",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "I want to restrict who can create and edit Google Tag containers and edit the module's global settings on a Drupal 11 site. Which permission gates all of the Google Tag admin routes?",
+      "must_contain_any": [
+        "administer google_tag_container"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The `administer google_tag_container` permission (restricted; also the entity admin_permission)."
+    },
+    {
+      "id": "googletag-gtm-vs-gtag",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "In the Google Tag module, how is it decided whether a container injects the `gtm.js` (Google Tag Manager) snippet versus the `gtag.js` snippet? Explain what determines it.",
+      "must_contain_any": [
+        "GTM-",
+        "gtm.js",
+        "gtag.js"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The tag ID prefix decides: GTM-… IDs load gtm.js; other IDs (G-, AW-, UA-, DC-, GT-) load gtag.js. IDs are validated against TagContainer::GOOGLE_TAG_MATCH."
+    },
+    {
+      "id": "googletag-conditions-insertion",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "How does Google Tag decide on which pages a container's snippet is inserted, and what component actually injects the snippet into the response? Name the mechanism and the class.",
+      "must_contain_any": [
+        "conditions",
+        "ResponseSubscriber",
+        "request_path",
+        "ResponseCode",
+        "TagContainerResolver"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Visibility Condition plugins on the container's `conditions` key (request_path, the module's ResponseCode condition) are evaluated by TagContainerResolver, and EventSubscriber\\ResponseSubscriber injects the matching snippet."
+    },
+    {
+      "id": "googletag-multiple-containers-setting",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "In the Google Tag module's global configuration object, which two settings control whether multiple tag containers are allowed and which container is the default? Name the config object and both keys.",
+      "must_contain_any": [
+        "use_collection",
+        "default_google_tag_entity",
+        "google_tag.settings"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The `google_tag.settings` config object: `use_collection` (allow multiple containers) and `default_google_tag_entity` (id of the default container)."
+    },
+    {
+      "id": "googletag-event-plugin",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "I need to emit a custom named analytics event (e.g. generate_lead) into the dataLayer from my own Drupal module using Google Tag 2.0.x. Which plugin type do I implement, in which plugin namespace/directory, and which base class do I extend?",
+      "must_contain_any": [
+        "GoogleTagEvent",
+        "Plugin/GoogleTag/Event",
+        "EventBase"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Implement a GoogleTagEvent plugin in Plugin/GoogleTag/Event/, extending EventBase (or ConfigurableEventBase for a settings form); getData() returns the payload and event_name is the emitted name."
+    },
+    {
+      "id": "googletag-event-manager",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "In the Google Tag module, which service manages GoogleTagEvent plugins, and which service gathers the active events to push to the browser dataLayer? Name the two services.",
+      "must_contain_any": [
+        "plugin.manager.google_tag_event",
+        "google_tag.event_collector",
+        "EventCollector"
+      ],
+      "must_not_contain": [],
+      "expected_output": "plugin.manager.google_tag_event (GoogleTagEventManager) manages the plugins; google_tag.event_collector (EventCollector) gathers active events, which ResponseSubscriber flushes to the dataLayer."
+    },
+    {
+      "id": "googletag-create-container",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal 11 site the Google Tag (2.0.x) module is installed. Create a new, enabled Google Tag container whose machine name is `eval_container` and configure it to fire the Google Tag Manager container ID GTM-EVAL01. Apply the change to the live site so the container is active.",
+      "reset": "agent-module-documentation/evaluation/verify/google_tag-create-container-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/google_tag-create-container-verify.sh"
+    },
+    {
+      "id": "googletag-ga4-container",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal 11 site with Google Tag (2.0.x) installed, add a second, enabled Google Tag container with the machine name `eval_ga4`. Configure it with the GA4 measurement ID G-EVAL4TEST, and give it a non-default weight of 10 so it sorts after the default container. Apply the configuration to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/google_tag-ga4-container-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/google_tag-ga4-container-verify.sh"
+    }
+  ]
+}

@@ -1,0 +1,102 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "field_validation",
+  "version": "3.0.x",
+  "note": "Field Validation attaches reusable validation rules to entity fields via one config entity, `field_validation_rule_set` (scoped to entity_type+bundle), each holding an ordered list of `FieldValidationRule` plugin instances bound to a field/column. The installed 3.0.x is a beta rewrite whose shipped rules wrap Symfony/Drupal validation Constraints (`*_constraint_rule` ids). Cases span three tiers: recipe (easy — response-graded facts about the plugin type, shipped rule ids, and the config entity), introspection (medium — a known rule set is installed on the live site and the agent reads it back via drush), and execution (hard — the agent must build a rule set with a specific rule, verified against live config-entity state).",
+  "evals": [
+    {
+      "id": "field_validation-plugin-type",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "In a Drupal 11 module I want to define a brand-new Field Validation rule (a custom validator that field_validation can attach to a field). What plugin type do I create, which annotation and base class do I use, and in what namespace/directory does the plugin class live? Name them.",
+      "must_contain_any": ["FieldValidationRule", "Plugin/FieldValidationRule", "FieldValidationRuleBase", "@FieldValidationRule"],
+      "must_not_contain": [],
+      "expected_output": "Create a FieldValidationRule plugin: class in Drupal\\<module>\\Plugin\\FieldValidationRule, annotated @FieldValidationRule (id/label/description), extending FieldValidationRuleBase (or ConfigurableFieldValidationRuleBase / ConstraintFieldValidationRuleBase for constraint-backed rules); discovered by the plugin.manager.field_validation.field_validation_rule manager."
+    },
+    {
+      "id": "field_validation-shipped-rules",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "A site builder using field_validation 3.0.x wants to enforce a maximum length, a regular-expression match, and uniqueness on some fields. Name the shipped validation rule plugin ids that do each of those.",
+      "must_contain_any": ["length_constraint_rule", "regex_constraint_rule", "unique_field_constraint_rule"],
+      "must_not_contain": [],
+      "expected_output": "length_constraint_rule (min/max length), regex_constraint_rule (pattern match), and unique_field_constraint_rule (value must be unique). These are constraint-backed FieldValidationRule plugins shipped in field_validation 3.0.x, alongside many others (range, email, count, comparison, IBAN/ISBN, etc.)."
+    },
+    {
+      "id": "field_validation-config-entity",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "How does the field_validation module store the validation rules a site builder configures — is there a config entity, and what is its id / config prefix? How are individual rules kept inside it, and what is the configure route/path for the admin UI?",
+      "must_contain_any": ["field_validation_rule_set", "rule_set", "field_validation_rules", "/admin/structure/field_validation"],
+      "must_not_contain": [],
+      "expected_output": "Rules are stored in the `field_validation_rule_set` config entity (config prefix field_validation.rule_set.*, id key = `name`), scoped to an entity_type + bundle. Each rule is an entry in the `field_validation_rules` map (keyed by uuid) with id/field_name/column/data/etc. The admin UI is the entity.field_validation_rule_set.collection route at /admin/structure/field_validation."
+    },
+    {
+      "id": "field_validation-inspect-fields",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "persona": "drupal-expert",
+      "prompt": "This Drupal site (drush available) already has a Field Validation rule set named `eval_intro_set`. Inspect the live site and tell me which entity type and bundle it applies to, and which fields it validates.",
+      "setup": "agent-module-documentation/evaluation/verify/field_validation-known-set-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/field_validation-known-set-cleanup.sh",
+      "must_contain_any": ["title", "body"],
+      "must_not_contain": [],
+      "expected_output": "The `eval_intro_set` field_validation_rule_set applies to node / article and validates two fields: `title` (length rule) and `body` (regex rule). Read from config field_validation.rule_set.eval_intro_set."
+    },
+    {
+      "id": "field_validation-inspect-length",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "persona": "drupal-expert",
+      "prompt": "This Drupal site (drush available) has a Field Validation rule set `eval_intro_set`. Inspect the live site: which validation rule plugin is applied to the Article `title` field, and what min and max length does it enforce?",
+      "setup": "agent-module-documentation/evaluation/verify/field_validation-known-set-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/field_validation-known-set-cleanup.sh",
+      "must_contain_any": ["length_constraint_rule", "10", "60"],
+      "must_not_contain": [],
+      "expected_output": "The `title` field is validated by a `length_constraint_rule` with min 10 and max 60 (data.min=10, data.max=60 under field_validation.rule_set.eval_intro_set.field_validation_rules)."
+    },
+    {
+      "id": "field_validation-inspect-regex",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "persona": "drupal-expert",
+      "prompt": "This Drupal site (drush available) has a Field Validation rule set `eval_intro_set` with a regex rule on the Article `body` field. Inspect the live site and tell me the exact regex pattern it enforces.",
+      "setup": "agent-module-documentation/evaluation/verify/field_validation-known-set-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/field_validation-known-set-cleanup.sh",
+      "must_contain_any": ["/^[A-Z].*/", "^[A-Z]"],
+      "must_not_contain": [],
+      "expected_output": "The body field's `regex_constraint_rule` enforces the pattern /^[A-Z].*/ (data.pattern under field_validation.rule_set.eval_intro_set), i.e. the value must start with an uppercase letter."
+    },
+    {
+      "id": "field_validation-build-regex-title",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site (drush available), use the Field Validation module to enforce a regular-expression format on the Article node's `title` field. Create a `field_validation_rule_set` for entity type node / bundle article that contains a `regex_constraint_rule` bound to the `title` field with a non-empty pattern (for example /^[A-Z].*/). Apply it to the live site as real config so the rule really exists; don't just describe it. One-line summary.",
+      "reset": "agent-module-documentation/evaluation/verify/field_validation-regex-title-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/field_validation-regex-title-verify.sh",
+      "expected_output": "A field_validation_rule_set config entity (entity_type node, bundle article) is created containing a rule with plugin id regex_constraint_rule, field_name title, and a non-empty data.pattern. Verified against live config-entity state."
+    },
+    {
+      "id": "field_validation-build-length-body",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site (drush available), use Field Validation to limit the length of the Article node's `body` field. Create a `field_validation_rule_set` for node / article containing a `length_constraint_rule` bound to the `body` field with a min and max (for example min 20, max 500). Apply it as real config to the live site so the rule actually exists; don't just describe it. One-line summary.",
+      "reset": "agent-module-documentation/evaluation/verify/field_validation-length-body-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/field_validation-length-body-verify.sh",
+      "expected_output": "A field_validation_rule_set config entity (entity_type node, bundle article) is created containing a rule with plugin id length_constraint_rule, field_name body, and a min and/or max in its data. Verified against live config-entity state."
+    },
+    {
+      "id": "field_validation-build-unique-title",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site (drush available), use Field Validation to require that Article node titles are unique. Create a `field_validation_rule_set` for node / article containing a `unique_field_constraint_rule` bound to the `title` field. Apply it as real config to the live site so the rule actually exists; don't just describe it. One-line summary.",
+      "reset": "agent-module-documentation/evaluation/verify/field_validation-unique-title-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/field_validation-unique-title-verify.sh",
+      "expected_output": "A field_validation_rule_set config entity (entity_type node, bundle article) is created containing a rule with plugin id unique_field_constraint_rule bound to field_name title. Verified against live config-entity state."
+    }
+  ]
+}

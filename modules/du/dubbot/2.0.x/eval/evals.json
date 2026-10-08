@@ -1,0 +1,100 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "dubbot",
+  "version": "2.0.x",
+  "note": "DubBot integrates the external DubBot SaaS. Its persistent state is the config object dubbot.settings (embed_key, api_url default https://api.dubbot.com, dialog_renderer in {0=Modal, off_canvas=Side, off_canvas_top=Top}, preview_selector default #page), plus block placements of the dubbot_report Block plugin (setting link_color, default #1b9ae4) and role permissions. Permissions: administer dubbot configuration, access dubbot report, and per-pane view dubbot {practices,governance,accessibility,spellcheck,seo,links} tab. Services: dubbot.client, dubbot.link_generator, dubbot.domain_negotiator; the only hook is hook_dubbot_domains_alter(). Medium cases read dubbot.settings back from the live site; hard cases build a real block and real role permissions, verified against live config entities. Live report data requires a valid DubBot embed key/account and is NOT asserted by any script.",
+  "evals": [
+    {
+      "id": "dubbot-enable-integration",
+      "mode": "recipe",
+      "prompt": "I installed the DubBot Drupal module. What do I need to enter to make it actually talk to the DubBot service, on which settings route/path, and in which config object is that value stored?",
+      "must_contain_any": [
+        "embed_key",
+        "embed key",
+        "dubbot.settings",
+        "admin/config/content/dubbot/settings"
+      ],
+      "must_not_contain": [],
+      "expected_output": "You enter your DubBot embed key (generated in your DubBot account) on the settings form at /admin/config/content/dubbot/settings (route dubbot.settings, permission 'administer dubbot configuration'). It is stored as embed_key in the dubbot.settings config object, alongside api_url, dialog_renderer and preview_selector. Saving validates the key against DubBot's API.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "dubbot-tab-permissions",
+      "mode": "recipe",
+      "prompt": "In the DubBot Drupal module, how do I let a role see only the accessibility report pane and not the SEO or spelling panes? Which permissions control the individual report tabs?",
+      "must_contain_any": [
+        "view dubbot accessibility tab",
+        "view dubbot seo tab",
+        "view dubbot spellcheck tab",
+        "view dubbot links tab",
+        "per-pane"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Each report pane has its own permission: view dubbot accessibility tab, view dubbot spellcheck tab, view dubbot seo tab, view dubbot links tab, view dubbot practices tab, view dubbot governance tab. Grant the role 'access dubbot report' plus 'view dubbot accessibility tab' only; granting at least one tab permission hides the panes whose permission is not granted.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "dubbot-domains-hook",
+      "mode": "recipe",
+      "prompt": "DubBot is only fetching reports for my primary domain. Which hook or service controls the list of domains DubBot requests reports for, and how would a custom module add another domain?",
+      "must_contain_any": [
+        "hook_dubbot_domains_alter",
+        "dubbot.domain_negotiator",
+        "DomainNegotiator"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The dubbot.domain_negotiator service (DomainNegotiator::domains()) builds the list, starting from the current scheme+host and then running the dubbot_domains alter. A custom module implements hook_dubbot_domains_alter(array &$domains) to append (or remove) domains. DubBot itself uses this hook to add per-language domains on domain-based language negotiation.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "dubbot-known-position",
+      "mode": "introspection",
+      "prompt": "On this Drupal site, how are DubBot's in-page reports configured to open — as a modal, a side tray, or a top panel? Inspect the live configuration to answer.",
+      "must_contain_any": [
+        "off_canvas_top",
+        "top"
+      ],
+      "must_not_contain": [],
+      "expected_output": "dubbot.settings has dialog_renderer = off_canvas_top, i.e. reports open in a panel at the top of the screen. Read it with `drush cget dubbot.settings dialog_renderer`.",
+      "setup": "agent-module-documentation/evaluation/verify/dubbot-report-position-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/dubbot-report-position-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "dubbot-known-api-url",
+      "mode": "introspection",
+      "prompt": "On this Drupal site, which DubBot API base URL is the module configured to call? Inspect the live configuration to answer.",
+      "must_contain_any": [
+        "api.dubbot-probe.example.com"
+      ],
+      "must_not_contain": [],
+      "expected_output": "dubbot.settings has api_url = https://api.dubbot-probe.example.com (overriding the default https://api.dubbot.com). Read it with `drush cget dubbot.settings api_url`.",
+      "setup": "agent-module-documentation/evaluation/verify/dubbot-api-url-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/dubbot-api-url-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "dubbot-place-report-block",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site (default theme olivero), place a DubBot Report block in the content region with block id 'dubbot_report_task' and set its link color to #ff0000. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/dubbot-report-block-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/dubbot-report-block-verify.sh",
+      "expected_output": "Create a block config entity with id dubbot_report_task, plugin 'dubbot_report', theme olivero, region content, and settings.link_color '#ff0000' (e.g. Block::create([...])->save() or via Block layout > Place block > DubBot Report).",
+      "cleanup": "agent-module-documentation/evaluation/verify/dubbot-report-block-cleanup.sh"
+    },
+    {
+      "id": "dubbot-grant-reviewer",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site there is a role 'dubbot_reviewer'. Using the DubBot module's permissions, allow that role to open DubBot reports and to view the Accessibility report pane (but you need not grant any other panes). Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/dubbot-reviewer-role-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/dubbot-reviewer-role-verify.sh",
+      "expected_output": "Grant the dubbot_reviewer role the permissions 'access dubbot report' and 'view dubbot accessibility tab' (e.g. drush role:perm:add dubbot_reviewer '...'). Both must be present.",
+      "cleanup": "agent-module-documentation/evaluation/verify/dubbot-reviewer-role-cleanup.sh"
+    }
+  ]
+}

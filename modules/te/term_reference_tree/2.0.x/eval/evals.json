@@ -1,0 +1,78 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "term_reference_tree",
+  "version": "2.0.x",
+  "note": "term_reference_tree ships a field widget (plugin id `term_reference_tree`) and a matching field formatter (id `term_reference_tree`) for entity_reference (taxonomy term reference) fields. The widget renders a hierarchical expand/collapse checkbox tree via a custom `checkbox_tree` render element. There is no global settings form — configuration lives on each field's entity_form_display component (`field.widget.settings.term_reference_tree`). Recipe cases are response-graded. Medium cases install a known term-reference field whose form display uses the widget with distinctive settings and require live introspection. Hard cases build live config: switch a term-reference field's form-display widget to term_reference_tree with a specific setting, verified against real entity_form_display state.",
+  "evals": [
+    {
+      "id": "term-reference-tree-widget-id",
+      "mode": "recipe",
+      "prompt": "On a Drupal 11 site I have a hierarchical taxonomy and I want editors to pick terms from an expand/collapse checkbox tree that shows the parent-child structure, instead of core's flat checkboxes. Which contrib module provides this, what is the exact field-widget plugin id I select on Manage form display, and which field type(s) can it be applied to?",
+      "must_contain_any": ["term_reference_tree", "Term reference tree", "Term Reference Tree"],
+      "must_not_contain": [],
+      "expected_output": "The Term Reference Tree module. Its widget plugin id is `term_reference_tree` (label \"Term reference tree\"), and it applies to entity_reference fields (taxonomy term reference fields, target_type taxonomy_term). It declares multiple_values = TRUE, so one tree holds all values (radio buttons when cardinality is 1).",
+      "difficulty": "easy"
+    },
+    {
+      "id": "term-reference-tree-settings",
+      "mode": "recipe",
+      "prompt": "For the Drupal term_reference_tree field widget, which per-field settings control (a) whether the tree starts collapsed, (b) whether only leaf terms are selectable, (c) how a parent checkbox cascades to its children, and (d) how many levels deep the tree shows? Give the setting keys, their default values, and the meaning of the cascading option's values.",
+      "must_contain_any": ["start_minimized", "leaves_only", "cascading_selection", "max_depth"],
+      "must_not_contain": [],
+      "expected_output": "start_minimized (default true, collapse tree by default), leaves_only (default false, only terms without children selectable), cascading_selection (default 0; 0 none, 1 select+deselect, 2 only-select, 3 only-deselect; unlimited-cardinality only), and max_depth (default 0 = unlimited). Also select_parents and select_all (both default false, unlimited-cardinality only). Stored under the form-display component settings, schema field.widget.settings.term_reference_tree.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "term-reference-tree-no-settings-form",
+      "mode": "recipe",
+      "prompt": "Where do I configure the term_reference_tree widget in Drupal — is there a dedicated admin settings page for the module, does it define any Drush commands or permissions, and does it also provide a way to DISPLAY the selected terms as a tree?",
+      "must_contain_any": ["Manage form display", "form display", "entity_form_display", "no settings page", "no admin settings"],
+      "must_not_contain": [],
+      "expected_output": "There is no global admin settings form (configure is null) and no Drush commands or module-specific permissions. You configure the widget per field on Structure > Content types > Manage form display (stored on the field's entity_form_display component). It also ships a field formatter (id term_reference_tree, no settings) you select on Manage display to render the stored terms as a nested tree.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "term-reference-tree-known-widget",
+      "mode": "introspection",
+      "prompt": "A taxonomy term reference field has been added to the Article content type on this site and its edit-form widget was customized. Inspect the Article node form-display configuration and tell me: which field widget is configured for that field, and what are its leaves_only, cascading_selection, and max_depth settings?",
+      "setup": "agent-module-documentation/evaluation/verify/term_reference_tree-known-widget-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/term_reference_tree-known-widget-cleanup.sh",
+      "must_contain_any": ["term_reference_tree", "Term reference tree", "Term Reference Tree"],
+      "must_not_contain": [],
+      "expected_output": "The field node.article.field_trt_intro uses the `term_reference_tree` widget on the default form display, with settings leaves_only = true, cascading_selection = 2 (only-select), and max_depth = 2 (start_minimized is false).",
+      "difficulty": "medium"
+    },
+    {
+      "id": "term-reference-tree-known-widget-field-type",
+      "mode": "introspection",
+      "prompt": "This site has an Article field (field_trt_intro) whose node-form widget is the Term reference tree. Inspect the live configuration and tell me what underlying FIELD TYPE that field is and what entity type it references — i.e. what kind of field the term_reference_tree widget is being used on here.",
+      "setup": "agent-module-documentation/evaluation/verify/term_reference_tree-known-widget-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/term_reference_tree-known-widget-cleanup.sh",
+      "must_contain_any": ["entity_reference", "taxonomy_term", "taxonomy term"],
+      "must_not_contain": [],
+      "expected_output": "field_trt_intro is an entity_reference field targeting taxonomy_term (a taxonomy term reference), multi-value (cardinality -1); the term_reference_tree widget only applies to entity_reference fields.",
+      "difficulty": "medium"
+    },
+    {
+      "id": "term-reference-tree-configure-cascading",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, configure the Article content type's default node edit form so the taxonomy term reference field field_eval_trt uses the Term reference tree widget (plugin id term_reference_tree) instead of its current core widget, and set cascading selection to select + deselect (cascading_selection = 1) so toggling a parent cascades to its children. Apply it live so the entity_form_display reflects the change.",
+      "reset": "agent-module-documentation/evaluation/verify/term_reference_tree-cascading-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/term_reference_tree-cascading-verify.sh",
+      "expected_output": "The node.article.default entity_form_display component for field_eval_trt has type = term_reference_tree with settings.cascading_selection = 1."
+    },
+    {
+      "id": "term-reference-tree-configure-leaves",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, set the Article node edit form's widget for the taxonomy term reference field field_eval_trt2 to the term_reference_tree widget, and configure it so only leaf terms are selectable (leaves_only = true) and the tree starts collapsed (start_minimized = true). Save it to the live entity_form_display.",
+      "reset": "agent-module-documentation/evaluation/verify/term_reference_tree-leaves-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/term_reference_tree-leaves-verify.sh",
+      "expected_output": "The node.article.default entity_form_display component for field_eval_trt2 has type = term_reference_tree with settings.leaves_only = true and settings.start_minimized = true."
+    }
+  ]
+}

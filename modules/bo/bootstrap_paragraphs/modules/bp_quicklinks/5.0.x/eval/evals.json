@@ -1,0 +1,92 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "bp_quicklinks",
+  "version": "5.0.x",
+  "note": "bp_quicklinks is a config-only submodule of bootstrap_paragraphs. It installs exactly one paragraph type (bp_quicklinks, label 'Quicklinks') whose only own field is bp_quick_link — a link field with cardinality -1, link_type 17 (generic) and optional title — plus the shared bootstrap_paragraphs styling fields bp_header, bp_width and bp_background, which reuse the parent module's storages. The default form display renders bp_quick_link with the contrib link_attributes widget with only target and rel enabled; the default view display uses the plain link formatter, but paragraph--bp-quicklinks.html.twig rebuilds the markup as ul.quicklinks > li.quicklink and attaches bp_quicklinks/bp-quicklinks. There is no configure route, no settings form, no permissions, no Drush and no plugins; PHP is only hook_theme() + hook_help(). Config ships in config/optional, so it survives uninstall. Nothing is editor-visible until an entity_reference_revisions field lists bp_quicklinks in handler_settings.target_bundles — which is what the medium and hard cases exercise against real live config.",
+  "evals": [
+    {
+      "id": "bp_quicklinks-link-field",
+      "mode": "recipe",
+      "prompt": "The Drupal contrib module bp_quicklinks (part of Bootstrap Paragraphs) adds a Quicklinks paragraph bundle. What is the machine name of the field that holds the actual links, what Drupal field type is it, and how many links can one Quicklinks paragraph hold?",
+      "must_contain_any": [
+        "bp_quick_link"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The field is bp_quick_link, a core `link` field. Its storage (field.storage.paragraph.bp_quick_link) has cardinality: -1, i.e. unlimited links per paragraph. The instance sets link_type: 17 (generic — internal or external URLs) and title: 1 (link text optional).",
+      "difficulty": "easy"
+    },
+    {
+      "id": "bp_quicklinks-widget",
+      "mode": "recipe",
+      "prompt": "On a Drupal 11 site with bp_quicklinks installed, which form widget does the Quicklinks paragraph bundle use for its link field, which contrib module provides that widget, and which per-link HTML attributes are enabled out of the box?",
+      "must_contain_any": [
+        "link_attributes",
+        "Link attributes"
+      ],
+      "must_not_contain": [],
+      "expected_output": "It uses the `link_attributes` widget provided by the contrib Link attributes module (a hard dependency of bp_quicklinks). In the shipped core.entity_form_display.paragraph.bp_quicklinks.default the widget's enabled_attributes has target: true and rel: true, while id, name, class, accesskey and aria-label are false.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "bp_quicklinks-expose-bundle",
+      "mode": "recipe",
+      "prompt": "I installed bp_quicklinks on a Drupal 11 site but the Quicklinks component does not appear anywhere when editing an Article. The module has no settings page. What do I actually have to do to let editors add a Quicklinks paragraph to a content type?",
+      "must_contain_any": [
+        "entity_reference_revisions",
+        "target_bundles",
+        "Paragraphs field"
+      ],
+      "must_not_contain": [],
+      "expected_output": "bp_quicklinks only installs the paragraph type; it attaches nothing to a content type. Add an Entity reference revisions (Paragraphs) field to the content type and allow the bundle — settings.handler_settings.target_bundles must include bp_quicklinks — then place that field on the node's form display and view display.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "bp_quicklinks-known-links",
+      "mode": "introspection",
+      "prompt": "This Drupal site has an article titled 'BP Quicklinks Eval Node' that contains a Bootstrap Paragraphs Quicklinks paragraph. Inspect the live site and tell me the exact value stored in that paragraph's Width (bp_width) field.",
+      "must_contain_any": [
+        "paragraph--width--narrow"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The stored bp_width value is `paragraph--width--narrow` (the Bootstrap Paragraphs 'Narrow' option). The paragraph also has bp_header 'Helpful Resources' and three bp_quick_link items.",
+      "setup": "agent-module-documentation/evaluation/verify/bp_quicklinks-known-links-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/bp_quicklinks-known-links-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "bp_quicklinks-field-bundles",
+      "mode": "introspection",
+      "prompt": "On this Drupal site the Article content type has a Paragraphs field called field_bpquick_slot. It permits the Bootstrap Paragraphs Quicklinks bundle plus exactly one other paragraph bundle. Inspect the live field configuration and give the machine name of that other allowed bundle.",
+      "must_contain_any": [
+        "bp_simple"
+      ],
+      "must_not_contain": [],
+      "expected_output": "bp_simple. field.field.node.article.field_bpquick_slot has settings.handler_settings.target_bundles listing bp_quicklinks and bp_simple.",
+      "setup": "agent-module-documentation/evaluation/verify/bp_quicklinks-field-bundles-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/bp_quicklinks-field-bundles-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "bp_quicklinks-attach-field",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, add a Paragraphs field named field_bpquick_nav to the Article content type so editors can add Bootstrap Paragraphs Quicklinks components. It must be an entity_reference_revisions field targeting paragraphs, with unlimited cardinality, and it must allow ONLY the bp_quicklinks bundle. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/bp_quicklinks-attach-field-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/bp_quicklinks-attach-field-verify.sh",
+      "expected_output": "field.storage.node.field_bpquick_nav is type entity_reference_revisions with target_type paragraph and cardinality -1, and field.field.node.article.field_bpquick_nav has handler 'default:paragraph' with handler_settings.target_bundles == {bp_quicklinks: bp_quicklinks}."
+    },
+    {
+      "id": "bp_quicklinks-build-paragraph",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "site-builder",
+      "prompt": "This Drupal site's Article type already has a Paragraphs field field_bpquick_menu that accepts Bootstrap Paragraphs Quicklinks components. Create a published Article titled exactly 'BP Quicklinks Task' containing one Quicklinks paragraph whose header reads 'Quick Links', whose width is set to the Bootstrap Paragraphs 'Wide' option, and which contains at least two links, one of them pointing at https://www.drupal.org. Save it to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/bp_quicklinks-build-paragraph-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/bp_quicklinks-build-paragraph-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/bp_quicklinks-build-paragraph-cleanup.sh",
+      "expected_output": "An article 'BP Quicklinks Task' whose field_bpquick_menu references a bp_quicklinks paragraph with bp_header 'Quick Links', bp_width 'paragraph--width--wide' (the Wide option) and two or more bp_quick_link items including a drupal.org URI."
+    }
+  ]
+}

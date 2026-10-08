@@ -1,0 +1,80 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "jwt_auth_issuer",
+  "version": "2.4.x",
+  "note": "jwt_auth_issuer exposes the jwt/token endpoint (route jwt_auth_issuer.jwt_auth_issuer_controller_generateToken, _user_is_logged_in) that mints a signed JWT for the current user, adds the drupal.uid claim via a GENERATE-event subscriber, and can attach a token to the user-login response. Its only setting is the boolean jwt_auth_issuer.config -> jwt_in_login_response (config/install default true). Medium/hard cases are grounded in that real config object (never jwt.config): mediums read the live value after setup forces it false/true; hards toggle it and verify the strict boolean value.",
+  "evals": [
+    {
+      "id": "jwt_auth_issuer-endpoint",
+      "mode": "recipe",
+      "prompt": "With the Drupal jwt_auth_issuer module enabled, how does a logged-in user obtain a JWT for their account?",
+      "must_contain_any": ["jwt/token", "generateToken", "generate token", "token endpoint"],
+      "must_not_contain": [],
+      "expected_output": "Request the jwt/token route (jwt_auth_issuer.jwt_auth_issuer_controller_generateToken), which requires a logged-in user (auth: jwt_auth/basic_auth/cookie) and returns a signed JWT. In code, JwtAuth::generateToken() does the same.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "jwt_auth_issuer-login-response-setting",
+      "mode": "recipe",
+      "prompt": "What does the jwt_auth_issuer module's jwt_in_login_response setting control, and what is its shipped default?",
+      "must_contain_any": ["jwt_in_login_response", "login response", "login-response", "user login"],
+      "must_not_contain": [],
+      "expected_output": "jwt_auth_issuer.config -> jwt_in_login_response (boolean, default true) controls whether a jwt token is added to the JSON body of the core user-login response (via JwtLoginSubscriber). It is toggled by a checkbox on the base module's config form.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "jwt_auth_issuer-uid-claim",
+      "mode": "recipe",
+      "prompt": "When jwt_auth_issuer mints a token, what makes that token identify the issuing user to jwt_auth_consumer?",
+      "must_contain_any": ["drupal.uid", "GENERATE", "generate", "uid claim"],
+      "must_not_contain": [],
+      "expected_output": "Its JwtAuthIssuerSubscriber listens on JwtAuthEvents::GENERATE and stamps the current user's id as the nested drupal.uid claim, which jwt_auth_consumer then reads to resolve the account.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "jwt_auth_issuer-login-response-off",
+      "mode": "introspection",
+      "prompt": "On this Drupal site, is jwt_auth_issuer currently configured to include a JWT in the user login response? Inspect the live configuration and answer.",
+      "must_contain_any": ["false", "0", "disabled", "not include", "no", "off"],
+      "must_not_contain": [],
+      "expected_output": "No — jwt_auth_issuer.config jwt_in_login_response is FALSE on this site, so no token is added to the login response. Read it with `drush cget jwt_auth_issuer.config jwt_in_login_response`.",
+      "setup": "agent-module-documentation/evaluation/verify/jwt_auth_issuer-m1-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/jwt_auth_issuer-m1-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "jwt_auth_issuer-login-response-on",
+      "mode": "introspection",
+      "prompt": "On this Drupal site, will a successful user login response include a JWT token? Inspect the live jwt_auth_issuer configuration and answer.",
+      "must_contain_any": ["true", "1", "enabled", "yes", "will include", "on"],
+      "must_not_contain": [],
+      "expected_output": "Yes — jwt_auth_issuer.config jwt_in_login_response is TRUE, so JwtLoginSubscriber adds a jwt token to the login response. Read it with `drush cget jwt_auth_issuer.config jwt_in_login_response`.",
+      "setup": "agent-module-documentation/evaluation/verify/jwt_auth_issuer-m2-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/jwt_auth_issuer-m2-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "jwt_auth_issuer-turn-off",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "This Drupal site currently adds a JWT to the user login response, and we want to stop that. Configure jwt_auth_issuer so that no JWT is included in the login response. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/jwt_auth_issuer-h1-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/jwt_auth_issuer-h1-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/jwt_auth_issuer-h1-cleanup.sh",
+      "expected_output": "Set jwt_auth_issuer.config jwt_in_login_response to FALSE (e.g. `drush cset jwt_auth_issuer.config jwt_in_login_response 0`, or untick the checkbox on /admin/config/system/jwt). Verify passes when the value is strictly FALSE."
+    },
+    {
+      "id": "jwt_auth_issuer-turn-on",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "A decoupled client needs the login endpoint to return a JWT so it can immediately authenticate follow-up requests. Configure jwt_auth_issuer so a JWT is included in the user login response. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/jwt_auth_issuer-h2-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/jwt_auth_issuer-h2-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/jwt_auth_issuer-h2-cleanup.sh",
+      "expected_output": "Set jwt_auth_issuer.config jwt_in_login_response to TRUE (e.g. `drush cset jwt_auth_issuer.config jwt_in_login_response 1`, or tick the checkbox on /admin/config/system/jwt). Verify passes when the value is strictly TRUE."
+    }
+  ]
+}

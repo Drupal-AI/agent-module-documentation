@@ -1,0 +1,80 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "search_api_opensearch",
+  "version": "2.5.x",
+  "note": "Search API OpenSearch provides a Search API backend plugin (id 'opensearch') that indexes into and searches an OpenSearch cluster via connector plugins (standard, basicauth, aws_signature). Backend config = connector + connector_config (url, ssl_verification, ...) + advanced (fuzziness, prefix, synonyms). It defines two plugin types: opensearch_connector and opensearch_analyser (ngram, edge_ngram), plus extra Search API data types and events. IMPORTANT: this shared site has NO live OpenSearch cluster, so all cases are grounded in search_api.server backend/config, NOT live queries or indexing. Introspection reads a server's connector/url/prefix from backend_config; execution creates an opensearch-backed server and switches its connector, verified against the live search_api.server config entity. Servers are namespaced sao_*.",
+  "evals": [
+    {
+      "id": "search_api_opensearch-backend-id",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "To use OpenSearch as a search backend in Drupal with Search API and the search_api_opensearch module, what is the machine id of the Search API backend plugin you select on the server, and at a high level how do you wire it up?",
+      "must_contain_any": ["opensearch"],
+      "must_not_contain": [],
+      "expected_output": "Create a Search API server and choose the 'OpenSearch' backend (plugin id 'opensearch'); configure a connector with the cluster URL, then create an index pointing at that server."
+    },
+    {
+      "id": "search_api_opensearch-connectors",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "Which connector plugins does search_api_opensearch provide for reaching an OpenSearch cluster, and which one would you use for a cluster protected by HTTP basic authentication?",
+      "must_contain_any": ["basicauth", "standard", "aws_signature"],
+      "must_not_contain": [],
+      "expected_output": "standard (no auth) and basicauth (HTTP basic auth) ship in the module, and aws_signature comes from the AWS Signature submodule. For HTTP basic auth use the 'basicauth' connector (url + username + password)."
+    },
+    {
+      "id": "search_api_opensearch-advanced-settings",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "In the search_api_opensearch backend configuration, which 'advanced' settings let you control default query typo-tolerance, prefix index names, and provide related-term matching?",
+      "must_contain_any": ["fuzziness", "prefix", "synonyms"],
+      "must_not_contain": [],
+      "expected_output": "backend_config.advanced has fuzziness (default query fuzziness, e.g. 'auto'), prefix (prepended to index names on the server), and synonyms (list applied at query time)."
+    },
+    {
+      "id": "search_api_opensearch-connector-introspection",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "On this Drupal site there is a Search API server named sao_med_conn that uses the OpenSearch backend. Which connector plugin and cluster URL is it configured with? Inspect the live server configuration (do not attempt to contact a cluster).",
+      "must_contain_any": ["os-medium.example.com", "basicauth"],
+      "must_not_contain": [],
+      "expected_output": "It uses the 'basicauth' connector pointing at https://os-medium.example.com:9200 - search_api.server.sao_med_conn backend_config.connector = basicauth, connector_config.url = https://os-medium.example.com:9200.",
+      "setup": "agent-module-documentation/evaluation/verify/search_api_opensearch-connector-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/search_api_opensearch-connector-cleanup.sh"
+    },
+    {
+      "id": "search_api_opensearch-prefix-introspection",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "On this Drupal site, the OpenSearch-backed Search API server sao_med_prefix prepends a prefix to its index names. What is that index prefix? Inspect the live server configuration.",
+      "must_contain_any": ["sao_med_"],
+      "must_not_contain": [],
+      "expected_output": "sao_med_ - search_api.server.sao_med_prefix backend_config.advanced.prefix is 'sao_med_'.",
+      "setup": "agent-module-documentation/evaluation/verify/search_api_opensearch-prefix-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/search_api_opensearch-prefix-cleanup.sh"
+    },
+    {
+      "id": "search_api_opensearch-create-server",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, create a Search API server with the machine id 'sao_new' that uses the OpenSearch backend and the standard (no-auth) connector pointing at the cluster URL https://os.example.com:9200. Apply the configuration to the live site (config only; no cluster will be contacted).",
+      "reset": "agent-module-documentation/evaluation/verify/search_api_opensearch-create-server-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/search_api_opensearch-create-server-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/search_api_opensearch-create-server-cleanup.sh",
+      "expected_output": "A search_api.server.sao_new config entity exists with backend 'opensearch', backend_config.connector 'standard' and connector_config.url set (e.g. Server::create([...'backend'=>'opensearch','backend_config'=>['connector'=>'standard','connector_config'=>['url'=>'https://os.example.com:9200']...]])->save())."
+    },
+    {
+      "id": "search_api_opensearch-switch-connector",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, the OpenSearch-backed Search API server 'sao_switch' currently uses the standard (no-auth) connector, but the cluster now requires HTTP basic authentication. Reconfigure the server to use the basic-authentication connector. Apply the change to the live configuration.",
+      "reset": "agent-module-documentation/evaluation/verify/search_api_opensearch-switch-connector-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/search_api_opensearch-switch-connector-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/search_api_opensearch-switch-connector-cleanup.sh",
+      "expected_output": "search_api.server.sao_switch backend_config.connector is changed to 'basicauth' (typically also adding username/password to connector_config), saved to the live config entity."
+    }
+  ]
+}

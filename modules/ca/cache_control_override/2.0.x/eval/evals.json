@@ -1,0 +1,96 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "cache_control_override",
+  "version": "2.0.x",
+  "note": "Cache Control Override has no UI (configure is null), no routes, no permissions and no plugins. It registers two services in cache_control_override.services.yml: CacheControlOverrideSubscriber (kernel.response) which rewrites the header to 'public, max-age=<bubbled cacheability max-age>' when the response is a CacheableResponseInterface that core already marked public with a max-age, skipping the rewrite entirely when the bubbled max-age is Cache::PERMANENT (-1); and DenyOnCacheControlOverride, a page_cache_response_policy returning DENY when the bubbled max-age is 0. Its only config object is cache_control_override.settings with max_age.minimum (floor, applied with max(), 0 disables) and max_age.maximum (ceiling, applied with min(), -1 disables); both clamps only run when the bubbled max-age is > 0. Shipped defaults are minimum 0 / maximum -1. Recipe cases probe those rules, introspection cases read the live settings and reason about the resulting header, and execution cases write the settings and build a module whose controller really bubbles a 45 second max-age.",
+  "evals": [
+    {
+      "id": "cache_control_override-settings-keys",
+      "mode": "recipe",
+      "prompt": "The Drupal contrib module cache_control_override has no admin settings page. Which configuration object and keys control it, what do they do, and what are the shipped default values?",
+      "must_contain_any": [
+        "cache_control_override.settings",
+        "max_age.minimum",
+        "max_age.maximum"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The single config object is cache_control_override.settings with max_age.minimum (a floor applied with max()) and max_age.maximum (a ceiling applied with min(), disabled when set to -1 / Cache::PERMANENT). Defaults are minimum: 0 and maximum: -1, i.e. clamping is effectively off and the module only propagates the bubbled max-age.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "cache_control_override-permanent-passthrough",
+      "mode": "recipe",
+      "prompt": "On a Drupal 11 site with cache_control_override enabled, a page whose render array bubbles a cache max-age of Cache::PERMANENT still shows the site-wide browser and proxy cache maximum age in its Cache-Control header. Is that a bug, and what does the module do with a bubbled max-age of -1?",
+      "must_contain_any": [
+        "permanent",
+        "PERMANENT",
+        "-1"
+      ],
+      "must_not_contain": [],
+      "expected_output": "It is intentional. CacheControlOverrideSubscriber treats a bubbled max-age equal to CacheBackendInterface::CACHE_PERMANENT (-1) as 'no opinion' and skips the override entirely, so the response keeps whatever core's FinishResponseSubscriber produced from system.performance:cache.page.max_age. Only finite bubbled values are written to the header, and only values greater than 0 are clamped by max_age.minimum / max_age.maximum.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "cache_control_override-page-cache-policy",
+      "mode": "recipe",
+      "prompt": "Besides rewriting the Cache-Control header, what second thing does the Drupal cache_control_override module do to responses, and which service tag makes it happen?",
+      "must_contain_any": [
+        "page_cache_response_policy",
+        "DenyOnCacheControlOverride",
+        "DENY"
+      ],
+      "must_not_contain": [],
+      "expected_output": "It registers DenyOnCacheControlOverride, a service tagged page_cache_response_policy, whose check() returns DENY for any CacheableResponseInterface whose bubbled cacheability max-age is exactly 0. That keeps such responses out of core's Internal Page Cache.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "cache_control_override-live-ceiling",
+      "mode": "introspection",
+      "prompt": "Inspect the live cache_control_override configuration on this Drupal site. If a page bubbles a cache max-age of 3600 seconds, what max-age value will end up in its Cache-Control header, and why?",
+      "must_contain_any": [
+        "120"
+      ],
+      "must_not_contain": [],
+      "expected_output": "cache_control_override.settings has max_age.minimum 0 and max_age.maximum 120, so the ceiling applies: min(120, 3600) = 120 and the header becomes 'public, max-age=120'.",
+      "setup": "agent-module-documentation/evaluation/verify/cache_control_override-clamps-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/cache_control_override-clamps-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "cache_control_override-live-floor",
+      "mode": "introspection",
+      "prompt": "Read the current cache_control_override settings on this running Drupal site. A page bubbles a cache max-age of 60 seconds. What max-age will the module put in the Cache-Control header for that page? Explain which setting produced it.",
+      "must_contain_any": [
+        "900"
+      ],
+      "must_not_contain": [],
+      "expected_output": "max_age.minimum is 900 and max_age.maximum is -1 (no ceiling), so the floor applies: max(900, 60) = 900 and the header becomes 'public, max-age=900'.",
+      "setup": "agent-module-documentation/evaluation/verify/cache_control_override-floor-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/cache_control_override-floor-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "cache_control_override-set-clamps",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, configure the cache_control_override module so that a page whose bubbled cache max-age is greater than zero is never advertised to proxies for less than 5 minutes and never for more than 1 hour. Apply the change to the live site configuration.",
+      "reset": "agent-module-documentation/evaluation/verify/cache_control_override-set-clamps-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/cache_control_override-set-clamps-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/cache_control_override-set-clamps-cleanup.sh",
+      "expected_output": "cache_control_override.settings with max_age.minimum: 300 and max_age.maximum: 3600 (e.g. drush config:set cache_control_override.settings max_age.minimum 300 -y and max_age.maximum 3600 -y)."
+    },
+    {
+      "id": "cache_control_override-bubble-max-age",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, create and enable a custom module named cache_control_override_eval in web/modules/custom that serves the path /cco-eval/short from a controller returning a render array which bubbles a cache max-age of 45 seconds. Then adjust the cache_control_override settings so that this 45 second value is neither raised nor lowered by the module's clamps, i.e. the response really can advertise max-age=45.",
+      "reset": "agent-module-documentation/evaluation/verify/cache_control_override-bubble-max-age-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/cache_control_override-bubble-max-age-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/cache_control_override-bubble-max-age-cleanup.sh",
+      "expected_output": "A cache_control_override_eval module with a routing entry for /cco-eval/short whose controller returns ['#markup' => ..., '#cache' => ['max-age' => 45]], so the resulting CacheableResponse's cacheable metadata max-age is 45; plus cache_control_override.settings with max_age.minimum <= 45 and max_age.maximum either -1 or >= 45 (the reset leaves 600/1200, which would clamp it)."
+    }
+  ]
+}

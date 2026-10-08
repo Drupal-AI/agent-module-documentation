@@ -1,0 +1,80 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "toc_api",
+  "version": "2.0.x",
+  "note": "TOC API is a developer framework, not an end-user feature. Its programmatic surface is three services (toc_api.manager -> TocManager::create($id,$source,$options); toc_api.builder -> TocBuilder::buildToc/renderToc/buildContent/renderContent; toc_api.formatter -> TocFormatter) plus the read-only Toc value object (isVisible, getIndex, getTree). Its persistent state is the toc_type config entity (config prefix toc_api.toc_type.<id>, config_export id/label/options), admin UI at /admin/structure/toc (route entity.toc_type.collection, permission 'administer table of contents types'), with bundled types default/simple/simple_numbered/full/full_numbered. Medium cases create a known toc_type and read an option back (template / default.number_type). Hard cases create a new toc_type config entity, verified by loading it and checking the option; reset deletes the entity so verify fails on empty state. No plugin type, no Drush.",
+  "evals": [
+    {
+      "id": "toc_api-which-service-creates",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "In the Drupal contrib module TOC API, which service do I use to turn a string of HTML into a table-of-contents object, and what method do I call on it?",
+      "must_contain_any": ["toc_api.manager", "TocManager", "->create(", "create("],
+      "must_not_contain": [],
+      "expected_output": "Use the toc_api.manager service (Drupal\\toc_api\\TocManager) and call create($id, $source, $options), which returns a Toc object (TocInterface)."
+    },
+    {
+      "id": "toc_api-config-entity-and-ui",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "TOC API stores each table-of-contents preset as a configuration entity. What is the config entity type, and at which admin path do you manage these presets?",
+      "must_contain_any": ["toc_type", "/admin/structure/toc"],
+      "must_not_contain": [],
+      "expected_output": "The config entity type is toc_type (config prefix toc_api.toc_type.<id>), managed at /admin/structure/toc (route entity.toc_type.collection). Five ship by default: default, simple, simple_numbered, full, full_numbered."
+    },
+    {
+      "id": "toc_api-render-nav-vs-body",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "With TOC API's builder service, how do I render the table-of-contents navigation, and how do I get the article body back with ids and 'back to top' links added to its headers?",
+      "must_contain_any": ["buildToc", "renderToc", "buildContent", "renderContent", "toc_api.builder"],
+      "must_not_contain": [],
+      "expected_output": "The toc_api.builder service (TocBuilder): buildToc()/renderToc() render the navigation, and buildContent()/renderContent() return the body HTML with unique header ids and back-to-top links injected."
+    },
+    {
+      "id": "toc_api-known-type-template",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "This site has a TOC API table-of-contents type with the machine id 'toc_api_eval1'. Inspect the live configuration and tell me which table-of-contents template (layout) it uses.",
+      "must_contain_any": ["menu"],
+      "must_not_contain": [],
+      "setup": "agent-module-documentation/evaluation/verify/toc_api-known-type-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/toc_api-known-type-cleanup.sh",
+      "expected_output": "It uses the 'menu' template: toc_api.toc_type.toc_api_eval1 has options.template = menu (read with `drush cget toc_api.toc_type.toc_api_eval1 options.template`)."
+    },
+    {
+      "id": "toc_api-known-numbering",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "A TOC API type named 'toc_api_eval2' is configured on this site. Look at its live configuration and state its default numbering (list-style) type.",
+      "must_contain_any": ["upper-roman"],
+      "must_not_contain": [],
+      "setup": "agent-module-documentation/evaluation/verify/toc_api-known-numbering-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/toc_api-known-numbering-cleanup.sh",
+      "expected_output": "Its default numbering type is upper-roman: toc_api.toc_type.toc_api_eval2 has options.default.number_type = upper-roman."
+    },
+    {
+      "id": "toc_api-create-menu-type",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, create a new TOC API table-of-contents type (toc_type config entity) with the machine id 'toc_api_task' and label 'Task Contents' that renders using the 'menu' (jump-menu) template, including headers h2 and h3. Apply it to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/toc_api-create-menu-type-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/toc_api-create-menu-type-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/toc_api-create-menu-type-cleanup.sh",
+      "expected_output": "A toc_type config entity toc_api_task exists (config toc_api.toc_type.toc_api_task) with options.template = 'menu'. Create it with TocType::create(['id'=>'toc_api_task','label'=>'Task Contents','options'=>['template'=>'menu','header_min'=>2,'header_max'=>3,'header_count'=>2,'default'=>['number_type'=>'decimal','number_prefix'=>'','number_suffix'=>') ']]])->save(); or via the Add form at /admin/structure/toc/add."
+    },
+    {
+      "id": "toc_api-create-numbered-type",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "Create a TOC API table-of-contents type with machine id 'toc_api_numbered' and label 'Numbered Contents' whose default heading numbering uses upper-case Roman numerals (I, II, III). Save it to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/toc_api-create-numbered-type-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/toc_api-create-numbered-type-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/toc_api-create-numbered-type-cleanup.sh",
+      "expected_output": "A toc_type config entity toc_api_numbered exists with options.default.number_type = 'upper-roman'. e.g. TocType::create(['id'=>'toc_api_numbered','label'=>'Numbered Contents','options'=>['template'=>'tree','header_min'=>2,'header_max'=>4,'header_count'=>2,'default'=>['number_type'=>'upper-roman','number_prefix'=>'','number_suffix'=>'. ']]])->save();"
+    }
+  ]
+}

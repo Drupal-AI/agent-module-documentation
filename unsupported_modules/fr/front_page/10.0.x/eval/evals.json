@@ -1,0 +1,80 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "front_page",
+  "version": "10.0.x",
+  "note": "Front Page (project 'front', module machine name front_page) is a config-driven redirect layer. All state is the front_page.settings config object: enabled (master switch), disable_for_administrators, home_link_path (used by the outbound path processor to rewrite <front>), and roles.<role_id> = {enabled, weight, path} (lowest weight wins). Redirect is a runtime RedirectResponse from FrontPageSubscriber on the front page only. Settings form route front_page.settings (/admin/config/system/front/settings), permission 'administer front page'. Medium cases read back configured role redirect path / home_link_path; hard cases enable the override + set an anonymous redirect and set home_link_path, verified against live config.",
+  "evals": [
+    {
+      "id": "front_page-mechanism",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "How does the Drupal 'front' module (front_page) decide where to send a visitor from the front page, and where are the per-role targets stored?",
+      "must_contain_any": ["front_page.settings", "roles", "weight", "redirect"],
+      "must_not_contain": [],
+      "expected_output": "On a front-page request, FrontPageSubscriber (a REQUEST subscriber) picks the enabled role override with the lowest weight for the current user and issues a RedirectResponse to its path. Targets live in front_page.settings under roles.<role_id> = {enabled, weight, path}, gated by the master 'enabled' switch."
+    },
+    {
+      "id": "front_page-master-switch-and-admins",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "In front_page, which setting turns the whole feature on, and how do I stop administrators from ever being redirected?",
+      "must_contain_any": ["enabled", "disable_for_administrators"],
+      "must_not_contain": [],
+      "expected_output": "The boolean 'enabled' in front_page.settings is the master switch. Set 'disable_for_administrators' to true so users with the administrator role are never redirected."
+    },
+    {
+      "id": "front_page-home-link",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "Besides role-based redirects, front_page can change where the site's Home link points. Which setting controls that and how does it take effect?",
+      "must_contain_any": ["home_link_path", "<front>", "path processor"],
+      "must_not_contain": [],
+      "expected_output": "front_page.settings.home_link_path. The FrontPagePathProcessor outbound path processor rewrites '/<front>' (or an empty path) to '/'.home_link_path, so the theme's Home link and url('<front>') resolve to that path."
+    },
+    {
+      "id": "front_page-known-redirect",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "On this Drupal site, Front Page override is enabled and anonymous visitors are redirected away from the front page. Inspect the live configuration and state the path anonymous users are sent to.",
+      "must_contain_any": ["/user/login"],
+      "must_not_contain": [],
+      "expected_output": "front_page.settings has enabled: true and roles.anonymous = {enabled: true, weight: 0, path: /user/login}, so anonymous users are redirected to /user/login.",
+      "setup": "agent-module-documentation/evaluation/verify/front_page-known-redirect-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/front_page-known-redirect-cleanup.sh"
+    },
+    {
+      "id": "front_page-home-link-value",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "On this site, front_page has been configured to rewrite the site's Home link. Inspect the live configuration and give the configured home link path.",
+      "must_contain_any": ["welcome"],
+      "must_not_contain": [],
+      "expected_output": "front_page.settings.home_link_path is 'welcome' (so <front> links resolve to /welcome).",
+      "setup": "agent-module-documentation/evaluation/verify/front_page-home-link-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/front_page-home-link-cleanup.sh"
+    },
+    {
+      "id": "front_page-set-redirect",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, use the Front Page (front_page) module to redirect anonymous visitors from the front page to /user/login. Turn on the front-page override and configure the anonymous role's redirect. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/front_page-set-redirect-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/front_page-set-redirect-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/front_page-set-redirect-cleanup.sh",
+      "expected_output": "In front_page.settings set enabled = TRUE and roles.anonymous = {enabled: TRUE, weight: 0, path: '/user/login'} and save."
+    },
+    {
+      "id": "front_page-set-home-link",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-layman",
+      "prompt": "On my Drupal site I want the little 'Home' link in the menu to take people to /welcome instead of the normal front page. Using the Front Page module, set that up on the live site (use 'welcome' as the target).",
+      "reset": "agent-module-documentation/evaluation/verify/front_page-set-home-link-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/front_page-set-home-link-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/front_page-set-home-link-cleanup.sh",
+      "expected_output": "Set front_page.settings.home_link_path = 'welcome' (via the Home links form at /admin/config/system/front/home-links or config). The outbound path processor then rewrites <front> links to /welcome."
+    }
+  ]
+}

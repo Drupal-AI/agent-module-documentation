@@ -1,0 +1,80 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "new_relic_rpm",
+  "version": "2.2.x",
+  "note": "New Relic RPM stores all of its behaviour in the single config object new_relic_rpm.settings (13 keys; defaults in config/install). It has no config entity and no plugin types. The site under test does NOT have the newrelic PHP extension loaded, so the runtime adapter is NullAdapter and no data actually reaches New Relic - but every configuration surface is still fully present and readable via drush, which is what the medium/hard cases exercise. Baseline shipped defaults used by reset/cleanup: track_drush=norm, track_cron=norm, views_log_slow=false, views_log_threshold=100, module_deployment=false. The drush deploy command (new-relic-rpm:deploy / nrd) and the adapter/NullAdapter fallback are the recipe-tier facts.",
+  "evals": [
+    {
+      "id": "new_relic_rpm-deploy-command",
+      "mode": "recipe",
+      "prompt": "Using the new_relic_rpm Drupal module, what Drush command marks a New Relic deployment for a release revision like 1.2.3, and what is its short alias?",
+      "must_contain_any": ["new-relic-rpm:deploy", "nrd"],
+      "must_not_contain": [],
+      "expected_output": "drush new-relic-rpm:deploy 1.2.3 (alias: nrd), optionally with --description, --user and --changelog. It calls NewRelicApiClient::createDeployment() against New Relic REST API v2.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "new_relic_rpm-slowviews-keys",
+      "mode": "recipe",
+      "prompt": "In the new_relic_rpm module I want to record slow Views renders in New Relic. Which two keys in the new_relic_rpm.settings config turn that on and set the millisecond threshold, and what is the default threshold?",
+      "must_contain_any": ["views_log_slow", "views_log_threshold"],
+      "must_not_contain": [],
+      "expected_output": "Set views_log_slow to TRUE to enable it and views_log_threshold (milliseconds, default 100) for the cutoff. A view rendering slower than the threshold is recorded as a 'SlowView' Insights custom event.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "new_relic_rpm-null-adapter",
+      "mode": "recipe",
+      "prompt": "What does the new_relic_rpm module do when the New Relic PHP extension (the 'newrelic' extension) is not loaded on the server? Does the site break?",
+      "must_contain_any": ["NullAdapter", "null adapter", "no-op", "does not break", "no-ops", "extension_loaded"],
+      "must_not_contain": [],
+      "expected_output": "AdapterFactory::getAdapter() checks extension_loaded('newrelic'); if it is missing it returns a NullAdapter whose methods are all no-ops, so the site keeps working normally and simply sends nothing to New Relic (the real ExtensionAdapter is used only when the extension is present).",
+      "difficulty": "easy"
+    },
+    {
+      "id": "new_relic_rpm-slow-threshold",
+      "mode": "introspection",
+      "prompt": "On this Drupal site the new_relic_rpm slow-Views logging has been configured. Inspect the live new_relic_rpm.settings configuration and state the current slow-view threshold in milliseconds.",
+      "must_contain_any": ["347"],
+      "must_not_contain": [],
+      "expected_output": "views_log_threshold is 347 (and views_log_slow is TRUE). Read it with `drush config:get new_relic_rpm.settings views_log_threshold`.",
+      "setup": "agent-module-documentation/evaluation/verify/new_relic_rpm-slow-threshold-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/new_relic_rpm-slow-threshold-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "new_relic_rpm-cron-track",
+      "mode": "introspection",
+      "prompt": "On this Drupal site, how is the new_relic_rpm module currently configured to track cron runs in New Relic (normal, background, or ignore)? Inspect the live configuration to answer.",
+      "must_contain_any": ["ignore"],
+      "must_not_contain": [],
+      "expected_output": "track_cron is set to 'ignore', so cron transactions are dropped from New Relic. Read it with `drush config:get new_relic_rpm.settings track_cron` (value 'ignore' = STATE_IGNORE).",
+      "setup": "agent-module-documentation/evaluation/verify/new_relic_rpm-cron-track-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/new_relic_rpm-cron-track-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "new_relic_rpm-enable-slowviews",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, configure the new_relic_rpm module so that slow Views renders are logged to New Relic, using a threshold of 500 milliseconds. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/new_relic_rpm-enable-slowviews-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/new_relic_rpm-enable-slowviews-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/new_relic_rpm-enable-slowviews-cleanup.sh",
+      "expected_output": "In new_relic_rpm.settings set views_log_slow = TRUE and views_log_threshold = 500 (e.g. via `drush config:set` or the settings form at /admin/config/development/new-relic)."
+    },
+    {
+      "id": "new_relic_rpm-drush-deploy",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, configure the new_relic_rpm module so that (1) Drush commands are ignored by New Relic transaction tracking, and (2) a New Relic deployment marker is created automatically whenever a module is installed or uninstalled. Apply the changes to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/new_relic_rpm-drush-deploy-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/new_relic_rpm-drush-deploy-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/new_relic_rpm-drush-deploy-cleanup.sh",
+      "expected_output": "In new_relic_rpm.settings set track_drush = 'ignore' (STATE_IGNORE) and module_deployment = TRUE."
+    }
+  ]
+}

@@ -1,0 +1,80 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "config_distro_filter",
+  "version": "2.1.x",
+  "note": "config_distro_filter is a DEPRECATED (lifecycle: deprecated) submodule of config_distro. It registers one event subscriber, ConfigDistroFilterEventSubscriber (service config_distro_filter.event_subscriber), on ConfigDistroEvents::TRANSFORM (config_distro.transform). onDistroTransform() gets a filtered storage from config_filter's ConfigFilterStorageFactory::getFilteredStorage($storage, ['config_distro.storage.distro']) - i.e. Config Filter plugins bound to the distro storage such as config_distro_ignore - simulates the import into a temp MemoryStorage, and writes it back onto the event storage, bridging the Config Filter API to Config Distro's Transform API. Requires config_distro + config_filter; config_distro_ignore depends on it. No config, schema, UI, permissions, Drush, or plugin types. Medium cases inspect live state: the registered transform listener and the module's deprecated lifecycle from extension info. Hard cases exercise the transform pipeline the bridge participates in (reading config_distro.storage.distro) and store results in Drupal State, verified live.",
+  "evals": [
+    {
+      "id": "config_distro_filter-what-and-deprecated",
+      "mode": "recipe",
+      "prompt": "What is the config_distro_filter submodule for, and what is notable about its maintenance status?",
+      "must_contain_any": ["deprecated", "bridge", "config_filter", "backwards"],
+      "must_not_contain": [],
+      "expected_output": "It is a deprecated backwards-compatibility bridge that lets legacy Config Filter plugins participate in Config Distro's transform pipeline (running them against the distribution storage). It is marked lifecycle: deprecated; new integrations should subscribe to config_distro.transform directly.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "config_distro_filter-event",
+      "mode": "recipe",
+      "prompt": "Which Config Distro event does config_distro_filter subscribe to, and what does its subscriber do when that event fires?",
+      "must_contain_any": ["config_distro.transform", "TRANSFORM", "getFilteredStorage", "config_filter"],
+      "must_not_contain": [],
+      "expected_output": "It subscribes to ConfigDistroEvents::TRANSFORM (config_distro.transform). onDistroTransform() gets a filtered storage from config_filter's ConfigFilterStorageFactory for the config_distro.storage.distro storage, simulates the filtered import into a temporary MemoryStorage, and writes it back onto the event storage.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "config_distro_filter-dependencies",
+      "mode": "recipe",
+      "prompt": "Which modules does config_distro_filter depend on, and which other Config Distro submodule relies on it?",
+      "must_contain_any": ["config_filter", "config_distro", "config_distro_ignore"],
+      "must_not_contain": [],
+      "expected_output": "It depends on config_distro and config_filter. config_distro_ignore depends on config_distro_filter, because the bridge is what applies config_distro_ignore's Config Filter plugin to the distribution storage.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "config_distro_filter-subscriber-registered",
+      "mode": "introspection",
+      "prompt": "On this Drupal site, inspect the event system and confirm which module provides a listener for the 'config_distro.transform' event. Name the class or module responsible.",
+      "must_contain_any": ["ConfigDistroFilterEventSubscriber", "config_distro_filter"],
+      "must_not_contain": [],
+      "expected_output": "The event_dispatcher has a listener for config_distro.transform provided by config_distro_filter's ConfigDistroFilterEventSubscriber::onDistroTransform (\\Drupal::service('event_dispatcher')->getListeners('config_distro.transform')).",
+      "setup": "agent-module-documentation/evaluation/verify/config_distro_filter-subscriber-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/config_distro_filter-subscriber-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "config_distro_filter-deprecated-lifecycle",
+      "mode": "introspection",
+      "prompt": "Inspect the extension information for the config_distro_filter module on this live site and report its lifecycle status.",
+      "must_contain_any": ["deprecated"],
+      "must_not_contain": [],
+      "expected_output": "config_distro_filter's info declares lifecycle: deprecated (readable via extension.list.module->getExtensionInfo('config_distro_filter')['lifecycle']).",
+      "setup": "agent-module-documentation/evaluation/verify/config_distro_filter-deprecated-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/config_distro_filter-deprecated-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "config_distro_filter-transform-names",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, read the Config Distro distribution storage (building it runs the transform pipeline that config_distro_filter participates in) and store the full list of configuration object names it exposes into Drupal State under the key 'config_distro_filter_eval_names'. Apply it to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/config_distro_filter-transform-names-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/config_distro_filter-transform-names-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/config_distro_filter-transform-names-cleanup.sh",
+      "expected_output": "\\Drupal::state()->set('config_distro_filter_eval_names', \\Drupal::service('config_distro.storage.distro')->listAll()); — the stored array must include system.site (the distro storage mirrors active config after the transform subscribers, including this bridge, run)."
+    },
+    {
+      "id": "config_distro_filter-bridged",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site there is a config object 'config_distro_eval.bridgeh' in active configuration. Confirm that the Config Distro distribution storage (built via config_distro_filter's transform bridge) yields the same data for that object as the active storage: read it from both, and if they are identical store the string \"BRIDGED\" into Drupal State key 'config_distro_filter_eval_ok'. Apply it to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/config_distro_filter-bridged-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/config_distro_filter-bridged-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/config_distro_filter-bridged-cleanup.sh",
+      "expected_output": "$d = \\Drupal::service('config_distro.storage.distro')->read('config_distro_eval.bridgeh'); $a = \\Drupal::service('config.storage')->read('config_distro_eval.bridgeh'); if ($d === $a) \\Drupal::state()->set('config_distro_filter_eval_ok', 'BRIDGED'); — with no distribution provider the filtered transform leaves the item equal to active, so the stored value is BRIDGED."
+    }
+  ]
+}

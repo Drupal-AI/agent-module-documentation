@@ -1,0 +1,93 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "ckeditor_media_resize",
+  "version": "1.0.x",
+  "note": "CKEditor5 Media Resize has configure=null, no permissions, no Drush, no services and no plugin types of its own. It provides exactly two plugins: the CKEditor 5 plugin ckeditor_media_resize_mediaResize (class MediaResize, configurable, keys apply_image_styles + image_styles, stored in editor.editor.<format> settings.plugins) and the filter plugin filter_resize_media ('Resize media images', TYPE_TRANSFORM_REVERSIBLE, weight 90) which must run before core's media_embed. The editor writes the width into data-media-width on <drupal-media>; FilterResizeMedia::process() removes that attribute, merges width:<value> into the inline style, adds the class media-embed-resized and — when apply_image_styles is on and the route is not media.filter.preview — sets data-view-mode to the smallest configured image style whose image_scale width is >= the requested width. It ships image styles cke_media_resize_small/medium/large/xl (200/500/800/1200, upscale true) plus matching media view modes and media.image.* view displays. All medium/hard cases are grounded in that real config: introspection reads back live filter.format/editor.editor entities on module-namespaced throwaway formats; execution wires a format up and restores the shipped image styles.",
+  "evals": [
+    {
+      "id": "ckeditor_media_resize-attribute",
+      "mode": "recipe",
+      "prompt": "In the Drupal contrib module ckeditor_media_resize, when an editor drags an embedded image to a new size in CKEditor 5, where is that width stored in the saved HTML, and which text filter turns it into something a browser renders? Name the HTML attribute and the filter plugin id.",
+      "must_contain_any": [
+        "data-media-width",
+        "filter_resize_media"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The CKEditor 5 plugin ckeditor_media_resize_mediaResize configures core's drupalMedia with dataAttribute: data-media-width, so the width lands on the <drupal-media> tag as data-media-width. On render the 'Resize media images' filter (plugin id filter_resize_media, class FilterResizeMedia) removes that attribute, merges width:<value> into the tag's inline style attribute and adds the class media-embed-resized.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "ckeditor_media_resize-conditions",
+      "mode": "recipe",
+      "prompt": "I enabled ckeditor_media_resize on a Drupal 11 site but the resize handles never appear when I select an embedded media image in CKEditor 5, and the 'Media image resize' plugin settings are not offered on my text format. What conditions does the plugin declare that must all be satisfied on that text format?",
+      "must_contain_any": [
+        "drupalMedia",
+        "media_media",
+        "filter_resize_media"
+      ],
+      "must_not_contain": [],
+      "expected_output": "ckeditor_media_resize.ckeditor5.yml declares three conditions: the 'Resize media images' filter (filter_resize_media) must be enabled on the format, the drupalMedia toolbar item must be in the CKEditor 5 toolbar, and core's media_media CKEditor 5 plugin must be active. In practice core's media_embed filter and filter_html ('Limit allowed HTML tags and correct faulty HTML') also have to be enabled, and filter_resize_media must be ordered before media_embed.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "ckeditor_media_resize-view-mode-mapping",
+      "mode": "recipe",
+      "prompt": "ckeditor_media_resize is installed on a Drupal site with its default plugin configuration (apply_image_styles enabled, the four shipped cke_media_resize_* image styles). An editor resizes an embedded image to 300px. Which value does the 'Resize media images' filter put in data-view-mode, and what is the selection rule?",
+      "must_contain_any": [
+        "cke_media_resize_medium"
+      ],
+      "must_not_contain": [],
+      "expected_output": "data-view-mode=\"cke_media_resize_medium\". FilterResizeMedia::getViewModeByWidth() loads the configured image_styles, takes the largest image_scale width from each style's effects (small=200, medium=500, large=800, xl=1200), sorts them ascending, drops zeros, and returns the first style whose width is >= the requested width. 300 skips small (200 < 300) and matches medium (500 >= 300). The style id doubles as the media view mode id, which is why config/optional ships media view modes with the same names. If no style is wide enough, no data-view-mode is set.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "ckeditor_media_resize-known-format",
+      "mode": "introspection",
+      "prompt": "On this Drupal site, exactly one text format has the ckeditor_media_resize 'Resize media images' filter enabled. Inspect the live configuration and tell me the machine name of that text format, and whether dynamic image-style scaling is switched on or off for it.",
+      "must_contain_any": [
+        "ckeditor_media_resize_eval"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The format is ckeditor_media_resize_eval. filter.format.ckeditor_media_resize_eval has filters.filter_resize_media.status: true (weight 0, ordered before media_embed at weight 100), and editor.editor.ckeditor_media_resize_eval has settings.plugins.ckeditor_media_resize_mediaResize.apply_image_styles: false — so dynamic image-style scaling is OFF there and the filter only applies the inline width plus the media-embed-resized class.",
+      "setup": "agent-module-documentation/evaluation/verify/ckeditor_media_resize-known-format-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/ckeditor_media_resize-known-format-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "ckeditor_media_resize-style-list",
+      "mode": "introspection",
+      "prompt": "The text format ckeditor_media_resize_styles on this Drupal site uses ckeditor_media_resize with a restricted list of image styles. Inspect the live editor configuration and tell me which view mode the 'Resize media images' filter would put on a media embed that an editor resized to 600px in that format.",
+      "must_contain_any": [
+        "cke_media_resize_xl"
+      ],
+      "must_not_contain": [],
+      "expected_output": "cke_media_resize_xl. editor.editor.ckeditor_media_resize_styles has settings.plugins.ckeditor_media_resize_mediaResize.image_styles = [cke_media_resize_small, cke_media_resize_xl] with apply_image_styles: true. Their image_scale widths are 200 and 1200; sorted ascending the first one >= 600 is cke_media_resize_xl (cke_media_resize_medium and _large are not in this format's list, so they are never considered).",
+      "setup": "agent-module-documentation/evaluation/verify/ckeditor_media_resize-style-list-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/ckeditor_media_resize-style-list-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "ckeditor_media_resize-enable-format",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "This Drupal site has a CKEditor 5 text format with the machine name ckeditor_media_resize_task. It already has 'Limit allowed HTML tags' and 'Embed media' enabled but no media resizing. Using the ckeditor_media_resize module, make editors able to drag-resize embedded media images in that format: enable the module's filter and order it correctly relative to the media embed filter, put the media button in the toolbar, and configure the plugin so resized images are dynamically scaled with image styles. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/ckeditor_media_resize-enable-format-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/ckeditor_media_resize-enable-format-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/ckeditor_media_resize-enable-format-cleanup.sh",
+      "expected_output": "On filter.format.ckeditor_media_resize_task set filters.filter_resize_media.status: true with a weight lower than filters.media_embed.weight (e.g. 0 vs 100), keeping filter_html enabled. On editor.editor.ckeditor_media_resize_task add 'drupalMedia' to settings.toolbar.items and set settings.plugins.ckeditor_media_resize_mediaResize.apply_image_styles: true (image_styles defaults to the four cke_media_resize_* styles)."
+    },
+    {
+      "id": "ckeditor_media_resize-restore-styles",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "Someone deleted the image styles that the ckeditor_media_resize module ships with from this Drupal site, so its dynamic image-style scaling no longer resolves a view mode. Restore all four of the module's own resize image styles on the live site with exactly the scale widths and upscale behaviour the module ships.",
+      "reset": "agent-module-documentation/evaluation/verify/ckeditor_media_resize-restore-styles-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/ckeditor_media_resize-restore-styles-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/ckeditor_media_resize-restore-styles-cleanup.sh",
+      "expected_output": "Recreate image.style.cke_media_resize_small / _medium / _large / _xl, each with a single image_scale effect of width 200 / 500 / 800 / 1200, height null and upscale: true (labels 'CKE Media Resize Small (width 200)' etc.). The shipped definitions live in web/modules/contrib/ckeditor_media_resize/config/install/ — re-import them with \\Drupal::service('config.installer')->installDefaultConfig('module', 'ckeditor_media_resize'), or run the module's own ckeditor_media_resize_post_update_image_style_config_import() which writes every config/install file straight into the active store."
+    }
+  ]
+}

@@ -1,0 +1,80 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "easy_encryption",
+  "version": "1.0.x",
+  "note": "Easy Encryption gives zero-config at-rest credential encryption via the Key module. It adds the 'easy_encrypted' Key provider, auto-generates a libsodium key pair on install (active id in easy_encryption.keys; per pair two Key entities easy_encrypted__<id>__public_key and __private_key), and transparently upgrades NEW Key entities using insecure providers (config/state, configurable in settings.php) to easy_encrypted via hook_key_presave. Private key stored in .easy_encryption next to webroot (settings key private_key_directory), falling back to State. Public API EncryptorInterface + key generator/activator/rotator/pruner/usage/registry/transfer. Drush: easy-encryption:rotate, easy-encryption:migrate-private-key. Introspection reads a created Key's provider (auto-upgrade) and decrypts a stored value; execution creates encrypted Key entities and relies on auto-upgrade. Key entities are namespaced ee_* (user keys, not the protected active key pair) and deletable; no node operations.",
+  "evals": [
+    {
+      "id": "easy_encryption-provider",
+      "mode": "recipe",
+      "prompt": "How do I store an API key encrypted at rest in Drupal using the easy_encryption module, and what happens if I create a Key with the insecure 'Configuration' provider?",
+      "must_contain_any": ["easy_encrypted"],
+      "must_not_contain": [],
+      "expected_output": "Create a Key entity using the 'Easy Encrypted' provider (easy_encrypted); the value is encrypted and stored as ciphertext plus the encryption key id. If you create a new Key with an insecure provider like config or state, Easy Encryption's key_presave hook transparently upgrades it to easy_encrypted before saving, so credentials are never stored in plaintext.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "easy_encryption-rotate",
+      "mode": "recipe",
+      "prompt": "Which Drush command rotates the active encryption key in easy_encryption, and how do I also re-encrypt all existing encrypted keys?",
+      "must_contain_any": ["easy-encryption:rotate", "ee:rotate"],
+      "must_not_contain": [],
+      "expected_output": "drush easy-encryption:rotate (alias ee:rotate). Add the --reencrypt option to re-encrypt all easy_encrypted keys to the new key; --dry-run previews without changing anything.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "easy_encryption-private-key",
+      "mode": "recipe",
+      "prompt": "Where does easy_encryption store the private (decryption) key by default, and how can I change that location?",
+      "must_contain_any": [".easy_encryption", "private_key_directory"],
+      "must_not_contain": [],
+      "expected_output": "By default in a .easy_encryption directory next to the web root (files 0600, PHP-wrapped), falling back to Drupal State if the filesystem fails. Change it with $settings['easy_encryption']['private_key_directory'] = '/secure/path' in settings.php. Never commit the private key.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "easy_encryption-known-upgraded",
+      "mode": "introspection",
+      "prompt": "On this Drupal site a Key entity with id 'ee_intro_upgraded' was created using the 'config' key provider. Inspect the live site and state which key provider that Key actually ends up using.",
+      "must_contain_any": ["easy_encrypted"],
+      "must_not_contain": [],
+      "expected_output": "It ends up using the easy_encrypted provider — Easy Encryption's key_presave hook auto-upgraded the insecure 'config' provider to easy_encrypted on save.",
+      "setup": "agent-module-documentation/evaluation/verify/easy_encryption-known-upgraded-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/easy_encryption-known-upgraded-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "easy_encryption-known-value",
+      "mode": "introspection",
+      "prompt": "On this Drupal site there is an Easy Encrypted Key entity with id 'ee_intro_direct'. Using the site, retrieve and state the plaintext value it stores.",
+      "must_contain_any": ["hunter2secret"],
+      "must_not_contain": [],
+      "expected_output": "The decrypted value is 'hunter2secret' (retrieved via the Key module: \\Drupal::service('key.repository')->getKey('ee_intro_direct')->getKeyValue(), which decrypts using the private key).",
+      "setup": "agent-module-documentation/evaluation/verify/easy_encryption-known-value-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/easy_encryption-known-value-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "easy_encryption-create-key",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, create a Key entity with id 'ee_api_key' that stores the value 'super-secret-token' encrypted at rest using Easy Encryption's easy_encrypted provider. Apply it to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/easy_encryption-create-key-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/easy_encryption-create-key-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/easy_encryption-create-key-cleanup.sh",
+      "expected_output": "Create a Key entity 'ee_api_key' with key_provider 'easy_encrypted' and set its value to 'super-secret-token' ($k = Key::create([...,'key_provider'=>'easy_encrypted',...]); $k->setKeyValue('super-secret-token'); $k->save();). It is stored encrypted and decrypts back to the plaintext via getKeyValue()."
+    },
+    {
+      "id": "easy_encryption-auto-upgrade",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-layman",
+      "prompt": "On this Drupal site I need to save a secret value 'plainsecret' under a key named 'ee_conf_secret'. I'm going to add it as a normal 'Configuration' key. Make sure that when it's saved, the secret is not left sitting in plaintext.",
+      "reset": "agent-module-documentation/evaluation/verify/easy_encryption-auto-upgrade-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/easy_encryption-auto-upgrade-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/easy_encryption-auto-upgrade-cleanup.sh",
+      "expected_output": "Create the Key 'ee_conf_secret' with the 'config' provider and value 'plainsecret'; Easy Encryption's key_presave hook automatically upgrades it to the easy_encrypted provider before saving, so it is stored encrypted (provider ends up easy_encrypted) and still decrypts to 'plainsecret'."
+    }
+  ]
+}

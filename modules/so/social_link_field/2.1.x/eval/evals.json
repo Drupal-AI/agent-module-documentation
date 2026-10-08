@@ -1,0 +1,80 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "social_link_field",
+  "version": "2.1.x",
+  "note": "Social Link Field defines a social_links field type (columns social + link), a social_links widget (settings select_social, disable_weight), formatters font_awesome (default) and network_name, a SocialLinkFieldPlatform annotation plugin type (manager plugin.manager.social_link_field.platform), and one global config social_link_field.settings.attached_fa (bool, default TRUE) with route social_link_field.settings and permission 'configure social link field'. NOTE for graders: on THIS shared site the module's formatter constructor is incompatible with the installed hook_event_dispatcher (it type-hints a concrete ModuleHandler), so instantiating the font_awesome/network_name formatter fatals. All eval cases therefore avoid rendering/saving a formatter: introspection/execution cases exercise the field type, the widget form-display settings, and the global attached_fa setting, none of which instantiate a formatter. Field deletes also trigger an unrelated workbench_moderation route-rebuild fatal in the drush terminate phase, but the data operation completes and the read-only verify scripts are unaffected.",
+  "evals": [
+    {
+      "id": "social_link_field-field-type",
+      "mode": "recipe",
+      "prompt": "In Drupal, what does the social_link_field module provide for storing social media links, and which field type / widget / formatters does it add?",
+      "must_contain_any": ["social_links", "font_awesome", "network_name", "field type"],
+      "must_not_contain": [],
+      "expected_output": "It provides a multi-value field type 'social_links' (each item stores a platform id 'social' and a profile 'link'), a 'social_links' widget, and two formatters: 'font_awesome' (icons, the default) and 'network_name' (the platform name as a text link).",
+      "difficulty": "easy"
+    },
+    {
+      "id": "social_link_field-add-platform",
+      "mode": "recipe",
+      "prompt": "How do I add a new social network (e.g. Mastodon) to Drupal's social_link_field so it becomes selectable in the widget?",
+      "must_contain_any": ["SocialLinkFieldPlatform", "Plugin/SocialLinkField/Platform", "annotation", "plugin", "PlatformBase"],
+      "must_not_contain": [],
+      "expected_output": "Create a plugin class in your module at src/Plugin/SocialLinkField/Platform/ that extends Drupal\\social_link_field\\PlatformBase and carries a @SocialLinkFieldPlatform annotation (id, name, icon, iconSquare, iconSet, urlPrefix). Clear caches and the platform becomes selectable.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "social_link_field-attached-fa",
+      "mode": "recipe",
+      "prompt": "The social_link_field module has a global setting called 'attached_fa'. What does it do and where is it configured?",
+      "must_contain_any": ["Font Awesome", "FontAwesome", "attach", "theme", "social_link_field.settings"],
+      "must_not_contain": [],
+      "expected_output": "attached_fa (in config social_link_field.settings, form at /admin/config/services/social-link-field, permission 'configure social link field') controls whether the module attaches its own external Font Awesome library. Turn it off if your theme already loads Font Awesome to avoid loading it twice.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "social_link_field-fa-setting",
+      "mode": "introspection",
+      "prompt": "On this Drupal site, inspect the social_link_field global configuration and tell me whether the module is currently attaching its own Font Awesome library (the attached_fa setting).",
+      "must_contain_any": ["false", "not", "disabled", "off", "0"],
+      "must_not_contain": [],
+      "expected_output": "attached_fa is false — the module is NOT attaching its Font Awesome library (drush cget social_link_field.settings attached_fa returns false).",
+      "setup": "agent-module-documentation/evaluation/verify/social_link_field-fa-setting-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/social_link_field-fa-setting-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "social_link_field-known-field",
+      "mode": "introspection",
+      "prompt": "The Article content type on this Drupal site has a field that uses the social_link_field 'Social Links' field type. Inspect the site and give the machine name of that field.",
+      "must_contain_any": ["field_slf_known"],
+      "must_not_contain": [],
+      "expected_output": "field_slf_known — a field on node.article of type social_links.",
+      "setup": "agent-module-documentation/evaluation/verify/social_link_field-known-field-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/social_link_field-known-field-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "social_link_field-add-field",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, add a Social Links field (the social_link_field field type) named field_slf_task to the Article content type, allowing unlimited values. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/social_link_field-add-field-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/social_link_field-add-field-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/social_link_field-add-field-cleanup.sh",
+      "expected_output": "Create a FieldStorageConfig (entity_type node, field_name field_slf_task, type social_links) and a FieldConfig on bundle article, then save. Verify checks a non-deleted node.article field_slf_task of type social_links exists."
+    },
+    {
+      "id": "social_link_field-widget-lock",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site the Article content type has a Social Links field field_slf_widget using the 'Social links' widget on the default form display. Configure that widget so editors can no longer reorder the social links (enable the widget's 'Forbidden to change weight' / disable_weight option). Apply the change to the live form display.",
+      "reset": "agent-module-documentation/evaluation/verify/social_link_field-widget-lock-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/social_link_field-widget-lock-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/social_link_field-widget-lock-cleanup.sh",
+      "expected_output": "In core.entity_form_display.node.article.default the field_slf_widget component (widget social_links) must have settings.disable_weight = true."
+    }
+  ]
+}

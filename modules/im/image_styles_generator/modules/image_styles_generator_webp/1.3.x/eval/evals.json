@@ -1,0 +1,75 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "image_styles_generator_webp",
+  "version": "1.3.x",
+  "note": "Trivial glue submodule of image_styles_generator. No command/route/config/permission/plugin of its own. A ServiceProvider (ImageStylesGeneratorWebpServiceProvider::alter) rewrites the parent's image_styles_generator.derivative_warmer service to class DerivativeWebpWarmer and injects @webp.webp; that subclass calls the parent to build a derivative then Webp::createWebpCopy() to write a .webp copy. Introspection reads the live service class; execution warms a real file and checks the .webp lands on disk. Requires the contrib webp module.",
+  "evals": [
+    {
+      "id": "image_styles_generator_webp-what",
+      "mode": "recipe",
+      "prompt": "What does the image_styles_generator_webp submodule add on top of image_styles_generator, and does it introduce its own Drush command?",
+      "must_contain_any": [
+        "webp",
+        "WebP",
+        "no new command",
+        "same command",
+        "image:derive:multiple"
+      ],
+      "must_not_contain": [],
+      "expected_output": "It makes the parent's warm command (drush image:derive:multiple) also write a .webp copy of each derivative. It adds no new command; it overrides the parent's derivative_warmer service so existing invocations produce WebP copies.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "image_styles_generator_webp-mechanism",
+      "mode": "recipe",
+      "prompt": "Technically, how does image_styles_generator_webp change the parent module's behaviour? Name the mechanism and the class involved.",
+      "must_contain_any": [
+        "ServiceProvider",
+        "service provider",
+        "alter",
+        "DerivativeWebpWarmer",
+        "derivative_warmer"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Its ImageStylesGeneratorWebpServiceProvider::alter() rewrites the image_styles_generator.derivative_warmer service definition to class DerivativeWebpWarmer and adds the @webp.webp argument; the subclass calls the parent then Webp::createWebpCopy().",
+      "difficulty": "easy"
+    },
+    {
+      "id": "image_styles_generator_webp-deps",
+      "mode": "recipe",
+      "prompt": "Which modules must be installed for image_styles_generator_webp to work?",
+      "must_contain_any": [
+        "webp",
+        "image_styles_generator"
+      ],
+      "must_not_contain": [],
+      "expected_output": "It depends on both the parent image_styles_generator module and the contrib webp module (which provides the webp.webp service). Both are hard dependencies in its info.yml.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "image_styles_generator_webp-service-class",
+      "mode": "introspection",
+      "prompt": "On this running Drupal site, inspect the container and state which PHP class the image_styles_generator.derivative_warmer service currently resolves to.",
+      "must_contain_any": [
+        "DerivativeWebpWarmer"
+      ],
+      "must_not_contain": [],
+      "expected_output": "It resolves to Drupal\\image_styles_generator_webp\\DerivativeWebpWarmer, because the enabled submodule's service provider altered the definition. Check with drush php:eval 'print get_class(\\Drupal::service(\"image_styles_generator.derivative_warmer\"));'.",
+      "setup": "agent-module-documentation/evaluation/verify/image_styles_generator_webp-service-class-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/image_styles_generator_webp-service-class-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "image_styles_generator_webp-warm",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "This site has the image_styles_generator_webp submodule enabled, an image style isg_webp, and a published image public://isg_wsrc.png with no derivative generated yet. Warm the image-style derivatives so that a WebP copy of the isg_webp derivative of that file is written to disk.",
+      "reset": "agent-module-documentation/evaluation/verify/image_styles_generator_webp-warm-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/image_styles_generator_webp-warm-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/image_styles_generator_webp-warm-cleanup.sh",
+      "expected_output": "Run `drush image:derive:multiple` (optionally --image-styles=isg_webp). With the submodule enabled the warmer writes both the derivative and public://styles/isg_webp/public/isg_wsrc.webp."
+    }
+  ]
+}

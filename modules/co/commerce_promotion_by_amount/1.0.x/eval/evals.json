@@ -1,0 +1,82 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "commerce_promotion_by_amount",
+  "version": "1.0.x",
+  "note": "Commerce Promotion by amount adds two CommercePromotionOffer plugins - order_item_fixed_amount_off_by_amount and order_item_percentage_off_by_amount - that discount only the single cheapest or most expensive matching order item. There is no settings form, config schema, permissions or Drush; configuration lives entirely on a commerce_promotion entity's offer field (target_plugin_id + target_plugin_configuration with keys type=cheapest|most_expensive, compare=product|order_item, scope=order_item|product). Medium cases create a known promotion so the agent reads the offer config back; hard cases require the agent to build a promotion with the right offer plugin and type, verified against the live commerce_promotion entity. All cases are grounded in the real plugin ids and config keys.",
+  "evals": [
+    {
+      "id": "cpba-plugin-ids",
+      "mode": "recipe",
+      "prompt": "In the Drupal Commerce module commerce_promotion_by_amount, what are the machine ids of the two promotion offer plugins it provides, and what do they discount?",
+      "must_contain_any": ["order_item_fixed_amount_off_by_amount", "order_item_percentage_off_by_amount"],
+      "must_not_contain": [],
+      "expected_output": "It provides two CommercePromotionOffer plugins: order_item_fixed_amount_off_by_amount (fixed amount off) and order_item_percentage_off_by_amount (percentage off). Each discounts only the single cheapest or most expensive matching order item in the order.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "cpba-config-keys",
+      "mode": "recipe",
+      "prompt": "When configuring a commerce_promotion_by_amount offer, which settings decide WHICH item gets discounted and HOW MUCH of it? Name the configuration keys and their possible values.",
+      "must_contain_any": ["cheapest", "most_expensive", "most expensive"],
+      "must_not_contain": [],
+      "expected_output": "type = cheapest | most_expensive (which single item), compare = product | order_item (rank by unit price or order-item total), scope = order_item | product (discount all units of the item or only one unit).",
+      "difficulty": "easy"
+    },
+    {
+      "id": "cpba-single-item",
+      "mode": "recipe",
+      "prompt": "If a cart has several matching products, how many of them does a commerce_promotion_by_amount offer actually discount, and how is the target chosen?",
+      "must_contain_any": ["one", "single", "cheapest", "most expensive"],
+      "must_not_contain": [],
+      "expected_output": "Only one order item is discounted: the offer sorts all items by price and applies the discount to the first item (cheapest or most expensive per the type setting) that also passes the promotion's offer conditions; the adjustment is clamped so the item total never goes below zero.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "cpba-known-type",
+      "mode": "introspection",
+      "prompt": "This site has a Commerce promotion named 'cpba_known' that uses a commerce_promotion_by_amount offer. Inspect the promotion entity and state which offer plugin it uses and whether it targets the cheapest or the most expensive item.",
+      "must_contain_any": ["most_expensive", "most expensive"],
+      "must_not_contain": [],
+      "expected_output": "cpba_known uses the order_item_percentage_off_by_amount offer with target_plugin_configuration.type = most_expensive, so it discounts the most expensive matching item.",
+      "setup": "agent-module-documentation/evaluation/verify/commerce_promotion_by_amount-known-type-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/commerce_promotion_by_amount-known-type-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "cpba-known-plugin",
+      "mode": "introspection",
+      "prompt": "There is a Commerce promotion named 'cpba_plugin' on this site. Inspect its offer and report the exact offer plugin id it uses and the value of its 'scope' setting.",
+      "must_contain_any": ["order_item_fixed_amount_off_by_amount"],
+      "must_not_contain": [],
+      "expected_output": "cpba_plugin uses order_item_fixed_amount_off_by_amount with scope = product (discount only one unit of the chosen item).",
+      "setup": "agent-module-documentation/evaluation/verify/commerce_promotion_by_amount-known-plugin-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/commerce_promotion_by_amount-known-plugin-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "cpba-build-cheapest",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal Commerce site, create an enabled commerce_promotion named exactly 'cpba_task' that uses the commerce_promotion_by_amount percentage offer to take 50% off the CHEAPEST matching product in the order. Use order type 'default' and apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/commerce_promotion_by_amount-build-cheapest-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/commerce_promotion_by_amount-build-cheapest-verify.sh",
+      "expected_output": "A commerce_promotion named cpba_task whose offer target_plugin_id is order_item_percentage_off_by_amount with target_plugin_configuration.type = cheapest (percentage 0.5).",
+      "must_contain_any": [],
+      "must_not_contain": []
+    },
+    {
+      "id": "cpba-build-fixed",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal Commerce site, create an enabled commerce_promotion named exactly 'cpba_fixed' that uses the commerce_promotion_by_amount fixed-amount offer to take a flat amount off the MOST EXPENSIVE matching product in the order. Use order type 'default' and apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/commerce_promotion_by_amount-build-fixed-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/commerce_promotion_by_amount-build-fixed-verify.sh",
+      "expected_output": "A commerce_promotion named cpba_fixed whose offer target_plugin_id is order_item_fixed_amount_off_by_amount with target_plugin_configuration.type = most_expensive.",
+      "must_contain_any": [],
+      "must_not_contain": []
+    }
+  ]
+}

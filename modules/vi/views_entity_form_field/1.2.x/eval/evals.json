@@ -1,0 +1,98 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "views_entity_form_field",
+  "version": "1.2.x",
+  "note": "Views Entity Form Field has no settings form, no permissions, no services and no plugin types. hook_views_data_alter() registers one extra views field per form-configurable entity field, id 'form_field_<field_name>', titled 'Form field: <label>', on the entity's base table (or its data table when translatable - node_field_data for nodes). They are all served by the single views field plugin @ViewsField(\"entity_form_field\") -> EntityFormField, whose per-field options live under options.plugin: type (widget plugin id), settings, third_party_settings, hide_title (default TRUE), hide_description (default TRUE) and fallback_view_mode (default FALSE). Config schema: views.field.entity_form_field. Medium cases read those real option values back off live views; hard cases require adding a correctly-shaped entity_form_field column to a live view, verified against views.view.* config.",
+  "evals": [
+    {
+      "id": "views_entity_form_field-how-to-add",
+      "mode": "recipe",
+      "prompt": "I want a Drupal 11 view that lists nodes in a table where editors can change a field value directly in the table and save all rows at once. The views_entity_form_field module is installed. How do I add such an editable column in the Views UI, and what are those field options called in the list?",
+      "must_contain_any": [
+        "Form field:",
+        "form_field_",
+        "entity_form_field"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Add a field to the view and look for the entries prefixed 'Form field: ' (e.g. 'Form field: Title'). They are registered by hook_views_data_alter() as form_field_<field_name> on the entity's base/data table and handled by the entity_form_field views field plugin. Use a Table format so the view renders a views form; the view then gets a Save button.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "views_entity_form_field-plugin-options",
+      "mode": "recipe",
+      "prompt": "For a 'Form field:' column added by the Drupal views_entity_form_field module, which configuration options does the field handler expose besides the widget type - specifically for hiding the widget's label/description and for showing something read-only to users who cannot edit the field?",
+      "must_contain_any": [
+        "hide_title",
+        "hide_description",
+        "fallback_view_mode",
+        "Fallback view mode"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Under options.plugin the handler stores type (widget plugin id), settings, third_party_settings, hide_title (default TRUE), hide_description (default TRUE) and fallback_view_mode (default FALSE/'0'). hide_title/hide_description just add the CSS classes views-entity-form-field-field-label-hidden / -description-hidden; fallback_view_mode renders the field read-only in the chosen view mode when the user has no edit access, otherwise the field is hidden entirely.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "views_entity_form_field-which-table",
+      "mode": "recipe",
+      "prompt": "When adding a views_entity_form_field 'Form field' column to a Drupal view of nodes programmatically, which views table must the field be attached to, and how does the module decide that table for an entity type? What is the views field plugin id?",
+      "must_contain_any": [
+        "node_field_data",
+        "getDataTable",
+        "data table",
+        "entity_form_field"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The plugin id is entity_form_field. hook_views_data_alter() attaches the fields to $entity_type->getBaseTable(), unless the entity type is translatable, in which case it uses getDataTable() (falling back to <entity_type_id>_field_data). For nodes that means node_field_data, not node. views_entity_form_field_update_8001() exists to repair views that stored the wrong table.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "views_entity_form_field-known-widget",
+      "mode": "introspection",
+      "prompt": "This Drupal site has a view called 'veff_demo' that contains one editable form-field column provided by the views_entity_form_field module. Inspect the live view configuration and tell me which field widget plugin that column is configured to use.",
+      "must_contain_any": [
+        "string_textfield"
+      ],
+      "must_not_contain": [],
+      "expected_output": "string_textfield. In views.view.veff_demo the field form_field_title (plugin_id entity_form_field, table node_field_data) has plugin.type: string_textfield with settings size 25.",
+      "setup": "agent-module-documentation/evaluation/verify/views_entity_form_field-known-widget-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/views_entity_form_field-known-widget-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "views_entity_form_field-fallback-mode",
+      "mode": "introspection",
+      "prompt": "The view 'veff_fallback' on this Drupal site has an editable form-field column added by views_entity_form_field. It is configured to render something read-only for users who are not allowed to edit that field. Inspect the running site and tell me which view mode is used for that read-only fallback.",
+      "must_contain_any": [
+        "teaser"
+      ],
+      "must_not_contain": [],
+      "expected_output": "teaser. In views.view.veff_fallback the form_field_body column (plugin_id entity_form_field, widget text_textarea) has plugin.fallback_view_mode: teaser (and plugin.hide_title is FALSE).",
+      "setup": "agent-module-documentation/evaluation/verify/views_entity_form_field-fallback-mode-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/views_entity_form_field-fallback-mode-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "views_entity_form_field-add-title-widget",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "This Drupal site has a view 'veff_task' listing nodes in a table. Using the views_entity_form_field module, add an editable column for the node Title field to that view, configured to use the string_textfield widget. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/views_entity_form_field-add-title-widget-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/views_entity_form_field-add-title-widget-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/views_entity_form_field-add-title-widget-cleanup.sh",
+      "expected_output": "views.view.veff_task gains a field entry with id/field 'form_field_title', plugin_id 'entity_form_field', table 'node_field_data', entity_type 'node' and plugin.type 'string_textfield' - added via the Views UI ('Form field: Title') or by editing the view config."
+    },
+    {
+      "id": "views_entity_form_field-status-checkbox",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "site-builder-layman",
+      "prompt": "On my Drupal site there is a table listing of content called 'veff_publish'. I want my editors to be able to tick or untick a Published checkbox for each row right there in the table, and for anyone who is not allowed to change it, that column should instead just show the item's teaser. Please set this up on the live site - the views_entity_form_field module is already installed.",
+      "reset": "agent-module-documentation/evaluation/verify/views_entity_form_field-status-checkbox-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/views_entity_form_field-status-checkbox-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/views_entity_form_field-status-checkbox-cleanup.sh",
+      "expected_output": "views.view.veff_publish gains a field 'form_field_status' with plugin_id 'entity_form_field', plugin.type 'boolean_checkbox' and plugin.fallback_view_mode 'teaser' (the 'Form field: Published' option in the Views UI, widget 'Single on/off checkbox', Fallback view mode = Teaser)."
+    }
+  ]
+}

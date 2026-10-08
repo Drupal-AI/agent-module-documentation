@@ -1,0 +1,80 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "message_subscribe",
+  "version": "2.1.x",
+  "note": "Message Subscribe is a subscription API over Flag + Message + Message Notify. Config message_subscribe.settings: use_queue(false), notify_own_actions(false), flag_prefix('subscribe'), debug_mode(false), default_notifiers([email]), range(100). A flag is a subscription flag iff its id starts with flag_prefix+'_'; ships optional disabled flags subscribe_node/subscribe_term/subscribe_user. Service message_subscribe.subscribers (Subscribers): sendMessage(), getSubscribers(), getBasicContext(), getFlags(); DeliveryCandidate value object; queue worker plugin 'message_subscribe'. Hooks: hook_message_subscribe_get_subscribers(_alter), hook_message_subscribe_message_alter. Medium cases read back known config; hard cases set config or enable the subscribe_node flag and verify live state. subscribe_node/term/user flags exist on this site (disabled by default).",
+  "evals": [
+    {
+      "id": "message_subscribe-flag-convention",
+      "mode": "recipe",
+      "prompt": "In the Drupal Message Subscribe module, how does it decide which Flag flags represent subscriptions, and what are the default subscription flags it ships?",
+      "must_contain_any": ["subscribe_", "flag_prefix", "subscribe_node", "prefix"],
+      "must_not_contain": [],
+      "expected_output": "Any Flag whose machine name starts with the configured flag_prefix plus '_' (default 'subscribe_') is treated as a subscription flag (Subscribers::getFlags()). It ships optional, disabled-by-default flags subscribe_node, subscribe_term, subscribe_user (and subscribe_og when Organic Groups is present).",
+      "difficulty": "easy"
+    },
+    {
+      "id": "message_subscribe-send-api",
+      "mode": "recipe",
+      "prompt": "I want my custom module to notify subscribers when a node is published using Message Subscribe. Which service and method do I call, and what do I pass it?",
+      "must_contain_any": ["message_subscribe.subscribers", "sendMessage", "Subscribers"],
+      "must_not_contain": [],
+      "expected_output": "Build a Message entity, then call \\Drupal::service('message_subscribe.subscribers')->sendMessage($entity, $message). The service finds subscribers from the subscribe_* flaggings, filters them, and delivers a per-user notification via Message Notify (optionally queued).",
+      "difficulty": "easy"
+    },
+    {
+      "id": "message_subscribe-queue-setting",
+      "mode": "recipe",
+      "prompt": "Message Subscribe can send notifications immediately or defer them for scalability. Which setting makes it defer sending, and how are the deferred messages processed?",
+      "must_contain_any": ["use_queue", "queue", "cron"],
+      "must_not_contain": [],
+      "expected_output": "Enable the use_queue setting. sendMessage() then enqueues the send on the 'message_subscribe' queue instead of sending inline, and the message_subscribe queue worker drains it on cron (in batches of 'range' subscribers).",
+      "difficulty": "easy"
+    },
+    {
+      "id": "message_subscribe-range-live",
+      "mode": "introspection",
+      "prompt": "On this Drupal site, what is the maximum number of subscribers Message Subscribe fetches per batch? Inspect the live message_subscribe configuration and give the number.",
+      "must_contain_any": ["250"],
+      "must_not_contain": [],
+      "expected_output": "250. The live message_subscribe.settings config has range set to 250 (maximum subscribers per batch).",
+      "setup": "agent-module-documentation/evaluation/verify/message_subscribe-range-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/message_subscribe-range-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "message_subscribe-prefix-live",
+      "mode": "introspection",
+      "prompt": "On this Drupal site, which flag-name prefix does Message Subscribe currently use to identify subscription flags? Inspect the live message_subscribe configuration and give the exact prefix.",
+      "must_contain_any": ["follow"],
+      "must_not_contain": [],
+      "expected_output": "follow. The live message_subscribe.settings config has flag_prefix set to 'follow', so flags named follow_* are treated as subscription flags instead of the default subscribe_*.",
+      "setup": "agent-module-documentation/evaluation/verify/message_subscribe-prefix-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/message_subscribe-prefix-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "message_subscribe-configure-queue",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, configure Message Subscribe to process notifications through the queue instead of sending them inline, and cap each batch at 50 subscribers. Apply the change to the live message_subscribe settings.",
+      "reset": "agent-module-documentation/evaluation/verify/message_subscribe-queue-batch-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/message_subscribe-queue-batch-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/message_subscribe-queue-batch-cleanup.sh",
+      "expected_output": "Set message_subscribe.settings use_queue to true and range to 50 (via /admin/config/message/message-subscribe or `drush config:set message_subscribe.settings use_queue 1` and `drush config:set message_subscribe.settings range 50`)."
+    },
+    {
+      "id": "message_subscribe-enable-content-flag",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "site-owner",
+      "prompt": "I want visitors to be able to subscribe to content on my Drupal site so they get notified about it. Message Subscribe is installed and it comes with a content-subscription flag, but nothing shows up. Please turn on the flag that lets people subscribe to content.",
+      "reset": "agent-module-documentation/evaluation/verify/message_subscribe-enable-node-flag-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/message_subscribe-enable-node-flag-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/message_subscribe-enable-node-flag-cleanup.sh",
+      "expected_output": "Enable the subscribe_node flag (Structure > Flags, or `drush php:eval` loading the 'subscribe_node' flag and calling ->enable()->save()). Once enabled, its id starts with the subscribe_ prefix so Message Subscribe treats it as a content subscription flag."
+    }
+  ]
+}

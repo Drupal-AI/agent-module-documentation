@@ -1,0 +1,58 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "smart_ip_ipinfodb_web_service",
+  "version": "5.0.x",
+  "note": "Smart IP data-source submodule using the IPInfoDB.com web service. Registers the Smart IP source id 'ipinfodb_web_service' via an event subscriber (SmartIpEventSubscriber extends the parent's SmartIpEventSubscriberBase; sourceId()/configName()). Active only when smart_ip.settings:data_source == 'ipinfodb_web_service'. Own settings live in smart_ip_ipinfodb_web_service.settings (version:int 2|3, default 3; api_key:string required). Lookups call IpinfodbWebService::V2_URL (http://api.ipinfodb.com/v2/ip_query.php) or V3_URL (http://api.ipinfodb.com/v3/ip-city) and need a registered API key, so medium/hard tiers are grounded in the source-selection + version CONFIG (smart_ip.settings + smart_ip_ipinfodb_web_service.settings), never live geolocation calls.",
+  "evals": [
+    {
+      "id": "smart_ip_ipinfodb_web_service-activate-recipe",
+      "mode": "recipe",
+      "prompt": "On a Drupal 11 site with the smart_ip_ipinfodb_web_service submodule enabled, which Smart IP config key and value make the IPInfoDB web service the active geolocation data source?",
+      "must_contain_any": ["smart_ip.settings", "data_source", "ipinfodb_web_service"],
+      "must_not_contain": [],
+      "expected_output": "Set smart_ip.settings:data_source to 'ipinfodb_web_service' (the source id this submodule contributes). e.g. drush config:set smart_ip.settings data_source ipinfodb_web_service -y.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "smart_ip_ipinfodb_web_service-settings-recipe",
+      "mode": "recipe",
+      "prompt": "What settings does the smart_ip_ipinfodb_web_service submodule store, in which config object, and what do the IPInfoDB API versions differ by?",
+      "must_contain_any": ["smart_ip_ipinfodb_web_service.settings", "api_key", "version", "region"],
+      "must_not_contain": [],
+      "expected_output": "It stores version (integer 2 or 3, default 3) and api_key (required) in the config object smart_ip_ipinfodb_web_service.settings. Version 2 (V2_URL .../v2/ip_query.php) returns a region code; version 3 (V3_URL .../v3/ip-city) removed the region code.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "smart_ip_ipinfodb_web_service-source-contract-recipe",
+      "mode": "recipe",
+      "prompt": "How does the smart_ip_ipinfodb_web_service submodule plug into Smart IP as a data source — what class does it extend and what identifies the source?",
+      "must_contain_any": ["SmartIpEventSubscriberBase", "SmartIpEventSubscriber", "event subscriber", "sourceId"],
+      "must_not_contain": [],
+      "expected_output": "It provides an event subscriber SmartIpEventSubscriber that extends the parent Drupal\\smart_ip\\SmartIpEventSubscriberBase (implements SmartIpDataSourceInterface). sourceId() returns 'ipinfodb_web_service' and configName() returns 'smart_ip_ipinfodb_web_service.settings'; processQuery() maps the IPInfoDB response onto the Smart IP location.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "smart_ip_ipinfodb_web_service-version-introspect",
+      "mode": "introspection",
+      "prompt": "This Drupal site has the IPInfoDB Smart IP data source configured with a specific API version. Inspect the live configuration and report which IPInfoDB API version it is set to.",
+      "must_contain_any": ["2", "version"],
+      "must_not_contain": [],
+      "expected_output": "It is set to version 2 (non-default; the shipped default is 3), stored at smart_ip_ipinfodb_web_service.settings:version (read it with drush config:get smart_ip_ipinfodb_web_service.settings version).",
+      "setup": "agent-module-documentation/evaluation/verify/smart_ip_ipinfodb_web_service-version-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/smart_ip_ipinfodb_web_service-version-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "smart_ip_ipinfodb_web_service-activate-execute",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, configure Smart IP to use the IPInfoDB web service (the smart_ip_ipinfodb_web_service submodule) as its active geolocation data source, and apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/smart_ip_ipinfodb_web_service-activate-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/smart_ip_ipinfodb_web_service-activate-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/smart_ip_ipinfodb_web_service-activate-cleanup.sh",
+      "expected_output": "Set smart_ip.settings:data_source to 'ipinfodb_web_service' (e.g. drush config:set smart_ip.settings data_source ipinfodb_web_service -y). In production you would also store an IPInfoDB api_key; the verify checks only the source selection."
+    }
+  ]
+}

@@ -1,0 +1,100 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "cacheflush_ui",
+  "version": "2.0.x",
+  "note": "cacheflush_ui is the admin UI for CacheFlush presets. Collection /admin/structure/cacheflush; add /admin/structure/cacheflush/add. Adds a boolean `menu` base field to the cacheflush entity (published preset with menu=1 shows under the Cacheflush admin menu). Ten own/any permissions (cacheflush administer/create new/clear own|any/view own|any/edit own|any/delete own|any) enforced by CacheflushEntityAccessControlHandler; base module separately has 'cacheflush clear cache'. Preset form groups the option catalog into vertical tabs via hook_cacheflush_ui_tabs. Medium cases inspect a menu-exposed preset (cacheflush.menu column) and a role's granted permission; hard cases expose a preset in the admin menu (menu=1) and grant a role 'cacheflush clear any', both verified against live entity/role state.",
+  "evals": [
+    {
+      "id": "cacheflush_ui-collection-route",
+      "mode": "recipe",
+      "prompt": "With cacheflush_ui enabled, where do I manage (list and add) CacheFlush presets in the admin UI?",
+      "must_contain_any": [
+        "/admin/structure/cacheflush",
+        "entity.cacheflush.collection",
+        "/admin/structure/cacheflush/add"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The preset collection is at /admin/structure/cacheflush (route entity.cacheflush.collection, permission 'cacheflush administer'); add a new preset at /admin/structure/cacheflush/add ('cacheflush create new').",
+      "difficulty": "easy"
+    },
+    {
+      "id": "cacheflush_ui-own-any-perms",
+      "mode": "recipe",
+      "prompt": "How does cacheflush_ui control who can clear or edit a CacheFlush preset? Describe its permission model.",
+      "must_contain_any": [
+        "clear own",
+        "clear any",
+        "own/any",
+        "cacheflush edit any",
+        "CacheflushEntityAccessControlHandler"
+      ],
+      "must_not_contain": [],
+      "expected_output": "It defines own/any permissions per operation: cacheflush clear own|any, view own|any, edit own|any, delete own|any, plus 'create new' and 'administer'. The access handler allows an op if the user has '<op> any', or has '<op> own' and owns the preset (its uid).",
+      "difficulty": "easy"
+    },
+    {
+      "id": "cacheflush_ui-menu-field",
+      "mode": "recipe",
+      "prompt": "In cacheflush_ui, how can a CacheFlush preset be made to appear as a clickable item under the Cacheflush admin menu?",
+      "must_contain_any": [
+        "menu",
+        "menu = 1",
+        "hook_menu_links_discovered_alter",
+        "Add menu"
+      ],
+      "must_not_contain": [],
+      "expected_output": "cacheflush_ui adds a boolean `menu` base field to the cacheflush entity. A published preset with menu=1 gets a menu link (built in hook_menu_links_discovered_alter) under cacheflush.presets pointing at the clear-by-id route. Toggle it with the Add menu / Remove menu actions or by setting the field.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "cacheflush_ui-menu-known",
+      "mode": "introspection",
+      "prompt": "On this site, one CacheFlush preset has been set to appear in the Cacheflush admin menu. Inspect the live cacheflush presets and give the title of the preset that is exposed in the admin menu.",
+      "must_contain_any": [
+        "cfu_menu"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The preset titled 'cfu_menu' has menu = 1 (and status = 1). Read via `drush sqlq \"SELECT title, status, menu FROM cacheflush\"`.",
+      "setup": "agent-module-documentation/evaluation/verify/cacheflush_ui-menu-known-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/cacheflush_ui-menu-known-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "cacheflush_ui-role-perm",
+      "mode": "introspection",
+      "prompt": "This site has a role named cfu_role that was granted a CacheFlush-related permission. Inspect the role and state which cacheflush permission it holds.",
+      "must_contain_any": [
+        "cacheflush clear any",
+        "clear any"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The role cfu_role has the 'cacheflush clear any' permission. Read via `drush role:list` / user.role.cfu_role config permissions, or Role::load('cfu_role')->getPermissions().",
+      "setup": "agent-module-documentation/evaluation/verify/cacheflush_ui-role-perm-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/cacheflush_ui-role-perm-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "cacheflush_ui-expose-menu",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this site there is a published CacheFlush preset named 'cfu_task' that is not currently shown in the admin menu. Using cacheflush_ui, make this preset appear as an item under the Cacheflush admin menu, and apply the change live.",
+      "reset": "agent-module-documentation/evaluation/verify/cacheflush_ui-expose-menu-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/cacheflush_ui-expose-menu-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/cacheflush_ui-expose-menu-cleanup.sh",
+      "expected_output": "The cfu_task preset's `menu` field is set to 1 (it stays published), e.g. via the Add menu action or by setting the field; the cacheflush table shows title='cfu_task', status=1, menu=1."
+    },
+    {
+      "id": "cacheflush_ui-grant-clear-any",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "site-owner",
+      "prompt": "I have a role called cfu_grant_role. I want people in that role to be able to run (clear) ANY CacheFlush preset. Please give that role the right CacheFlush permission on this site.",
+      "reset": "agent-module-documentation/evaluation/verify/cacheflush_ui-grant-perm-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/cacheflush_ui-grant-perm-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/cacheflush_ui-grant-perm-cleanup.sh",
+      "expected_output": "The role cfu_grant_role is granted the 'cacheflush clear any' permission (Role::grantPermission or user.role.cfu_grant_role config), so Role::load('cfu_grant_role')->hasPermission('cacheflush clear any') is TRUE."
+    }
+  ]
+}

@@ -1,0 +1,58 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "taxonomy_term_title_length",
+  "version": "2.1.x",
+  "note": "taxonomy_term_title_length is the title_length submodule that widens the taxonomy term 'name' column beyond core's 255 (default 500). Concrete subclass Drupal\\taxonomy_term_title_length\\TaxonomyTermTitleLength extends EntityTitleLength (entity 'taxonomy_term', field 'name'); service id taxonomy_term_title_length.taxonomy_term. getLength() = Settings::get('taxonomy_term_title_length_chars') ?: 500; changeLength() runs Schema::changeField() on the term data table (taxonomy_term_field_data.name, and the revision table when revisionable) and re-installs the name base-field storage definition. A hook_entity_base_field_info_alter() sets the runtime name max_length to getLength(). No UI/config object/permissions. Tiers read/verify the REAL taxonomy_term_field_data.name column width (the base-field max_length mirrors getLength() via the hook, so the schema column is the source of truth). This is a trivial glue submodule, so it uses 3 easy / 1 medium / 1 hard.",
+  "evals": [
+    {
+      "id": "taxonomy_term_title_length-default-recipe",
+      "mode": "recipe",
+      "prompt": "After enabling the Drupal taxonomy_term_title_length module, how long can taxonomy term names be by default, and how do I change that limit?",
+      "must_contain_any": ["500", "taxonomy_term_title_length_chars", "settings.php", "title_length:update"],
+      "must_not_contain": [],
+      "expected_output": "Default is 500 characters (EntityTitleLengthInterface::DEFAULT_LENGTH). Override it with $settings['taxonomy_term_title_length_chars'] = <n>; in settings.php, then re-apply with `drush title_length:update taxonomy_term`.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "taxonomy_term_title_length-mechanism-recipe",
+      "mode": "recipe",
+      "prompt": "How does taxonomy_term_title_length make taxonomy term names longer — which entity, field, database column and service/hook are involved?",
+      "must_contain_any": ["taxonomy_term_field_data", "name", "changeField", "changeLength", "taxonomy_term_title_length.taxonomy_term"],
+      "must_not_contain": [],
+      "expected_output": "It targets entity taxonomy_term, field 'name'. On install the taxonomy_term_title_length.taxonomy_term service's changeLength() runs Schema::changeField() to widen the term name column (taxonomy_term_field_data.name, plus the revision table) and re-installs the name base-field storage definition; a hook_entity_base_field_info_alter() sets the runtime name max_length to getLength().",
+      "difficulty": "easy"
+    },
+    {
+      "id": "taxonomy_term_title_length-uninstall-recipe",
+      "mode": "recipe",
+      "prompt": "What happens to taxonomy term names if I uninstall taxonomy_term_title_length, and when is the uninstall blocked?",
+      "must_contain_any": ["255", "ModuleUninstallValidatorException", "shrink", "longer than 255"],
+      "must_not_contain": [],
+      "expected_output": "Uninstall shrinks the term name column back to 255 (ORIGINAL_LENGTH). It first calls checkIfExistEntitiesWithLongTitles() and throws ModuleUninstallValidatorException if any taxonomy term or term revision already has a name longer than 255 (shorten or delete those first).",
+      "difficulty": "easy"
+    },
+    {
+      "id": "taxonomy_term_title_length-width-introspect",
+      "mode": "introspection",
+      "prompt": "On this Drupal site the maximum taxonomy term name length has been changed from the module default. Inspect the live database schema and report the current maximum length of the taxonomy term name column.",
+      "must_contain_any": ["777"],
+      "must_not_contain": [],
+      "expected_output": "The taxonomy_term_field_data.name column is varchar(777). Read information_schema.COLUMNS for TABLE_NAME='taxonomy_term_field_data', COLUMN_NAME='name' (the base-field max_length also reports 777 via the runtime hook, but the schema column is the source of truth).",
+      "setup": "agent-module-documentation/evaluation/verify/taxonomy_term_title_length-width-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/taxonomy_term_title_length-width-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "taxonomy_term_title_length-widen-execute",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, taxonomy term names are currently capped at 255 characters. Using the taxonomy_term_title_length module, make term names able to store up to 620 characters and apply the change to the database.",
+      "reset": "agent-module-documentation/evaluation/verify/taxonomy_term_title_length-widen-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/taxonomy_term_title_length-widen-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/taxonomy_term_title_length-widen-cleanup.sh",
+      "expected_output": "Widen the term name column to 620, e.g. \\Drupal::service('taxonomy_term_title_length.taxonomy_term')->changeLength(620); or $settings['taxonomy_term_title_length_chars']=620 in settings.php then `drush title_length:update taxonomy_term`. Verify checks taxonomy_term_field_data.name CHARACTER_MAXIMUM_LENGTH === 620."
+    }
+  ]
+}

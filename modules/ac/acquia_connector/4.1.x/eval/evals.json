@@ -1,0 +1,65 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "acquia_connector",
+  "version": "4.1.x",
+  "note": "Acquia Connector connects a Drupal site to an Acquia Cloud subscription, exposes a status endpoint, and sends anonymized telemetry. Cases are `recipe` (response-graded): they probe documented facts (the Subscription service, credential resolution, telemetry guardrails, the settings route, status endpoint) an agent would otherwise read source to answer. No site mutation.",
+  "evals": [
+    {
+      "id": "acquia-connector-subscription-service",
+      "mode": "recipe",
+      "prompt": "On a Drupal 11 site with Acquia Connector, which service tells me programmatically whether the site has an active Acquia subscription, and which method do I call?",
+      "must_contain_any": ["acquia_connector.subscription", "isActive"],
+      "must_not_contain": [],
+      "expected_output": "Use the acquia_connector.subscription service (Drupal\\acquia_connector\\Subscription); call isActive() (or getSubscription() for the raw data)."
+    },
+    {
+      "id": "acquia-connector-credentials-source",
+      "mode": "recipe",
+      "prompt": "Where does Acquia Connector get the subscription credentials (identifier, secret key, application UUID)? They are not in the settings config object.",
+      "must_contain_any": ["GET_SETTINGS", "environment", "settings.php", "state", "event subscriber", "FromAcquiaCloud"],
+      "must_not_contain": [],
+      "expected_output": "They are resolved at runtime by event subscribers on AcquiaConnectorEvents::GET_SETTINGS, reading from Acquia hosting env vars (FromAcquiaCloud), settings.php (FromCoreSettings), or Drupal state (FromCoreState), producing a Settings object."
+    },
+    {
+      "id": "acquia-connector-settings-route",
+      "mode": "recipe",
+      "prompt": "What is the config route name and admin path for the Acquia Connector settings/setup UI on a Drupal site?",
+      "must_contain_any": ["acquia_connector.settings", "/admin/config/services/acquia-connector"],
+      "must_not_contain": [],
+      "expected_output": "Route acquia_connector.settings at /admin/config/services/acquia-connector, gated by 'administer site configuration'."
+    },
+    {
+      "id": "acquia-connector-telemetry-conditions",
+      "mode": "recipe",
+      "prompt": "Under what conditions does Acquia Connector actually send its anonymized telemetry data, and what identifies the site in that data?",
+      "must_contain_any": ["production", "AH_SITE_ENVIRONMENT", "24 hours", "86400", "hashed", "hash"],
+      "must_not_contain": [],
+      "expected_output": "Only from a detected Acquia production environment (AH_SITE_ENVIRONMENT prod/*live), at most once per 24 hours per event, and only when the payload changed; the site is identified by a hashed site UUID (no PII)."
+    },
+    {
+      "id": "acquia-connector-status-endpoint",
+      "mode": "recipe",
+      "prompt": "Acquia Connector exposes a JSON endpoint used by Acquia uptime monitoring. What is its path and how is access validated?",
+      "must_contain_any": ["/system/acquia-connector-status", "nonce", "sha1"],
+      "must_not_contain": [],
+      "expected_output": "StatusController serves JSON at /system/acquia-connector-status; access requires a nonce and a key equal to sha1(\"{application_uuid}:{nonce}\")."
+    },
+    {
+      "id": "acquia-connector-toolbar-permission",
+      "mode": "recipe",
+      "prompt": "Which permission does Acquia Connector define, and which core permission gates connecting/configuring the subscription?",
+      "must_contain_any": ["view acquia connector toolbar", "administer site configuration"],
+      "must_not_contain": [],
+      "expected_output": "It defines 'view acquia connector toolbar' (shows the toolbar item); the setup/settings routes are gated by the core 'administer site configuration' permission."
+    },
+    {
+      "id": "acquia-connector-drush",
+      "mode": "recipe",
+      "prompt": "What Drush integration does Acquia Connector provide on a Drupal site?",
+      "must_contain_any": ["refresh", "sql:sanitize", "sql sanitize", "RefreshSubscription", "SqlSanitize"],
+      "must_not_contain": [],
+      "expected_output": "It registers Drush commands to refresh the subscription (RefreshSubscription) and to sanitize Acquia state on sql:sanitize (SqlSanitizeCommands)."
+    }
+  ]
+}

@@ -1,0 +1,98 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "search_exclude",
+  "version": "3.0.x",
+  "note": "Search Exclude ships exactly one core SearchPlugin, id 'search_exclude_node_search' (label 'Content (Exclude)'), extending Drupal\\node\\Plugin\\Search\\NodeSearch. It has no config object, no permissions, no Drush commands, no services and no config schema. Its only persistent state is the plugin configuration key 'excluded_bundles' on a core search.page.* config entity, e.g. search.page.<id>:configuration.excluded_bundles (a bundle => bundle map). configure route is entity.search_page.collection (/admin/config/search/pages). The plugin overrides updateIndex() to add `n.type NOT IN (:excluded_bundles)`, indexStatus() to report against the reduced total, and searchFormAlter() to drop excluded types from the advanced search form; search_exclude.module adds node/comment hooks that call SearchIndex::markForReindex('search_exclude_node_search', $nid) only for non-excluded types. All medium/hard cases are grounded in real search.page config entities and search.settings:default_page.",
+  "evals": [
+    {
+      "id": "search_exclude-plugin-id",
+      "mode": "recipe",
+      "prompt": "In the Drupal contrib module search_exclude, what is the machine id and human label of the search plugin it provides, and which core class does it extend?",
+      "must_contain_any": [
+        "search_exclude_node_search",
+        "Content (Exclude)",
+        "NodeSearch"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The plugin is @SearchPlugin(id = \"search_exclude_node_search\", title = @Translation(\"Content (Exclude)\")) in Drupal\\search_exclude\\Plugin\\Search\\SearchExcludeNodeSearch, which extends Drupal\\node\\Plugin\\Search\\NodeSearch.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "search_exclude-how-to-use",
+      "mode": "recipe",
+      "prompt": "I enabled search_exclude on a Drupal 11 site but nothing changed and there is no settings page for it. What are the steps to actually exclude a content type from core search, and where is the exclusion list stored in configuration?",
+      "must_contain_any": [
+        "search page",
+        "/admin/config/search/pages",
+        "excluded_bundles",
+        "search.page"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Go to /admin/config/search/pages (the module's configure route is entity.search_page.collection), add a new search page of type 'Content (Exclude)', tick the content types under 'Exclude content types', save, then disable the default Content search page and make the new page the default, and re-index. The list is stored on the search page config entity: search.page.<id>:configuration.excluded_bundles, a bundle => bundle map.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "search_exclude-index-effect",
+      "mode": "recipe",
+      "prompt": "How does the Drupal search_exclude module actually keep an excluded content type out of core's search index? Which method does it override and what does it add to the indexing query? Does excluding a type remove rows that were already indexed?",
+      "must_contain_any": [
+        "updateIndex",
+        "NOT IN",
+        "re-index",
+        "reindex"
+      ],
+      "must_not_contain": [],
+      "expected_output": "It overrides NodeSearch::updateIndex() and adds a `n.type NOT IN (:excluded_bundles)` condition to the cron indexing query (it also overrides indexStatus() so progress is counted against the reduced total, and searchFormAlter() to hide excluded types in the advanced search form). Rows already present in search_dataset for that plugin are not deleted, so you must re-index (drush search:index / 'Re-index site') after changing the exclusion list.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "search_exclude-known-exclusions",
+      "mode": "introspection",
+      "prompt": "This Drupal site has search_exclude enabled and a search page with machine name se_known. Inspect the live configuration and tell me which content type(s) that search page keeps out of the search index.",
+      "must_contain_any": [
+        "se_known_type"
+      ],
+      "must_not_contain": [],
+      "expected_output": "se_known excludes the content type se_known_type: search.page.se_known has plugin search_exclude_node_search and configuration.excluded_bundles = { se_known_type: se_known_type }. Read it with: drush cget search.page.se_known",
+      "setup": "agent-module-documentation/evaluation/verify/search_exclude-known-exclusions-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/search_exclude-known-exclusions-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "search_exclude-which-page",
+      "mode": "introspection",
+      "prompt": "This Drupal site has two search pages, se_alpha and se_beta, and both were created with the search_exclude module. Only one of them actually has any content type excluded. Inspect the running site and tell me which one it is.",
+      "must_contain_any": [
+        "se_alpha"
+      ],
+      "must_not_contain": [],
+      "expected_output": "se_alpha is the one with an exclusion: search.page.se_alpha has configuration.excluded_bundles = { se_beta_type: se_beta_type } while search.page.se_beta has an empty excluded_bundles (so it behaves like core NodeSearch).",
+      "setup": "agent-module-documentation/evaluation/verify/search_exclude-which-page-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/search_exclude-which-page-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "search_exclude-create-page",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site the search_exclude module is enabled and there is a content type with machine name se_task_type. Using search_exclude, create an enabled search page with machine name se_task, label 'SE Task', path se-task, that keeps se_task_type out of the core search index. Apply it to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/search_exclude-create-page-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/search_exclude-create-page-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/search_exclude-create-page-cleanup.sh",
+      "expected_output": "Create a search.page config entity: SearchPage::create(['id' => 'se_task', 'label' => 'SE Task', 'path' => 'se-task', 'plugin' => 'search_exclude_node_search', 'status' => TRUE, 'configuration' => ['excluded_bundles' => ['se_task_type' => 'se_task_type'], 'rankings' => []]])->save(); or do the same at /admin/config/search/pages by adding a 'Content (Exclude)' page and ticking SE Task Type."
+    },
+    {
+      "id": "search_exclude-make-default",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "site-owner",
+      "prompt": "On this Drupal site there is already a search page called se_swap that was built with the search_exclude module, but it is not excluding anything and the site still searches with the standard content search. Make se_swap keep the se_swap_type content type out of search results, make it the search page the site uses by default, and switch the old standard Content search page off. Apply the changes to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/search_exclude-make-default-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/search_exclude-make-default-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/search_exclude-make-default-cleanup.sh",
+      "expected_output": "Set search.page.se_swap:configuration.excluded_bundles to { se_swap_type: se_swap_type }, disable the core search page node_search (SearchPage::load('node_search')->disable()->save()), and set search.settings:default_page to se_swap. Then re-index (drush search:index)."
+    }
+  ]
+}

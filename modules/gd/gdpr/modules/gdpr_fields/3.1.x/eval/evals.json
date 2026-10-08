@@ -1,0 +1,58 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "gdpr_fields",
+  "version": "3.1.x",
+  "note": "GDPR submodule to mark entity fields as personal data with Right-to-Access (rta: inc|maybe|no) and Right-to-be-Forgotten (rtf: anonymize|remove|maybe|no) settings + an anonymizer plugin id. No settings form of its own (configure=null); GDPR settings are added to each field's edit form and a report lives at /admin/reports/fields/gdpr-fields (route gdpr_fields.fields_list, permission view gdpr fields). Per-field metadata is stored in a CONFIG ENTITY gdpr_fields_config (id = entity type; config name gdpr_fields.gdpr_fields_config.<entity_type>) under bundles[<bundle>][<field>] = {enabled, rta, rtf, anonymizer, notes, relationship, sars_filename, entity_type_id}; a simplified copy is mirrored to field third-party settings (gdpr_fields_rta/gdpr_fields_rtf). Permissions view/edit gdpr fields. Service gdpr_fields.collector + EntityTraversal walk the entity graph for gdpr_tasks. Requires gdpr + anonymizer. Medium/hard ground in the gdpr_fields_config config entity for the user 'mail' field (user bundle = 'user').",
+  "evals": [
+    {
+      "id": "gdpr_fields-where-stored",
+      "mode": "recipe",
+      "prompt": "In the Drupal gdpr_fields module, where is a field's GDPR configuration (whether it is personal data and how to handle it) stored, and how is it keyed?",
+      "must_contain_any": ["gdpr_fields_config", "bundles", "config entity", "gdpr_fields.gdpr_fields_config"],
+      "must_not_contain": [],
+      "expected_output": "In a config entity gdpr_fields_config (one per entity type, id = entity type, config name gdpr_fields.gdpr_fields_config.<entity_type>), under bundles[<bundle>][<field>] with keys enabled, rta, rtf, anonymizer, notes, relationship, sars_filename. A simplified copy is mirrored to the field's third-party settings.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "gdpr_fields-rta-rtf",
+      "mode": "recipe",
+      "prompt": "In gdpr_fields, what do the rta and rtf settings mean and what values can they take?",
+      "must_contain_any": ["Right to Access", "Right to be Forgotten", "anonymize", "remove", "inc"],
+      "must_not_contain": [],
+      "expected_output": "rta = Right to Access (values inc, maybe, no) controls whether a field is included in a Subject Access Request export; rtf = Right to be Forgotten (values anonymize, remove, maybe, no) controls whether a removal request anonymizes or deletes the field. rtf=anonymize uses the field's configured anonymizer plugin.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "gdpr_fields-permissions-report",
+      "mode": "recipe",
+      "prompt": "Which permissions does gdpr_fields define and where is the report of all fields' GDPR status?",
+      "must_contain_any": ["view gdpr fields", "edit gdpr fields", "/admin/reports/fields/gdpr-fields", "gdpr_fields.fields_list"],
+      "must_not_contain": [],
+      "expected_output": "Permissions 'view gdpr fields' and 'edit gdpr fields'. The report is at /admin/reports/fields/gdpr-fields (route gdpr_fields.fields_list, requires 'view gdpr fields').",
+      "difficulty": "easy"
+    },
+    {
+      "id": "gdpr_fields-known-field",
+      "mode": "introspection",
+      "prompt": "On this Drupal site, the user 'mail' field has been configured in gdpr_fields for right-to-be-forgotten handling. Inspect the live gdpr_fields configuration and state which anonymizer plugin is set for the user mail field and its RTF setting.",
+      "must_contain_any": ["email_anonymizer"],
+      "must_not_contain": [],
+      "expected_output": "In gdpr_fields_config.user, bundles.user.mail has anonymizer = email_anonymizer with rtf = anonymize (and enabled true, rta inc).",
+      "setup": "agent-module-documentation/evaluation/verify/gdpr_fields-known-field-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/gdpr_fields-known-field-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "gdpr_fields-configure",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, use gdpr_fields to mark the user account's email (user entity, 'mail' field) as personal data: enable it, set Right to be Forgotten to 'anonymize', and choose the email_anonymizer. Apply the change to the live site configuration.",
+      "reset": "agent-module-documentation/evaluation/verify/gdpr_fields-configure-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/gdpr_fields-configure-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/gdpr_fields-configure-cleanup.sh",
+      "expected_output": "The gdpr_fields_config entity for 'user' has bundles.user.mail with enabled=true, rtf='anonymize', anonymizer='email_anonymizer'. Do it via the field edit form's GDPR settings, or with GdprFieldConfigEntity::load('user')/create + GdprField setters (setEnabled/setRtf/setAnonymizer) + setField + save."
+    }
+  ]
+}

@@ -1,0 +1,80 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "adv_varnish",
+  "version": "4.0.x",
+  "note": "All configuration is the config object adv_varnish.cache_settings (sections general.*, available.*, cache_control.*), edited at /admin/config/development/adv_varnish. Cache invalidation goes through adv_varnish.cache_manager (tagged cache_tags_invalidator), which sends HTTP BAN requests to general.varnish_server but only when general.varnish_purger is TRUE. The module defines a user_blocks plugin type (namespace Plugin/UserBlocks, base UserBlockBase) for ESI per-user fragments. Medium/hard cases are grounded in the real adv_varnish.cache_settings config object (no live Varnish server is contacted). Scripts write/read config via the config API; cleanup/reset restore the shipped install default (only cache_control.anonymous set).",
+  "evals": [
+    {
+      "id": "adv_varnish-config-enable",
+      "mode": "recipe",
+      "prompt": "In the Advanced Varnish cache (adv_varnish) Drupal module, which config object holds all settings, at what admin path do you edit them, and which setting is the master switch that turns Varnish caching on?",
+      "must_contain_any": ["adv_varnish.cache_settings", "/admin/config/development/adv_varnish", "enable_cache"],
+      "must_not_contain": [],
+      "expected_output": "Config object adv_varnish.cache_settings, edited at /admin/config/development/adv_varnish (route adv_varnish.config_form). The master switch is available.enable_cache.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "adv_varnish-ban-purge",
+      "mode": "recipe",
+      "prompt": "How does adv_varnish invalidate cached content on the Varnish server when Drupal cache tags change, and which setting must be on for it to happen?",
+      "must_contain_any": ["BAN", "cache_tags_invalidator", "purgeTags", "varnish_purger"],
+      "must_not_contain": [],
+      "expected_output": "The adv_varnish.cache_manager service (tagged cache_tags_invalidator) turns cache-tag invalidations into HTTP BAN requests to the configured varnish_server, but only when general.varnish_purger is enabled.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "adv_varnish-user-blocks-plugin",
+      "mode": "recipe",
+      "prompt": "adv_varnish supports keeping per-user page fragments dynamic while the page is cached. What plugin type does it define for this, and where do such plugins live / what base class do they extend?",
+      "must_contain_any": ["user_blocks", "Plugin/UserBlocks", "UserBlockBase", "ESI"],
+      "must_not_contain": [],
+      "expected_output": "It defines the user_blocks plugin type (manager plugin.manager.user_blocks). Plugins live in a module's Plugin/UserBlocks namespace, extend UserBlockBase (implement UserBlocksInterface, tagged with the UserBlocks attribute), and provide per-user content served via ESI.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "adv_varnish-server-read",
+      "mode": "introspection",
+      "prompt": "On this Drupal site, Advanced Varnish cache has been pointed at a Varnish server. Inspect the live adv_varnish.cache_settings config and report the configured Varnish server host.",
+      "must_contain_any": ["varnish.mdtest"],
+      "must_not_contain": [],
+      "expected_output": "The Varnish server is http://varnish.mdtest:6081: adv_varnish.cache_settings general.varnish_server = 'http://varnish.mdtest:6081'.",
+      "setup": "agent-module-documentation/evaluation/verify/adv_varnish-server-read-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/adv_varnish-server-read-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "adv_varnish-ttl-read",
+      "mode": "introspection",
+      "prompt": "On this Drupal site, Advanced Varnish cache has a page cache TTL configured. Inspect the live adv_varnish.cache_settings config and report the configured page cache maximum age (in seconds).",
+      "must_contain_any": ["900"],
+      "must_not_contain": [],
+      "expected_output": "The page cache maximum age is 900: adv_varnish.cache_settings general.page_cache_maximum_age = '900'.",
+      "setup": "agent-module-documentation/evaluation/verify/adv_varnish-ttl-read-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/adv_varnish-ttl-read-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "adv_varnish-enable-cache",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, use Advanced Varnish cache to turn on Varnish caching (the master enable switch). Apply the change to the live adv_varnish.cache_settings configuration.",
+      "reset": "agent-module-documentation/evaluation/verify/adv_varnish-enable-cache-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/adv_varnish-enable-cache-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/adv_varnish-enable-cache-cleanup.sh",
+      "expected_output": "adv_varnish.cache_settings available.enable_cache = true (e.g. drush cset adv_varnish.cache_settings available.enable_cache 1, or tick 'Enable Varnish cache' on the settings form)."
+    },
+    {
+      "id": "adv_varnish-set-server",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, configure Advanced Varnish cache to send purge requests to the Varnish server at http://varnish.example.com:6081 and enable the built-in Varnish purger. Apply the change to the live adv_varnish.cache_settings configuration.",
+      "reset": "agent-module-documentation/evaluation/verify/adv_varnish-set-server-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/adv_varnish-set-server-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/adv_varnish-set-server-cleanup.sh",
+      "expected_output": "adv_varnish.cache_settings general.varnish_server = 'http://varnish.example.com:6081' and general.varnish_purger = true."
+    }
+  ]
+}

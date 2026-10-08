@@ -1,0 +1,80 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "twig_tools",
+  "version": "2.1.x",
+  "note": "Twig Tools adds 17 Twig filters via three twig.extension services: TwigSanitize (clean_class_array, scrub_class_array, array_unique, remove_empty), TwigConvert (boolean, integer, float, string, md5, json_decode, date_from_format, base64_encode, base64_decode), TwigColor (rgb_to_hex, css_rgb_to_hex, hex_to_rgb, hex_to_css_rgb). It has NO config, routes, permissions, plugins, schema, or Drush - enabling it registers the filters globally. Since it holds no persistent config, medium cases are grounded in the LIVE Twig environment (a filter is registered / usable) and hard cases in verifiable live state: installing the module (reset uninstalls) and rendering a real filter result into a namespaced config object (twig_tools_eval.result). hex_to_css_rgb('#3366cc') yields exactly 'rgb(51, 102, 204)' (spaces after commas). Cleanups leave twig_tools enabled (documented baseline) and remove the eval config.",
+  "evals": [
+    {
+      "id": "twig_tools-what-filters",
+      "mode": "recipe",
+      "prompt": "What does the Drupal twig_tools module add, and roughly what categories of Twig filters does it provide?",
+      "must_contain_any": ["filter", "sanitize", "convert", "color", "class"],
+      "must_not_contain": [],
+      "expected_output": "It adds extra Twig filters in three groups: sanitize (class-array cleanup like clean_class_array/scrub_class_array), convert (boolean/integer/float/string/md5/json_decode/date_from_format/base64), and color (hex<->rgb conversions). No configuration - enabling it makes the filters available in all templates.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "twig_tools-color-filter",
+      "mode": "recipe",
+      "prompt": "Using the twig_tools module, which Twig filter converts a hex color like #3366cc into a CSS rgb() string, and what does it output?",
+      "must_contain_any": ["hex_to_css_rgb", "rgb(", "rgb(51, 102, 204)"],
+      "must_not_contain": [],
+      "expected_output": "The hex_to_css_rgb filter: {{ '#3366cc'|hex_to_css_rgb }} outputs 'rgb(51, 102, 204)' (spaces after the commas).",
+      "difficulty": "easy"
+    },
+    {
+      "id": "twig_tools-scrub-class",
+      "mode": "recipe",
+      "prompt": "In twig_tools, what does the scrub_class_array Twig filter do to an array of CSS class names?",
+      "must_contain_any": ["clean", "valid", "empty", "duplicate", "unique", "Html::getClass"],
+      "must_not_contain": [],
+      "expected_output": "scrub_class_array runs an array of class names through clean_class_array (Html::getClass to make valid class names), remove_empty (drop falsy values), and array_unique (drop duplicates) - i.e. clean + de-dupe + remove empties in one pass.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "twig_tools-filter-registered",
+      "mode": "introspection",
+      "prompt": "On this Drupal site, is the twig_tools color filter that converts hex to a CSS rgb() string available in the Twig environment? Inspect the running site and name the filter.",
+      "must_contain_any": ["hex_to_css_rgb"],
+      "must_not_contain": [],
+      "expected_output": "Yes - the hex_to_css_rgb filter is registered in the live Twig environment (\\Drupal::service('twig')->getFilter('hex_to_css_rgb') is non-null), provided by twig_tools.",
+      "setup": "agent-module-documentation/evaluation/verify/twig_tools-filter-registered-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/twig_tools-filter-registered-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "twig_tools-sanitize-filter",
+      "mode": "introspection",
+      "prompt": "On this Drupal site, confirm whether the twig_tools sanitize filter that cleans, de-duplicates and removes empty values from a class array is available, and name it.",
+      "must_contain_any": ["scrub_class_array"],
+      "must_not_contain": [],
+      "expected_output": "Yes - scrub_class_array is registered in the live Twig environment (from the twig_tools TwigSanitize extension).",
+      "setup": "agent-module-documentation/evaluation/verify/twig_tools-sanitize-filter-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/twig_tools-sanitize-filter-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "twig_tools-install",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, install the twig_tools module so its extra Twig filters (like hex_to_css_rgb and scrub_class_array) become available in templates. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/twig_tools-install-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/twig_tools-install-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/twig_tools-install-cleanup.sh",
+      "expected_output": "Enable the twig_tools module (drush pm:install twig_tools). Verify checks the module is installed and its filters hex_to_css_rgb and scrub_class_array are registered in the live Twig environment."
+    },
+    {
+      "id": "twig_tools-render-color",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "Using the twig_tools module's Twig filters, compute the CSS rgb() string for the hex color #3366cc and store the result (the exact string the filter produces) in the config object 'twig_tools_eval.result' under the key 'css'. Apply it to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/twig_tools-render-color-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/twig_tools-render-color-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/twig_tools-render-color-cleanup.sh",
+      "expected_output": "Render {{ '#3366cc'|hex_to_css_rgb }} with the twig_tools filter (e.g. via \\Drupal::service('twig')->createTemplate(...)->render()) to get 'rgb(51, 102, 204)', and save it to config twig_tools_eval.result:css. Verify checks that config value equals 'rgb(51, 102, 204)'."
+    }
+  ]
+}

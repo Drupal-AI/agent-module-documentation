@@ -1,0 +1,96 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "groupmedia_paragraphs",
+  "version": "4.0.x",
+  "note": "Submodule of Group Media. Adds two media_finder plugins (manager plugin.manager.groupmedia.finder) so the parent's automatic media tracking finds media inside Paragraphs: paragraphs_media_reference (field type entity_reference_revisions) and paragraphs_media_embed (text field types, drupal-media element). No config, permissions, routes, or services of its own; its only observable state is the registered plugins, which exist only while the submodule is enabled. Introspection cases read the media_finder plugin registry on the live site; the execution case enables the submodule and verifies its finder plugin is registered. Baseline: the submodule is left enabled (the parent's Paragraph tracking depends on it).",
+  "evals": [
+    {
+      "id": "groupmedia_paragraphs-plugin-ids",
+      "mode": "recipe",
+      "prompt": "The groupmedia_paragraphs submodule lets Group Media track media that lives inside Paragraphs. Which media_finder plugins does it add, and what does each one look for?",
+      "must_contain_any": [
+        "paragraphs_media_reference",
+        "paragraphs_media_embed"
+      ],
+      "must_not_contain": [],
+      "expected_output": "It registers two media_finder plugins: paragraphs_media_reference (finds media referenced by entity-reference fields on Paragraphs) and paragraphs_media_embed (finds media embedded with the Embed media filter inside Paragraph text fields).",
+      "difficulty": "easy"
+    },
+    {
+      "id": "groupmedia_paragraphs-field-type",
+      "mode": "recipe",
+      "prompt": "How does groupmedia_paragraphs actually reach media that is nested inside Paragraph entities on a node? Which field type does its reference finder key off, and does it handle nested Paragraphs?",
+      "must_contain_any": [
+        "entity_reference_revisions",
+        "ParagraphsMediaFinderTrait",
+        "nested"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The paragraphs_media_reference plugin declares field_types entity_reference_revisions; ParagraphsMediaFinderTrait::getParagraphs() walks the host entity's entity_reference_revisions fields whose target_type is paragraph and recurses into nested Paragraphs, then the finder returns media referenced by entity_reference (target media) fields on those Paragraphs.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "groupmedia_paragraphs-when-active",
+      "mode": "recipe",
+      "prompt": "I enabled groupmedia_paragraphs but media inside my Paragraphs is not being attached to groups. What has to be true for these finders to actually attach media, and which modules does the submodule require?",
+      "must_contain_any": [
+        "tracking_enabled",
+        "tracking",
+        "groupmedia",
+        "paragraphs"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The finders only run when the parent Group Media relation for that media type has tracking_enabled on (automatic tracking is opt-in per relation). The submodule requires groupmedia and paragraphs, and it adds no config of its own.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "groupmedia_paragraphs-registered-reference",
+      "mode": "introspection",
+      "prompt": "On this Drupal site, inspect the Group Media media_finder plugin registry and tell me which finder plugin is provided by the groupmedia_paragraphs module to detect media referenced by entity_reference_revisions (Paragraph) fields.",
+      "must_contain_any": [
+        "paragraphs_media_reference"
+      ],
+      "must_not_contain": [],
+      "expected_output": "paragraphs_media_reference (provider groupmedia_paragraphs, field_types entity_reference_revisions) in the plugin.manager.groupmedia.finder registry.",
+      "setup": "agent-module-documentation/evaluation/verify/groupmedia_paragraphs-registered-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/groupmedia_paragraphs-registered-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "groupmedia_paragraphs-registered-embed",
+      "mode": "introspection",
+      "prompt": "On this Drupal site, inspect the Group Media media_finder plugins and name the one contributed by groupmedia_paragraphs that finds media EMBEDDED (drupal-media) inside Paragraph text fields, and list its declared field types.",
+      "must_contain_any": [
+        "paragraphs_media_embed"
+      ],
+      "must_not_contain": [],
+      "expected_output": "paragraphs_media_embed (provider groupmedia_paragraphs), field_types text, text_long, text_with_summary, element drupal-media.",
+      "setup": "agent-module-documentation/evaluation/verify/groupmedia_paragraphs-registered-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/groupmedia_paragraphs-registered-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "groupmedia_paragraphs-enable",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "This Drupal site uses Group Media and its groups build content with Paragraphs, but media inside those Paragraphs is not being tracked into groups. Enable the appropriate Group Media submodule so that the Paragraph media finders become available, and apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/groupmedia_paragraphs-enable-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/groupmedia_paragraphs-enable-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/groupmedia_paragraphs-enable-cleanup.sh",
+      "expected_output": "Enable the groupmedia_paragraphs module (drush en groupmedia_paragraphs -y). This registers the paragraphs_media_reference and paragraphs_media_embed media_finder plugins in plugin.manager.groupmedia.finder."
+    },
+    {
+      "id": "groupmedia_paragraphs-enable-embed",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "layman",
+      "prompt": "On this Drupal site, our groups build pages with Paragraphs and some of those Paragraphs have videos/images embedded in their rich-text (via the Embed media button). We want those embedded media items to be tracked into the group too. Turn on the Group Media feature that provides the Paragraph embedded-media finder, and apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/groupmedia_paragraphs-enable-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/groupmedia_paragraphs-enable-embed-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/groupmedia_paragraphs-enable-cleanup.sh",
+      "expected_output": "Enable the groupmedia_paragraphs module (drush en groupmedia_paragraphs -y). This registers the paragraphs_media_embed media_finder plugin (which finds Embed media inside Paragraph text fields) in plugin.manager.groupmedia.finder."
+    }
+  ]
+}

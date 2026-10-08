@@ -1,0 +1,100 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "lb_copy_section",
+  "version": "1.0.x",
+  "note": "Copy Layout Builder section adds Copy/Paste links to Layout Builder sections; it deep-clones the section (new component UUIDs, duplicated inline block_content + paragraphs) via a private tempstore buffer (collection lb_copy_section, key copied_section). No settings/schema/plugins/Drush; its only persistent surface is the single permission 'copy paste sections' (lb_copy_section.permissions.yml), which gates both the links (CopySectionRender::preRender) and the routes lb_copy_section.copy / lb_copy_section.paste. Depends on layout_builder. Copy/paste itself is user-interactive over AJAX and not scriptable in a stable verify, so medium/hard cases are grounded in the permission: medium seeds roles and the agent reads which role has the permission; hard has the agent grant the permission / create a role with it, verified via Role::hasPermission. All roles namespaced lbcs_*.",
+  "evals": [
+    {
+      "id": "lb_copy_section-permission",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "I installed the lb_copy_section (Copy Layout Builder section) module but editors don't see any Copy/Paste links in Layout Builder. What permission do I need to grant, and what is its machine name?",
+      "must_contain_any": [
+        "copy paste sections",
+        "Copy/paste sections",
+        "permission"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Grant the 'copy paste sections' permission (label 'Copy/paste sections') to the editor role. It is the module's only permission and gates both the Copy/Paste links and the copy/paste routes. There is no other configuration."
+    },
+    {
+      "id": "lb_copy_section-what-duplicated",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "When I paste a Layout Builder section copied with lb_copy_section, is the pasted section's inline (custom) block the same entity as the original, or a new independent one? How does the module handle that?",
+      "must_contain_any": [
+        "deep clone",
+        "duplicate",
+        "createDuplicate",
+        "new",
+        "independent",
+        "new UUID"
+      ],
+      "must_not_contain": [],
+      "expected_output": "It becomes a new, independent copy. The paste path deep-clones the section (DeepCloningTrait): every SectionComponent gets a new UUID and each InlineBlock's referenced block_content entity is createDuplicate()d (recursively, including referenced paragraphs), stored back as block_serialized, so the pasted inline block is a separate entity from the original."
+    },
+    {
+      "id": "lb_copy_section-where-buffer",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "In the lb_copy_section module, where is a copied Layout Builder section stored between clicking Copy and Paste, and does that let you paste onto a different page?",
+      "must_contain_any": [
+        "tempstore",
+        "private tempstore",
+        "per-user",
+        "lb_copy_section"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The copied Section is stored in the current user's private tempstore (collection 'lb_copy_section', key 'copied_section'). Because the buffer is per-user and not tied to a page, you can paste the copied section onto any other page you edit in the same session. Requires the layout_builder module."
+    },
+    {
+      "id": "lb_copy_section-which-role",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "On this Drupal site, which non-administrator role has been given the ability to copy and paste Layout Builder sections (the lb_copy_section feature)? Inspect the live roles/permissions to answer.",
+      "must_contain_any": [
+        "lbcs_editor"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The lbcs_editor role has the 'copy paste sections' permission (user.role.lbcs_editor lists it), so its members see the Copy/Paste links. (The administrator role also has it implicitly as a superuser.)",
+      "setup": "agent-module-documentation/evaluation/verify/lb_copy_section-which-role-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/lb_copy_section-which-role-cleanup.sh"
+    },
+    {
+      "id": "lb_copy_section-two-roles",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "This site has two custom roles, lbcs_can and lbcs_cannot. Exactly one of them can copy/paste Layout Builder sections via lb_copy_section. Inspect the live permission configuration and state which role has that ability.",
+      "must_contain_any": [
+        "lbcs_can"
+      ],
+      "must_not_contain": [],
+      "expected_output": "lbcs_can has the 'copy paste sections' permission; lbcs_cannot does not. So only lbcs_can members get the Copy/Paste links.",
+      "setup": "agent-module-documentation/evaluation/verify/lb_copy_section-two-roles-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/lb_copy_section-two-roles-cleanup.sh"
+    },
+    {
+      "id": "lb_copy_section-grant",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "This site has a role 'lbcs_grant' that cannot yet copy/paste Layout Builder sections. Using the lb_copy_section module's permission, grant that role the ability to copy and paste sections, and apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/lb_copy_section-grant-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/lb_copy_section-grant-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/lb_copy_section-grant-cleanup.sh",
+      "expected_output": "Grant the 'copy paste sections' permission to the lbcs_grant role (e.g. drush role:perm:add lbcs_grant 'copy paste sections', or Role::load('lbcs_grant')->grantPermission('copy paste sections')->save()). Role::hasPermission('copy paste sections') then returns TRUE."
+    },
+    {
+      "id": "lb_copy_section-create-role",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "Create a new user role with the machine name 'lbcs_paster' and give it exactly the ability to copy and paste Layout Builder sections provided by the lb_copy_section module. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/lb_copy_section-create-role-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/lb_copy_section-create-role-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/lb_copy_section-create-role-cleanup.sh",
+      "expected_output": "Create the role lbcs_paster and grant it the 'copy paste sections' permission (Role::create(['id'=>'lbcs_paster','label'=>'...'])->grantPermission('copy paste sections')->save()). The role then exists and hasPermission('copy paste sections') is TRUE."
+    }
+  ]
+}

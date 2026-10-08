@@ -1,0 +1,105 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "permissions_by_term",
+  "version": "3.1.x",
+  "note": "Permissions by Term stores grants in two custom tables created by hook_schema(): permissions_by_term_user (tid, uid, langcode) and permissions_by_term_role (tid, rid, langcode) — there is no config entity for grants. Configuration lives in permissions_by_term.settings (permission_mode, require_all_terms_granted, disable_node_access_records, only_parents, target_bundles, show_terms_in_user_form, hide_terms_permissions_info_in_node_form). Enforcement is hook_node_access_records()/hook_node_grants() in the realm AccessStorage::NODE_ACCESS_REALM = 'permissions_by_term', plus hook_node_access() and hook_options_list_alter(). Writes go through permissions_by_term.access_storage (addTermPermissionsByRoleIds / addTermPermissionsByUserIds — note the former ALSO grants every role holding 'bypass node access'). Drush: permissions-by-term:rebuild (pbtr) and permissions-by-term:create-nodes-with-permissions (pbtcnwp), both interactive-confirm only. Medium cases read real grant rows and real settings off the live site; hard cases write a real role grant (verified in permissions_by_term_role) and a real settings combination.",
+  "evals": [
+    {
+      "id": "permissions_by_term-storage",
+      "mode": "recipe",
+      "prompt": "Where does the Drupal contrib module permissions_by_term physically store the fact that a given user or role is allowed to access a taxonomy term? Name the storage and its columns.",
+      "must_contain_any": [
+        "permissions_by_term_user",
+        "permissions_by_term_role"
+      ],
+      "must_not_contain": [],
+      "expected_output": "In two custom database tables created by permissions_by_term_schema(): permissions_by_term_user with columns tid, uid, langcode (composite primary key) and permissions_by_term_role with tid, rid, langcode. There is no configuration entity for grants — only permissions_by_term.settings holds configuration. The langcode is the term's language and must match at check time.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "permissions_by_term-rebuild",
+      "mode": "recipe",
+      "prompt": "I imported taxonomy term permissions straight into the database on a Drupal site running permissions_by_term, and restricted nodes are still showing up in Views listings. Which Drush command does this module provide to fix that, and what is its alias?",
+      "must_contain_any": [
+        "permissions-by-term:rebuild",
+        "pbtr"
+      ],
+      "must_not_contain": [],
+      "expected_output": "drush permissions-by-term:rebuild (alias pbtr) rebuilds the core node access records the module manages. It asks an interactive confirmation defaulting to No and has no --yes flag, so in a script call the service instead: drush php:eval '\\Drupal::service(\"permissions_by_term.node_access\")->rebuildAccess();' or node_access_rebuild(TRUE). The module also ships permissions-by-term:create-nodes-with-permissions (pbtcnwp) for test fixtures.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "permissions_by_term-permission-mode",
+      "mode": "recipe",
+      "prompt": "In the Drupal permissions_by_term module, what does the 'Permission mode' setting change compared to the default behaviour, and what is the configuration key called?",
+      "must_contain_any": [
+        "permission_mode"
+      ],
+      "must_not_contain": [],
+      "expected_output": "permission_mode in permissions_by_term.settings. By default a node is accessible unless one of its terms restricts it, and a node with no terms is always accessible. With permission_mode on, access is whitelist-only: nodes without any terms, and nodes whose terms grant nothing to the user, become inaccessible. Related keys: require_all_terms_granted (user must hold every term of the node) and disable_node_access_records (skip the core grant records).",
+      "difficulty": "easy"
+    },
+    {
+      "id": "permissions_by_term-known-role-grant",
+      "mode": "introspection",
+      "prompt": "This Drupal site has a taxonomy vocabulary pbt_intro_vocab with the terms 'PBT Intro Secret' and 'PBT Intro Public'. Using permissions_by_term, exactly one custom role has been granted access to the 'PBT Intro Secret' term. Inspect the live site and give that role's machine name.",
+      "must_contain_any": [
+        "pbt_intro_role"
+      ],
+      "must_not_contain": [],
+      "expected_output": "pbt_intro_role. Its grant is a row in the permissions_by_term_role table for that term's tid (the 'administrator' role is also present because addTermPermissionsByRoleIds() auto-grants every role holding 'bypass node access'). Discoverable with `drush sql:query \"SELECT * FROM permissions_by_term_role\"` or AccessStorage::getRoleTermPermissionsByTid($tid, 'en').",
+      "setup": "agent-module-documentation/evaluation/verify/permissions_by_term-known-role-grant-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/permissions_by_term-known-role-grant-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "permissions_by_term-known-user-grant",
+      "mode": "introspection",
+      "prompt": "On this Drupal site, permissions_by_term grants one individual user account (not a role) access to the taxonomy term 'PBT User Term' in the vocabulary pbt_user_vocab. Inspect the running site and give that account's username.",
+      "must_contain_any": [
+        "pbt_intro_reader"
+      ],
+      "must_not_contain": [],
+      "expected_output": "pbt_intro_reader. Its uid appears in permissions_by_term_user for that term's tid; resolve the uid to the username with User::load(). AccessStorage::getUserTermPermissionsByTid($tid, 'en') or getAllowedUserIds($tid, 'en') return the same thing.",
+      "setup": "agent-module-documentation/evaluation/verify/permissions_by_term-known-user-grant-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/permissions_by_term-known-user-grant-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "permissions_by_term-settings-mode",
+      "mode": "introspection",
+      "prompt": "Inspect this running Drupal site and tell me which taxonomy vocabularies permissions_by_term is currently limited to, and whether its whitelist-style 'permission mode' is switched on here.",
+      "must_contain_any": [
+        "pbt_cfg_vocab"
+      ],
+      "must_not_contain": [],
+      "expected_output": "permissions_by_term.settings:target_bundles is [pbt_cfg_vocab], so the module only manages that vocabulary, and permission_mode is TRUE (as is require_all_terms_granted) — all three differ from the shipped defaults. Read with `drush config:get permissions_by_term.settings`.",
+      "setup": "agent-module-documentation/evaluation/verify/permissions_by_term-settings-mode-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/permissions_by_term-settings-mode-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "permissions_by_term-grant-role",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site there is a vocabulary pbt_task_vocab containing the term 'PBT Task Term', and a role pbt_task_role. Using the permissions_by_term module, grant that role access to that term on the live site (English), so that content tagged with the term is readable by members of the role.",
+      "reset": "agent-module-documentation/evaluation/verify/permissions_by_term-grant-role-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/permissions_by_term-grant-role-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/permissions_by_term-grant-role-cleanup.sh",
+      "expected_output": "A row (tid of 'PBT Task Term', rid 'pbt_task_role', langcode 'en') in permissions_by_term_role — written either by ticking the role in the Permissions fieldset on the term edit form, or with \\Drupal::service('permissions_by_term.access_storage')->addTermPermissionsByRoleIds(['pbt_task_role'], $tid, 'en'). A rebuild (permissions_by_term.node_access::rebuildAccess() / node_access_rebuild(TRUE)) refreshes the node access records."
+    },
+    {
+      "id": "permissions_by_term-lockdown-config",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "site-owner-layman",
+      "prompt": "On my Drupal site I want the taxonomy-based access control to be as strict as possible: nothing should be readable unless it has been explicitly opened up to someone, and when a page carries several of these tags a person must be allowed on every single one of them before they may read it. Only the categories in the vocabulary called 'PBT Lock Vocab' should be used for this — no other vocabulary. Please apply that to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/permissions_by_term-lockdown-config-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/permissions_by_term-lockdown-config-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/permissions_by_term-lockdown-config-cleanup.sh",
+      "expected_output": "In permissions_by_term.settings set permission_mode: true, require_all_terms_granted: true and target_bundles: ['pbt_lock_vocab'] — via /admin/permissions-by-term/settings or configFactory()->getEditable('permissions_by_term.settings')->set(...)->save(). Note that restricting target_bundles deletes stored permissions for the vocabularies that were unchecked."
+    }
+  ]
+}

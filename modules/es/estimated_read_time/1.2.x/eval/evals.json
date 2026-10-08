@@ -1,0 +1,85 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "estimated_read_time",
+  "version": "1.2.x",
+  "note": "Estimated Read Time provides a field type estimated_read_time (columns auto, minutes, seconds; settings view_mode + words_per_minute default 230), a widget estimated_read_time_default (setting sidebar; stores auto flag), and a formatter estimated_read_time_text (setting tokenized_string default '@minutes min read'). On hook_entity_presave the estimated_read_time.entity_read_time_estimator service renders the entity in the configured view mode using the default front-end theme and computes minutes/seconds via the mtownsend/read-time library, unless the field item's auto is 0. No configure route. Medium cases read seeded field/formatter settings; hard cases add a field (verified on field config) and create a node whose read time auto-populates (verified on the live node).",
+  "evals": [
+    {
+      "id": "estimated_read_time-field-type",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "What field type does the estimated_read_time module add, what values does it store, and what is the default words-per-minute used to compute the estimate?",
+      "must_contain_any": [
+        "estimated_read_time",
+        "230",
+        "words_per_minute",
+        "minutes"
+      ],
+      "must_not_contain": [],
+      "expected_output": "It adds an 'estimated_read_time' field type storing auto (bool), minutes and seconds. Field settings are view_mode and words_per_minute (default 230). On entity save the read time is auto-computed unless auto is turned off."
+    },
+    {
+      "id": "estimated_read_time-formatter",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "How does estimated_read_time display the value as something like '5 min read', and which formatter setting controls that text and its tokens?",
+      "must_contain_any": [
+        "tokenized_string",
+        "@minutes",
+        "estimated_read_time_text",
+        "@seconds"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The estimated_read_time_text formatter renders via the estimated_read_time_text theme using its tokenized_string setting (default '@minutes min read'), replacing @minutes and @seconds. It prints nothing when the referenced token value is empty."
+    },
+    {
+      "id": "estimated_read_time-known-wpm",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "The Article content type on this site has an estimated_read_time field named field_ert_known. Inspect the live field configuration and state the words-per-minute (reading speed) it is configured to use.",
+      "must_contain_any": [
+        "300"
+      ],
+      "must_not_contain": [],
+      "expected_output": "field_ert_known is configured with words_per_minute = 300 (in field.field.node.article.field_ert_known settings; drush config:get or FieldConfig::getSetting('words_per_minute')).",
+      "setup": "agent-module-documentation/evaluation/verify/estimated_read_time-wpm-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/estimated_read_time-wpm-cleanup.sh"
+    },
+    {
+      "id": "estimated_read_time-known-format",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "The Article content type has an estimated_read_time field field_ert_fmt shown with the read-time text formatter on the default display. Inspect the live view display and state the exact tokenized string configured for the formatter.",
+      "must_contain_any": [
+        "@minutes minute read time"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The field_ert_fmt formatter (estimated_read_time_text) has tokenized_string = '@minutes minute read time' (in core.entity_view_display.node.article.default content.field_ert_fmt.settings).",
+      "setup": "agent-module-documentation/evaluation/verify/estimated_read_time-fmt-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/estimated_read_time-fmt-cleanup.sh"
+    },
+    {
+      "id": "estimated_read_time-add-field",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, add an Estimated Read Time field with machine name field_ert_task to the Article content type, configured to use a reading speed of 240 words per minute. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/estimated_read_time-add-field-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/estimated_read_time-add-field-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/estimated_read_time-add-field-cleanup.sh",
+      "expected_output": "A field storage node.field_ert_task of type estimated_read_time plus a field_config on node.article whose words_per_minute setting is 240."
+    },
+    {
+      "id": "estimated_read_time-auto-compute",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "The Article content type already has an auto estimated_read_time field field_ert_auto. Create a published Article node titled exactly 'ERT Auto Node' with a body of at least a few hundred words so that the module automatically populates its read-time field on save. Apply it to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/estimated_read_time-compute-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/estimated_read_time-compute-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/estimated_read_time-compute-cleanup.sh",
+      "expected_output": "A node titled 'ERT Auto Node' whose field_ert_auto has a computed read time (minutes>0 or seconds>0), populated by estimated_read_time on presave because the field's auto flag is on."
+    }
+  ]
+}

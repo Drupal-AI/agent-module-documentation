@@ -1,0 +1,82 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "typed_entity_ui",
+  "version": "4.1.x",
+  "note": "typed_entity_ui adds a read-only admin explorer for Typed Entity. Configure route typed_entity_ui.explore -> /admin/config/development/typed-entity (details route typed_entity_ui.details -> .../{typed_entity_id}). Single permission 'explore typed entity classes' gates both. No config entities, no plugins, no Drush; provides theme hooks php_class_info/class_with_variants/php_class_summary and one State flag typed_entity_ui.hide_video_thumbnail (removed on uninstall). Baseline: the submodule is disabled. Medium cases enable it and read the live routing (path, permission); hard cases build real state (enable the module so its explorer route exists; grant the explore permission to a role te_ui_role) verified against the live router / role config. cleanup uninstalls the submodule (and deletes te_ui_role) to restore baseline.",
+  "evals": [
+    {
+      "id": "typed_entity_ui-path",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "After enabling the Typed Entity UI submodule, at what admin URL path do you find the 'Explore Typed Entity' page?",
+      "must_contain_any": ["/admin/config/development/typed-entity", "admin/config/development/typed-entity"],
+      "must_not_contain": [],
+      "expected_output": "The explorer is at /admin/config/development/typed-entity (route typed_entity_ui.explore, under Configuration > Development)."
+    },
+    {
+      "id": "typed_entity_ui-permission",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "Which permission does the typed_entity_ui module define to control access to its Typed Entity explorer pages?",
+      "must_contain_any": ["explore typed entity classes"],
+      "must_not_contain": [],
+      "expected_output": "The single permission 'explore typed entity classes' (title 'Explore typed entity classes') gates both the explore and details routes."
+    },
+    {
+      "id": "typed_entity_ui-what-it-shows",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "What does the Typed Entity UI explorer let a developer inspect for a chosen entity type and bundle?",
+      "must_contain_any": ["wrapper", "renderer", "repository", "class", "variant"],
+      "must_not_contain": [],
+      "expected_output": "It shows the typed repository for the entity-type/bundle pair, its wrapper and renderer ClassWithVariants (fallback + variants), and a reflection-based summary of each class (namespace, parent class, interfaces, doc comment, source file, and the reconstructed #[TypedRepository] attribute)."
+    },
+    {
+      "id": "typed_entity_ui-live-path",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "On this running Drupal site the Typed Entity UI is enabled. Inspect the site's routing and give the URL path registered for the Typed Entity explorer route named typed_entity_ui.explore.",
+      "must_contain_any": ["/admin/config/development/typed-entity", "admin/config/development/typed-entity"],
+      "must_not_contain": [],
+      "expected_output": "The route typed_entity_ui.explore has path /admin/config/development/typed-entity. Read it via \\Drupal::service('router.route_provider')->getRouteByName('typed_entity_ui.explore')->getPath().",
+      "setup": "agent-module-documentation/evaluation/verify/typed_entity_ui-path-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/typed_entity_ui-path-cleanup.sh"
+    },
+    {
+      "id": "typed_entity_ui-live-permission",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "On this running Drupal site the Typed Entity UI is enabled. Inspect the routing and state which permission protects the Typed Entity explorer route (typed_entity_ui.explore).",
+      "must_contain_any": ["explore typed entity classes"],
+      "must_not_contain": [],
+      "expected_output": "The route's _permission requirement is 'explore typed entity classes'. Read it via \\Drupal::service('router.route_provider')->getRouteByName('typed_entity_ui.explore')->getRequirement('_permission').",
+      "setup": "agent-module-documentation/evaluation/verify/typed_entity_ui-perm-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/typed_entity_ui-perm-cleanup.sh"
+    },
+    {
+      "id": "typed_entity_ui-enable",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, make the Typed Entity class explorer available by enabling the Typed Entity UI module. Apply the change to the live site.",
+      "must_not_contain": [],
+      "expected_output": "Enable typed_entity_ui (e.g. `drush en typed_entity_ui -y`). Afterwards the module is installed and its explorer route typed_entity_ui.explore (path /admin/config/development/typed-entity) exists.",
+      "reset": "agent-module-documentation/evaluation/verify/typed_entity_ui-enable-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/typed_entity_ui-enable-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/typed_entity_ui-enable-cleanup.sh"
+    },
+    {
+      "id": "typed_entity_ui-grant-perm",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site the Typed Entity UI module is enabled and a role with machine name 'te_ui_role' exists. Grant that role permission to use the Typed Entity explorer. Apply the change to the live site.",
+      "must_not_contain": [],
+      "expected_output": "Grant the 'explore typed entity classes' permission to the te_ui_role role, e.g. `drush role:perm:add te_ui_role 'explore typed entity classes'` or by adding it to the role's permissions in user.role.te_ui_role. Result: Role::load('te_ui_role')->hasPermission('explore typed entity classes') is TRUE.",
+      "reset": "agent-module-documentation/evaluation/verify/typed_entity_ui-grant-perm-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/typed_entity_ui-grant-perm-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/typed_entity_ui-grant-perm-cleanup.sh"
+    }
+  ]
+}

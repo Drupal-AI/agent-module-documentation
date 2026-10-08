@@ -1,0 +1,100 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "config_sync",
+  "version": "3.0.x",
+  "note": "Configuration Synchronizer imports config updates shipped by modules/themes/profiles. UI is the config_distro 'Distribution Updates' page (configure route config_distro.import, path /admin/config/development/distro). Update modes live in state config_sync.update_mode: 1 Merge (default), 2 Partial reset, 3 Full reset (ConfigSyncListerInterface::UPDATE_MODE_*). Snapshots use the config_snapshot 'config_sync' snapshot set (CONFIG_SNAPSHOT_SET); entities named config_sync.<type>.<extension>. Drush: config-sync-list-updates (alias cs-list); --update-mode option on config-distro-update. No permissions, no config schema, no own settings form, no new plugin types (only a config_filter SyncFilter plugin instance). Medium/hard cases are grounded in real state + config_snapshot entities.",
+  "evals": [
+    {
+      "id": "config_sync-what-and-where",
+      "mode": "recipe",
+      "prompt": "What problem does the Drupal config_sync (Configuration Synchronizer) module solve, and on which admin page do you apply available configuration updates from modules and themes?",
+      "must_contain_any": [
+        "Distribution Updates",
+        "config_distro.import",
+        "/admin/config/development/distro",
+        "snapshot"
+      ],
+      "must_not_contain": [],
+      "expected_output": "It re-imports configuration changes that updated modules/themes/profiles ship (which Drupal otherwise never re-applies), comparing an install-time snapshot against the currently provided config. You apply them on the Distribution Updates page (route config_distro.import, /admin/config/development/distro).",
+      "difficulty": "easy"
+    },
+    {
+      "id": "config_sync-update-modes",
+      "mode": "recipe",
+      "prompt": "What update modes does the Drupal config_sync module offer when applying configuration updates, and what does each do?",
+      "must_contain_any": [
+        "merge",
+        "partial reset",
+        "full reset"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Three modes (state config_sync.update_mode): 1 Merge (default; three-way merge keeping local edits), 2 Partial reset (reset only items with available updates to the provided version), 3 Full reset (reset all provided config to shipped defaults).",
+      "difficulty": "easy"
+    },
+    {
+      "id": "config_sync-drush",
+      "mode": "recipe",
+      "prompt": "Which Drush command does config_sync add to list extensions that have configuration updates available, and how do you pick the update mode when running a config-distro-update from Drush?",
+      "must_contain_any": [
+        "config-sync-list-updates",
+        "cs-list",
+        "--update-mode"
+      ],
+      "must_not_contain": [],
+      "expected_output": "drush config-sync-list-updates (alias cs-list) lists extensions with available config updates. config_sync also adds an --update-mode option to config-distro-update (e.g. drush config-distro-update --update-mode=3 for full reset), which writes the value to state config_sync.update_mode.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "config_sync-current-mode",
+      "mode": "introspection",
+      "prompt": "On this Drupal site, config_sync has been configured with a specific update mode. Inspect the live site and state which update mode is currently set (its number and meaning).",
+      "must_contain_any": [
+        "partial reset",
+        "partial",
+        "2"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The update mode is 2 (Partial reset): state config_sync.update_mode is 2, meaning only config items with available updates are reset to the provided version.",
+      "setup": "agent-module-documentation/evaluation/verify/config_sync-update-mode-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/config_sync-update-mode-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "config_sync-snapshot-name",
+      "mode": "introspection",
+      "prompt": "config_sync keeps a snapshot of the configuration each extension provided. On this site, inspect the live configuration and give the config object name of the config_sync snapshot for the external_link_popup module.",
+      "must_contain_any": [
+        "config_snapshot.snapshot.config_sync.module.external_link_popup",
+        "config_sync.module.external_link_popup"
+      ],
+      "must_not_contain": [],
+      "expected_output": "config_sync uses the config_snapshot 'config_sync' snapshot set; the snapshot for external_link_popup is the config_snapshot entity config_sync.module.external_link_popup (config object config_snapshot.snapshot.config_sync.module.external_link_popup).",
+      "setup": "agent-module-documentation/evaluation/verify/config_sync-snapshot-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/config_sync-snapshot-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "config_sync-set-full-reset",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, configure config_sync so that applying distribution updates performs a FULL RESET of provided configuration (rather than the default merge). Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/config_sync-full-reset-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/config_sync-full-reset-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/config_sync-full-reset-cleanup.sh",
+      "expected_output": "State config_sync.update_mode is set to 3 (UPDATE_MODE_FULL_RESET), e.g. drush state:set config_sync.update_mode 3, or choose Full reset on the Distribution Updates form, or drush config-distro-update --update-mode=3."
+    },
+    {
+      "id": "config_sync-take-snapshot",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site the config_sync configuration snapshot for the 'views_migration' module has been removed. Use config_sync to (re)create a snapshot of the configuration the views_migration module provides, and apply it to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/config_sync-take-snapshot-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/config_sync-take-snapshot-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/config_sync-take-snapshot-cleanup.sh",
+      "expected_output": "A config_snapshot entity config_sync.module.views_migration exists again, created via the snapshotter, e.g. \\Drupal::service('config_sync.snapshotter')->refreshExtensionSnapshot('module', ['views_migration'], ConfigSyncSnapshotterInterface::SNAPSHOT_MODE_INSTALL) (or createSnapshot())."
+    }
+  ]
+}

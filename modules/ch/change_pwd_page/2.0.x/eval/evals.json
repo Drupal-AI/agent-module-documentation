@@ -1,0 +1,80 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "change_pwd_page",
+  "version": "2.0.x",
+  "note": "change_pwd_page (Password Separate Form) has no config, no permissions, no Drush, no plugins. It provides a standalone change-password page (/user/change-password -> /user/{user}/change-password, route change_pwd_page.change_password_form, form id change_pwd_form), hides the password fields on user_form, and integrates with Password Policy by writing password_policy.settings:change_password_route = 'change_pwd_page.change_password_form' on install. Password Policy IS enabled on this site, so medium/hard cases are grounded in that single integration key: medium seeds a known value and reads it back; hard requires setting it to the module's separate-form route, verified live. All scripts touch only that one key and restore the module's own install value (change_pwd_page.change_password_form) as baseline.",
+  "evals": [
+    {
+      "id": "change-pwd-standalone-path",
+      "mode": "recipe",
+      "prompt": "The change_pwd_page (Password Separate Form) module is enabled on a Drupal 11 site. What URL does a logged-in user visit to change their password on the dedicated page, and where does that URL send them?",
+      "must_contain_any": ["/user/change-password", "/user/{user}/change-password", "change_pwd_page.change_password_form"],
+      "must_not_contain": [],
+      "expected_output": "/user/change-password (route change_pwd_page.change_password) redirects the current user to /user/{user}/change-password (route change_pwd_page.change_password_form), the standalone ChangePasswordForm.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "change-pwd-user-form-change",
+      "mode": "recipe",
+      "prompt": "How does the change_pwd_page module change the normal Drupal user account edit form (user_form)?",
+      "must_contain_any": ["pass", "user_form", "hides", "#access"],
+      "must_not_contain": [],
+      "expected_output": "Via hook_form_alter on user_form it hides the new-password widget ($form['account']['pass']['#access'] = FALSE) and re-labels the current_pass description, so password changing is moved to the separate page.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "change-pwd-password-policy-key",
+      "mode": "recipe",
+      "prompt": "How does change_pwd_page integrate with the Password Policy module, and specifically which configuration value does it set?",
+      "must_contain_any": ["change_password_route", "password_policy.settings", "change_pwd_page.change_password_form"],
+      "must_not_contain": [],
+      "expected_output": "On install it sets password_policy.settings:change_password_route to 'change_pwd_page.change_password_form' so Password Policy enforcement follows the separate change-password form.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "change-pwd-pp-route-known",
+      "mode": "introspection",
+      "prompt": "This site runs the Password Policy module. Inspect the live configuration and state which route Password Policy is currently configured to use for password changes (the change_password_route).",
+      "must_contain_any": ["change_pwd_page.change_password_form"],
+      "must_not_contain": [],
+      "expected_output": "password_policy.settings:change_password_route is 'change_pwd_page.change_password_form' (set by change_pwd_page).",
+      "setup": "agent-module-documentation/evaluation/verify/change_pwd_page-pp-route-known-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/change_pwd_page-pp-route-known-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "change-pwd-pp-route-changed",
+      "mode": "introspection",
+      "prompt": "On this site, inspect the Password Policy configuration and report the exact route name currently set as its change_password_route.",
+      "must_contain_any": ["user.pass"],
+      "must_not_contain": [],
+      "expected_output": "password_policy.settings:change_password_route is currently 'user.pass' (a deliberately changed value; normally change_pwd_page sets it to change_pwd_page.change_password_form).",
+      "setup": "agent-module-documentation/evaluation/verify/change_pwd_page-pp-route-changed-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/change_pwd_page-pp-route-changed-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "change-pwd-wire-pp-route",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this site the Password Policy change_password_route is currently pointing at core's user.pass. Reconfigure Password Policy so that it uses the separate change-password form provided by the change_pwd_page module. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/change_pwd_page-wire-pp-route-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/change_pwd_page-wire-pp-route-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/change_pwd_page-wire-pp-route-cleanup.sh",
+      "expected_output": "Set password_policy.settings:change_password_route to 'change_pwd_page.change_password_form' (drush config:set password_policy.settings change_password_route change_pwd_page.change_password_form)."
+    },
+    {
+      "id": "change-pwd-fix-wrong-route",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "Password Policy on this site is set to change_pwd_page.change_password, but that is the redirect route, not the actual form. Point Password Policy at the correct change_pwd_page route that renders the separate change-password FORM. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/change_pwd_page-fix-wrong-route-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/change_pwd_page-fix-wrong-route-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/change_pwd_page-fix-wrong-route-cleanup.sh",
+      "expected_output": "Set password_policy.settings:change_password_route to 'change_pwd_page.change_password_form' (the form route), not change_pwd_page.change_password (the redirect controller route)."
+    }
+  ]
+}

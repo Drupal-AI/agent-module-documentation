@@ -1,0 +1,80 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "message_subscribe_email",
+  "version": "2.1.x",
+  "note": "Message Subscribe Email gates the email notifier per subscription. It ships email_* flags paired to subscribe_* flags (email_node/email_term/email_user), a boolean user field message_subscribe_email ('Email subscriptions', default on), config message_subscribe_email.settings:flag_prefix (default 'email', has schema), a FlagEvents subscriber that auto-flags the matching email_* flag when the user subscribes (if their field is on), hook_message_subscribe_get_subscribers_alter() that adds/removes the 'email' notifier based on the email_* flagging, hook_flag_action_access() forbidding an email_* flag without the paired subscribe_* flag, and message_subscribe_email.manager::getFlags(). On install it repoints the UI subscription views to *_email variants. Requires message_subscribe_ui. Medium cases read back live config/flags; hard cases enable an email flag / repoint a view and verify live state.",
+  "evals": [
+    {
+      "id": "message_subscribe_email-how",
+      "mode": "recipe",
+      "prompt": "How does the Message Subscribe Email submodule decide which of a user's subscriptions actually send an email, rather than emailing about everything they subscribed to?",
+      "must_contain_any": ["email_", "email_node", "paired", "email flag", "email_ prefix"],
+      "must_not_contain": [],
+      "expected_output": "It adds a parallel set of email_* flags (email_node, email_term, email_user) paired to the subscribe_* flags. Only subscriptions that also hold the matching email_* flag get the 'email' notifier; hook_message_subscribe_get_subscribers_alter() adds the email notifier for those users and removes it for the rest.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "message_subscribe_email-user-field",
+      "mode": "recipe",
+      "prompt": "In Message Subscribe Email, what controls whether a user's new subscriptions are set to email them by default?",
+      "must_contain_any": ["message_subscribe_email", "Email subscriptions"],
+      "must_not_contain": [],
+      "expected_output": "A boolean field on the user account, machine name message_subscribe_email, labelled 'Email subscriptions' (default on). When it is on, the FlagEvents subscriber auto-adds the matching email_* flag whenever the user subscribes; when off, subscribing does not email-flag the item.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "message_subscribe_email-alter-hook",
+      "mode": "recipe",
+      "prompt": "Which Message Subscribe hook does the email submodule implement to make sure only email subscribers get the email notifier, and what does it do to the others?",
+      "must_contain_any": ["get_subscribers_alter", "removeNotifier", "addNotifier", "email notifier"],
+      "must_not_contain": [],
+      "expected_output": "hook_message_subscribe_get_subscribers_alter(). It looks up which recipients hold a relevant email_* flag for the context, adds the 'email' notifier to those recipients (addNotifier('email')) and removes it from everyone else (removeNotifier('email')).",
+      "difficulty": "easy"
+    },
+    {
+      "id": "message_subscribe_email-prefix-live",
+      "mode": "introspection",
+      "prompt": "On this Drupal site, which flag-name prefix does Message Subscribe Email currently use to identify its email flags? Inspect the live configuration and give the exact prefix.",
+      "must_contain_any": ["notify"],
+      "must_not_contain": [],
+      "expected_output": "notify. The live message_subscribe_email.settings config has flag_prefix set to 'notify' (so it would look for notify_* email flags instead of the default email_*).",
+      "setup": "agent-module-documentation/evaluation/verify/msemail-prefix-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/msemail-prefix-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "message_subscribe_email-enabled-flag-live",
+      "mode": "introspection",
+      "prompt": "On this Drupal site, which Message Subscribe Email flag (email_*) is currently enabled? Inspect the live flag configuration and name it.",
+      "must_contain_any": ["email_term"],
+      "must_not_contain": [],
+      "expected_output": "email_term. It is the only enabled email_* flag on the site (email_node and email_user are disabled).",
+      "setup": "agent-module-documentation/evaluation/verify/msemail-enabled-flag-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/msemail-enabled-flag-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "message_subscribe_email-enable-node-flag",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, enable the Message Subscribe Email flag that lets users opt into email notifications for content (node) subscriptions. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/msemail-enable-node-flag-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/msemail-enable-node-flag-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/msemail-enable-node-flag-cleanup.sh",
+      "expected_output": "Enable the email_node flag (Structure > Flags, or load the 'email_node' flag and call ->enable()->save()). It is the email_* partner of subscribe_node, so email-flagging content becomes possible."
+    },
+    {
+      "id": "message_subscribe_email-emailview",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, make the subscribe_node subscription listing in the Subscriptions UI use the email-aware view that Message Subscribe Email provides (the one that shows the email toggle), i.e. subscribe_node_email (display default). Apply the change to the live flag.",
+      "reset": "agent-module-documentation/evaluation/verify/msemail-emailview-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/msemail-emailview-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/msemail-emailview-cleanup.sh",
+      "expected_output": "Set the subscribe_node flag's third-party setting message_subscribe_ui.view_name to 'subscribe_node_email:default' (this is what message_subscribe_email does on install). Via the flag edit form's 'View to use' select, or setThirdPartySetting('message_subscribe_ui','view_name','subscribe_node_email:default')->save()."
+    }
+  ]
+}

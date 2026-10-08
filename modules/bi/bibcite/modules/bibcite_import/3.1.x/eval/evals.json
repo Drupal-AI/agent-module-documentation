@@ -1,0 +1,89 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "bibcite_import",
+  "version": "3.1.x",
+  "note": "bibcite_import imports bibcite_reference entities from uploaded files via bibcite_format decoders, as a batch. Its config object bibcite_import.settings has a nested settings mapping with two booleans: contributor_deduplication and keyword_deduplication (both default true). Import form /admin/content/bibcite/reference/import (permission bibcite import + administer bibcite); populate form /admin/content/bibcite/reference/populate (bibcite populate + administer bibcite); settings form route bibcite_import.settings. Medium/hard cases read/write bibcite_import.settings (router-safe config object). NOTE: actual file import is not exercised because the file decoders use the Symfony serializer, which fatals on this broken shared site; cases assert on the deduplication config values instead.",
+  "evals": [
+    {
+      "id": "bibimp-dedup-settings",
+      "mode": "recipe",
+      "prompt": "In bibcite_import, which settings control whether imported authors and keywords are deduplicated against existing entities, and where are they stored?",
+      "must_contain_any": [
+        "contributor_deduplication",
+        "keyword_deduplication",
+        "bibcite_import.settings"
+      ],
+      "must_not_contain": [],
+      "expected_output": "bibcite_import.settings has settings.contributor_deduplication and settings.keyword_deduplication (both default true). When on, imported authors/keywords are matched to existing bibcite_contributor / bibcite_keyword entities rather than duplicated. Edited at /admin/config/bibcite/settings/import.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "bibimp-routes",
+      "mode": "recipe",
+      "prompt": "How do you import a BibTeX or RIS file of references with bibcite_import, and what permission does the import form require?",
+      "must_contain_any": [
+        "/admin/content/bibcite/reference/import",
+        "bibcite import",
+        "ImportForm"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Use the import form at /admin/content/bibcite/reference/import (permission 'bibcite import' plus 'administer bibcite'): upload the file, choose its format, and it batch-creates reference entities. Import formats are bibcite_format plugins whose encoder is a DecoderInterface.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "bibimp-contrib-dedup-state",
+      "mode": "introspection",
+      "prompt": "On this Drupal site, is bibcite_import currently configured to deduplicate contributors (authors) when importing references? Inspect the live import settings to answer.",
+      "must_contain_any": [
+        "false",
+        "off",
+        "no",
+        "disabled"
+      ],
+      "must_not_contain": [],
+      "expected_output": "No - contributor deduplication is OFF: bibcite_import.settings:settings.contributor_deduplication is false (keyword deduplication remains true).",
+      "setup": "agent-module-documentation/evaluation/verify/bibcite_import-contributor-dedup-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/bibcite_import-contributor-dedup-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "bibimp-keyword-dedup-state",
+      "mode": "introspection",
+      "prompt": "Does this site's bibcite_import configuration deduplicate keywords on import? Inspect the live import settings and answer.",
+      "must_contain_any": [
+        "false",
+        "off",
+        "no",
+        "disabled"
+      ],
+      "must_not_contain": [],
+      "expected_output": "No - keyword deduplication is OFF: bibcite_import.settings:settings.keyword_deduplication is false.",
+      "setup": "agent-module-documentation/evaluation/verify/bibcite_import-keyword-dedup-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/bibcite_import-keyword-dedup-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "bibimp-disable-dedup",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, configure bibcite_import so that NEITHER contributors NOR keywords are deduplicated when importing references (both deduplication options off). Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/bibcite_import-disable-dedup-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/bibcite_import-disable-dedup-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/bibcite_import-contributor-dedup-cleanup.sh",
+      "expected_output": "Set bibcite_import.settings:settings.contributor_deduplication and settings.keyword_deduplication both to false (drush cset bibcite_import.settings settings.contributor_deduplication 0; ...keyword_deduplication 0, or via configFactory / the import settings form)."
+    },
+    {
+      "id": "bibimp-contrib-only-dedup",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "site-owner",
+      "prompt": "When importing references on this site, I want duplicate authors to be merged but duplicate keywords to be kept separate. Configure bibcite_import so contributor deduplication is on and keyword deduplication is off. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/bibcite_import-contrib-only-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/bibcite_import-contrib-only-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/bibcite_import-contributor-dedup-cleanup.sh",
+      "expected_output": "Set bibcite_import.settings:settings.contributor_deduplication to true and settings.keyword_deduplication to false."
+    }
+  ]
+}

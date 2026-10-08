@@ -1,0 +1,27 @@
+Entity Link Display adds a computed "Display Link" link field to every entity type that has a canonical link template, plus a "Display Link" field formatter that renders a configurable link to the entity's own canonical page.
+---
+The module removes the need to write custom Twig or a Views "link to content" field just to show a "read more"/"view" link inside a view mode. On enable, `hook_entity_base_field_info()` attaches a computed link base field (`entity_link_display`, backed by `ViewModeLinkComputedField`) to any entity type whose definition declares a `canonical` link template. The field is display-configurable but hidden by default (region hidden, not visible), so it shows up in Manage Display ready to be moved into a region per view mode. The `EntityLinkDisplayFormatter` (registered for `link` field types) builds a Drupal `#type => link` render element pointing at `$entity->toUrl()`, using optional link text (falling back to the entity label), one or more CSS classes, `rel` attributes (nofollow/noopener/noreferrer/external) and a link target (`_self`/`_blank`/`_parent`/`_top`). It requires no modules outside core, ships no routes, permissions, services or config entities, and needs no configuration beyond enabling the field on a view mode and choosing the formatter options.
+---
+- Add a "View content" link to a content type's teaser view mode.
+- Enable the computed "Display Link" field on any entity view mode via Manage Display.
+- Move "Display Link" out of the disabled region so it renders in a view mode.
+- Set custom link text such as "Read more", "View" or "Details".
+- Let the link text fall back to the entity label when no text is entered.
+- Add CSS classes to style the link as a button or call-to-action.
+- Add `rel="nofollow"` to the generated link.
+- Add `rel="noopener noreferrer"` for links that open in a new tab.
+- Flag a link as `external` through the rel options.
+- Open the link in a new tab with `target="_blank"`.
+- Keep the link in the same tab with `target="_self"`.
+- Open the link in the parent or top frame with `target="_parent"` / `_top`.
+- Provide a "view" link on user, taxonomy term or media displays.
+- Use it on any entity type that exposes a canonical URL.
+- Apply the "Display Link" formatter to an existing link field.
+- Avoid building a Views "link to content" field for simple display needs.
+- Configure the link independently per view mode.
+- Keep the field hidden on view modes where a link is not wanted (the default).
+- Render consistent "view" links across many bundles without theme overrides.
+- Add quick-access links in admin dashboards, reports or content listings.
+- Include a canonical link in Layout Builder layouts.
+- Localize link text per display on multilingual sites.
+- Render the link only when the host entity has a canonical template.

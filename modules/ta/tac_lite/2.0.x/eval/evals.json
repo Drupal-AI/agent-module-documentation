@@ -1,0 +1,101 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "tac_lite",
+  "version": "2.0.x",
+  "note": "tac_lite is a node_access GRANTS module: it grants view/update/delete on nodes based on the taxonomy terms they carry (hook_node_access_records + hook_node_grants), realm tac_lite_scheme_<n>. All configuration lives in ONE config object, tac_lite.settings (tac_lite_categories = vocab ids, tac_lite_schemes = count 1-7, tac_lite_storage_type = tid|uuid, tac_lite_config_scheme_<n> = {name, perms[grant_view/grant_update/grant_delete], unpublished, term_visibility, tac_lite_create}, tac_lite_grants_scheme_<n> = role defaults); per-user grants are in user.data. There is no tac_lite.scheme.N object. Because this is a node-access module, ALL eval cases are deliberately grounded in tac_lite.settings config only and leave tac_lite_categories null, so hook_node_access_records emits NO grants and no node_access rebuild is needed and no grants are left broken. Baseline: tac_lite_categories null, tac_lite_schemes 1, no scheme config, storage defaults to tid.",
+  "evals": [
+    {
+      "id": "tac_lite-mechanism",
+      "mode": "recipe",
+      "prompt": "How does the Drupal module tac_lite (Taxonomy Access Control Lite) actually control who can see a node, and which node operations can it affect? Does it grant or revoke access?",
+      "must_contain_any": [
+        "node_access",
+        "node access",
+        "hook_node_grants",
+        "grants"
+      ],
+      "must_not_contain": [],
+      "expected_output": "It uses Drupal's node_access grants system: hook_node_access_records writes grant rows (gid = term id) per scheme realm for a node's tac_lite terms, and hook_node_grants returns the terms a user may access. It can grant view, update and delete. It only GRANTS access (reveals content) — it cannot hide content the user already may see.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "tac_lite-config-location",
+      "mode": "recipe",
+      "prompt": "In tac_lite, which config object stores its settings and what are the main keys for choosing the controlled vocabularies and the number of schemes? Where is the admin page?",
+      "must_contain_any": [
+        "tac_lite.settings",
+        "tac_lite_categories",
+        "tac_lite_schemes",
+        "/admin/config/people/tac_lite"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Everything lives in the tac_lite.settings config object: tac_lite_categories (vocabulary ids), tac_lite_schemes (number of schemes, up to 7), tac_lite_storage_type (tid|uuid), and tac_lite_config_scheme_<n> / tac_lite_grants_scheme_<n>. Admin UI at /admin/config/people/tac_lite (route tac_lite.administration).",
+      "difficulty": "easy"
+    },
+    {
+      "id": "tac_lite-per-user-rebuild",
+      "mode": "recipe",
+      "prompt": "Using tac_lite, how do you give one specific user access to content in a category, and what must you do after configuring or changing a scheme?",
+      "must_contain_any": [
+        "rebuild",
+        "/user/",
+        "access by taxonomy",
+        "node access"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Grant a single user terms on the 'Access by taxonomy' tab of their account edit page (/user/{user}/tac_lite, stored via user.data). After changing schemes you must rebuild node access permissions (Reports -> Status report -> Rebuild permissions, or node_access_rebuild()).",
+      "difficulty": "easy"
+    },
+    {
+      "id": "tac_lite-scheme-perms",
+      "mode": "introspection",
+      "prompt": "On this Drupal site, tac_lite scheme 1 has been configured. Inspect the live tac_lite configuration and tell me the scheme's name and which node permission(s) it grants.",
+      "must_contain_any": [
+        "grant_view",
+        "Read access",
+        "view"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Scheme 1 is named 'Read access' and grants node view: tac_lite.settings tac_lite_config_scheme_1 has name 'Read access' and perms including grant_view. Discoverable via drush cget tac_lite.settings tac_lite_config_scheme_1.",
+      "setup": "agent-module-documentation/evaluation/verify/tac_lite-scheme-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/tac_lite-scheme-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "tac_lite-storage-type",
+      "mode": "introspection",
+      "prompt": "On this site, how does tac_lite identify the taxonomy terms in its access grants — by term id (tid) or by uuid? Inspect the live tac_lite settings and answer.",
+      "must_contain_any": [
+        "uuid"
+      ],
+      "must_not_contain": [],
+      "expected_output": "By uuid: tac_lite.settings tac_lite_storage_type is 'uuid' (the code reads tac_lite_storage_type, defaulting to tid when unset). Discoverable via drush cget tac_lite.settings tac_lite_storage_type.",
+      "setup": "agent-module-documentation/evaluation/verify/tac_lite-storage-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/tac_lite-storage-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "tac_lite-grant-view",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, configure tac_lite scheme 1 so that it grants node 'view' access (add the view permission to the scheme). Apply the change to the live tac_lite configuration. (You do not need to select a vocabulary or rebuild node access for this task.)",
+      "reset": "agent-module-documentation/evaluation/verify/tac_lite-grantview-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/tac_lite-grantview-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/tac_lite-grantview-cleanup.sh",
+      "expected_output": "tac_lite.settings tac_lite_config_scheme_1.perms includes grant_view (set via the scheme tab's Permissions multiselect, or by editing the config: perms => ['grant_view'])."
+    },
+    {
+      "id": "tac_lite-add-scheme",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this site tac_lite is currently set up with a single access scheme. Increase the number of tac_lite schemes to 2 and apply the change to the live configuration.",
+      "reset": "agent-module-documentation/evaluation/verify/tac_lite-schemes-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/tac_lite-schemes-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/tac_lite-schemes-cleanup.sh",
+      "expected_output": "tac_lite.settings tac_lite_schemes is set to 2 (via the number-of-schemes setting on /admin/config/people/tac_lite, or by editing the config value)."
+    }
+  ]
+}

@@ -1,0 +1,100 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "filehash",
+  "version": "3.2.x",
+  "note": "File Hash stores per-algorithm hashes as base fields/columns on the core file entity. All config is in filehash.settings (algorithms map of 18 booleans, dedupe 0/1/2, autohash, rehash, original, dedupe_original, mime_types, suppress_warnings). Enabling an algorithm fires a config onSave subscriber that adds a file_managed column; drush filehash:clean drops columns for disabled algorithms and filehash:generate backfills. Medium cases read back a live-enabled algorithm (sha256) and the autohash flag; hard cases enable sha256 (verified by config value AND the file_managed.sha256 column existing) and set global strict de-duplication. No permissions of its own; configure route filehash.admin.",
+  "evals": [
+    {
+      "id": "filehash-generate-cmd",
+      "mode": "recipe",
+      "prompt": "I just enabled the filehash module (and an algorithm) on a Drupal site that already has thousands of uploaded files. Which Drush command backfills hashes for those existing files, and does it have a short alias?",
+      "must_contain_any": [
+        "filehash:generate",
+        "fgen",
+        "filehash-generate"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Run `drush filehash:generate` (aliases `fgen` / `filehash-generate`), which runs the Generate batch to compute and store hashes for existing files that don't have them yet.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "filehash-enable-where",
+      "mode": "recipe",
+      "prompt": "On a Drupal site with the filehash module, where do I choose which hash algorithms (e.g. SHA-256) get computed for uploaded files, and what config object stores that choice?",
+      "must_contain_any": [
+        "filehash.settings",
+        "/admin/config/media/filehash",
+        "algorithms"
+      ],
+      "must_not_contain": [],
+      "expected_output": "On the File hash settings form at /admin/config/media/filehash (route filehash.admin), tick the algorithms you want. The choice is stored in the filehash.settings config object under the `algorithms` map (one boolean per algorithm). Saving it adds a matching column to the file_managed table.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "filehash-token",
+      "mode": "recipe",
+      "prompt": "With the filehash module and SHA-256 enabled, how would I output a file's SHA-256 hash using Drupal's token system?",
+      "must_contain_any": [
+        "filehash-sha256",
+        "[file:filehash-sha256]"
+      ],
+      "must_not_contain": [],
+      "expected_output": "filehash exposes file tokens per enabled algorithm: use [file:filehash-sha256] for the full hash, and [file:filehash-sha256-pair-1] / [file:filehash-sha256-pair-2] for the first/second two-character pairs.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "filehash-live-algorithm",
+      "mode": "introspection",
+      "prompt": "On this Drupal site, which file-hash algorithm is currently enabled in the filehash configuration? Inspect the live config and name it.",
+      "must_contain_any": [
+        "sha256",
+        "SHA-256",
+        "SHA256"
+      ],
+      "must_not_contain": [],
+      "expected_output": "SHA-256 (algorithms.sha256 is true in filehash.settings); a matching file_managed.sha256 column exists. Check with `drush config:get filehash.settings algorithms`.",
+      "setup": "agent-module-documentation/evaluation/verify/filehash-live-algorithm-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/filehash-live-algorithm-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "filehash-live-autohash",
+      "mode": "introspection",
+      "prompt": "Is this site's filehash module configured to automatically generate any missing file hashes when files are loaded? Inspect the live configuration and state the setting's value.",
+      "must_contain_any": [
+        "true",
+        "enabled",
+        "yes",
+        "autohash"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Yes: filehash.settings:autohash is true on the live site (drush config:get filehash.settings autohash), so missing hashes are generated on entity load.",
+      "setup": "agent-module-documentation/evaluation/verify/filehash-live-autohash-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/filehash-live-autohash-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "filehash-enable-sha256",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, configure the filehash module so that the SHA-256 hash algorithm is enabled and uploaded files will get a SHA-256 hash. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/filehash-enable-sha256-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/filehash-enable-sha256-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/filehash-enable-sha256-cleanup.sh",
+      "expected_output": "Enable algorithms.sha256 in filehash.settings (tick SHA-256 at /admin/config/media/filehash, or set the config value and save through the config API). Saving via the config API fires FileHashConfigSubscriber which adds the file_managed.sha256 column. Verified when the config value is true AND the sha256 column exists."
+    },
+    {
+      "id": "filehash-strict-dedupe",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, configure the filehash module to disallow duplicate file uploads site-wide at the strictest level (also checking against temporary files). Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/filehash-strict-dedupe-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/filehash-strict-dedupe-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/filehash-strict-dedupe-cleanup.sh",
+      "expected_output": "Set the global 'Disallow duplicate files' option to Strict, i.e. filehash.settings:dedupe = 2 (drush config:set filehash.settings dedupe 2 -y, or the 'Strict' radio at /admin/config/media/filehash). Verified when the live dedupe value is 2."
+    }
+  ]
+}

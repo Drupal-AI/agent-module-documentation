@@ -1,0 +1,101 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "compiler",
+  "version": "1.0.x",
+  "note": "Compiler is a pure developer framework: it registers a 'compiler' plugin type (manager service plugin.manager.compiler = Drupal\\compiler\\Plugin\\CompilerPluginManager, discovery subdir Plugin/Compiler, annotation @Compiler which is a PluginID, interface CompilerPluginInterface::compile(), alter hook hook_compiler_info, cache bin compiler_plugins) plus context/input value objects (CompilerContext, RefineableCompilerContext, CompilerInputFile, CompilerInputDirect). It ships NO compiler plugins, no config, no routes, no UI, no permissions, no Drush. Concrete compiler plugins come from other modules; on this site the enabled compiler_scss module registers an 'scss' compiler plugin. easy = recipe facts about the plugin type/API. medium = introspect the live plugin manager (its class, the registered plugin ids). hard = the agent writes a real compiler plugin in a custom module (compiler_probe) so it becomes discoverable and its compile() returns a known value, verified against the live manager.",
+  "evals": [
+    {
+      "id": "compiler-plugin-type",
+      "mode": "recipe",
+      "prompt": "In the Drupal contrib module 'compiler', how do I register a new compiler? Name the plugin namespace/subdirectory a plugin class must live in, the annotation it uses, the interface it must implement, and the plugin manager service id.",
+      "must_contain_any": [
+        "Plugin/Compiler",
+        "CompilerPluginInterface",
+        "plugin.manager.compiler",
+        "@Compiler"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Create a class in your module's src/Plugin/Compiler/ directory, annotate it @Compiler(\"id\") (a PluginID annotation), implement Drupal\\compiler\\Plugin\\CompilerPluginInterface (compile()) — optionally extending CompilerPluginBase. The manager is the service plugin.manager.compiler (Drupal\\compiler\\Plugin\\CompilerPluginManager). Discovery can be altered with hook_compiler_info().",
+      "difficulty": "easy"
+    },
+    {
+      "id": "compiler-invoke",
+      "mode": "recipe",
+      "prompt": "Using the Drupal 'compiler' module's plugin manager, how do I run a compiler plugin by its machine name against some inputs and get the compiled result?",
+      "must_contain_any": [
+        "plugin.manager.compiler",
+        "createInstance",
+        "compile",
+        "CompilerContext"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Build a CompilerContext (or RefineableCompilerContext) with the compiler id, options, and inputs, then call \\Drupal::service('plugin.manager.compiler')->createInstance($id)->compile($context). compile() returns the compiled result.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "compiler-context-inputs",
+      "mode": "recipe",
+      "prompt": "In the Drupal 'compiler' module, what is the difference between CompilerContext and RefineableCompilerContext, and what are CompilerInputFile and CompilerInputDirect used for?",
+      "must_contain_any": [
+        "RefineableCompilerContext",
+        "ArrayAccess",
+        "CompilerInputFile",
+        "CompilerInputDirect",
+        "getInputs"
+      ],
+      "must_not_contain": [],
+      "expected_output": "CompilerContext is immutable (compiler id, options, inputs, data set at construction). RefineableCompilerContext extends it and is mutable via ArrayAccess plus setCompiler/setData/setOption(s). Inputs implement CompilerInputInterface: CompilerInputFile wraps a file path, CompilerInputDirect wraps a raw value; both return it via get(). Iterate them with $context->getInputs().",
+      "difficulty": "easy"
+    },
+    {
+      "id": "compiler-manager-class",
+      "mode": "introspection",
+      "prompt": "On this running Drupal site, inspect the service container: what PHP class backs the compiler module's plugin manager service (plugin.manager.compiler)?",
+      "must_contain_any": [
+        "Drupal\\compiler\\Plugin\\CompilerPluginManager",
+        "CompilerPluginManager"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The service plugin.manager.compiler is an instance of Drupal\\compiler\\Plugin\\CompilerPluginManager (a DefaultPluginManager subclass). Discoverable via drush php:eval 'echo get_class(\\Drupal::service(\"plugin.manager.compiler\"));'.",
+      "setup": "agent-module-documentation/evaluation/verify/compiler-manager-class-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/compiler-manager-class-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "compiler-registered-plugins",
+      "mode": "introspection",
+      "prompt": "On this running Drupal site, inspect the compiler plugin manager and report which compiler plugin id(s) are currently registered (discovered) by it.",
+      "must_contain_any": [
+        "scss"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Query \\Drupal::service('plugin.manager.compiler')->getDefinitions(); the compiler module ships none itself, but the enabled compiler_scss module registers the 'scss' compiler plugin, so 'scss' is the registered id.",
+      "setup": "agent-module-documentation/evaluation/verify/compiler-registered-plugins-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/compiler-registered-plugins-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "compiler-register-plugin",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, using the 'compiler' module's plugin type, create and enable a small custom module named 'compiler_probe' that registers a compiler plugin with the id 'probe_compiler' (a class in Drupal\\compiler_probe\\Plugin\\Compiler annotated @Compiler(\"probe_compiler\"), implementing CompilerPluginInterface / extending CompilerPluginBase). After enabling and rebuilding caches, the compiler plugin manager must discover 'probe_compiler'. Apply this to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/compiler-register-plugin-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/compiler-register-plugin-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/compiler-register-plugin-cleanup.sh",
+      "expected_output": "A module compiler_probe with src/Plugin/Compiler/ProbeCompiler.php (@Compiler(\"probe_compiler\")) is enabled; \\Drupal::service('plugin.manager.compiler')->hasDefinition('probe_compiler') returns TRUE after drush cr."
+    },
+    {
+      "id": "compiler-plugin-compiles",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, create and enable a custom module 'compiler_probe' providing a compiler plugin with id 'probe_compiler' whose compile(CompilerContextInterface $context) method returns a string containing the token PROBE_OK. Verify by instantiating it through plugin.manager.compiler and calling compile() on a context. Apply this to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/compiler-plugin-compiles-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/compiler-plugin-compiles-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/compiler-plugin-compiles-cleanup.sh",
+      "expected_output": "compiler_probe registers probe_compiler; \\Drupal::service('plugin.manager.compiler')->createInstance('probe_compiler')->compile($context) returns a string containing 'PROBE_OK'."
+    }
+  ]
+}

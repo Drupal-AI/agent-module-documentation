@@ -1,0 +1,99 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "autoban_advban",
+  "version": "1.13.x",
+  "note": "autoban_advban is a glue submodule of autoban that integrates the contrib Advanced Ban (advban) module as two Autoban ban providers: 'advban' (Advanced Ban, single) via AdvbanProvider and 'advban_range' (Advanced Ban (range), range/CIDR) via AdvbanRangeProvider — two services tagged ban_providers, both constructed with @advban.ip_manager and implementing AutobanProviderInterface. It has no config/settings/permissions/Drush of its own. It requires the contrib advban module; on THIS documentation site advban's presence is unstable and autoban_advban is left DISABLED, so its providers are not active in the live registry. The medium and hard cases are therefore grounded in the autoban config entity's `provider` field (a stored config string that is valid whether or not the provider service is active): they read/write a rule wired to provider 'advban_range', verified against the live config entity. Tiers: 3 easy + 2 medium + 2 hard (all three tiers present and smoke-tested). The second medium/hard pair is grounded in the 'advban' single-IP provider (vs the range provider).",
+  "evals": [
+    {
+      "id": "autoban_advban-providers",
+      "mode": "recipe",
+      "prompt": "What ban providers does the autoban_advban submodule add to Autoban, and what is the difference between them?",
+      "must_contain_any": [
+        "advban",
+        "advban_range",
+        "range",
+        "Advanced Ban"
+      ],
+      "must_not_contain": [],
+      "expected_output": "It adds two providers integrating the contrib Advanced Ban (advban) module: id 'advban' ('Advanced Ban', ban type single) and id 'advban_range' ('Advanced Ban (range)', ban type range). advban bans a single IP; advban_range bans a whole CIDR/IP range.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "autoban_advban-how-registered",
+      "mode": "recipe",
+      "prompt": "How are the Advanced Ban providers registered for Autoban, which classes implement them, and what module do they require?",
+      "must_contain_any": [
+        "ban_providers",
+        "AdvbanProvider",
+        "AdvbanRangeProvider",
+        "advban.ip_manager",
+        "advban"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Two services (autoban_advban.ban_provider = AdvbanProvider, autoban_advban_range.ban_provider = AdvbanRangeProvider) tagged { name: ban_providers }, implementing AutobanProviderInterface, both constructed with @advban.ip_manager. They require the contrib advban module; without it, autoban_advban cannot be enabled and the providers do not appear.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "autoban_advban-use-range",
+      "mode": "recipe",
+      "prompt": "I want an Autoban rule to ban an entire IP range (CIDR block) rather than a single address. Which provider id do I set on the rule, and what does it require?",
+      "must_contain_any": [
+        "advban_range",
+        "range",
+        "advban"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Set the rule's `provider` field to 'advban_range' (the AdvbanRangeProvider, ban type range). It requires the autoban_advban submodule and the contrib advban module to be enabled so the range ban actually executes through Advanced Ban's IP manager.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "autoban_advban-known-range-provider",
+      "mode": "introspection",
+      "prompt": "This Drupal site has an Autoban rule `ab_test_advban`. Inspect the live configuration and report the exact ban-provider id it is configured to use.",
+      "must_contain_any": [
+        "advban_range"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Rule ab_test_advban has provider 'advban_range' (the Advanced Ban range provider). Read it with `drush cget autoban.autoban.ab_test_advban` (the `provider` key).",
+      "setup": "agent-module-documentation/evaluation/verify/autoban_advban-known-range-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/autoban_advban-known-range-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "autoban_advban-range-rule",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, create an Autoban rule with machine id `autoban_test_range` that scans the `access denied` log type and bans offending anonymous IPs as a range using the Advanced Ban range provider, with a threshold of 3. Apply it to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/autoban_advban-range-rule-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/autoban_advban-range-rule-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/autoban_advban-range-rule-cleanup.sh",
+      "expected_output": "An autoban rule autoban_test_range exists with provider='advban_range', type='access denied', threshold=3, user_type anonymous. The provider id 'advban_range' selects the Advanced Ban range provider (executes once autoban_advban + advban are enabled)."
+    },
+    {
+      "id": "autoban_advban-known-single",
+      "mode": "introspection",
+      "prompt": "This Drupal site has an Autoban rule `ab_test_advban_single`. Inspect the live configuration and report the ban-provider id it uses and the threshold configured on the rule.",
+      "must_contain_any": [
+        "advban"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Rule ab_test_advban_single has provider 'advban' (the Advanced Ban single-IP provider, as opposed to 'advban_range') and threshold 10. Read it with `drush cget autoban.autoban.ab_test_advban_single` (the `provider` and `threshold` keys).",
+      "setup": "agent-module-documentation/evaluation/verify/autoban_advban-known-single-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/autoban_advban-known-single-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "autoban_advban-single-rule",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, create an Autoban rule with machine id `autoban_test_single` that scans the `page not found` log type and bans offending IPs as a SINGLE address (not a range) using the Advanced Ban provider, with a threshold of 8. Apply it to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/autoban_advban-single-rule-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/autoban_advban-single-rule-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/autoban_advban-single-rule-cleanup.sh",
+      "expected_output": "An autoban rule autoban_test_single exists with provider='advban' (the Advanced Ban single-IP provider, not advban_range), type='page not found', threshold=8. The provider id 'advban' bans one IP at a time via Advanced Ban's IP manager."
+    }
+  ]
+}

@@ -1,0 +1,80 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "role_expire_rules",
+  "version": "4.1.x",
+  "note": "Glue submodule of role_expire providing Rules integration. Two @RulesAction plugins: role_expire_set_expire_time (context: user entity:user, roles string multiple, date string) and role_expire_remove_expire_time (context: user, roles). Both delegate to the role_expire.api service (writeRecord / deleteRecord). One Rules event role_expire_event_role_expires ('When a role expires', category User) with context account (entity:user) and ridBefore (string), backed by RoleExpiresEvent. No config/permissions/forms/Drush of its own. Medium/hard cases build and read real rules_reaction_rule config entities (rules.reaction.<id>) via the plugin.manager.rules_expression service; fixtures are created disabled (status FALSE) so they never execute on the shared site.",
+  "evals": [
+    {
+      "id": "role_expire_rules-action-ids",
+      "mode": "recipe",
+      "prompt": "Using the role_expire_rules submodule, which Rules actions can I use to change a user's role expiration, and what are their plugin ids?",
+      "must_contain_any": ["role_expire_set_expire_time", "role_expire_remove_expire_time"],
+      "must_not_contain": [],
+      "expected_output": "Two Rules actions: role_expire_set_expire_time ('Set expire time for user roles') and role_expire_remove_expire_time ('Remove expire time for user roles'). Both are in the 'User' category and call the role_expire.api service.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "role_expire_rules-event",
+      "mode": "recipe",
+      "prompt": "I want a Rules reaction rule to run whenever a user's role expires (via Role Expire). What is the Rules event provided for this, and what context does it expose?",
+      "must_contain_any": ["role_expire_event_role_expires", "When a role expires", "ridBefore"],
+      "must_not_contain": [],
+      "expected_output": "The event is role_expire_event_role_expires ('When a role expires', category User), surfacing the parent module's RoleExpiresEvent. Its context is account (entity:user, the affected user) and ridBefore (string, the id of the role that expired).",
+      "difficulty": "easy"
+    },
+    {
+      "id": "role_expire_rules-set-action-context",
+      "mode": "recipe",
+      "prompt": "What inputs (context) does the role_expire_set_expire_time Rules action take, and how does it apply the expiry under the hood?",
+      "must_contain_any": ["date", "roles", "user", "writeRecord"],
+      "must_not_contain": [],
+      "expected_output": "Context: user (entity:user), roles (string, multiple), and date (absolute YYYY-MM-DD HH:MM:SS or relative strtotime like '1 day'). For each role the user actually has, it computes strtotime($date) and calls role_expire.api->writeRecord($uid, $role, $time).",
+      "difficulty": "easy"
+    },
+    {
+      "id": "role_expire_rules-known-date",
+      "mode": "introspection",
+      "prompt": "This site has a Rules reaction rule with machine name rer_eval that uses the Role Expire 'Set expire time for user roles' action. Inspect the live rule configuration and state the expiry date value the action is configured with.",
+      "must_contain_any": ["2031-06-15"],
+      "must_not_contain": [],
+      "expected_output": "The rules.reaction.rer_eval expression contains a role_expire_set_expire_time action whose context_values.date is '2031-06-15 12:00:00'. Read with `drush cget rules.reaction.rer_eval expression`.",
+      "setup": "agent-module-documentation/evaluation/verify/role_expire_rules-known-date-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/role_expire_rules-known-date-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "role_expire_rules-known-event",
+      "mode": "introspection",
+      "prompt": "This site has a Rules reaction rule with machine name rer_event that involves Role Expire. Inspect the live rule and state the machine name of the Rules event that triggers it.",
+      "must_contain_any": ["role_expire_event_role_expires"],
+      "must_not_contain": [],
+      "expected_output": "rules.reaction.rer_event reacts to the event role_expire_event_role_expires ('When a role expires'). Read with `drush cget rules.reaction.rer_event events`.",
+      "setup": "agent-module-documentation/evaluation/verify/role_expire_rules-known-event-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/role_expire_rules-known-event-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "role_expire_rules-build-set-rule",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "Create a Rules reaction rule with machine name rer_task that, when a user logs in (event rules_user_login), runs the Role Expire 'Set expire time for user roles' action (role_expire_set_expire_time). Save it to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/role_expire_rules-build-set-rule-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/role_expire_rules-build-set-rule-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/role_expire_rules-build-set-rule-cleanup.sh",
+      "expected_output": "A rules_reaction_rule config entity rer_task exists whose expression contains an action with action_id role_expire_set_expire_time (built via plugin.manager.rules_expression and saved, or via the Rules UI)."
+    },
+    {
+      "id": "role_expire_rules-build-remove-rule",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "Create a Rules reaction rule with machine name rer_remove that, when a user logs in (event rules_user_login), runs the Role Expire 'Remove expire time for user roles' action (role_expire_remove_expire_time). Save it to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/role_expire_rules-build-remove-rule-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/role_expire_rules-build-remove-rule-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/role_expire_rules-build-remove-rule-cleanup.sh",
+      "expected_output": "A rules_reaction_rule config entity rer_remove exists whose expression contains an action with action_id role_expire_remove_expire_time."
+    }
+  ]
+}

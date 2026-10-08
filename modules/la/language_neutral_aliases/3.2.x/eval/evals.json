@@ -1,0 +1,104 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "language_neutral_aliases",
+  "version": "3.2.x",
+  "note": "Language Neutral URL Aliases forces every path_alias to be saved language-neutral (langcode = und / LANGCODE_NOT_SPECIFIED). Real mechanism: a decorator on path_alias.repository (service language_neutral_aliases.repository_decorator, priority 9) forces lookups to und; hook_entity_type_alter swaps path_alias storage to NeutralPathAliasStorage (create()/save() force langcode=und) and list builder to NeutralPathAliasListBuilder; hook_module_implements_alter runs last and unsets path's entity_translation_create. No config/UI/permissions/Drush. Behaviour is directly observable on the live site: any alias created ends up with langcode 'und' even if another langcode is requested. Medium introspection reads back the stored langcode of a known alias; hard execution creates an alias and verifies it is stored language-neutral. Fixtures use /lna-* source paths.",
+  "evals": [
+    {
+      "id": "lna-what-it-does",
+      "mode": "recipe",
+      "prompt": "What does the language_neutral_aliases module change about how Drupal stores URL aliases, and what langcode do aliases end up with?",
+      "must_contain_any": [
+        "language neutral",
+        "language-neutral",
+        "und",
+        "LANGCODE_NOT_SPECIFIED",
+        "language independent",
+        "regardless of language"
+      ],
+      "must_not_contain": [],
+      "expected_output": "It decouples URL aliases from the language system so every path alias is saved language-neutral (langcode = und / LANGCODE_NOT_SPECIFIED), making the same alias apply in all languages.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "lna-mechanism",
+      "mode": "recipe",
+      "prompt": "Technically, how does language_neutral_aliases force aliases to be language neutral? Name the two core mechanisms (there is no settings form).",
+      "must_contain_any": [
+        "decorat",
+        "path_alias.repository",
+        "NeutralPathAliasStorage",
+        "storage class",
+        "PathAliasStorage",
+        "entity_type_alter"
+      ],
+      "must_not_contain": [],
+      "expected_output": "It decorates the path_alias.repository service to force lookups to LANGCODE_NOT_SPECIFIED, and via hook_entity_type_alter swaps the path_alias storage class to NeutralPathAliasStorage (create()/save() force langcode=und) plus a neutral list builder; it also unsets path's entity_translation_create hook.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "lna-legacy-aliases",
+      "mode": "recipe",
+      "prompt": "After installing language_neutral_aliases on an existing multilingual site, what happens to URL aliases that were already language-specific, and how do you convert them permanently?",
+      "must_contain_any": [
+        "hidden",
+        "uninstall",
+        "UPDATE path_alias",
+        "langcode = 'und'",
+        "und"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Existing non-neutral aliases become hidden (they don't resolve, don't show on node edit, aren't listed) but are not deleted, so uninstalling restores them. To convert permanently, bulk-update them, e.g. UPDATE path_alias SET langcode = 'und' WHERE langcode <> 'und';.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "lna-known-alias-langcode",
+      "mode": "introspection",
+      "prompt": "This Drupal site has a URL alias whose source (system) path is /lna-src-a. Inspect the live path_alias entity for that source and report the langcode it is stored with.",
+      "must_contain_any": [
+        "und"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The alias for /lna-src-a is stored with langcode 'und' (LANGCODE_NOT_SPECIFIED), because language_neutral_aliases forces all aliases language-neutral.",
+      "setup": "agent-module-documentation/evaluation/verify/language_neutral_aliases-known-alias-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/language_neutral_aliases-known-alias-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "lna-explicit-langcode-neutralized",
+      "mode": "introspection",
+      "prompt": "On this site an alias was created for the source path /lna-src-b while explicitly requesting the English (en) language. Inspect the live path_alias entity for /lna-src-b and report which langcode it was actually saved with.",
+      "must_contain_any": [
+        "und"
+      ],
+      "must_not_contain": [],
+      "expected_output": "It was saved with langcode 'und', not 'en' — NeutralPathAliasStorage::save() overrides any requested langcode to LANGCODE_NOT_SPECIFIED.",
+      "setup": "agent-module-documentation/evaluation/verify/language_neutral_aliases-explicit-langcode-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/language_neutral_aliases-explicit-langcode-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "lna-create-neutral-alias",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site (which runs language_neutral_aliases), create a URL alias mapping the system path /lna-task-source to the alias /lna-task-alias. Save it to the live site. It must end up language-neutral as this module requires.",
+      "reset": "agent-module-documentation/evaluation/verify/language_neutral_aliases-create-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/language_neutral_aliases-create-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/language_neutral_aliases-create-cleanup.sh",
+      "expected_output": "A path_alias entity exists with path=/lna-task-source, alias=/lna-task-alias and langcode=und (creating it through the normal path_alias storage neutralizes the langcode automatically)."
+    },
+    {
+      "id": "lna-fix-legacy-alias",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this site the URL alias for the system path /lna-fix-source is currently stored with a non-neutral langcode (en), left over from before language_neutral_aliases was in effect. Make that alias language-neutral (langcode und) as the module intends, and apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/language_neutral_aliases-fix-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/language_neutral_aliases-fix-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/language_neutral_aliases-fix-cleanup.sh",
+      "expected_output": "The path_alias for /lna-fix-source now has langcode=und (e.g. load it and re-save it — NeutralPathAliasStorage::save() forces und — or set its langcode to und directly)."
+    }
+  ]
+}

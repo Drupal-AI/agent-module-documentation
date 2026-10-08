@@ -1,0 +1,96 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "site_verify",
+  "version": "3.0.x",
+  "note": "Site Verify defines the site_verification config entity (config prefix site_verification, exported as site_verify.site_verification.<id>.yml) with fields id/label/status/description/type/name/content. type is the PHP enum SiteVerificationType (meta|file) -- not a separate config entity or plugin type. configure route is entity.site_verification.collection at /admin/config/search/verifications. Two permissions gate it: administer site verify (meta verifications + the listing) and manage file based site verifications (required in addition, for file verifications). Meta verifications render as a <meta> tag on the front page only; file verifications are served at a dynamically generated route named site_verify.<name>, rebuilt automatically whenever any site_verification entity is saved or deleted. The FullyValidatable schema constraint means description must be set (empty string is fine, NULL is not). Medium cases read back real live entities created by setup (sv_known_meta, sv_file_on/sv_file_off); hard cases require the agent to create a new site_verification entity (sv_task_meta / sv_task_file) with specific field values, verified by loading it from live config (and, for the file case, confirming its serving route actually resolves).",
+  "evals": [
+    {
+      "id": "site_verify-config-entity-basics",
+      "mode": "recipe",
+      "prompt": "The Drupal contrib module site_verify manages site ownership verifications for search engines. What is the config entity type id it defines, and what admin route/path lets an editor add, edit, and list them?",
+      "must_contain_any": [
+        "site_verification",
+        "entity.site_verification.collection",
+        "/admin/config/search/verifications"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The entity type id is site_verification (a ConfigEntityType, config prefix site_verification). The configure route is entity.site_verification.collection at /admin/config/search/verifications, under Administration > Configuration > Search > Verifications.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "site_verify-meta-vs-file",
+      "mode": "recipe",
+      "prompt": "In the Drupal site_verify module, a site_verification entity's 'type' field is either meta or file. Explain the practical difference: where does each one actually get output/served, and is a meta-type verification shown on every page or just one?",
+      "must_contain_any": [
+        "front page",
+        "meta tag",
+        "site root",
+        "text/plain"
+      ],
+      "must_not_contain": [],
+      "expected_output": "type: meta renders a <meta name=... content=...> tag in <head>, but only on the front page (checked via PathMatcherInterface::isFrontPage()). type: file serves the verification's content as text/plain at a dynamically generated route whose path equals the entity's name (filename), served off the site root -- available on every request, not just the front page.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "site_verify-permissions",
+      "mode": "recipe",
+      "prompt": "What are the two permission machine names defined by the Drupal site_verify module, and what's the practical difference in what they let a role do?",
+      "must_contain_any": [
+        "administer site verify",
+        "manage file based site verifications"
+      ],
+      "must_not_contain": [],
+      "expected_output": "administer site verify -- lets a role view the verifications listing and manage meta-type verifications (it's the entity type's admin_permission). manage file based site verifications -- required in addition to create/edit/delete/enable/disable file-type verifications specifically; without it the add/edit form hides the File option and file upload button.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "site_verify-meta-token",
+      "mode": "introspection",
+      "prompt": "On this Drupal site there is an enabled site_verification config entity of type meta with machine name sv_known_meta, verifying with Google Search Console. Inspect the live config and report the meta tag's content/token value.",
+      "must_contain_any": [
+        "gsc-9f8e7d6c5b4a3210"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The content value is gsc-9f8e7d6c5b4a3210 -- found in site_verify.site_verification.sv_known_meta, field content (with name=google-site-verification, type=meta, status enabled).",
+      "setup": "agent-module-documentation/evaluation/verify/site_verify-meta-token-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/site_verify-meta-token-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "site_verify-file-enabled",
+      "mode": "introspection",
+      "prompt": "This site has two file-type site_verification entities, sv_file_on and sv_file_off. Exactly one of them is enabled (status: true) and therefore actually served at its filename route. Inspect the live configuration and state which one is enabled.",
+      "must_contain_any": [
+        "sv_file_on"
+      ],
+      "must_not_contain": [],
+      "expected_output": "sv_file_on is enabled (status: true); sv_file_off has status: false. Only sv_file_on's file (BingSiteAuth-onsite.xml) is actually served -- a disabled file verification's route is not attached/servable.",
+      "setup": "agent-module-documentation/evaluation/verify/site_verify-file-enabled-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/site_verify-file-enabled-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "site_verify-create-meta",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "Using the site_verify module, create an enabled Google Search Console meta-tag site verification with machine name sv_task_meta, meta name 'google-site-verification', and meta content 'task-token-4c8b1a2d9e'. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/site_verify-create-meta-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/site_verify-create-meta-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/site_verify-create-meta-cleanup.sh",
+      "expected_output": "A site_verification entity sv_task_meta exists with status: true, type: meta, name: google-site-verification, content: task-token-4c8b1a2d9e (e.g. created via SiteVerification::create([...])->save(), or via the 'Add site verification' form at /admin/config/search/verifications/add). description must be set to at least an empty string because of the FullyValidatable schema constraint."
+    },
+    {
+      "id": "site_verify-create-file",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "Using the site_verify module, create an enabled file-type site verification with machine name sv_task_file, filename 'site_verify_task_confirm.txt', and file content 'verify-file-content-77a2c890'. Apply the change to the live site so the file is actually servable.",
+      "reset": "agent-module-documentation/evaluation/verify/site_verify-create-file-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/site_verify-create-file-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/site_verify-create-file-cleanup.sh",
+      "expected_output": "A site_verification entity sv_task_file exists with status: true, type: file, name: site_verify_task_confirm.txt, content: verify-file-content-77a2c890 (e.g. created via SiteVerification::create([...])->save(), or via the 'Add site verification' form choosing type File). Saving the entity also triggers a router rebuild (SiteVerificationStorage::triggerRouteRebuild()) so its file becomes servable at /site_verify_task_confirm.txt without a manual `drush cr`."
+    }
+  ]
+}

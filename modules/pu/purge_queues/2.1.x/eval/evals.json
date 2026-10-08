@@ -1,0 +1,105 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "purge_queues",
+  "version": "2.1.x",
+  "note": "Purge Queues adds three @PurgeQueue plugins to the Purge module: database_alt (table purge_queue_alt, extra type/expression columns), database_unique (dedups via a pre-SELECT findItem on type+expression), database_unique_upsert (table purge_queue_upsert, primary key = sha256(type:expression), dedups via SQL UPSERT). No admin UI of its own (configure=null), no permissions, no config schema, no Drush. The active queue is chosen through Purge's own selection at admin/config/development/performance/purge and stored in config purge.plugins:queue; read/write it via \\Drupal::service('purge.queue')->getPluginsEnabled()/setPluginsEnabled([...]) (default 'database'). Medium/hard cases are grounded in that live selection: introspection reads which queue is active; execution switches the active queue to one of this module's plugins, verified against the live purge.queue service. Scripts restore the shipped default (database) as baseline.",
+  "evals": [
+    {
+      "id": "purge_queues-what-and-why",
+      "mode": "recipe",
+      "prompt": "The purge_queues module is installed alongside Purge. What problem does it solve and which queue plugins does it add?",
+      "must_contain_any": [
+        "duplicate",
+        "unique",
+        "database_unique",
+        "database_unique_upsert",
+        "database_alt",
+        "deduplicat"
+      ],
+      "must_not_contain": [],
+      "expected_output": "purge_queues adds extra Purge queue backends that stop the queue filling with duplicate invalidation items. It provides database_alt ('Database (extended)', adds type/expression columns), database_unique ('Database unique', rejects duplicate type+expression items), and database_unique_upsert ('Database unique (upsert)', dedups via an UPSERT keyed on a hash of type:expression for better performance).",
+      "difficulty": "easy"
+    },
+    {
+      "id": "purge_queues-how-to-activate",
+      "mode": "recipe",
+      "prompt": "With purge_queues installed, how do I actually make my Purge site use the deduplicating 'Database unique' queue, and where is that choice stored?",
+      "must_contain_any": [
+        "admin/config/development/performance/purge",
+        "Performance",
+        "Purge",
+        "purge.plugins",
+        "setPluginsEnabled",
+        "queue engine"
+      ],
+      "must_not_contain": [],
+      "expected_output": "purge_queues has no settings page of its own; you select the queue through Purge at Configuration > Development > Performance > Purge (admin/config/development/performance/purge), choosing 'Database unique' or 'Database unique (upsert)'. The choice is stored in Purge config purge.plugins:queue; programmatically use \\Drupal::service('purge.queue')->setPluginsEnabled(['database_unique']).",
+      "difficulty": "easy"
+    },
+    {
+      "id": "purge_queues-upsert-mechanism",
+      "mode": "recipe",
+      "prompt": "How does the purge_queues 'database_unique_upsert' queue avoid duplicate items, and what is different about its database table compared with the standard database queue?",
+      "must_contain_any": [
+        "upsert",
+        "hash",
+        "sha256",
+        "primary key",
+        "purge_queue_upsert",
+        "type:expression"
+      ],
+      "must_not_contain": [],
+      "expected_output": "database_unique_upsert uses a SHA-256 hash of the invalidation's type:expression as the row primary key (table purge_queue_upsert) and inserts with an SQL UPSERT, so re-queuing the same invalidation just overwrites the existing row instead of adding a duplicate. Because the primary key is a string hash (not an int), it overrides claimItem/selectPage etc.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "purge_queues-inspect-active-unique",
+      "mode": "introspection",
+      "prompt": "On this Drupal site, inspect the running Purge configuration and tell me which purge queue plugin is currently active.",
+      "must_contain_any": [
+        "database_unique"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The active queue is database_unique: purge.plugins:queue is 'database_unique' (readable via \\Drupal::service('purge.queue')->getPluginsEnabled()).",
+      "setup": "agent-module-documentation/evaluation/verify/purge_queues-active-unique-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/purge_queues-active-unique-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "purge_queues-inspect-active-upsert",
+      "mode": "introspection",
+      "prompt": "Inspect this site's live Purge setup and state which queue engine is selected. Is it one of the purge_queues deduplicating queues?",
+      "must_contain_any": [
+        "database_unique_upsert"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The selected queue is database_unique_upsert (the upsert-based deduplicating queue from purge_queues): purge.plugins:queue is 'database_unique_upsert'.",
+      "setup": "agent-module-documentation/evaluation/verify/purge_queues-active-upsert-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/purge_queues-active-upsert-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "purge_queues-switch-to-unique",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "This site's Purge module is currently using the standard core 'database' queue. Using the purge_queues module, switch the active Purge queue to the deduplicating 'Database unique' queue (database_unique) and apply it to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/purge_queues-switch-unique-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/purge_queues-switch-unique-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/purge_queues-switch-unique-cleanup.sh",
+      "expected_output": "The active Purge queue becomes database_unique (purge.plugins:queue = 'database_unique'), e.g. via \\Drupal::service('purge.queue')->setPluginsEnabled(['database_unique'])."
+    },
+    {
+      "id": "purge_queues-switch-to-upsert",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "site-owner",
+      "prompt": "My cache-invalidation queue keeps piling up with duplicate entries and I want the fastest deduplicating option that purge_queues offers. It's currently on the normal database queue. Switch it to the upsert-based unique queue and make it live.",
+      "reset": "agent-module-documentation/evaluation/verify/purge_queues-switch-upsert-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/purge_queues-switch-upsert-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/purge_queues-switch-upsert-cleanup.sh",
+      "expected_output": "The active Purge queue becomes database_unique_upsert (purge.plugins:queue = 'database_unique_upsert')."
+    }
+  ]
+}

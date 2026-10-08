@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+# Execution CLEANUP: delete the gutter view. Idempotent. Exit 0.
+set -uo pipefail
+cd /var/www/html
+drush php:eval 'use Drupal\views\Entity\View; if ($v = View::load("masonry_views_gutter")) { $v->delete(); }' >/dev/null 2>&1
+echo "cleanup: view masonry_views_gutter removed"

@@ -1,0 +1,111 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "csp_log",
+  "version": "1.0.x",
+  "note": "CSP logging provides a public CSP report endpoint, a dedicated csp_log DB table, two admin report screens, a CspReportingHandler plugin for the csp module, and the csp_log service. Cases are `recipe` (response-graded) probing documented, source-grounded facts an agent would otherwise read source to answer; no site mutation.",
+  "evals": [
+    {
+      "id": "csp_log-report-endpoint-path",
+      "mode": "recipe",
+      "prompt": "On a Drupal 11 site with csp_log, what path do I set as my CSP report-uri so violations are logged, and how do I separate enforced from report-only reports?",
+      "must_contain_any": [
+        "/log-report-uri/",
+        "csp_log.reporturi"
+      ],
+      "must_not_contain": [
+        "/admin/config/csp_log/settings"
+      ],
+      "expected_output": "Point the CSP report-uri at /log-report-uri/{type}: use /log-report-uri/enforce for the enforced policy and /log-report-uri/report-only (reportOnly) for the report-only policy. The endpoint (route csp_log.reporturi) is public (_access: TRUE, no_cache) and stores each report in the csp_log table."
+    },
+    {
+      "id": "csp_log-no-settings-form",
+      "mode": "recipe",
+      "prompt": "The csp_log info.yml lists configure: csp_log.settings. Where is that settings form and what does it configure?",
+      "must_contain_any": [
+        "no such route",
+        "does not exist",
+        "no settings form",
+        "dangling",
+        "not defined"
+      ],
+      "must_not_contain": [],
+      "expected_output": "There is no csp_log.settings route or settings form; the configure reference in info.yml is dangling. Configuration is done on the CSP module's policy form (select the 'Dedicated CSP log' handler), and reports are viewed at /admin/reports/csp and /admin/reports/csp/aggregated-logs."
+    },
+    {
+      "id": "csp_log-csp-plugin",
+      "mode": "recipe",
+      "prompt": "How do I make the csp module send its violation reports to csp_log without editing headers by hand? Name the reporting handler.",
+      "must_contain_any": [
+        "Dedicated CSP log",
+        "csp_log"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Select the 'Dedicated CSP log' CspReportingHandler (plugin id csp_log, class DedicatedLog) for the enforce and/or report-only policy in the csp module; its alterPolicy() sets the report-uri directive to /log-report-uri/{type} automatically."
+    },
+    {
+      "id": "csp_log-view-reports-permission",
+      "mode": "recipe",
+      "prompt": "Where do administrators view the logged CSP violations and what permission is required?",
+      "must_contain_any": [
+        "/admin/reports/csp",
+        "access csp_log reports"
+      ],
+      "must_not_contain": [],
+      "expected_output": "At /admin/reports/csp (per-violation list) and /admin/reports/csp/aggregated-logs (grouped counts). Both routes require the 'access csp_log reports' permission."
+    },
+    {
+      "id": "csp_log-cron-cleanup",
+      "mode": "recipe",
+      "prompt": "How are old CSP logs pruned in csp_log, and where is the retention period set?",
+      "must_contain_any": [
+        "cleanup",
+        "Log lifetime",
+        "hook_cron",
+        "removeLogs"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The 'Dedicated CSP log' handler adds a 'Log lifetime (days)' (cleanup) field stored under csp.settings at <policy>.reporting.options.cleanup. csp_log_cron() reads it per policy and, if non-zero, calls the csp_log service removeLogs() to delete logs older than cleanup days; 0 keeps logs forever."
+    },
+    {
+      "id": "csp_log-service-methods",
+      "mode": "recipe",
+      "prompt": "What service does csp_log expose to work with logs programmatically, and which methods insert, read, aggregate and delete reports?",
+      "must_contain_any": [
+        "csp_log",
+        "insertLog",
+        "fetchLogs",
+        "aggregateLogs",
+        "removeLogs"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The 'csp_log' service (CspLogService / CspLogServiceInterface): insertLog() to store a report, fetchLogs() for individual rows, aggregateLogs() for grouped counts by blocked_uri + effective_directive, and removeLogs() to delete by type and date range."
+    },
+    {
+      "id": "csp_log-endpoint-status-codes",
+      "mode": "recipe",
+      "prompt": "What HTTP status does the csp_log report endpoint return for a successful report versus a malformed or incomplete one, and which report keys are required?",
+      "must_contain_any": [
+        "202",
+        "400"
+      ],
+      "must_not_contain": [],
+      "expected_output": "202 (Accepted) on success, 400 (Bad Request) when the body cannot be parsed or is missing required keys, 500 on other errors. Required report keys: document-uri, effective-directive, blocked-uri."
+    },
+    {
+      "id": "csp_log-dedicated-table",
+      "mode": "recipe",
+      "prompt": "The whole point of csp_log is not crowding the site logs. Where are CSP reports actually stored?",
+      "must_contain_any": [
+        "csp_log",
+        "dedicated",
+        "table"
+      ],
+      "must_not_contain": [
+        "watchdog table",
+        "dblog table stores"
+      ],
+      "expected_output": "In a dedicated database table named csp_log (created by hook_schema), with columns document_uri, effective_directive, blocked_uri, referrer, type, report (raw JSON blob) and timestamp \u2014 not in watchdog/dblog."
+    }
+  ]
+}

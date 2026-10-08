@@ -1,0 +1,78 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "dxpr_builder",
+  "version": "2.8.x",
+  "note": "DXPR Builder is a commercial front-end drag-and-drop page builder. It is enabled on a field by setting that field's view-display formatter to dxpr_builder_text (field types text/text_long/text_with_summary). The live editor needs a valid JWT/API key + billable-user license (DxprBuilderLicenseService), which this base site does NOT have, so cases are grounded in config/permissions/entities, not the live editor. Global settings live in config object dxpr_builder.settings; config entity types are dxpr_builder_profile (per-role allow-lists; config prefix dxpr_builder.dxpr_builder_profile.<id>), dxpr_builder_page_template, dxpr_builder_user_template. Permissions: 'edit with dxpr builder', 'administer dxpr builder configuration', 'administer dxpr_builder_profile'. Medium introspection reads back a known profile's roles; hard execution switches a field's view-display formatter to dxpr_builder_text, verified against the live entity_view_display.",
+  "evals": [
+    {
+      "id": "dxpr_builder-enable-on-field",
+      "mode": "recipe",
+      "prompt": "How do I make an existing body/text field on a Drupal content type editable with DXPR Builder's drag-and-drop editor? Name the field formatter involved.",
+      "must_contain_any": ["dxpr_builder_text", "formatter", "Manage display"],
+      "must_not_contain": [],
+      "expected_output": "DXPR Builder is a field formatter (id dxpr_builder_text) for text/text_long/text_with_summary fields. On the content type's Manage display, set the text field's format to 'DXPR Builder' (or set core.entity_view_display.<entity>.<bundle>.<mode> component type to dxpr_builder_text). Users need the 'edit with dxpr builder' permission to edit in place.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "dxpr_builder-permissions",
+      "mode": "recipe",
+      "prompt": "What permissions does DXPR Builder provide and what does each one gate?",
+      "must_contain_any": ["edit with dxpr builder", "administer dxpr builder configuration", "administer dxpr_builder_profile"],
+      "must_not_contain": [],
+      "expected_output": "Three: 'edit with dxpr builder' (use the front-end builder to edit content; relevant to billable-user counting), 'administer dxpr builder configuration' (DXPR Studio admin: settings, AI settings, license/content pages), and 'administer dxpr_builder_profile' (create/edit the per-role dxpr_builder_profile entities). Page/user template routes additionally require core 'administer site configuration'.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "dxpr_builder-config-entities",
+      "mode": "recipe",
+      "prompt": "In DXPR Builder, how do I restrict which elements and templates a particular role can use, and what config entity types does the module provide?",
+      "must_contain_any": ["dxpr_builder_profile", "profile", "page_template", "user_template"],
+      "must_not_contain": [],
+      "expected_output": "Create a DXPR Builder Profile (dxpr_builder_profile config entity) that binds one or more roles to allow-lists of elements, blocks, views, page_templates and user_templates (with all_* booleans to allow everything of a kind). The module provides three config entity types: dxpr_builder_profile, dxpr_builder_page_template, and dxpr_builder_user_template. Managed under DXPR Studio (/admin/dxpr_studio/dxpr_builder).",
+      "difficulty": "easy"
+    },
+    {
+      "id": "dxpr_builder-license-storage",
+      "mode": "recipe",
+      "prompt": "Where does DXPR Builder store its license/API (JWT) key, and what is the recommended, more secure option? Which config object holds the general settings?",
+      "must_contain_any": ["dxpr_builder.settings", "Key", "json_web_token", "api_key_storage"],
+      "must_not_contain": [],
+      "expected_output": "General settings live in the dxpr_builder.settings config object. The JWT can be stored directly in config (json_web_token) or, preferably, in a Key entity by setting api_key_storage to 'key' and key_provider to a Key id (requires the key module). Access to the editor is gated by the billable-user license check.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "dxpr_builder-known-profile",
+      "mode": "introspection",
+      "prompt": "This Drupal site has a DXPR Builder profile with the machine id 'dxprb_known'. Inspect the live configuration and state which user role(s) that profile applies to.",
+      "must_contain_any": ["authenticated"],
+      "must_not_contain": [],
+      "expected_output": "The dxpr_builder_profile dxprb_known targets the 'authenticated' role (dxpr_builder.dxpr_builder_profile.dxprb_known -> roles: [authenticated]).",
+      "setup": "agent-module-documentation/evaluation/verify/dxpr_builder-known-profile-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/dxpr_builder-known-profile-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "dxpr_builder-enable-formatter",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, the Article content type has a long-text field field_dxprb_body. Configure the default view display so this field is rendered/edited with DXPR Builder instead of the plain text formatter. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/dxpr_builder-enable-formatter-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/dxpr_builder-enable-formatter-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/dxpr_builder-enable-formatter-cleanup.sh",
+      "expected_output": "In core.entity_view_display.node.article.default the field_dxprb_body component has type 'dxpr_builder_text' (e.g. $vd->setComponent('field_dxprb_body', ['type'=>'dxpr_builder_text',...])->save();)."
+    },
+    {
+      "id": "dxpr_builder-enable-formatter-layman",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "site-owner",
+      "prompt": "I want to edit the 'DXPRB Body' field on my Article pages with the DXPR drag-and-drop builder instead of a plain text box. Please switch it over on my site.",
+      "reset": "agent-module-documentation/evaluation/verify/dxpr_builder-enable-formatter-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/dxpr_builder-enable-formatter-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/dxpr_builder-enable-formatter-cleanup.sh",
+      "expected_output": "Same verified end state as the expert variant: field_dxprb_body's component in the Article default view display uses the dxpr_builder_text formatter."
+    }
+  ]
+}

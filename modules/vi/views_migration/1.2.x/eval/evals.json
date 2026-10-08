@@ -1,0 +1,99 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "views_migration",
+  "version": "1.2.x",
+  "note": "Views Migration migrates Drupal 6/7 Views into D10/11 view config entities (core migrate_drupal skips Views). Ships migrations d7_views_migration and d6_views_migration in migration group views_migration, source plugins d7_views_migration/d6_views_migration, destination plugin entity:view. Run via migrate_tools drush (migrate:import/status/rollback, --idlist); a form alter adds a 'Views ID List' field for the group. Extensible via 21 plugin managers plugin.manager.migrate.views.<type> (access, area, argument, field, filter, sort, ... ) with @MigrateViews<Type> annotations and default d7_default plugins; custom handler plugins live in Plugin/migrate/views/<type>/d7 and implement alterHandlerConfig(). No permissions, no config schema, no own Drush commands, no configure route. Medium/hard cases are grounded in real migrate_plus.migration config entities (migration group membership, source/destination plugins).",
+  "evals": [
+    {
+      "id": "views_migration-what-and-run",
+      "mode": "recipe",
+      "prompt": "What does the Drupal views_migration module do that core's migrate_drupal does not, which migrations does it provide, and how do you run the Drupal 7 one?",
+      "must_contain_any": [
+        "d7_views_migration",
+        "migrate:import",
+        "entity:view",
+        "Views"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Core migrate_drupal does not migrate Views; views_migration does. It ships migrations d7_views_migration and d6_views_migration (group views_migration) that read legacy view data and write Drupal view config entities (destination entity:view). Run with migrate_tools: drush migrate:import d7_views_migration.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "views_migration-requirements",
+      "mode": "recipe",
+      "prompt": "What must be set up before running the Drupal views_migration migrations, and which modules does it depend on?",
+      "must_contain_any": [
+        "migrate_plus",
+        "migrate_tools",
+        "source database",
+        "upgrade"
+      ],
+      "must_not_contain": [],
+      "expected_output": "It depends on views, migrate, migrate_drupal, migrate_tools and migrate_plus. You must configure a Drupal 6/7 source database first (via the core Upgrade / migrate_upgrade flow or a migrate DB connection in settings.php); views_migration itself does not configure the connection.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "views_migration-extend",
+      "mode": "recipe",
+      "prompt": "In the Drupal views_migration module, how would I customize how one particular Views handler (say a specific field) is migrated from Drupal 7? What kind of plugin do I create?",
+      "must_contain_any": [
+        "MigrateViewsField",
+        "alterHandlerConfig",
+        "Plugin/migrate/views",
+        "d7_default"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Add an annotated plugin class (e.g. @MigrateViewsField for a field, one of 21 plugin types) under src/Plugin/migrate/views/<type>/d7/ extending MigrateViewsHandlerPluginBase (or MigrateViewsPluginPluginBase), with an id matching the handler, implementing alterHandlerConfig(). The manager uses it instead of the default d7_default plugin. Clear caches to discover it.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "views_migration-group-member",
+      "mode": "introspection",
+      "prompt": "On this Drupal site, a migration named vm_known has been added. Inspect the live migration configuration and state which migration group it belongs to.",
+      "must_contain_any": [
+        "views_migration"
+      ],
+      "must_not_contain": [],
+      "expected_output": "vm_known belongs to the views_migration migration group (migrate_plus.migration.vm_known: migration_group = views_migration), the same group as the shipped d7_views_migration/d6_views_migration migrations.",
+      "setup": "agent-module-documentation/evaluation/verify/views_migration-group-member-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/views_migration-group-member-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "views_migration-migration-source",
+      "mode": "introspection",
+      "prompt": "On this Drupal site there is a migration named vm_inspect provided for testing. Inspect the live migration configuration and state which source plugin it uses.",
+      "must_contain_any": [
+        "d6_views_migration"
+      ],
+      "must_not_contain": [],
+      "expected_output": "vm_inspect (label 'VM Inspect Me') uses the source plugin d6_views_migration (migrate_plus.migration.vm_inspect: source.plugin = d6_views_migration), the module's Drupal 6 Views source.",
+      "setup": "agent-module-documentation/evaluation/verify/views_migration-migration-source-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/views_migration-migration-source-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "views_migration-create-migration",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, create a new migrate_plus migration with id vm_task that uses the views_migration module's Drupal 7 Views source plugin and its Views destination, placed in the views_migration migration group. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/views_migration-create-migration-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/views_migration-create-migration-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/views_migration-create-migration-cleanup.sh",
+      "expected_output": "A migrate_plus.migration.vm_task config entity exists with migration_group: views_migration, source.plugin: d7_views_migration and destination.plugin: entity:view (create via Migration::create([...])->save() or a migrate_plus config import)."
+    },
+    {
+      "id": "views_migration-fix-plugins",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site there is a migration vm_fix whose source and destination plugins are placeholders (source 'empty', destination 'null'). Reconfigure vm_fix to use the views_migration module's Drupal 7 Views source plugin and its Views destination plugin, and apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/views_migration-fix-plugins-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/views_migration-fix-plugins-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/views_migration-fix-plugins-cleanup.sh",
+      "expected_output": "migrate_plus.migration.vm_fix now has source.plugin: d7_views_migration and destination.plugin: entity:view (load the migration, set its source and destination plugin ids, and save)."
+    }
+  ]
+}

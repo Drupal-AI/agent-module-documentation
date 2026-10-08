@@ -1,0 +1,80 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "media_entity_slideshow",
+  "version": "2.6.x",
+  "note": "media_entity_slideshow provides a core Media source plugin id 'slideshow' (allowed_field_types entity_reference). Media types using it store slides in a multi-value entity_reference source field, expose a 'length' metadata attribute, derive the thumbnail from the first slide, and apply the ItemsCount constraint (>=1 slide, message 'At least one slideshow item must exist.'). No settings form/configure route/permissions/Drush. Config-only evals grounded in the real source plugin id and media type source_configuration. Introspection reads the source plugin and source field of a created media type; execution builds a slideshow media type and maps its source field. Only media types/fields are created/deleted (no media entities or nodes), which is safe on this shared site.",
+  "evals": [
+    {
+      "id": "media_entity_slideshow-source-id",
+      "mode": "recipe",
+      "prompt": "I want a Drupal Media type whose items are an ordered set of slides. Which media source plugin does the media_entity_slideshow module add, and what field type must the media type's source field be?",
+      "must_contain_any": ["slideshow"],
+      "must_not_contain": [],
+      "expected_output": "It adds the 'slideshow' media source plugin (id slideshow, label 'Slideshow'). Its allowed_field_types is entity_reference, so the media type's source field must be a (multi-value) entity_reference field, typically referencing media entities (the slides).",
+      "difficulty": "easy"
+    },
+    {
+      "id": "media_entity_slideshow-metadata",
+      "mode": "recipe",
+      "prompt": "What metadata does the media_entity_slideshow 'slideshow' source expose about a slideshow media entity (e.g. how does it count slides or name the entity)?",
+      "must_contain_any": ["length"],
+      "must_not_contain": [],
+      "expected_output": "It exposes a 'length' metadata attribute equal to the number of slides ($media->{source_field}->count()), builds a default name like 'N slides, created on <date>', and uses the first referenced slide's thumbnail as the slideshow's thumbnail (falling back to slideshow.png).",
+      "difficulty": "easy"
+    },
+    {
+      "id": "media_entity_slideshow-constraint",
+      "mode": "recipe",
+      "prompt": "Does a slideshow media entity created with media_entity_slideshow require any slides? What validation does the module enforce?",
+      "must_contain_any": ["ItemsCount", "At least one slideshow item"],
+      "must_not_contain": [],
+      "expected_output": "Yes. The source implements MediaSourceEntityConstraintsInterface and applies the ItemsCount constraint to the source field, so a slideshow must have at least one item. The default violation message is 'At least one slideshow item must exist.'",
+      "difficulty": "easy"
+    },
+    {
+      "id": "media_entity_slideshow-known-source",
+      "mode": "introspection",
+      "prompt": "On this Drupal site a media type with id 'mes_show' has been configured. Inspect the live site and state which media source plugin it uses.",
+      "must_contain_any": ["slideshow"],
+      "must_not_contain": [],
+      "expected_output": "The media type mes_show uses the 'slideshow' media source (media.type.mes_show source: slideshow).",
+      "setup": "agent-module-documentation/evaluation/verify/media_entity_slideshow-source-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/media_entity_slideshow-source-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "media_entity_slideshow-known-field",
+      "mode": "introspection",
+      "prompt": "On this Drupal site a slideshow media type with id 'mes_gallery' exists. Inspect its source configuration and give the machine name of the entity_reference field it uses as its source field (the slides).",
+      "must_contain_any": ["field_mes_items"],
+      "must_not_contain": [],
+      "expected_output": "media.type.mes_gallery source_configuration.source_field is field_mes_items.",
+      "setup": "agent-module-documentation/evaluation/verify/media_entity_slideshow-field-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/media_entity_slideshow-field-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "media_entity_slideshow-build-type",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, create a Media type with id 'mes_task' that uses the media_entity_slideshow 'slideshow' source, and give it a multi-value entity_reference source field (referencing media) mapped as the source field. Apply it to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/media_entity_slideshow-build-type-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/media_entity_slideshow-build-type-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/media_entity_slideshow-build-type-reset.sh",
+      "expected_output": "Create MediaType mes_task with source 'slideshow' and source_configuration.source_field pointing to a new multi-value entity_reference field (target_type media) on the media/mes_task bundle, then save both the field storage/instance and the media type."
+    },
+    {
+      "id": "media_entity_slideshow-map-field",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site the slideshow media type 'mes_fixed' exists but has no source field mapped. Add a multi-value entity_reference field 'field_mes_slides' (referencing media) to it and set it as the slideshow source field, applied to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/media_entity_slideshow-map-field-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/media_entity_slideshow-map-field-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/media_entity_slideshow-map-field-cleanup.sh",
+      "expected_output": "Create the entity_reference field field_mes_slides (target_type media) on media/mes_fixed, then set media.type.mes_fixed source_configuration.source_field to field_mes_slides and save."
+    }
+  ]
+}

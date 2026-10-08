@@ -1,0 +1,80 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "menu_migration",
+  "version": "4.1.x",
+  "note": "Menu Migration imports/exports/clones MenuLinkContent menu trees. Real, verifiable state: two config entity types mm_export_type (config prefix menu_migration.mm_export_type.<id>, keys name/label/destination/destination_config/weight) and mm_import_type (source/source_config); a simple config object menu_migration.quick_export (format + export_path) driving the quick drush commands; seven drush commands (mme/mmel/mmqe, mmi/mmil/mmqi, mmqc). Built-in destinations codebase|download|another_menu, sources codebase|file_upload, formats json|yaml|raw. Easy cases are grounded in those command/plugin names; medium cases read back a seeded mm_export_type entity and the quick_export config; hard cases build an mm_export_type config entity and clone links between two menus, both verified against live state. Note: the shared site has we_megamenu enabled whose entity_insert hook emits a warning on menu_link_content insert, but the clone still creates the link and the verify passes on live state.",
+  "evals": [
+    {
+      "id": "menu_migration-clone-command",
+      "mode": "recipe",
+      "prompt": "Using the Drupal menu_migration module and Drush, how do I clone all the links from one menu into another menu, and what option creates the target menu if it does not already exist?",
+      "must_contain_any": ["quick-clone", "mmqc", "create-target"],
+      "must_not_contain": [],
+      "expected_output": "Use drush menu_migration:quick-clone <source> <target> (alias mmqc), e.g. `drush mmqc main main_backup`; add the --create-target option to create the target menu if it does not exist.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "menu_migration-formats-destinations",
+      "mode": "recipe",
+      "prompt": "What serialization formats does the menu_migration module support for exporting/importing menus, and what are its built-in export destinations and import sources?",
+      "must_contain_any": ["json", "yaml", "raw", "codebase", "download", "another_menu", "file_upload"],
+      "must_not_contain": [],
+      "expected_output": "Formats: json, yaml, raw. Export destinations: codebase (write to a file), download (streamed file), another_menu (clone into another menu). Import sources: codebase and file_upload.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "menu_migration-quick-export-no-entity",
+      "mode": "recipe",
+      "prompt": "On a Drupal site with menu_migration, how can I export the 'main' menu via Drush without first creating a Menu Export configuration entity, and where does the file go / what format is used by default?",
+      "must_contain_any": ["quick-export", "mmqe"],
+      "must_not_contain": [],
+      "expected_output": "Use the quick export command: drush menu_migration:quick-export main (alias mmqe main). It builds a transient export in memory using the Quick Action Settings (config menu_migration.quick_export: default format json and export_path ../config/menu_migration/quick-export); override the format with --format=yaml. Multiple menus can be comma-separated.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "menu_migration-inspect-export-entity",
+      "mode": "introspection",
+      "prompt": "This site has a menu_migration Menu Export configuration entity with the id 'mm_mig_probe'. Inspect the live configuration and tell me which export destination plugin and which serialization format it is configured to use.",
+      "must_contain_any": ["codebase"],
+      "must_not_contain": [],
+      "expected_output": "Reading config menu_migration.mm_export_type.mm_mig_probe: destination is 'codebase' and destination_config.format is 'yaml' (it exports the main menu to export_path ../config/menu_migration/mm_mig_probe).",
+      "setup": "agent-module-documentation/evaluation/verify/menu_migration-export-entity-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/menu_migration-export-entity-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "menu_migration-inspect-quick-settings",
+      "mode": "introspection",
+      "prompt": "On this site, what target directory (export_path) and format do the menu_migration 'quick' export/import Drush commands (mmqe/mmqi) currently use? Read the live configuration.",
+      "must_contain_any": ["mm_mig_quickdir"],
+      "must_not_contain": [],
+      "expected_output": "Config menu_migration.quick_export has format: yaml and export_path: ../config/menu_migration/mm_mig_quickdir, which is what the quick export/import commands use.",
+      "setup": "agent-module-documentation/evaluation/verify/menu_migration-quickdir-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/menu_migration-quickdir-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "menu_migration-build-export-entity",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, use the menu_migration module to create a Menu Export configuration entity with the machine name 'mm_mig_export' that exports the 'main' menu to the codebase using the JSON format. Apply it to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/menu_migration-build-export-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/menu_migration-build-export-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/menu_migration-build-export-cleanup.sh",
+      "expected_output": "Create an mm_export_type config entity mm_mig_export with destination 'codebase' and destination_config {format: json, menus: [main], export_path: ...} (e.g. ExportType::create([...])->save() or via the Add menu export form), so config menu_migration.mm_export_type.mm_mig_export exists with destination=codebase, format=json, menus containing main."
+    },
+    {
+      "id": "menu_migration-clone-menu",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "This site has two menus: 'mm_mig_src' (which contains menu links) and an empty 'mm_mig_dst'. Using the menu_migration module, clone the links from mm_mig_src into mm_mig_dst and apply it to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/menu_migration-clone-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/menu_migration-clone-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/menu_migration-clone-cleanup.sh",
+      "expected_output": "Clone the menu links, e.g. `drush menu_migration:quick-clone mm_mig_src mm_mig_dst -y` (alias mmqc) or an another_menu export entity, so mm_mig_dst gains the menu_link_content link(s) copied from mm_mig_src."
+    }
+  ]
+}

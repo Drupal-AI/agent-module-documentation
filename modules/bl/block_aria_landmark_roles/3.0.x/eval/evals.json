@@ -1,0 +1,96 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "block_aria_landmark_roles",
+  "version": "3.0.x",
+  "note": "The module has no configure route, no settings form, no permission of its own, no Drush and no plugins. Its entire persistent state is two third-party settings on the block config entity: block.block.<id> -> third_party_settings.block_aria_landmark_roles.role (constrained by schema to none|application|banner|complementary|contentinfo|form|main|navigation|search) and .label. hook_preprocess_block() turns them into $variables['attributes']['role'] (skipped for 'none'/empty) and ['aria-label']. All medium/hard cases are therefore grounded in real block config on the live site; the default theme here is olivero (regions include sidebar and footer_bottom).",
+  "evals": [
+    {
+      "id": "block_aria_landmark_roles-available-roles",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "Which ARIA landmark roles can the Drupal contrib module block_aria_landmark_roles assign to a block, and what happens if I leave the selector on '- None -'?",
+      "must_contain_any": [
+        "complementary",
+        "contentinfo",
+        "navigation"
+      ],
+      "must_not_contain": [],
+      "expected_output": "application, banner, complementary, contentinfo, form, main, navigation and search (plus the '- None -' option, stored as 'none'). With 'none' — or no value at all — block_aria_landmark_roles_preprocess_block() does not add a role attribute to the block."
+    },
+    {
+      "id": "block_aria_landmark_roles-storage",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "Where does the Drupal block_aria_landmark_roles module store the landmark role and label for a block? There is no settings page for the module — give the exact config path.",
+      "must_contain_any": [
+        "third_party_settings",
+        "block.block.",
+        "getThirdPartySetting"
+      ],
+      "must_not_contain": [],
+      "expected_output": "On the block config entity itself: block.block.<block_id> -> third_party_settings.block_aria_landmark_roles.role and .label, set from the block configuration form (/admin/structure/block/manage/<id>) or with $block->setThirdPartySetting('block_aria_landmark_roles', 'role', 'navigation'). The module declares configure: null and has no settings form."
+    },
+    {
+      "id": "block_aria_landmark_roles-rendering",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "How does the Drupal block_aria_landmark_roles module actually get the role and aria-label onto the rendered block markup?",
+      "must_contain_any": [
+        "preprocess_block",
+        "attributes",
+        "aria-label"
+      ],
+      "must_not_contain": [],
+      "expected_output": "block_aria_landmark_roles_preprocess_block() loads the Block entity for $variables['elements']['#id'], and sets $variables['attributes']['role'] (only when the stored role is non-empty and not 'none') and $variables['attributes']['aria-label'] from the stored label — so the attributes appear wherever the theme's block.html.twig prints {{ attributes }}."
+    },
+    {
+      "id": "block_aria_landmark_roles-known-role",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "One block on this Drupal site has been given an ARIA landmark role with the block_aria_landmark_roles module. Inspect the live block configuration and report which landmark role and which ARIA label it carries.",
+      "must_contain_any": [
+        "complementary"
+      ],
+      "must_not_contain": [],
+      "expected_output": "block.block.barl_eval_block (Olivero, sidebar region) has third_party_settings.block_aria_landmark_roles.role = complementary and .label = 'Site extras'.",
+      "setup": "agent-module-documentation/evaluation/verify/block_aria_landmark_roles-known-role-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/block_aria_landmark_roles-known-role-cleanup.sh"
+    },
+    {
+      "id": "block_aria_landmark_roles-role-vs-none",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "This Drupal site has two blocks whose ids start with barl_eval_ and both have block_aria_landmark_roles settings saved. Inspect the live configuration and say which of them will actually render a role attribute on its markup, and why the other one will not.",
+      "must_contain_any": [
+        "barl_eval_on"
+      ],
+      "must_not_contain": [],
+      "expected_output": "barl_eval_on renders role=\"banner\". barl_eval_off has role stored as the literal string 'none', and block_aria_landmark_roles_preprocess_block() only sets the attribute when the role is non-empty AND not 'none', so it renders no role (it still gets aria-label=\"Nothing special\").",
+      "setup": "agent-module-documentation/evaluation/verify/block_aria_landmark_roles-role-vs-none-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/block_aria_landmark_roles-role-vs-none-cleanup.sh"
+    },
+    {
+      "id": "block_aria_landmark_roles-menu-landmark",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "site-builder",
+      "prompt": "This Drupal site has a main menu block placed in Olivero with the machine id barl_task_menu. Screen-reader users cannot find it as a landmark. Using the block_aria_landmark_roles module, give that block the navigation landmark role and the accessible label 'Primary navigation'. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/block_aria_landmark_roles-menu-landmark-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/block_aria_landmark_roles-menu-landmark-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/block_aria_landmark_roles-menu-landmark-cleanup.sh",
+      "expected_output": "block.block.barl_task_menu gains third_party_settings.block_aria_landmark_roles.role = navigation and .label = 'Primary navigation' (block configuration form, or $block->setThirdPartySetting(...) + save)."
+    },
+    {
+      "id": "block_aria_landmark_roles-footer-landmark",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, place the core 'Powered by Drupal' block (plugin system_powered_by_block) with the machine id barl_task_footer in the Olivero theme's footer_bottom region, and use the block_aria_landmark_roles module to give it the contentinfo landmark role and the ARIA label 'Site information'. Apply everything to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/block_aria_landmark_roles-footer-landmark-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/block_aria_landmark_roles-footer-landmark-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/block_aria_landmark_roles-footer-landmark-reset.sh",
+      "expected_output": "block.block.barl_task_footer with plugin system_powered_by_block, theme olivero, region footer_bottom and third_party_settings.block_aria_landmark_roles.role = contentinfo, .label = 'Site information'."
+    }
+  ]
+}

@@ -1,0 +1,80 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "views_url_alias",
+  "version": "3.2.x",
+  "note": "Views URL alias maintains a derived DB table `views_url_alias` (columns entity_type,entity_id,langcode,alias) mapping content entities to their path alias, kept in sync by path_alias insert/update/delete entity hooks via views_url_alias_save(). hook_views_data() exposes it as a base table with a sortable/filterable `alias` field plus a '{Label} URL Alias' relationship on every content entity type. There is no configure route/config entity; a rebuild ConfirmForm at /admin/config/search/views-url-alias (route views_url_alias.views_url_alias_admin_form, permission core 'administer views') truncates+repopulates via batch, and drift is tracked by state key views_url_alias.needs_rebuild. Only numeric entity IDs are indexed. Aliases are stored WITH a leading slash. Medium cases read live state (mapping row + rebuild flag); hard cases exercise the real insert-on-alias and delete-on-alias-removal sync verified against the live table.",
+  "evals": [
+    {
+      "id": "views_url_alias-how-to-filter",
+      "mode": "recipe",
+      "prompt": "I have the views_url_alias module installed. How do I make a View of content filter/sort by each node's URL alias? What do I add in the Views UI?",
+      "must_contain_any": ["relationship", "URL Alias", "URL alias", "filter"],
+      "must_not_contain": [],
+      "expected_output": "In the View add Advanced > Relationships > '{Type} URL Alias' (e.g. Content URL Alias), then add a Filter criteria (and/or Sort) of 'URL Alias'. The relationship joins the entity data table to the views_url_alias table; the alias field is string-filterable and sortable.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "views_url_alias-table",
+      "mode": "recipe",
+      "prompt": "What database table does the views_url_alias module create and keep in sync, and what does each row map?",
+      "must_contain_any": ["views_url_alias"],
+      "must_not_contain": [],
+      "expected_output": "It maintains the `views_url_alias` table with columns entity_type, entity_id, langcode and alias — one row mapping a content entity (per language) to its URL/path alias string. It is kept in sync by path_alias entity insert/update/delete hooks.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "views_url_alias-rebuild-how",
+      "mode": "recipe",
+      "prompt": "URL aliases on my site were imported directly into the database and my views_url_alias-based View is missing rows. How do I resync the module's alias index table?",
+      "must_contain_any": ["rebuild", "/admin/config/search/views-url-alias", "needs_rebuild", "Rebuild table"],
+      "must_not_contain": [],
+      "expected_output": "Rebuild the index: go to /admin/config/search/views-url-alias (route views_url_alias.views_url_alias_admin_form, permission 'administer views') and confirm 'Rebuild table'. It truncates and repopulates views_url_alias via a batch over all path aliases; drift is tracked by the state flag views_url_alias.needs_rebuild.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "views_url_alias-live-alias",
+      "mode": "introspection",
+      "prompt": "On this site, an Article node titled 'VUA Known City' has a URL alias, and the views_url_alias module has indexed it. Inspect the module's mapping table and tell me the exact alias stored for that node.",
+      "must_contain_any": ["vua-known-city"],
+      "must_not_contain": [],
+      "expected_output": "The views_url_alias table row for that node (entity_type node) has alias '/vua-known-city'. Find it e.g. via: drush sqlq \"SELECT alias FROM views_url_alias\".",
+      "setup": "agent-module-documentation/evaluation/verify/views_url_alias-known-alias-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/views_url_alias-known-alias-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "views_url_alias-live-rebuild-flag",
+      "mode": "introspection",
+      "prompt": "Does the views_url_alias module currently consider its alias index table to be out of date / in need of a rebuild on this site? Inspect the live state and answer yes or no.",
+      "must_contain_any": ["yes", "needs", "rebuild", "TRUE", "true"],
+      "must_not_contain": [],
+      "expected_output": "Yes — the module's state flag views_url_alias.needs_rebuild is TRUE (check: drush state:get views_url_alias.needs_rebuild), so it is flagged for rebuild and admins with 'administer views' would see the warning.",
+      "setup": "agent-module-documentation/evaluation/verify/views_url_alias-rebuild-flag-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/views_url_alias-rebuild-flag-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "views_url_alias-index-alias",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this site there is an Article node titled 'VUA Task Node' that currently has no URL alias. Give it the URL alias '/vua-task-path'. Because the views_url_alias module is installed, its mapping table should end up indexing that alias for this node. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/views_url_alias-index-alias-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/views_url_alias-index-alias-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/views_url_alias-index-alias-cleanup.sh",
+      "expected_output": "Create a path alias '/vua-task-path' for the node's /node/<id> path (e.g. via the entity's URL alias field or a PathAlias entity). The module's path_alias insert hook then writes a views_url_alias row (entity_type node, that entity_id, alias '/vua-task-path')."
+    },
+    {
+      "id": "views_url_alias-remove-alias",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this site an Article node titled 'VUA Del Node' has the URL alias '/vua-del-path', which the views_url_alias module has indexed. Remove that node's URL alias. The module's mapping table should no longer contain a row for this node afterwards. Apply the change to the live site (do not delete the node itself).",
+      "reset": "agent-module-documentation/evaluation/verify/views_url_alias-remove-alias-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/views_url_alias-remove-alias-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/views_url_alias-remove-alias-cleanup.sh",
+      "expected_output": "Delete the path alias for the node's /node/<id> path. The module's path_alias delete hook calls views_url_alias_save() which removes the node's row from the views_url_alias table, while the node itself remains."
+    }
+  ]
+}

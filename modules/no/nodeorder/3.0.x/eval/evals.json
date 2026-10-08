@@ -1,0 +1,80 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "nodeorder",
+  "version": "3.0.x",
+  "note": "Node Order lets editors drag-and-drop the order of nodes within taxonomy terms. A vocabulary becomes orderable when its vid is a truthy entry in nodeorder.settings.vocabularies (map vid=>vid); the admin form nodeorder.admin (/admin/config/content/nodeorder, permission 'administer nodeorder') also exposes display options and entity_list_limit. Per-node positions are stored in a 'weight' int column the module adds to core's taxonomy_index table (not config, not a field); the per-term ordering UI is route nodeorder.admin_order at /taxonomy/term/{tid}/order (permission 'order nodes within categories'). Business logic is in the nodeorder.manager service; nodeorder.config_manager wraps the settings config. Medium cases read live nodeorder.settings (which vocabulary is orderable; the entity_list_limit value); hard cases mutate nodeorder.settings (make a vocabulary orderable; change entity_list_limit) verified live. Baselines are restored explicitly (entity_list_limit=50, vocabularies emptied) since State is unreliable on this site.",
+  "evals": [
+    {
+      "id": "nodeorder-make-vocab-orderable",
+      "mode": "recipe",
+      "prompt": "Using the Drupal nodeorder module, how do I allow nodes to be manually ordered within the terms of a particular vocabulary? Where is the fact that a vocabulary is orderable stored?",
+      "must_contain_any": ["Orderable", "orderable", "vocabulary", "nodeorder.settings", "vocabularies"],
+      "must_not_contain": [],
+      "expected_output": "Mark the vocabulary orderable: tick 'Orderable' on the vocabulary edit form (or select it on /admin/config/content/nodeorder). It is stored in nodeorder.settings under the 'vocabularies' map (vid => vid); once orderable, each term gets an Order tab at /taxonomy/term/{tid}/order.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "nodeorder-where-stored",
+      "mode": "recipe",
+      "prompt": "In the nodeorder module, where is a node's manual position within a taxonomy term actually stored on a Drupal site?",
+      "must_contain_any": ["taxonomy_index", "weight"],
+      "must_not_contain": [],
+      "expected_output": "In a 'weight' integer column that nodeorder adds to core's taxonomy_index table at install (one row per nid/tid, lower weight = higher in the list). It is not a config entity or a field; the column is dropped on uninstall.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "nodeorder-permission",
+      "mode": "recipe",
+      "prompt": "Which nodeorder permission does a user need to actually reorder nodes on a term's ordering page, and which permission gates the settings form?",
+      "must_contain_any": ["order nodes within categories", "administer nodeorder"],
+      "must_not_contain": [],
+      "expected_output": "'order nodes within categories' is required to use the per-term ordering page (/taxonomy/term/{tid}/order) and save a new order; 'administer nodeorder' gates the settings form at /admin/config/content/nodeorder.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "nodeorder-which-orderable",
+      "mode": "introspection",
+      "prompt": "On this Drupal site, one taxonomy vocabulary has been made orderable with nodeorder. Inspect the live nodeorder configuration and give the machine name (vid) of the orderable vocabulary.",
+      "must_contain_any": ["nodeorder_tags"],
+      "must_not_contain": [],
+      "expected_output": "The orderable vocabulary is nodeorder_tags: nodeorder.settings.vocabularies contains a truthy entry nodeorder_tags => nodeorder_tags.",
+      "setup": "agent-module-documentation/evaluation/verify/nodeorder-which-orderable-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/nodeorder-which-orderable-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "nodeorder-list-limit",
+      "mode": "introspection",
+      "prompt": "On this Drupal site, the nodeorder ordering screen has been configured to show a specific maximum number of nodes per page. Inspect the live nodeorder settings and state that number.",
+      "must_contain_any": ["27"],
+      "must_not_contain": [],
+      "expected_output": "The value is 27: nodeorder.settings.entity_list_limit = 27.",
+      "setup": "agent-module-documentation/evaluation/verify/nodeorder-list-limit-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/nodeorder-list-limit-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "nodeorder-make-orderable",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site there is a taxonomy vocabulary with machine name 'nodeorder_hard' that is not yet orderable. Using the nodeorder module, make this vocabulary orderable so its terms can have their nodes drag-and-drop ordered. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/nodeorder-make-orderable-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/nodeorder-make-orderable-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/nodeorder-make-orderable-cleanup.sh",
+      "expected_output": "Add a truthy entry for nodeorder_hard to nodeorder.settings.vocabularies (tick 'Orderable' on the vocabulary, select it on the settings form, or call nodeorder.config_manager::updateOrderableValue('nodeorder_hard', TRUE)); vocabularyIsOrderable('nodeorder_hard') then returns TRUE."
+    },
+    {
+      "id": "nodeorder-set-limit",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, configure the nodeorder module so its ordering screen shows at most 10 nodes per page (the entity_list_limit setting). Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/nodeorder-set-limit-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/nodeorder-set-limit-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/nodeorder-set-limit-cleanup.sh",
+      "expected_output": "Set nodeorder.settings.entity_list_limit to 10 (via the 'Max entities per page' field on /admin/config/content/nodeorder, drush cset, or nodeorder.config_manager::updateConfigValues(['entity_list_limit' => 10]))."
+    }
+  ]
+}

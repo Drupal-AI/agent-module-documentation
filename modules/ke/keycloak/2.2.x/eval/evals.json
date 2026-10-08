@@ -1,0 +1,84 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "keycloak",
+  "version": "2.2.x",
+  "note": "Keycloak provides an OpenIDConnectClient plugin (id 'keycloak') for the openid_connect module. A configured client is an openid_connect.client.<id> config entity with plugin=keycloak and a settings map validated by schema openid_connect.client.plugin.keycloak (client_id, client_secret, keycloak_base, keycloak_realm, keycloak_sso, keycloak_sign_out, check_session, keycloak_i18n, keycloak_groups with rules, kc_idp_hint, ...). Endpoints are DERIVED from keycloak_base + keycloak_realm as {base}/realms/{realm}/protocol/openid-connect/*. This site has NO live Keycloak server, so every medium/hard case is grounded purely in local config/plugin state (creating and reading openid_connect_client entities), never an actual auth flow. Fixtures are namespaced kc_* and cleaned up.",
+  "evals": [
+    {
+      "id": "keycloak-plugin-id",
+      "mode": "recipe",
+      "prompt": "The Drupal 'Keycloak OpenID Connect' module integrates with the OpenID Connect module. What kind of plugin does it provide (and its id), and where do you add/configure a Keycloak login on the site?",
+      "must_contain_any": ["keycloak", "OpenID Connect", "openid_connect"],
+      "must_not_contain": [],
+      "expected_output": "It provides an OpenID Connect client plugin with id 'keycloak' (an OpenIDConnectClient for the openid_connect module). You add a client at Configuration > People > OpenID Connect (/admin/config/people/openid-connect, route openid_connect.admin_settings) and choose the Keycloak plugin; it is stored as an openid_connect.client.<id> config entity.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "keycloak-derived-endpoints",
+      "mode": "recipe",
+      "prompt": "With the Keycloak module, which two settings do I actually enter instead of the individual OIDC endpoints, and how does the module build the authorization/token/userinfo URLs from them?",
+      "must_contain_any": ["keycloak_base", "keycloak_realm", "/realms/", "protocol/openid-connect"],
+      "must_not_contain": [],
+      "expected_output": "You enter keycloak_base (server base URL) and keycloak_realm (realm name). The plugin derives endpoints as {keycloak_base}/realms/{keycloak_realm}/protocol/openid-connect/{auth,token,userinfo,logout} (and a login-status-iframe for session checks).",
+      "difficulty": "easy"
+    },
+    {
+      "id": "keycloak-role-mapping",
+      "mode": "recipe",
+      "prompt": "Can the Keycloak module assign Drupal roles based on the user's Keycloak groups? Which client setting controls that and what does a mapping rule contain?",
+      "must_contain_any": ["keycloak_groups", "claim_name", "rules", "role"],
+      "must_not_contain": [],
+      "expected_output": "Yes. The keycloak_groups setting (enabled, claim_name, split_groups, rules) drives automatic role assignment. Each rule maps a Keycloak group/claim value to a Drupal role with fields role, action (add/remove), operation, pattern, case_sensitive, weight, enabled.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "keycloak-known-realm",
+      "mode": "introspection",
+      "prompt": "This Drupal site has a Keycloak OpenID Connect client configured. Inspect the live configuration and state the Keycloak base URL and realm that client points at.",
+      "must_contain_any": ["acme", "https://id.example.com"],
+      "must_not_contain": [],
+      "expected_output": "The openid_connect.client.kc_realm client (plugin keycloak) has settings.keycloak_base = https://id.example.com and settings.keycloak_realm = acme.",
+      "setup": "agent-module-documentation/evaluation/verify/keycloak-realm-known-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/keycloak-realm-known-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "keycloak-known-groups",
+      "mode": "introspection",
+      "prompt": "A Keycloak client on this site is set up to map Keycloak groups to Drupal roles. Inspect the live configuration and state the token claim name it reads and which Drupal role its rule grants.",
+      "must_contain_any": ["groups", "editor"],
+      "must_not_contain": [],
+      "expected_output": "The openid_connect.client.kc_groups client has keycloak_groups.enabled true, claim_name 'groups', and a rule granting the Drupal role 'editor' (action add, pattern /editors).",
+      "setup": "agent-module-documentation/evaluation/verify/keycloak-groups-known-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/keycloak-groups-known-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "keycloak-create-client",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, create a Keycloak OpenID Connect client named kc_task that points at the Keycloak server https://sso.example.org, realm 'drupal'. Use the keycloak plugin. Apply the change to the live site (no live server needs to be reachable — just the configuration).",
+      "reset": "agent-module-documentation/evaluation/verify/keycloak-create-client-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/keycloak-create-client-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/keycloak-create-client-reset.sh",
+      "expected_output": "An openid_connect_client config entity kc_task exists with plugin 'keycloak' and settings.keycloak_base=https://sso.example.org, settings.keycloak_realm=drupal (create the openid_connect_client entity).",
+      "must_contain_any": [],
+      "must_not_contain": []
+    },
+    {
+      "id": "keycloak-enable-sso",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "This site already has a Keycloak OpenID Connect client named kc_sso. Configure it so that the Drupal login form is replaced by a redirect to Keycloak (single sign-on) and so that logging out of Drupal also ends the Keycloak session (single sign-out). Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/keycloak-enable-sso-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/keycloak-enable-sso-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/keycloak-enable-sso-cleanup.sh",
+      "expected_output": "In openid_connect.client.kc_sso settings, keycloak_sso is TRUE (replace Drupal login with SSO) and keycloak_sign_out is TRUE (Drupal-initiated single sign-out).",
+      "must_contain_any": [],
+      "must_not_contain": []
+    }
+  ]
+}

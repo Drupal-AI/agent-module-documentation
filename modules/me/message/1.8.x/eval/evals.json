@@ -1,0 +1,90 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "message",
+  "version": "1.8.x",
+  "note": "Message ships two entity types: message_template (config entity, config prefix `template` -> stored as message.template.<id>) and message (content entity, bundle key `template`). Template text is a sequence of partials, each { value, format }, that can carry Drupal tokens. Introspection cases install a known template and read it back; execution cases build a template (and a message of it) and verify live state.",
+  "evals": [
+    {
+      "id": "message-entity-types",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "The Message module defines two entity types. Name each one, say whether it is a config entity or a content entity, and state the relationship between them.",
+      "must_contain_any": ["message_template"],
+      "must_not_contain": [],
+      "expected_output": "message_template is a config entity (a bundle) that holds the templated text; message is a content entity, one logged instance whose bundle is the template. The message's bundle key is `template`."
+    },
+    {
+      "id": "message-template-config-name",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "A Message template has the machine name `node_created`. What is the exact configuration object name for its exported YAML, given the message_template config entity's config prefix?",
+      "must_contain_any": ["message.template.node_created"],
+      "must_not_contain": [],
+      "expected_output": "message.template.node_created (config prefix is `template`, so the config name is message.template.<id>)."
+    },
+    {
+      "id": "message-text-partials-tokens",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "In a Message template, what is stored in the `text` property (describe its structure), and how do you make Drupal tokens like [node:title] actually get replaced when a message of that template is displayed?",
+      "must_contain_any": ["partial", "token replace", "token options"],
+      "must_not_contain": [],
+      "expected_output": "`text` is a sequence of partials, each a formatted-text value { value, format } (unlimited cardinality). Tokens are replaced at render only when the template's settings['token options']['token replace'] is TRUE."
+    },
+    {
+      "id": "message-known-template-introspect",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "persona": "drupal-expert",
+      "prompt": "This Drupal site already has a Message template configured with the machine name `eval_activity`. Inspect the running site (drush available) and tell me the exact text of its message template partial.",
+      "setup": "agent-module-documentation/evaluation/verify/message-known-template-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/message-known-template-cleanup.sh",
+      "must_contain_any": ["[message:author:name] published [node:title]"],
+      "must_not_contain": [],
+      "expected_output": "The eval_activity message_template's single text partial is `[message:author:name] published [node:title]` (read from the live message.template.eval_activity config entity)."
+    },
+    {
+      "id": "message-known-template-tokenreplace-introspect",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "persona": "drupal-expert",
+      "prompt": "The Message template `eval_activity` is already configured on this site. Inspect the running site and tell me whether token replacement is enabled for it, i.e. the value of its `token options` -> `token replace` setting.",
+      "setup": "agent-module-documentation/evaluation/verify/message-known-template-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/message-known-template-cleanup.sh",
+      "must_contain_any": ["enabled", "true", "TRUE", "on"],
+      "must_not_contain": [],
+      "expected_output": "Token replacement is enabled (settings['token options']['token replace'] is true) on the live message.template.eval_activity config entity."
+    },
+    {
+      "id": "message-create-template-expert",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site (DDEV, drush available), create a Message template config entity with machine name `eval_signup`, label `User signup`, and a single text partial with the body `Welcome [message:author:name]!`, with token replacement enabled. Apply it to the running site (drush/code, not just described). Give a one-line summary of what you changed.",
+      "reset": "agent-module-documentation/evaluation/verify/message-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/message-create-template-verify.sh",
+      "expected_output": "A message_template config entity `eval_signup` exists and is enabled, with a text partial containing the token [message:author:name]. Verified against live site state."
+    },
+    {
+      "id": "message-create-template-layman",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "layman",
+      "prompt": "On my website I want to log a little activity note every time someone signs up. Please set up a reusable note template (call its internal name `eval_signup`) whose text reads `Welcome [message:author:name]!` so the person's name gets filled in automatically, and make it live on the site. Tell me in one line what you did.",
+      "reset": "agent-module-documentation/evaluation/verify/message-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/message-create-template-verify.sh",
+      "expected_output": "Same end state as the expert variant: a message_template `eval_signup` enabled with a partial containing [message:author:name], token replacement on. The agent must map the plain-English request onto Message templates."
+    },
+    {
+      "id": "message-log-entity-expert",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site (drush available), create a Message template `eval_comment` (label `Comment posted`) with a text partial `[message:author:name] commented`, then create and save one Message content entity of that template so an activity record actually exists. Apply it to the running site. Summarize in one line.",
+      "reset": "agent-module-documentation/evaluation/verify/message-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/message-log-entity-verify.sh",
+      "expected_output": "A message_template `eval_comment` (enabled, partial contains [message:author:name]) exists AND at least one `message` content entity of bundle eval_comment is saved. Verified against live site state."
+    }
+  ]
+}

@@ -1,0 +1,80 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "log_stdout",
+  "version": "3.0.x",
+  "note": "Log Stdout registers a PSR logger service (logger.stdout, tagged {name: logger}) that writes every Logging API event to php://stdout, or php://stderr for level <= WARNING when use_stderr is on. Its only persistent state is the log_stdout.settings config object with three keys: format (line template), use_stderr ('0'/'1' string), severity_level (RFC integer 0-7; event logs only when its level <= severity_level). Config UI: route log_stdout.settings at /admin/config/development/log_stdout (permission administer site configuration). Schema quirk: the schema file mislabels the object as syslog.settings so log_stdout.settings is schema-less. All medium/hard cases are grounded in reading/writing those real keys.",
+  "evals": [
+    {
+      "id": "log_stdout-stream-target",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "The Drupal contrib module log_stdout sends watchdog/Logging API messages to the process output. Which PHP stream(s) does it write to, and under what condition does a message go to stderr instead of stdout?",
+      "must_contain_any": ["php://stdout", "stdout", "php://stderr", "stderr"],
+      "must_not_contain": [],
+      "expected_output": "Its logger.stdout service writes each event to php://stdout, or to php://stderr when the use_stderr setting is '1' and the event level is WARNING or more severe (RFC level <= WARNING)."
+    },
+    {
+      "id": "log_stdout-config-keys",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "I want to script log_stdout's configuration on a Drupal site. What is the config object name and which keys control the minimum severity, the stderr behavior, and the log line format?",
+      "must_contain_any": ["log_stdout.settings", "severity_level", "use_stderr", "format"],
+      "must_not_contain": [],
+      "expected_output": "The config object is log_stdout.settings with keys severity_level (RFC integer 0-7, minimum severity to emit), use_stderr ('0'/'1'), and format (the line template). Edit at /admin/config/development/log_stdout or via drush cset log_stdout.settings <key> <value>."
+    },
+    {
+      "id": "log_stdout-severity-meaning",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "In log_stdout, the severity_level setting is an integer. If I set severity_level to 7, which log events get written to the stream, and what does 7 correspond to?",
+      "must_contain_any": ["7", "debug", "Debug", "everything", "all"],
+      "must_not_contain": [],
+      "expected_output": "severity_level is an RFC5424 level (0 Emergency ... 7 Debug). An event is written only when its level is <= severity_level, so 7 (Debug) is the least severe threshold and effectively logs every event. Default is 3 (Error)."
+    },
+    {
+      "id": "log_stdout-known-severity",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "On this Drupal site, log_stdout is configured. Inspect the live configuration and tell me the current minimum severity level it emits (the severity_level value) and whether stderr routing is enabled.",
+      "must_contain_any": ["7", "debug", "Debug"],
+      "must_not_contain": [],
+      "expected_output": "log_stdout.settings has severity_level 7 (Debug) and use_stderr '0' (off). Read it with: drush cget log_stdout.settings.",
+      "setup": "agent-module-documentation/evaluation/verify/log_stdout-severity-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/log_stdout-severity-cleanup.sh"
+    },
+    {
+      "id": "log_stdout-known-format",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "On this Drupal site, the log_stdout line format has been customized. Inspect the live configuration and report the exact log format template string currently configured.",
+      "must_contain_any": ["LOGSTDOUT-TEST"],
+      "must_not_contain": [],
+      "expected_output": "The format is 'LOGSTDOUT-TEST [@severity] @type: @message', stored at log_stdout.settings:format. Read it with drush cget log_stdout.settings format.",
+      "setup": "agent-module-documentation/evaluation/verify/log_stdout-format-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/log_stdout-format-cleanup.sh"
+    },
+    {
+      "id": "log_stdout-enable-debug",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, configure log_stdout so that it writes ALL log events, down to and including debug-level messages, to the output stream. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/log_stdout-debug-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/log_stdout-debug-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/log_stdout-debug-cleanup.sh",
+      "expected_output": "Set log_stdout.settings:severity_level to 7 (Debug) so events log when level <= 7, e.g. drush cset -y log_stdout.settings severity_level 7."
+    },
+    {
+      "id": "log_stdout-enable-stderr",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, configure log_stdout so that warning- and error-level messages are written to stderr (rather than all output going to stdout). Apply the change to the live default configuration.",
+      "reset": "agent-module-documentation/evaluation/verify/log_stdout-stderr-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/log_stdout-stderr-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/log_stdout-stderr-cleanup.sh",
+      "expected_output": "Set log_stdout.settings:use_stderr to '1' so events at level <= WARNING go to php://stderr, e.g. drush cset -y log_stdout.settings use_stderr 1."
+    }
+  ]
+}

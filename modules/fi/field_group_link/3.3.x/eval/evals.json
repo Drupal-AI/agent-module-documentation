@@ -1,0 +1,95 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "field_group_link",
+  "version": "3.3.x",
+  "note": "Field Group Link ships exactly one @FieldGroupFormatter plugin (id 'link') plus a 'field_group_link' render element. It has no settings form, no configure route (configure=null), no permissions, no Drush, no services and defines no plugin types. All persistent state is a field_group group stored in an entity VIEW display: core.entity_view_display.<entity>.<bundle>.<view_mode> -> third_party_settings.field_group.<group_name> with format_type: link and format_settings {target, custom_uri, target_attribute} on top of field_group's base keys (label, classes, id, show_empty_fields, label_as_html). The plugin is view-context only (supported_contexts = {\"view\"}) and its target select offers 'entity', 'custom_uri' and every non-base field of type link/entity_reference/file/image (supported_link_field_types). Rendering always emits class 'field-group-link' on the <a>. Every medium/hard case is grounded in that real config, using namespaced Article view modes (fgl_known, fgl_uri, fgl_task, fgl_teaser) and namespaced fields (field_fgl_*) so nothing else on the shared site is touched.",
+  "evals": [
+    {
+      "id": "field_group_link-target-options",
+      "mode": "recipe",
+      "prompt": "I am using the Drupal contrib module field_group_link to turn a Field Group into a clickable link. Which format setting decides where the link points, and what are the two special (non-field) values it accepts? What is the extra setting used together with one of them?",
+      "must_contain_any": [
+        "custom_uri",
+        "custom_url",
+        "Custom URL"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The setting is `target` in the group's format_settings. Besides a field machine name it accepts `entity` (the rendered entity's own canonical URL, labelled 'Full <entity type> page') and `custom_uri` (a Custom URL). When target is `custom_uri` the URI itself lives in the `custom_uri` setting and is run through token replacement before Url::fromUri().",
+      "difficulty": "easy"
+    },
+    {
+      "id": "field_group_link-supported-field-types",
+      "mode": "recipe",
+      "prompt": "In the Drupal module field_group_link, which field types on a bundle can be chosen as the destination of a 'Link' field group, and which annotation key on the formatter plugin defines that list? Are core base fields offered?",
+      "must_contain_any": [
+        "supported_link_field_types",
+        "entity_reference"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The plugin annotation key is supported_link_field_types = {\"link\", \"entity_reference\", \"file\", \"image\"}. settingsForm() lists every field definition on the bundle whose type is in that list AND whose storage definition isBaseField() is FALSE, so base fields are never offered.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "field_group_link-markup-and-newtab",
+      "mode": "recipe",
+      "prompt": "A Drupal site uses field_group_link. What CSS class is always added to the <a> element it generates, and which format setting makes the link open in a new tab (and what value)?",
+      "must_contain_any": [
+        "field-group-link",
+        "target_attribute"
+      ],
+      "must_not_contain": [],
+      "expected_output": "getClasses() always prepends the class `field-group-link` to the group's own classes, so the anchor is rendered as <a href=\"...\" class=\"field-group-link\">. Setting `target_attribute` to `_blank` (instead of `default`) adds target=\"_blank\" to the anchor.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "field_group_link-known-target",
+      "mode": "introspection",
+      "prompt": "This Drupal site has an Article view mode called 'FGL Known' (machine name fgl_known). Its display contains two field groups, but only one of them is a field_group_link 'Link' group. Inspect the live entity view display and tell me the machine name of that Link group and the machine name of the field it uses as the link destination.",
+      "must_contain_any": [
+        "field_fgl_dest"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The Link group is group_fgl_card: in core.entity_view_display.node.article.fgl_known its third_party_settings.field_group.group_fgl_card has format_type: link and format_settings.target: field_fgl_dest (target_attribute: _blank). The other group, group_fgl_plain, uses format_type html_element.",
+      "setup": "agent-module-documentation/evaluation/verify/field_group_link-known-target-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/field_group_link-known-target-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "field_group_link-custom-uri",
+      "mode": "introspection",
+      "prompt": "On this Drupal site the Article content type has a view mode 'FGL Uri' (machine name fgl_uri) whose field_group_link group does not link to the node itself but to an external address. Inspect the running site's configuration and give the exact custom URL that has been configured for that group, including any tokens.",
+      "must_contain_any": [
+        "https://promo.example.com/article/[node:nid]",
+        "promo.example.com/article/[node:nid]"
+      ],
+      "must_not_contain": [],
+      "expected_output": "In core.entity_view_display.node.article.fgl_uri the group group_fgl_promo has format_type: link, format_settings.target: custom_uri and format_settings.custom_uri: 'https://promo.example.com/article/[node:nid]' (the [node:nid] token is replaced at render time).",
+      "setup": "agent-module-documentation/evaluation/verify/field_group_link-custom-uri-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/field_group_link-custom-uri-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "field_group_link-card-group",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site the Article content type has a view mode 'FGL Task' (machine name fgl_task). Its display already shows the field field_fgl_task_body, and the bundle also has a link field field_fgl_task_link. Using the field_group_link module, add a field group with the machine name group_fgl_task to that view display: it must use the 'Link' format, contain field_fgl_task_body, take its destination from the field_fgl_task_link link field, and open in a new tab. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/field_group_link-card-group-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/field_group_link-card-group-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/field_group_link-card-group-cleanup.sh",
+      "expected_output": "core.entity_view_display.node.article.fgl_task gains third_party_settings.field_group.group_fgl_task with format_type: link, children: [field_fgl_task_body], format_settings.target: field_fgl_task_link and format_settings.target_attribute: _blank (e.g. via $display->setThirdPartySetting('field_group', 'group_fgl_task', [...])->save(), or by adding a Link group on Manage display)."
+    },
+    {
+      "id": "field_group_link-teaser-entity",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "layman",
+      "prompt": "On our Drupal site, articles have a teaser-style view mode called 'FGL Teaser' (machine name fgl_teaser) that shows a short blurb field (field_fgl_teaser_text). Right now the blurb is just text — I want the whole blurb block to be clickable so that clicking anywhere on it takes the visitor to that article's own page. Please set this up on the live site using the field_group_link module that is already installed.",
+      "reset": "agent-module-documentation/evaluation/verify/field_group_link-teaser-entity-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/field_group_link-teaser-entity-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/field_group_link-teaser-entity-cleanup.sh",
+      "expected_output": "A field_group group is added to core.entity_view_display.node.article.fgl_teaser with format_type: link, format_settings.target: entity and field_fgl_teaser_text among its children. (The group's machine name is not prescribed and is not checked.) At render time that makes the blurb come out wrapped in <a href=\"/node/N\" class=\"field-group-link\">, where /node/N is the node's own canonical URL."
+    }
+  ]
+}

@@ -1,0 +1,80 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "header_and_footer_scripts",
+  "version": "3.0.x",
+  "note": "Header and Footer Scripts stores site-wide CSS/JS in three plain config objects, each with a 'styles' string and a 'scripts' string: header_and_footer_scripts.header.settings (rendered into <head> via hook_page_attachments_alter), .body.settings (after <body> via hook_page_top), .footer.settings (near end via hook_page_bottom). Configure route header_and_footer_scripts.admin.header at /admin/config/development/header-and-footer-scripts/{header,body,footer}; permission header_and_footer_scripts_settings. No config schema. Medium cases read a known marker written into a region config; hard cases require writing a specific snippet into a region config, verified by reading the live config value. Baseline is 'config objects absent', restored by deleting them.",
+  "evals": [
+    {
+      "id": "hfs-add-analytics",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "I want to add a site-wide Google Analytics / GA4 tracking snippet to every page of my Drupal 11 site without editing theme files. The header_and_footer_scripts module is enabled. Where do I put the script and where is it stored?",
+      "must_contain_any": ["header_and_footer_scripts", "/admin/config/development/header-and-footer-scripts", "header.settings", "scripts", "Header Footer Scripts"],
+      "must_not_contain": [],
+      "expected_output": "Go to Configuration -> Development -> Header Footer Scripts (/admin/config/development/header-and-footer-scripts/header) and paste the <script> into the Scripts textarea of the Header form; it saves to config header_and_footer_scripts.header.settings (key 'scripts') and is injected into <head> via hook_page_attachments_alter()."
+    },
+    {
+      "id": "hfs-three-regions",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "The header_and_footer_scripts module offers three regions to inject scripts/styles. Name the three regions and where each one renders in the page markup, and give the config object for each.",
+      "must_contain_any": ["header", "body", "footer"],
+      "must_not_contain": [],
+      "expected_output": "Header (header_and_footer_scripts.header.settings) -> injected into <head> (hook_page_attachments_alter). Body (header_and_footer_scripts.body.settings) -> printed right after the opening <body> tag (hook_page_top), the right spot for a Google Tag Manager <noscript>. Footer (header_and_footer_scripts.footer.settings) -> printed near the end of the page (hook_page_bottom). Each object has a 'styles' and a 'scripts' string."
+    },
+    {
+      "id": "hfs-permission",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "Which permission controls who can edit the Header and Footer Scripts settings forms in Drupal, and what is its human label?",
+      "must_contain_any": ["header_and_footer_scripts_settings", "Add Scripts all over the site", "permission"],
+      "must_not_contain": [],
+      "expected_output": "The single permission header_and_footer_scripts_settings, labelled 'Add Scripts all over the site' (marked restricted). It gates all three region settings forms (header/body/footer)."
+    },
+    {
+      "id": "hfs-known-header",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "On this Drupal site the header_and_footer_scripts module has an inline script configured in one of its regions. Inspect the live configuration and report the distinctive marker string inside that script.",
+      "must_contain_any": ["HFS_MARKER_ABC123"],
+      "must_not_contain": [],
+      "expected_output": "The header region config header_and_footer_scripts.header.settings has scripts set to a <script> that logs HFS_MARKER_ABC123.",
+      "setup": "agent-module-documentation/evaluation/verify/header_and_footer_scripts-known-header-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/header_and_footer_scripts-known-header-cleanup.sh"
+    },
+    {
+      "id": "hfs-known-footer",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "The header_and_footer_scripts module on this site has a custom <style> block configured in its footer region. Inspect the live configuration and report the CSS class used in that style block.",
+      "must_contain_any": ["hfs-footer-marker-xyz"],
+      "must_not_contain": [],
+      "expected_output": "Config header_and_footer_scripts.footer.settings has styles set to a <style> block targeting the class .hfs-footer-marker-xyz.",
+      "setup": "agent-module-documentation/evaluation/verify/header_and_footer_scripts-known-footer-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/header_and_footer_scripts-known-footer-cleanup.sh"
+    },
+    {
+      "id": "hfs-add-footer-script",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, use the header_and_footer_scripts module to add this exact inline script to the FOOTER region so it renders near the bottom of every page: <script>console.log(\"HFS goodbye 42\");</script>. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/header_and_footer_scripts-footer-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/header_and_footer_scripts-footer-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/header_and_footer_scripts-footer-cleanup.sh",
+      "expected_output": "Set the 'scripts' key of config header_and_footer_scripts.footer.settings to the given <script> snippet (via the Footer settings form or configFactory getEditable('header_and_footer_scripts.footer.settings')->set('scripts', ...)->save()). Verify checks the footer config's scripts contains 'HFS goodbye 42'."
+    },
+    {
+      "id": "hfs-add-header-script",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-layman",
+      "prompt": "I need this exact analytics snippet to load in the <head> of every page on my site, using the tool that adds scripts site-wide from the admin UI: <script>console.log(\"HFS head hi 7\");</script>. Please set it up on the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/header_and_footer_scripts-header-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/header_and_footer_scripts-header-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/header_and_footer_scripts-header-cleanup.sh",
+      "expected_output": "Set the 'scripts' key of config header_and_footer_scripts.header.settings to the given <script> (Header settings form). The header region renders into <head> via hook_page_attachments_alter(). Verify checks the header config's scripts contains 'HFS head hi 7'."
+    }
+  ]
+}

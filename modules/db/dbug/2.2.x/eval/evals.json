@@ -1,0 +1,96 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "dbug",
+  "version": "2.2.x",
+  "note": "dBug for Drupal is one class, Drupal\\dbug\\Dbug, that dumps any PHP variable as a colored, collapsible HTML table (a cfdump port). Entry point Dbug::debug($var, $forceType = '', $bCollapsed = FALSE) RETURNS a markup string (it does not echo). Arrays render as class=\"dBug_array\" tables, objects as class=\"dBug_object\" (methods shown as [function]), booleans as TRUE/FALSE, recursion as *RECURSION*. Attach the dbug/dbug asset library (js/dBug.js + css/dBug.css) for styling and toggle. No routes, config, permissions, plugins or Drush. The module has no persistent state of its own, so medium/hard cases are grounded in its real rendering behavior: introspection stores a known value in a temp config object and the agent uses Dbug::debug() on the live site to dump it and read a value back; execution has the agent run Dbug::debug() over a known input and write the produced HTML dump to a file, verified for dbug's real markup markers.",
+  "evals": [
+    {
+      "id": "dbug-entry-point",
+      "mode": "recipe",
+      "prompt": "In the dbug (dBug for Drupal) module, which class and method do I call to get a formatted dump of a PHP variable, and does it print the output or return it?",
+      "must_contain_any": [
+        "Dbug::debug",
+        "\\Drupal\\dbug\\Dbug",
+        "debug("
+      ],
+      "must_not_contain": [],
+      "expected_output": "Call the static method \\Drupal\\dbug\\Dbug::debug($var). It returns an HTML markup string (it does not echo), so you place the result in a render array, e.g. '#markup' => Dbug::debug($var).",
+      "difficulty": "easy"
+    },
+    {
+      "id": "dbug-library",
+      "mode": "recipe",
+      "prompt": "The dbug dump tables show up unstyled and won't expand/collapse. Which Drupal asset library do I need to attach for dbug's styling and toggle behavior?",
+      "must_contain_any": [
+        "dbug/dbug",
+        "#attached",
+        "library"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Attach the dbug/dbug library (css/dBug.css + js/dBug.js), e.g. '#attached' => ['library' => ['dbug/dbug']]. It provides the colored styling and the click-to-toggle (dBug_toggleTable/dBug_toggleRow) behavior.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "dbug-forcetype",
+      "mode": "recipe",
+      "prompt": "I want dbug to dump an XML string as a structured table. What extra argument does Dbug::debug() take to force the variable's type, and what value do I pass for XML?",
+      "must_contain_any": [
+        "forceType",
+        "xml",
+        "second argument"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Pass the second $forceType argument: Dbug::debug($xmlString, 'xml'). Accepted force types are 'array', 'object' and 'xml'; 'xml' is required to dump an XML string or file. A third boolean $bCollapsed renders the tables collapsed.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "dbug-dump-known-config",
+      "mode": "introspection",
+      "prompt": "This site has a configuration object named dbug.eval_known holding a small data structure. Using the dbug module's Dbug::debug() on the live site, render a dump of that config's data and tell me the value stored under the 'color' key.",
+      "must_contain_any": [
+        "green"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The 'color' value is 'green'. Running \\Drupal\\dbug\\Dbug::debug(\\Drupal::config('dbug.eval_known')->get()) produces a dBug_array table in which the color row shows green (the config also has count: 3 and nested.label: alpha).",
+      "setup": "agent-module-documentation/evaluation/verify/dbug-known-config-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/dbug-known-config-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "dbug-dump-boolean",
+      "mode": "introspection",
+      "prompt": "The config object dbug.eval_flags on this site contains boolean values. Use the dbug module to dump that config data on the live site and tell me exactly how dbug renders the boolean value of the 'enabled' key in its output.",
+      "must_contain_any": [
+        "TRUE"
+      ],
+      "must_not_contain": [],
+      "expected_output": "dbug renders the boolean true as the literal text TRUE (and false as FALSE). Dumping dbug.eval_flags (enabled: true, disabled: false) with Dbug::debug() shows TRUE for the enabled key, because varIsBoolean() converts the value to the string TRUE/FALSE.",
+      "setup": "agent-module-documentation/evaluation/verify/dbug-flags-config-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/dbug-flags-config-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "dbug-render-array-dump",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "Using the dbug module on this Drupal site, generate a dbug dump of the PHP array ['apple' => 1, 'banana' => 2, 'nested' => ['x' => 'y']] and write the resulting HTML markup to the file /tmp/dbug-eval-array.html.",
+      "reset": "agent-module-documentation/evaluation/verify/dbug-dump-array-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/dbug-dump-array-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/dbug-dump-array-cleanup.sh",
+      "expected_output": "Run (string) \\Drupal\\dbug\\Dbug::debug(['apple' => 1, 'banana' => 2, 'nested' => ['x' => 'y']]) and file_put_contents() the result to /tmp/dbug-eval-array.html. The output is a class=\"dBug_array\" table containing the keys apple and banana."
+    },
+    {
+      "id": "dbug-object-dump",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "Using the dbug module, produce a dbug dump of a PHP object (for example a stdClass with a couple of properties) and write the resulting HTML to /tmp/dbug-eval-object.html so it shows the object's structure.",
+      "reset": "agent-module-documentation/evaluation/verify/dbug-dump-object-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/dbug-dump-object-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/dbug-dump-object-cleanup.sh",
+      "expected_output": "Create an object (e.g. $o = new stdClass; $o->foo = 'bar';) and write (string) \\Drupal\\dbug\\Dbug::debug($o) to /tmp/dbug-eval-object.html. The output is a class=\"dBug_object\" table listing the object's properties (and its methods as [function])."
+    }
+  ]
+}

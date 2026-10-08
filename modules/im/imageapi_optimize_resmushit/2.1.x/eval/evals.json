@@ -1,0 +1,78 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "imageapi_optimize_resmushit",
+  "version": "2.1.x",
+  "note": "imageapi_optimize_resmushit provides ONE ImageAPIOptimizeProcessor plugin (id `resmushit`, one setting `quality` 1-100) for the imageapi_optimize pipeline system. It has no config entity of its own; a processor instance lives inside an imageapi_optimize_pipeline config entity under processors[uuid] = {id: resmushit, data: {quality}, weight, uuid}. LIMITATION: an actual optimize run is a live POST to the third-party reSmush.it web API (http://api.resmush.it/ws.php) and needs network + the service up, so medium/hard cases are grounded in the PIPELINE CONFIG, not a live optimize round-trip. Installed release is 2.1.0-beta1 (beta). Recipe cases are response-graded. Medium installs a known pipeline (resmushit, quality 65) and requires live introspection. Hard builds a live pipeline containing the resmushit processor at a specific quality, verified against the pipeline config entity.",
+  "evals": [
+    {
+      "id": "resmushit-processor-plugin-id",
+      "mode": "recipe",
+      "prompt": "On Drupal 11, which Image Optimize (imageapi_optimize) processor plugin does the imageapi_optimize_resmushit module provide, what is its plugin id, and which external service does it call to optimize an image?",
+      "must_contain_any": ["resmushit", "reSmush.it", "resmush.it"],
+      "must_not_contain": [],
+      "expected_output": "It provides one ImageAPIOptimizeProcessor plugin with id `resmushit` (class ReSmushit). It optimizes each image by POSTing it to the free reSmush.it web service (http://api.resmush.it/ws.php) and saving the returned smaller image back in place.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "resmushit-quality-setting",
+      "mode": "recipe",
+      "prompt": "The reSmush.it Image Optimize processor exposes a single configurable setting. What is it called, what value range does it accept, and where is it stored on a processor instance inside a pipeline?",
+      "must_contain_any": ["quality", "1", "100"],
+      "must_not_contain": [],
+      "expected_output": "The only setting is `quality` (JPEG image quality), an integer from 1 to 100; leaving it empty sends no qlty to the service. On a processor instance it is stored under the pipeline's processors[uuid].data.quality.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "resmushit-pipeline-integration",
+      "mode": "recipe",
+      "prompt": "How does the reSmush.it processor plug into imageapi_optimize? Name the config entity type it is added to, the shape of the stored processor instance (the id and where the quality goes), and the admin path where you manage these.",
+      "must_contain_any": ["imageapi_optimize_pipeline", "pipeline", "processors"],
+      "must_not_contain": [],
+      "expected_output": "It is not a standalone config entity; you add it to an imageapi_optimize_pipeline config entity (imageapi_optimize.pipeline.<name>). The processor instance is stored in the pipeline's `processors` array keyed by UUID as {id: resmushit, data: {quality: N}, weight, uuid}. Managed at Admin > Config > Media > Image Optimize pipelines (/admin/config/media/imageapi-optimize-pipelines).",
+      "difficulty": "easy"
+    },
+    {
+      "id": "resmushit-known-pipeline-quality",
+      "mode": "introspection",
+      "prompt": "This site has an Image Optimize pipeline named eval_resmushit_known. Inspect its configuration and tell me which optimize processor it uses and the exact quality value that processor is set to.",
+      "setup": "agent-module-documentation/evaluation/verify/imageapi_optimize_resmushit-known-pipeline-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/imageapi_optimize_resmushit-known-pipeline-cleanup.sh",
+      "must_contain_any": ["65"],
+      "must_not_contain": [],
+      "expected_output": "The imageapi_optimize.pipeline.eval_resmushit_known pipeline contains one processor, the reSmush.it processor (id `resmushit`), with data.quality = 65.",
+      "difficulty": "medium"
+    },
+    {
+      "id": "resmushit-known-pipeline-processor",
+      "mode": "introspection",
+      "prompt": "Look at the imageapi_optimize pipeline eval_resmushit_known on this site. Which processor plugin id is registered in its processors list, and does adding that processor make the pipeline depend on any module?",
+      "setup": "agent-module-documentation/evaluation/verify/imageapi_optimize_resmushit-known-pipeline-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/imageapi_optimize_resmushit-known-pipeline-cleanup.sh",
+      "must_contain_any": ["resmushit"],
+      "must_not_contain": [],
+      "expected_output": "The processors list contains a single instance with id `resmushit`; because of it the pipeline declares a module dependency on imageapi_optimize_resmushit (dependencies.module).",
+      "difficulty": "medium"
+    },
+    {
+      "id": "resmushit-build-pipeline",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, create an Image Optimize (imageapi_optimize) pipeline config entity with machine name eval_resmushit_build. Add the reSmush.it processor (plugin id resmushit) to it and set its JPEG quality to 55. Save it live so the pipeline config entity exists with that processor. (Note: do not try to run a live optimization — the reSmush.it web API call is out of scope; only the pipeline config needs to exist.)",
+      "reset": "agent-module-documentation/evaluation/verify/imageapi_optimize_resmushit-build-pipeline-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/imageapi_optimize_resmushit-build-pipeline-verify.sh",
+      "expected_output": "An imageapi_optimize_pipeline config entity id eval_resmushit_build exists, and its processors array contains an instance with id `resmushit` and data.quality = 55 (verified against the pipeline config, not a live optimize run)."
+    },
+    {
+      "id": "resmushit-strict-pipeline",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, build an imageapi_optimize pipeline with machine name eval_resmushit_strict whose single step is the reSmush.it optimizer (plugin id resmushit) configured at quality 90. Persist it to the live site as a pipeline config entity. Do not attempt a live optimization call to the reSmush.it service; only the pipeline configuration is required.",
+      "reset": "agent-module-documentation/evaluation/verify/imageapi_optimize_resmushit-strict-pipeline-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/imageapi_optimize_resmushit-strict-pipeline-verify.sh",
+      "expected_output": "An imageapi_optimize_pipeline config entity id eval_resmushit_strict exists with a processor id `resmushit` at data.quality = 90 (verified against the pipeline config entity)."
+    }
+  ]
+}

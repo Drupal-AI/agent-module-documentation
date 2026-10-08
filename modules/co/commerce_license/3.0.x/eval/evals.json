@@ -1,0 +1,96 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "commerce_license",
+  "version": "3.0.x",
+  "note": "Commerce License sells access via a commerce_license content entity whose bundle is a License type plugin (CommerceLicenseType; built-in 'role' grants a Drupal role). Product variations opt in via the 'commerce_license' ('Provides a license') entity trait. Expiration is a License period plugin (CommerceLicensePeriod: unlimited / rolling_interval / fixed_reference_date_interval), stored in the license's required expiration_type field. Lifecycle uses the license_default state-machine workflow (states new, pending, active, renewal_in_progress, suspended, expired, revoked, canceled...). Expiry runs on cron -> Advanced Queue (commerce_license_expire). Admin at /admin/commerce/licenses (configure route entity.commerce_license.collection). Medium/hard cases are grounded in real live state: introspection reads a created active role-license's state and granted role; execution creates a role-license entity and enables the commerce_license trait on the default product variation type. Fixtures are namespaced (role commerce_license_member; role-type licenses granting it) and torn down.",
+  "evals": [
+    {
+      "id": "commerce_license-license-type",
+      "mode": "recipe",
+      "prompt": "In Commerce License, what determines what a license actually grants to the buyer, and which built-in plugin grants a Drupal role?",
+      "must_contain_any": [
+        "license type",
+        "CommerceLicenseType",
+        "role"
+      ],
+      "must_not_contain": [],
+      "expected_output": "A License type plugin (CommerceLicenseType) determines what a license grants; it is the bundle of the commerce_license entity. The built-in 'role' plugin grants a Drupal role (stored in the license's license_role field) while the license is active, adding/removing it via grantLicense()/revokeLicense().",
+      "difficulty": "easy"
+    },
+    {
+      "id": "commerce_license-workflow-state",
+      "mode": "recipe",
+      "prompt": "Which state-machine workflow do Commerce License licenses use, and what state is a currently-valid (in force) license in?",
+      "must_contain_any": [
+        "license_default",
+        "active"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Licenses use the license_default workflow (group commerce_license). A valid, in-force license is in the 'active' state. Other states include new, pending, renewal_in_progress, suspended, expired, revoked and canceled.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "commerce_license-periods",
+      "mode": "recipe",
+      "prompt": "How does Commerce License decide when a license expires, and what are the built-in License period plugin options?",
+      "must_contain_any": [
+        "unlimited",
+        "rolling_interval",
+        "fixed_reference_date_interval",
+        "CommerceLicensePeriod"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Expiration is set by a License period plugin (CommerceLicensePeriod), stored in the license's expiration_type field. Built-ins: 'unlimited' (never expires), 'rolling_interval' (expires an interval after start, e.g. 30 days), and 'fixed_reference_date_interval' (expires relative to a fixed reference date). Cron expires licenses past their computed 'expires' timestamp.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "commerce_license-license-state",
+      "mode": "introspection",
+      "prompt": "This site has a Commerce License license entity. Inspect the live site and tell me what workflow state that license is currently in.",
+      "must_contain_any": [
+        "active"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The license is in the 'active' state (License::getState()->getId() === 'active' for the commerce_license entity of type role owned by user 1).",
+      "setup": "agent-module-documentation/evaluation/verify/commerce_license-role-license-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/commerce_license-role-license-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "commerce_license-granted-role",
+      "mode": "introspection",
+      "prompt": "There is a role-type Commerce License license on this site. Inspect it on the live site and tell me the machine name of the Drupal role that this license grants.",
+      "must_contain_any": [
+        "commerce_license_member"
+      ],
+      "must_not_contain": [],
+      "expected_output": "It grants the commerce_license_member role: the role-type license's license_role field references the user role commerce_license_member.",
+      "setup": "agent-module-documentation/evaluation/verify/commerce_license-role-license-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/commerce_license-role-license-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "commerce_license-create-role-license",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this site there is a Drupal role with machine name commerce_license_member. Using Commerce License, create an active role-type license entity (owned by user 1) that grants the commerce_license_member role, and save it to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/commerce_license-create-license-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/commerce_license-create-license-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/commerce_license-create-license-cleanup.sh",
+      "expected_output": "Create a commerce_license entity of bundle 'role' with state 'active', uid 1, license_role 'commerce_license_member', and an expiration_type License period (e.g. target_plugin_id 'unlimited'), then save it. A role-type license granting commerce_license_member in the active state then exists."
+    },
+    {
+      "id": "commerce_license-enable-variation-trait",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "Make the default Commerce product variation type able to sell licenses by enabling Commerce License's 'Provides a license' entity trait on it, applied to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/commerce_license-variation-trait-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/commerce_license-variation-trait-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/commerce_license-variation-trait-cleanup.sh",
+      "expected_output": "Enable the 'commerce_license' entity trait (label 'Provides a license') on the 'default' commerce_product_variation_type, e.g. add it via the variation type edit form, or $type->setTraits(array_merge($type->getTraits(), ['commerce_license']))->save(). getTraits() then contains 'commerce_license'."
+    }
+  ]
+}

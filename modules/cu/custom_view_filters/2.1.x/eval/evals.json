@@ -1,0 +1,101 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "custom_view_filters",
+  "version": "2.1.x",
+  "note": "Custom View Filters registers three Views filter handlers on node_field_data via hook_views_data_alter(): custom_az_filter (Views field custom_az_filter), node_granular_date_filter (field nodes_granular_dates), and date_range_picker_filter (field date_range_picker). No settings form, no configure route (configure=null), no permissions, no config schema, no plugin type of its own. All persistent state lives in a View config entity's filter handler options (plugin_id + the field's machine name in az_field_name / granular_field_name). Medium introspection reads back which handler a live View uses; hard execution adds the custom_az_filter handler to a live View and verifies it against the saved views.view config.",
+  "evals": [
+    {
+      "id": "cvf-which-filters",
+      "mode": "recipe",
+      "prompt": "The Drupal contrib module custom_view_filters adds ready-made filters to Views. Name the three Views filter handler plugin ids it provides and, in one line each, what they filter by.",
+      "must_contain_any": [
+        "custom_az_filter",
+        "node_granular_date_filter",
+        "date_range_picker_filter"
+      ],
+      "must_not_contain": [],
+      "expected_output": "It registers three FilterPluginBase handlers on node_field_data (group 'Custom View Filters'): custom_az_filter (first letter of the first/second word of a text field), node_granular_date_filter (by year and/or month of a date field), and date_range_picker_filter (a since/until date range).",
+      "difficulty": "easy"
+    },
+    {
+      "id": "cvf-target-field-option",
+      "mode": "recipe",
+      "prompt": "Using custom_view_filters, how do I tell each filter which field to act on, and which special/built-in field names are supported? There is no field picker.",
+      "must_contain_any": [
+        "az_field_name",
+        "granular_field_name",
+        "machine name",
+        "created",
+        "changed",
+        "title"
+      ],
+      "must_not_contain": [],
+      "expected_output": "You type the field's machine name into the filter's options: az_field_name for the AZ filter, granular_field_name for the granular-date and date-range filters (e.g. field_build_date). Special names: 'title' for the AZ filter, and 'created' / 'changed' for the date filters, which query node_field_data directly.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "cvf-twig-and-exposed",
+      "mode": "recipe",
+      "prompt": "With custom_view_filters, can these filters be exposed to site visitors, and how would I render the exposed control directly in a Views Twig template rather than the default exposed form block?",
+      "must_contain_any": [
+        "form.custom_az_filter",
+        "form.nodes_granular_dates",
+        "form.date_range_picker",
+        "exposed"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Yes; each filter works as an admin (non-exposed) or exposed filter. Because each exposed widget is a real form element keyed by the filter's exposed identifier, you can print it in a Views template, e.g. {{ form.custom_az_filter }}, {{ form.nodes_granular_dates }}, or {{ form.date_range_picker }}.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "cvf-known-view",
+      "mode": "introspection",
+      "prompt": "This Drupal site has a View with machine name cvf_known_view that uses one of the custom_view_filters filters. Inspect the live View configuration and state the module's filter handler plugin id it uses and the field machine name that filter targets.",
+      "must_contain_any": [
+        "node_granular_date_filter"
+      ],
+      "must_not_contain": [],
+      "expected_output": "cvf_known_view's default display has a filter with plugin_id node_granular_date_filter targeting granular_field_name 'created' (Views field nodes_granular_dates on node_field_data).",
+      "setup": "agent-module-documentation/evaluation/verify/custom_view_filters-known-view-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/custom_view_filters-known-view-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "cvf-detect-range-field",
+      "mode": "introspection",
+      "prompt": "On this site the View cvf_range_view uses the custom_view_filters date-range picker. Inspect the live View config and report which field machine name its date_range_picker_filter targets.",
+      "must_contain_any": [
+        "field_cvf_when",
+        "date_range_picker_filter"
+      ],
+      "must_not_contain": [],
+      "expected_output": "cvf_range_view's default display has a filter with plugin_id date_range_picker_filter whose granular_field_name is field_cvf_when.",
+      "setup": "agent-module-documentation/evaluation/verify/custom_view_filters-range-view-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/custom_view_filters-range-view-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "cvf-add-az-filter",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site there is a View with machine name cvf_task_view (base table node_field_data) that currently has no custom_view_filters filter. Using the custom_view_filters module, add its Custom AZ filter (handler plugin id custom_az_filter) to the view's default display as a non-exposed filter targeting the node title (az_field_name = 'title'). Save the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/custom_view_filters-add-az-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/custom_view_filters-add-az-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/custom_view_filters-add-az-cleanup.sh",
+      "expected_output": "views.view.cvf_task_view default display display_options.filters gains an entry with plugin_id 'custom_az_filter', table 'node_field_data', and az_field_name 'title'."
+    },
+    {
+      "id": "cvf-add-granular-filter",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "site-builder",
+      "prompt": "The site has a View named cvf_task2_view listing content. Using custom_view_filters, add the year/month 'granular date' filter (handler plugin id node_granular_date_filter) to its default display so it filters on the node's created date (granular_field_name = 'created'). Apply the change live.",
+      "reset": "agent-module-documentation/evaluation/verify/custom_view_filters-add-granular-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/custom_view_filters-add-granular-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/custom_view_filters-add-granular-cleanup.sh",
+      "expected_output": "views.view.cvf_task2_view default display display_options.filters gains an entry with plugin_id 'node_granular_date_filter' and granular_field_name 'created'."
+    }
+  ]
+}

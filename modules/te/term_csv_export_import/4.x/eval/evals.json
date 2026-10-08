@@ -1,0 +1,80 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "term_csv_export_import",
+  "version": "4.x",
+  "note": "Term CSV Export/Import provides an Import form (/admin/config/content/term-csv-import, route term_csv_export_import.import = the configure route) and an Export form (/admin/config/content/term-csv-export), both gated by the single 'administer term_csv_export_import' permission. CSV columns (no IDs): name,status,description__value,description__format,weight,parent_name; hierarchy via parent_name (multiple parents separated by ';'); optional trailing 'fields' column is http_build_query-encoded. The logic lives in two directly-instantiable classes: ImportController($csv,$vid)->execute($preserve_vocabularies,$preserve_tids) and ExportController($term_storage,$vid)->execute($include_ids,$include_headers,$include_fields). No Drush, no config entity, no service. Medium cases import known terms into the existing 'tags' vocabulary (via ImportController) and have the agent inspect the live taxonomy; hard cases have the agent import a term hierarchy / flat list, verified against the real taxonomy_term entities. All fixture terms are namespaced tcei_ and deleted on cleanup.",
+  "evals": [
+    {
+      "id": "term_csv_export_import-csv-format",
+      "mode": "recipe",
+      "prompt": "Using the Term CSV Export/Import module for Drupal, what are the CSV columns for importing taxonomy terms without term IDs, and how do I express that one term is a child of another?",
+      "must_contain_any": ["parent_name", "name,status", "description__value"],
+      "must_not_contain": [],
+      "expected_output": "The columns (no IDs) are: name,status,description__value,description__format,weight,parent_name. A term's parent is given in the parent_name column (by the parent's name); multiple parents are separated by ';'. An empty parent_name means a top-level term.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "term_csv_export_import-where",
+      "mode": "recipe",
+      "prompt": "Where are the import and export pages for the Term CSV Export/Import module in a Drupal site, and what permission is required to use them?",
+      "must_contain_any": ["admin/config/content/term-csv-import", "term-csv-export", "administer term_csv_export_import"],
+      "must_not_contain": [],
+      "expected_output": "Import is at /admin/config/content/term-csv-import (route term_csv_export_import.import) and Export at /admin/config/content/term-csv-export. Both require the 'administer term_csv_export_import' permission.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "term_csv_export_import-export-options",
+      "mode": "recipe",
+      "prompt": "When exporting a vocabulary to CSV with the Term CSV Export/Import module, which options control whether term IDs, a header row, and extra fields are included?",
+      "must_contain_any": ["Include Term Ids", "Include Term Headers", "include_ids", "include_headers", "include extra fields", "fields"],
+      "must_not_contain": [],
+      "expected_output": "The export form has three checkboxes: 'Include Term Ids in export' (adds tid/uuid/revision_id/parent_tid columns), 'Include Term Headers in export' (adds the header row), and 'Include extra fields in export' (adds an http_build_query-encoded 'fields' column). Programmatically these are the three arguments to ExportController::execute($include_ids, $include_headers, $include_fields).",
+      "difficulty": "easy"
+    },
+    {
+      "id": "term_csv_export_import-known-parent",
+      "mode": "introspection",
+      "prompt": "The 'tags' vocabulary on this site contains a term named 'tcei_City'. Inspect the live taxonomy and state the name of its parent term.",
+      "must_contain_any": ["tcei_Region"],
+      "must_not_contain": [],
+      "expected_output": "Its parent is tcei_Region. tcei_City was imported as a child of tcei_Region (the parent term reference on the tcei_City taxonomy term points to tcei_Region).",
+      "setup": "agent-module-documentation/evaluation/verify/term_csv_export_import-parent-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/term_csv_export_import-parent-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "term_csv_export_import-count-children",
+      "mode": "introspection",
+      "prompt": "In the 'tags' vocabulary on this site there is a term 'tcei_Continent'. Inspect the live taxonomy and state how many direct child terms it has.",
+      "must_contain_any": ["3", "three"],
+      "must_not_contain": [],
+      "expected_output": "It has 3 direct children (tcei_Kenya, tcei_Egypt, tcei_Ghana), each imported with parent_name tcei_Continent.",
+      "setup": "agent-module-documentation/evaluation/verify/term_csv_export_import-count-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/term_csv_export_import-count-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "term_csv_export_import-import-hierarchy",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, use the Term CSV Export/Import module to import two taxonomy terms into the existing 'tags' vocabulary: a top-level term 'tcei_Europe' and a term 'tcei_France' that is a child of tcei_Europe. Apply the import to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/term_csv_export_import-import-hierarchy-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/term_csv_export_import-import-hierarchy-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/term_csv_export_import-import-hierarchy-cleanup.sh",
+      "expected_output": "Import CSV such as 'tcei_Europe,1,,basic_html,0,' and 'tcei_France,1,,basic_html,0,tcei_Europe' into the 'tags' vocabulary (via the import form at /admin/config/content/term-csv-import, or new ImportController($csv,'tags')->execute(FALSE,FALSE)). Result: tcei_Europe and tcei_France exist in tags, with tcei_France's parent set to tcei_Europe."
+    },
+    {
+      "id": "term_csv_export_import-import-flat",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "site-owner",
+      "prompt": "I have three tags I want to add to my Drupal site's 'tags' vocabulary all at once: tcei_Red, tcei_Green, and tcei_Blue. Using the Term CSV Export/Import module, import these three terms into the tags vocabulary on the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/term_csv_export_import-import-flat-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/term_csv_export_import-import-flat-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/term_csv_export_import-import-flat-cleanup.sh",
+      "expected_output": "Import a CSV listing the three terms (e.g. rows 'tcei_Red,1,,basic_html,0,', 'tcei_Green,1,,basic_html,0,', 'tcei_Blue,1,,basic_html,0,') into the 'tags' vocabulary via the import form or ImportController. Result: all three terms exist in the tags vocabulary."
+    }
+  ]
+}

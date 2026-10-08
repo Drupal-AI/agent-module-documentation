@@ -1,0 +1,80 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "twig_xdebug",
+  "version": "1.4.x",
+  "note": "Twig Xdebug is a thin wrapper that registers the ajgl/breakpoint-twig-extension library as a Twig extension (service id 'twig_xdebug' -> class Ajgl\\Twig\\Extension\\BreakpointExtension, tagged twig.extension). It adds a single Twig function breakpoint(); rendering {{ breakpoint() }} calls PHP xdebug_break(). It has NO config, routes, permissions, schema, or plugins, so introspection/execution cases are grounded in the module's only real artifact: Twig templates that call breakpoint(). Medium cases read back which variable/expression a template passes to breakpoint(); hard cases require authoring a template that sets a breakpoint (on `node`, or argument-less). Template files live under the site files dir so they are inspectable and verifiable without touching shared site config.",
+  "evals": [
+    {
+      "id": "twig_xdebug-how-to-breakpoint",
+      "mode": "recipe",
+      "prompt": "On a Drupal site with the twig_xdebug module enabled, how do I set an Xdebug breakpoint inside a Twig template, and what underlying PHP function does that trigger?",
+      "must_contain_any": ["breakpoint()", "{{ breakpoint", "xdebug_break"],
+      "must_not_contain": [],
+      "expected_output": "Write {{ breakpoint() }} (optionally {{ breakpoint(someVar) }}) in the Twig template. When Twig renders it, the ajgl/breakpoint-twig-extension Twig extension calls PHP's xdebug_break(), pausing execution in your IDE with the template's variables in scope.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "twig_xdebug-library-dep",
+      "mode": "recipe",
+      "prompt": "What Composer library does the Drupal twig_xdebug module depend on, and what does the module register in the service container to expose its Twig function?",
+      "must_contain_any": ["ajgl/breakpoint-twig-extension", "BreakpointExtension", "twig.extension"],
+      "must_not_contain": [],
+      "expected_output": "It requires ajgl/breakpoint-twig-extension (^0.3.4). The module registers a service 'twig_xdebug' whose class is Ajgl\\Twig\\Extension\\BreakpointExtension, tagged with twig.extension, which provides the breakpoint() Twig function.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "twig_xdebug-inspect-argument",
+      "mode": "recipe",
+      "prompt": "In a Twig template using twig_xdebug, how do I focus the debugger on one specific value, and what variables are available at the breakpoint?",
+      "must_contain_any": ["breakpoint(", "$arguments", "$context"],
+      "must_not_contain": [],
+      "expected_output": "Pass the value as an argument, e.g. {{ breakpoint(fields) }}; it appears as $arguments at the breakpoint. Also available are $context (all template variables) and $environment (the Twig environment). Execution pauses inside the library's BreakpointExtension.php.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "twig_xdebug-inspect-var",
+      "mode": "introspection",
+      "prompt": "On this site there is a Twig template at web/sites/default/files/tx_med1/report.html.twig that uses twig_xdebug to set a breakpoint. Inspect the template and state which variable is being passed to breakpoint() for inspection.",
+      "must_contain_any": ["items"],
+      "must_not_contain": [],
+      "expected_output": "The template calls {{ breakpoint(items) }}, so the variable being inspected at the breakpoint is `items`.",
+      "setup": "agent-module-documentation/evaluation/verify/twig_xdebug-inspect-var-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/twig_xdebug-inspect-var-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "twig_xdebug-inspect-expr",
+      "mode": "introspection",
+      "prompt": "A Twig template at web/sites/default/files/tx_med2/body.html.twig on this site sets a twig_xdebug breakpoint. Inspect it and report the exact expression passed to breakpoint().",
+      "must_contain_any": ["node.field_body", "node.field_body.value"],
+      "must_not_contain": [],
+      "expected_output": "The template calls {{ breakpoint(node.field_body.value) }}, so the expression passed to the breakpoint is node.field_body.value.",
+      "setup": "agent-module-documentation/evaluation/verify/twig_xdebug-inspect-expr-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/twig_xdebug-inspect-expr-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "twig_xdebug-breakpoint-node",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "Using the twig_xdebug module, create a Twig template file at web/sites/default/files/tx_hard1/debug.html.twig that sets an Xdebug breakpoint which inspects the `node` variable when the template renders.",
+      "reset": "agent-module-documentation/evaluation/verify/twig_xdebug-breakpoint-node-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/twig_xdebug-breakpoint-node-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/twig_xdebug-breakpoint-node-cleanup.sh",
+      "expected_output": "Create the file containing {{ breakpoint(node) }} (twig_xdebug's breakpoint() Twig function with `node` as the argument), which calls xdebug_break() and lets you inspect `node` at that point."
+    },
+    {
+      "id": "twig_xdebug-breakpoint-plain",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-layman",
+      "prompt": "I have the twig_xdebug module on. I want my debugger to stop while a template is drawing so I can see every variable the template got. Create the file web/sites/default/files/tx_hard2/inspect.html.twig that makes that happen (with no particular variable singled out).",
+      "reset": "agent-module-documentation/evaluation/verify/twig_xdebug-breakpoint-plain-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/twig_xdebug-breakpoint-plain-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/twig_xdebug-breakpoint-plain-cleanup.sh",
+      "expected_output": "Create the file containing an argument-less {{ breakpoint() }}; when the template renders, twig_xdebug calls xdebug_break() and the whole Twig $context (all template variables) is inspectable in the debugger."
+    }
+  ]
+}

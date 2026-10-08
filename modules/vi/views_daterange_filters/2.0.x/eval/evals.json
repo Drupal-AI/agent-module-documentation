@@ -1,0 +1,80 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "views_daterange_filters",
+  "version": "2.0.x",
+  "note": "Views Date Range Filters adds six range operators (includes, includes_unbound, includes_unbound_indexed, overlaps, ends_by, not_ended) to the Views filter for daterange/date_recur fields. It has no settings form, no configure route, no permissions, no Drush, and defines no plugin types; its one plugin is the Views filter Drupal\\views_daterange_filters\\Plugin\\views\\filter\\ViewsDaterangeFiltersDateRange (@ViewsFilter id views_daterange_filters_daterange), which extends core datetime Date. It attaches automatically via views_daterange_filters_field_views_data_alter(), which rewrites filter.id to views_daterange_filters_daterange on every non-_end_value column of a daterange/date_recur field. The end column is derived as substr(start, 0, -6) . '_end_value'. overlaps takes two values (min/max); the others take one. All medium/hard cases are grounded in real Views config: introspection reads back the operator/plugin_id a live view uses on a daterange filter; execution builds or edits a view whose daterange filter carries plugin_id views_daterange_filters_daterange with a specific operator, verified against live views.view.* config.",
+  "evals": [
+    {
+      "id": "vdf-operators-list",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "The Drupal contrib module views_daterange_filters adds extra Views filter operators for daterange fields. Name the range-specific operators it adds beyond the core date operators, and say which one takes two values (a min and a max).",
+      "must_contain_any": ["includes", "overlaps", "ends_by", "not_ended", "Ends by", "Not ended", "Overlaps"],
+      "must_not_contain": [],
+      "expected_output": "It adds includes (Includes), includes_unbound (Includes Unbound), includes_unbound_indexed (Includes Unbound Indexed), overlaps (Overlaps), ends_by (Ends by), and not_ended (Not ended). overlaps takes two values (min and max); the rest take a single value."
+    },
+    {
+      "id": "vdf-how-attaches",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "In the views_daterange_filters module, how does the module make its extra operators appear on a Views filter for a daterange field, and what is the Views filter plugin id it uses? Which field types does it apply to?",
+      "must_contain_any": ["views_daterange_filters_daterange", "field_views_data_alter", "hook_field_views_data_alter", "daterange", "date_recur"],
+      "must_not_contain": [],
+      "expected_output": "views_daterange_filters_field_views_data_alter() (implementing hook_field_views_data_alter) rewrites filter.id to 'views_daterange_filters_daterange' on every non-_end_value column of fields whose type is 'daterange' or 'date_recur'. That plugin (class ViewsDaterangeFiltersDateRange) extends core's datetime Date filter and provides the extra operators."
+    },
+    {
+      "id": "vdf-end-column",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "The views_daterange_filters operators compare a daterange field's start value against its end value. Given the Views start column is called field_when_value, how does the module determine the matching end column name, and what would that end column be?",
+      "must_contain_any": ["_end_value", "field_when_end_value", "getEndFieldName", "substr"],
+      "must_not_contain": [],
+      "expected_output": "getEndFieldName() strips the trailing '_value' and appends '_end_value' (substr($field, 0, -6) . '_end_value'), so field_when_value maps to field_when_end_value."
+    },
+    {
+      "id": "vdf-known-operator",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "This Drupal site has a View named vdf_m1_overlaps that filters a daterange field (field_vdf_m1) using views_daterange_filters. Inspect the live view configuration and state which views_daterange_filters operator that filter uses.",
+      "must_contain_any": ["overlaps"],
+      "must_not_contain": [],
+      "expected_output": "The filter field_vdf_m1_value in views.view.vdf_m1_overlaps uses plugin_id views_daterange_filters_daterange with operator 'overlaps' (a min/max operator).",
+      "setup": "agent-module-documentation/evaluation/verify/views_daterange_filters-op-overlaps-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/views_daterange_filters-op-overlaps-cleanup.sh"
+    },
+    {
+      "id": "vdf-known-plugin",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "This Drupal site has a View named vdf_m2_ends whose daterange filter comes from the views_daterange_filters module. Inspect the live view configuration and give the exact Views filter plugin id used on that daterange filter, and the operator selected.",
+      "must_contain_any": ["views_daterange_filters_daterange"],
+      "must_not_contain": [],
+      "expected_output": "The filter field_vdf_m2_value uses plugin_id 'views_daterange_filters_daterange' with operator 'ends_by'.",
+      "setup": "agent-module-documentation/evaluation/verify/views_daterange_filters-plugin-id-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/views_daterange_filters-plugin-id-cleanup.sh"
+    },
+    {
+      "id": "vdf-build-view",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site the Article content type has a Datetime Range field field_vdf_task. Create a View with the machine id 'vdf_build' on the node_field_data base table that filters on field_vdf_task using the views_daterange_filters 'Ends by' operator (filter plugin views_daterange_filters_daterange, operator ends_by). Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/views_daterange_filters-build-view-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/views_daterange_filters-build-view-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/views_daterange_filters-build-view-cleanup.sh",
+      "expected_output": "views.view.vdf_build has a display filter on field_vdf_task_value with plugin_id 'views_daterange_filters_daterange' and operator 'ends_by' (e.g. build the View entity with that filter and save)."
+    },
+    {
+      "id": "vdf-switch-operator",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site there is a View 'vdf_switch' whose daterange filter (field_vdf_task, plugin views_daterange_filters_daterange) currently uses the 'includes' operator. Change that filter to use the views_daterange_filters 'Overlaps' operator instead (operator overlaps, which takes a min and a max), and apply the change to the live view.",
+      "reset": "agent-module-documentation/evaluation/verify/views_daterange_filters-switch-op-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/views_daterange_filters-switch-op-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/views_daterange_filters-switch-op-cleanup.sh",
+      "expected_output": "In views.view.vdf_switch the field_vdf_task_value filter keeps plugin_id 'views_daterange_filters_daterange' but its operator is now 'overlaps'."
+    }
+  ]
+}

@@ -1,0 +1,58 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "tacjs_log",
+  "version": "7.0.x",
+  "note": "TacJS Log is a submodule of TacJS that records proof of cookie consent. Its only persistent state is the 'tacjslog' database table (columns: uid serial PK, timestamp int, ip_address varchar(255), services_allowed text) created by hook_schema in tacjs_log.install. Front-end JS POSTs to route tacjs_log.report /reports/tacjslog/{service} (perm access content); LogController::report inserts {timestamp, ip_address, services_allowed}. Admin report at route tacjs_log.overview /admin/config/system/tacjs/overview (perm administer tacjs). No config, no config schema. Medium/hard cases are grounded in the real tacjslog table.",
+  "evals": [
+    {
+      "id": "tacjs_log-where-stored",
+      "mode": "recipe",
+      "prompt": "The TacJS Log submodule records cookie-consent decisions. In which database table does it store each proof-of-consent record, and what does a row contain?",
+      "must_contain_any": ["tacjslog"],
+      "must_not_contain": [],
+      "expected_output": "It stores rows in the 'tacjslog' table, each with a timestamp, the visitor's ip_address, and the services_allowed string (plus a serial uid primary key).",
+      "difficulty": "easy"
+    },
+    {
+      "id": "tacjs_log-overview-report",
+      "mode": "recipe",
+      "prompt": "Where do administrators view the collected TacJS proof-of-consent records, and which permission is required?",
+      "must_contain_any": ["/admin/config/system/tacjs/overview", "tacjs_log.overview", "administer tacjs"],
+      "must_not_contain": [],
+      "expected_output": "At /admin/config/system/tacjs/overview (route tacjs_log.overview), a paged sortable table, requiring the 'administer tacjs' permission.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "tacjs_log-report-endpoint",
+      "mode": "recipe",
+      "prompt": "How does the TacJS Log module capture a consent event from the front end - which route/URL does the browser call to record that a service was allowed?",
+      "must_contain_any": ["/reports/tacjslog", "tacjs_log.report"],
+      "must_not_contain": [],
+      "expected_output": "The attached JS POSTs to route tacjs_log.report at /reports/tacjslog/{service} (permission access content); LogController::report() inserts the row into tacjslog.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "tacjs_log-known-consent",
+      "mode": "introspection",
+      "prompt": "On this Drupal site the TacJS consent log has one recorded consent. Inspect the live tacjslog data and report the services_allowed value of that record.",
+      "must_contain_any": ["tacjs_probe_consent"],
+      "must_not_contain": [],
+      "expected_output": "The services_allowed value is tacjs_probe_consent (SELECT services_allowed FROM tacjslog).",
+      "setup": "agent-module-documentation/evaluation/verify/tacjs_log-known-consent-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/tacjs_log-known-consent-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "tacjs_log-record-consent",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, record a TacJS proof-of-consent entry for the service named 'tacjs_log_task' (as if a visitor accepted that service), so it appears in the consent log.",
+      "reset": "agent-module-documentation/evaluation/verify/tacjs_log-record-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/tacjs_log-record-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/tacjs_log-record-reset.sh",
+      "expected_output": "Insert a row into the tacjslog table with services_allowed='tacjs_log_task' (e.g. via \\Drupal::database()->insert('tacjslog') with timestamp/ip_address/services_allowed, which is exactly what LogController::report() does), or hit /reports/tacjslog/tacjs_log_task."
+    }
+  ]
+}

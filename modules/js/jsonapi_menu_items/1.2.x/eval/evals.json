@@ -1,0 +1,100 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "jsonapi_menu_items",
+  "version": "1.2.x",
+  "note": "JSON:API Menu items exposes each menu's enabled, access-checked link tree as a read-only JSON:API resource at /%jsonapi%/menu_items/{menu} (route jsonapi_menu_items.menu, backed by MenuItemsResource on jsonapi_resources). No config, permissions, schema, services, or Drush. Query filters: min_depth, max_depth, parent, parents, conditions[]. Each item exposes title, url, route, weight, enabled, expanded, menu_name, parent, provider, options, description, meta (+ menu_link_content fields). Medium cases create a known menu/links and ask what the resource returns; hard cases build menu state (create a menu+link; enable a disabled link) so the resource returns it. Verify scripts reproduce the resource's own data source (menu.link_tree->load with onlyEnabledLinks + checkAccess/sort manipulators). All fixtures namespaced jmi_* menus.",
+  "evals": [
+    {
+      "id": "jsonapi_menu_items-endpoint",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "Using the jsonapi_menu_items module, what is the URL/path to fetch the link tree of a Drupal menu (say the 'main' menu) over JSON:API?",
+      "must_contain_any": [
+        "/jsonapi/menu_items/",
+        "menu_items/{menu}",
+        "jsonapi_menu_items.menu"
+      ],
+      "must_not_contain": [],
+      "expected_output": "GET /%jsonapi%/menu_items/{menu}, e.g. /jsonapi/menu_items/main. It is served by route jsonapi_menu_items.menu (MenuItemsResource), returning the menu's enabled links as JSON:API resource objects."
+    },
+    {
+      "id": "jsonapi_menu_items-filters",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "Which query filters does the jsonapi_menu_items resource support to limit which menu links are returned (e.g. by depth or parent)?",
+      "must_contain_any": [
+        "min_depth",
+        "max_depth",
+        "filter[parent",
+        "parents",
+        "conditions"
+      ],
+      "must_not_contain": [],
+      "expected_output": "filter[min_depth], filter[max_depth], filter[parent] (a root plugin id), filter[parents] (comma-separated plugin ids), and filter[conditions][<field>][value|operator]."
+    },
+    {
+      "id": "jsonapi_menu_items-fields",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "What information does each menu item in a jsonapi_menu_items response include, and does it return disabled menu links?",
+      "must_contain_any": [
+        "title",
+        "url",
+        "weight",
+        "provider",
+        "enabled"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Each item exposes attributes like title, url, route (name+parameters), weight, enabled, expanded, menu_name, parent, provider, options, description, meta (plus menu_link_content entity fields). Only enabled, access-checked links are returned; disabled links are omitted."
+    },
+    {
+      "id": "jsonapi_menu_items-known-link",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "This Drupal site has a menu with the machine name 'jmi_probe'. Using the jsonapi_menu_items resource for that menu (or by inspecting the running site), report the title of the menu link it returns.",
+      "must_contain_any": [
+        "JMI Probe Home"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The resource GET /jsonapi/menu_items/jmi_probe returns one item whose title attribute is 'JMI Probe Home' (an enabled menu_link_content link pointing to the front page).",
+      "setup": "agent-module-documentation/evaluation/verify/jsonapi_menu_items-known-link-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/jsonapi_menu_items-known-link-cleanup.sh"
+    },
+    {
+      "id": "jsonapi_menu_items-enabled-only",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "The menu 'jmi_vis' on this site contains two menu links, but the jsonapi_menu_items resource only returns some of them. Inspect the running site and state the title of the link that the resource returns for this menu.",
+      "must_contain_any": [
+        "JMI Visible"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Only 'JMI Visible' is returned. The resource uses MenuTreeParameters::onlyEnabledLinks(), so the disabled link 'JMI Hidden' is excluded from /jsonapi/menu_items/jmi_vis.",
+      "setup": "agent-module-documentation/evaluation/verify/jsonapi_menu_items-enabled-only-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/jsonapi_menu_items-enabled-only-cleanup.sh"
+    },
+    {
+      "id": "jsonapi_menu_items-create-menu",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, set things up so that the jsonapi_menu_items resource for a menu named 'jmi_task' returns a menu link titled 'API Endpoint Link'. Create the menu 'jmi_task' and add an enabled link with that title pointing to the front page. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/jsonapi_menu_items-create-menu-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/jsonapi_menu_items-create-menu-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/jsonapi_menu_items-create-menu-cleanup.sh",
+      "expected_output": "Create a menu entity 'jmi_task' and a menu_link_content link (title 'API Endpoint Link', link internal:/, enabled) in it. Then GET /jsonapi/menu_items/jmi_task returns that link. Verified via the same menu.link_tree the resource uses (enabled + access-checked)."
+    },
+    {
+      "id": "jsonapi_menu_items-enable-link",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "site-owner",
+      "prompt": "On this site the menu 'jmi_edit' has a menu link called 'Toggle Link' that is currently disabled, so it does not appear in the site's JSON:API menu-items feed for that menu. Make that link show up in the feed. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/jsonapi_menu_items-enable-link-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/jsonapi_menu_items-enable-link-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/jsonapi_menu_items-enable-link-cleanup.sh",
+      "expected_output": "Enable the 'Toggle Link' menu_link_content link in menu jmi_edit (set enabled = TRUE and save). The jsonapi_menu_items resource returns only enabled links, so once enabled it appears in /jsonapi/menu_items/jmi_edit. Verified via menu.link_tree onlyEnabledLinks + access check."
+    }
+  ]
+}

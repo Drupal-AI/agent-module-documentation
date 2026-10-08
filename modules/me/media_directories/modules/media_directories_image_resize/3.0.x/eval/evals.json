@@ -1,0 +1,96 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "media_directories_image_resize",
+  "version": "3.0.x",
+  "note": "The whole submodule is one filter plugin: Drupal\\media_directories_image_resize\\Plugin\\Filter\\ImageResize, id media_directories_image_resize, title 'Resize images', TYPE_TRANSFORM_REVERSIBLE, weight 20, no settings, no config object, no schema, no permissions, no services. It XPath-selects //img[@width and @height and @src], resolves the src back to a public:// URI (external/private/missing files are skipped), skips .svg, and writes a derivative at ImageResize::DERIVATIVE_DIRECTORY ('public://resize') + '/{w}x{h}/' + the source's relative path, then rewrites src. It returns FALSE (no derivative, src untouched) when the source is already exactly the requested size or the image is invalid. width/height attributes are kept. Depends only on core filter + image. Medium cases make the agent run the live filter over real files placed on disk; hard cases assert live filter config, real markup rewriting and a real derivative file with the right pixel dimensions. All artifacts are namespaced mdir_* / public://mdir-* and removed by cleanup.",
+  "evals": [
+    {
+      "id": "media_directories_image_resize-derivative-path",
+      "mode": "recipe",
+      "prompt": "The Drupal module media_directories_image_resize resizes inline images that carry width and height attributes. Where does it write the resized derivative for a source file at public://gallery/photo.png rendered at 120x90, and which constant defines that base directory?",
+      "must_contain_any": [
+        "public://resize",
+        "resize/120x90"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The derivative goes to public://resize/120x90/gallery/photo.png. ImageResize::DERIVATIVE_DIRECTORY is 'public://resize'; getDerivativeUri() appends '/{width}x{height}/' plus the source's directory (when it is not '.') and the filename. The rendered src becomes the file URL of that derivative while the width and height attributes stay on the <img> tag.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "media_directories_image_resize-skips",
+      "mode": "recipe",
+      "prompt": "I enabled the 'Resize images' filter from media_directories_image_resize on a Drupal text format but some images are never resized. List the conditions under which the filter deliberately leaves an <img> tag untouched.",
+      "must_contain_any": [
+        "svg",
+        "SVG",
+        "width",
+        "height",
+        "public"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The filter only matches //img[@width and @height and @src] and skips a match when: width or height casts to <= 0 or src is empty; the src cannot be resolved to an existing public:// file (external URLs, private:// and missing files all fail resolveUri(), which requires the path to contain the public files directory and the file to exist); the URI ends in .svg (vector images cannot be bitmap-resized); the image is not valid for the image toolkit; or the source is already exactly the requested width x height, in which case createDerivative() returns FALSE and src is left alone.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "media_directories_image_resize-ordering",
+      "mode": "recipe",
+      "prompt": "Where in a Drupal text format's filter processing order should the media_directories_image_resize 'Resize images' filter be placed relative to filters like 'Embed media', and what is its declared plugin id and default weight?",
+      "must_contain_any": [
+        "after",
+        "media_directories_image_resize"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Plugin id media_directories_image_resize, default weight 20, type TYPE_TRANSFORM_REVERSIBLE. Its own description says 'Place this filter after other filters that may add images' — it can only rewrite <img> tags that already exist in the text, so any filter that generates images (core's Embed media, media_directories_compat's legacy embed filter, etc.) must run first, i.e. have a lower weight.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "media_directories_image_resize-known-format",
+      "mode": "introspection",
+      "prompt": "This Drupal site has a text format with the 'Resize images' filter from media_directories_image_resize enabled, and a 200x200 image at public://mdir-eval/source.png. Run that format's resize filter over the HTML <p><img src=\"/sites/default/files/mdir-eval/source.png\" width=\"60\" height=\"40\" alt=\"x\" /></p> against the live site and tell me the exact src the filter produces.",
+      "must_contain_any": [
+        "resize/60x40/mdir-eval/source.png"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The src becomes /sites/default/files/resize/60x40/mdir-eval/source.png. The format is mdir_eval_format, where media_directories_image_resize is enabled at weight 50 (after media_embed at weight 10). Loading the format and calling $format->filters()->get('media_directories_image_resize')->process($html, 'en')->getProcessedText() writes the derivative public://resize/60x40/mdir-eval/source.png and rewrites src to its file URL, keeping width=\"60\" height=\"40\".",
+      "setup": "agent-module-documentation/evaluation/verify/media_directories_image_resize-known-format-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/media_directories_image_resize-known-format-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "media_directories_image_resize-svg-skip",
+      "mode": "introspection",
+      "prompt": "The text format mdir_eval_svg on this Drupal site has the media_directories_image_resize filter enabled, and public://mdir-eval-svg/ contains photo.png and logo.svg, both 200x200. Run that filter on the live site over two <img> tags — one for each file, both at width=\"50\" height=\"50\" — and tell me which src values come back, and why they differ.",
+      "must_contain_any": [
+        "resize/50x50/mdir-eval-svg/photo.png"
+      ],
+      "must_not_contain": [],
+      "expected_output": "photo.png is rewritten to /sites/default/files/resize/50x50/mdir-eval-svg/photo.png; logo.svg is returned unchanged as /sites/default/files/mdir-eval-svg/logo.svg. ImageResize::process() explicitly skips any resolved URI whose lowercased name ends in '.svg' because vector images cannot be resized with bitmap operations, so no public://resize/50x50/mdir-eval-svg/logo.svg derivative is ever created.",
+      "setup": "agent-module-documentation/evaluation/verify/media_directories_image_resize-svg-skip-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/media_directories_image_resize-svg-skip-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "media_directories_image_resize-enable-filter",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "This Drupal site has a text format with the machine name mdir_enable_format that already has 'Embed media' enabled. Using media_directories_image_resize, make inline <img> tags that carry explicit width and height attributes get physically resized when the format is rendered, and place the filter correctly in the processing order relative to the media embed filter. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/media_directories_image_resize-enable-filter-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/media_directories_image_resize-enable-filter-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/media_directories_image_resize-enable-filter-cleanup.sh",
+      "expected_output": "On filter.format.mdir_enable_format enable filters.media_directories_image_resize with a weight HIGHER than media_embed's (the filter must run after anything that adds images), e.g. weight 50 vs 10. Processing <img src=\"/sites/default/files/mdir-enable/banner.png\" width=\"100\" height=\"80\"> then rewrites src to the /resize/100x80/mdir-enable/banner.png derivative."
+    },
+    {
+      "id": "media_directories_image_resize-derivative",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site there is a 300x300 image at public://mdir-task/hero.png and a text format mdir_task_format. Using the media_directories_image_resize module's own mechanism, make the site actually generate the 120x90 resized derivative of that image on disk. Do not create the file by hand with an image toolkit call of your own — drive it through the module's filter.",
+      "reset": "agent-module-documentation/evaluation/verify/media_directories_image_resize-derivative-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/media_directories_image_resize-derivative-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/media_directories_image_resize-derivative-cleanup.sh",
+      "expected_output": "Enable filters.media_directories_image_resize on filter.format.mdir_task_format, then run the filter over <img src=\"/sites/default/files/mdir-task/hero.png\" width=\"120\" height=\"90\"> (e.g. $format->filters()->get('media_directories_image_resize')->process($html, 'en')). ImageResize::createDerivative() writes public://resize/120x90/mdir-task/hero.png at exactly 120x90 pixels and the returned src points at it."
+    }
+  ]
+}

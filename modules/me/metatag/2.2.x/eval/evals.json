@@ -1,0 +1,147 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "metatag",
+  "version": "2.2.x",
+  "note": "Metatag has both a config surface (metatag_defaults entities, settings) and a code/plugin API. These cases are all `recipe` (response-graded): they probe load-bearing facts an agent would otherwise have to read source for — the plugin types and namespaces, per-entity-type defaults, the submodule split, the manager service, tokens/override field, permissions, and alter hooks. No site mutation.",
+  "evals": [
+    {
+      "id": "metatag-define-tag-plugin",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "In a custom Drupal 11 module I want to define a brand-new HTML meta tag (a plain `<meta name=\"...\">`) in code. What plugin type / annotation do I use, in which namespace/directory does the class live, and what base class should it extend?",
+      "must_contain_any": ["MetatagTag", "Plugin/metatag/Tag", "MetaNameBase"],
+      "must_not_contain": [],
+      "expected_output": "A @MetatagTag plugin class in Drupal\\my_module\\Plugin\\metatag\\Tag\\ (directory src/Plugin/metatag/Tag/), extending MetaNameBase for a <meta name> tag. The `name` property sets the emitted tag name and `group` ties it to a MetatagGroup."
+    },
+    {
+      "id": "metatag-property-base-class",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "I'm writing a custom Metatag tag plugin that must output as `<meta property=\"...\">` (Open Graph style) rather than `<meta name=\"...\">`. Which base class do I extend instead of MetaNameBase?",
+      "must_contain_any": ["MetaPropertyBase"],
+      "must_not_contain": [],
+      "expected_output": "Extend MetaPropertyBase (which emits <meta property=\"...\">). Other bases pick output shape: LinkRelBase (<link rel>), MetaHttpEquivBase (<meta http-equiv>), MetaItempropBase (<meta itemprop>)."
+    },
+    {
+      "id": "metatag-defaults-per-entity-type",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "On a Drupal 11 site I want to set default meta tags specifically for the Article content type (not globally). What kind of config does Metatag use for this, and where in the admin UI do I add it?",
+      "must_contain_any": ["metatag_defaults", "/admin/config/search/metatag", "entity.metatag_defaults.collection"],
+      "must_not_contain": [],
+      "expected_output": "Metatag stores defaults as `metatag_defaults` config entities (e.g. metatag.metatag_defaults.node__article). Add a per-bundle default at Admin -> Configuration -> Search and metadata -> Metatag (/admin/config/search/metatag, add via /admin/config/search/metatag/add). Inheritance is Global -> entity type -> bundle -> per-entity field."
+    },
+    {
+      "id": "metatag-open-graph-submodule",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "Open Graph and Twitter Card meta tags aren't showing up as options in Metatag on my Drupal 11 site. Are those in the core Metatag module, and if not how do I get them?",
+      "must_contain_any": ["metatag_open_graph", "metatag_twitter_cards", "submodule"],
+      "must_not_contain": [],
+      "expected_output": "They ship as submodules, not in core Metatag. Enable metatag_open_graph for Open Graph tags and metatag_twitter_cards for Twitter Cards. Core Metatag only ships the Basic and Advanced groups; other families (Dublin Core, favicons, mobile, verification, etc.) are additional submodules."
+    },
+    {
+      "id": "metatag-tokens-and-override-field",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "I want editors to be able to override meta tags per node, and I want the values to pull from the node's content automatically (e.g. title, summary). How does Metatag support tokens, and what do I add to the content type to allow per-node overrides?",
+      "must_contain_any": ["metatag", "Meta tags", "token"],
+      "must_not_contain": [],
+      "expected_output": "Add a field of type 'Meta tags' (the `metatag` field type, MetatagFirehose widget) to the bundle for per-entity overrides. Every tag value is token-enabled, so patterns like [node:title], [node:summary], [site:name] fill in from content. Values inherit Global -> entity type -> bundle -> the per-entity field."
+    },
+    {
+      "id": "metatag-manager-service",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "On a custom (non-canonical) Drupal 11 route I need to programmatically build the meta tag render array for a given node, including the inherited defaults. Which service and method do I use?",
+      "must_contain_any": ["metatag.manager", "MetatagManagerInterface", "tagsFromEntityWithDefaults", "generateRawElements"],
+      "must_not_contain": [],
+      "expected_output": "Use the metatag.manager service (MetatagManagerInterface). Get merged values with tagsFromEntityWithDefaults($node), then generateRawElements($tags, $node) to produce the #attached html_head elements (tokens replaced, cache metadata bubbled). tagsFromEntity() gives raw field values without defaults."
+    },
+    {
+      "id": "metatag-alter-front-page",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "I need to programmatically change (or blank out) the meta tags on my Drupal 11 site's front page before they render. Which Metatag hook do I implement?",
+      "must_contain_any": ["hook_metatags_alter", "hook_metatags_attachments_alter"],
+      "must_not_contain": [],
+      "expected_output": "Implement hook_metatags_alter(&$metatags, &$context) to alter resolved tag values before rendering (e.g. blank tags on the front page); $context['entity'] is the current entity. For a last-chance alter of the #attached['html_head'] array use hook_metatags_attachments_alter(). To attach an entity's tags to a custom route, use hook_metatag_route_entity()."
+    },
+    {
+      "id": "metatag-permission",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "Which permission controls access to the Metatag admin/settings pages on Drupal 11, and does that same permission also control whether a user can edit the Metatag override field on a content form?",
+      "must_contain_any": ["administer meta tags"],
+      "must_not_contain": [],
+      "expected_output": "The `administer meta tags` permission (restrict access: TRUE) gates the Metatag settings/defaults admin pages at /admin/config/search/metatag. It does NOT control access to the Metatag field on content forms — use the Field Permissions module (or hook_form_alter), or enable metatag_extended_perms for per-tag field permissions."
+    },
+    {
+      "id": "metatag-global-defaults",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site (drush available), configure the global default meta tags so every page has good SEO defaults. Set the global Metatag defaults so the page title tag is `[node:title] | [site:name]` and the meta description is `Powered by Drupal — eval defaults`. Apply it to the live site config; don't just describe it. One-line summary.",
+      "reset": "agent-module-documentation/evaluation/verify/metatag-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/metatag-global-defaults.sh",
+      "expected_output": "The metatag_defaults `global` config entity has tags.title set to [node:title] | [site:name] and tags.description set to `Powered by Drupal — eval defaults`, applied to live site config. Verified against live site state."
+    },
+    {
+      "id": "metatag-inspect-global-description",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "persona": "drupal-expert",
+      "prompt": "This Drupal site (drush available) already has global Metatag defaults configured. What is the site's global default meta description? Inspect the live site to find the exact configured value and report it.",
+      "setup": "agent-module-documentation/evaluation/verify/metatag-global-description-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/metatag-global-description-cleanup.sh",
+      "must_contain_any": ["Eval baseline meta description for the whole site."],
+      "must_not_contain": [],
+      "expected_output": "The global default meta description is read from the metatag_defaults `global` config entity (tags.description), e.g. via `drush config:get metatag.metatag_defaults.global`. The configured value is: Eval baseline meta description for the whole site."
+    },
+    {
+      "id": "metatag-inspect-global-title-pattern",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "persona": "drupal-expert",
+      "prompt": "This Drupal site (drush available) has global Metatag defaults configured. What title tag pattern do the global metatag defaults use? Inspect the live site config and report the exact token pattern.",
+      "setup": "agent-module-documentation/evaluation/verify/metatag-global-title-pattern-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/metatag-global-title-pattern-cleanup.sh",
+      "must_contain_any": ["[current-page:title] | [site:name] | Eval Site"],
+      "must_not_contain": [],
+      "expected_output": "The global title pattern is stored in the metatag_defaults `global` config entity (tags.title), readable via `drush config:get metatag.metatag_defaults.global`. The configured pattern is: [current-page:title] | [site:name] | Eval Site"
+    },
+    {
+      "id": "metatag-inspect-article-og-title",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "persona": "drupal-expert",
+      "prompt": "This Drupal site (drush available) has per-bundle Metatag defaults for the Article content type. What Open Graph title is configured for Article nodes? Inspect the live site config and report the exact configured og:title value.",
+      "setup": "agent-module-documentation/evaluation/verify/metatag-article-og-title-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/metatag-article-og-title-cleanup.sh",
+      "must_contain_any": ["[node:title] - Eval OG Article"],
+      "must_not_contain": [],
+      "expected_output": "Per-bundle Article defaults live in the metatag_defaults `node__article` config entity (tags.og_title), readable via `drush config:get metatag.metatag_defaults.node__article`. The configured Open Graph title is: [node:title] - Eval OG Article"
+    },
+    {
+      "id": "metatag-article-defaults",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site (drush available), configure per-bundle default meta tags for the Article content type only (not globally). Create the Article (node:article) Metatag defaults so the canonical URL tag is `[node:url]`, the Open Graph type (og:type) is `article`, and the Open Graph title (og:title) is `[node:title] | Eval OG`. Apply it to the live site config; don't just describe it. One-line summary.",
+      "reset": "agent-module-documentation/evaluation/verify/metatag-article-defaults-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/metatag-article-defaults-verify.sh",
+      "expected_output": "A metatag_defaults `node__article` config entity exists with tags.canonical_url = [node:url], tags.og_type = article, and tags.og_title = [node:title] | Eval OG, applied to live site config. Verified against live site state."
+    },
+    {
+      "id": "metatag-global-robots-canonical",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site (drush available), update the global Metatag defaults so the robots tag is `noindex, nofollow, noarchive` and the canonical URL tag is `[node:url]`. Apply it to the live global Metatag defaults config; don't just describe it. One-line summary.",
+      "reset": "agent-module-documentation/evaluation/verify/metatag-global-robots-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/metatag-global-robots-verify.sh",
+      "expected_output": "The metatag_defaults `global` config entity has tags.robots = noindex, nofollow, noarchive and tags.canonical_url = [node:url], applied to live site config. Verified against live site state."
+    }
+  ]
+}

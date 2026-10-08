@@ -1,0 +1,80 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "media_qualtrics",
+  "version": "1.0.x",
+  "note": "Media Qualtrics adds a Media Remote field formatter (plugin id media_qualtrics, label 'Remote Media - Qualtrics') for string fields that renders an allowed-host Qualtrics URL as an iframe. Its only persistent state is the simple config object media_qualtrics.settings.allowed_hosts (sequence of https:// domains, shipped default ['https://qualtrics.com']); the settings form is at /admin/config/media/qualtrics (route media_qualtrics.allowed_hosts_settings, permission 'administer qualtrics allowed hosts'). It depends on media_remote and, if csp is installed, appends the allowed hosts to frame-src. All medium/hard cases are grounded in this local config object - no live Qualtrics API calls and no field/entity creation.",
+  "evals": [
+    {
+      "id": "media_qualtrics-how-it-renders",
+      "mode": "recipe",
+      "prompt": "In Drupal, how does the media_qualtrics module display a Qualtrics survey URL that an editor has entered? What kind of field does it work on and what is the field formatter called?",
+      "must_contain_any": ["media_qualtrics", "Remote Media - Qualtrics", "iframe", "string"],
+      "must_not_contain": [],
+      "expected_output": "It provides a field formatter (plugin id media_qualtrics, label 'Remote Media - Qualtrics') for plain string fields, built on media_remote. A string field value holding a Qualtrics URL is rendered as an auto-resizing <iframe class=\"qualtrics-embed-container\"> via the media_qualtrics theme/template, with a fallback link.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "media_qualtrics-allowed-hosts-config",
+      "mode": "recipe",
+      "prompt": "The media_qualtrics module only renders survey URLs from approved hosts. Where do I configure the list of allowed Qualtrics hosts, and in which config object is it stored?",
+      "must_contain_any": ["media_qualtrics.settings", "allowed_hosts", "/admin/config/media/qualtrics", "Qualtrics settings"],
+      "must_not_contain": [],
+      "expected_output": "Configure it at /admin/config/media/qualtrics (route media_qualtrics.allowed_hosts_settings, permission 'administer qualtrics allowed hosts'), one host per line. It is stored in the media_qualtrics.settings config object under allowed_hosts (a sequence of https:// domains; default ['https://qualtrics.com']).",
+      "difficulty": "easy"
+    },
+    {
+      "id": "media_qualtrics-deps-and-csp",
+      "mode": "recipe",
+      "prompt": "What module does media_qualtrics depend on, and what does it do automatically when the Content Security Policy (CSP) module is enabled?",
+      "must_contain_any": ["media_remote", "frame-src", "CSP", "csp"],
+      "must_not_contain": [],
+      "expected_output": "It depends on media_remote (the formatter extends MediaRemoteFormatterBase). When the csp module is enabled, an event subscriber on csp.policy_alter appends the configured allowed hosts to the frame-src directive on non-admin routes so the Qualtrics iframes are not blocked.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "media_qualtrics-known-host",
+      "mode": "introspection",
+      "prompt": "This Drupal site has media_qualtrics configured with an extra allowed Qualtrics host beyond the default. Inspect the live configuration and list all hosts that are currently allowed for Qualtrics embeds.",
+      "must_contain_any": ["mq-known.qualtrics.example.com"],
+      "must_not_contain": [],
+      "expected_output": "The media_qualtrics.settings config object lists allowed_hosts = ['https://qualtrics.com', 'https://mq-known.qualtrics.example.com']; read it with `drush cget media_qualtrics.settings allowed_hosts`.",
+      "setup": "agent-module-documentation/evaluation/verify/media_qualtrics-allowed-host-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/media_qualtrics-allowed-host-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "media_qualtrics-multihost",
+      "mode": "introspection",
+      "prompt": "media_qualtrics on this site is configured to permit several Qualtrics hosts. Inspect the live configuration and state whether embeds from https://eu.mqknown.example.com are currently allowed, and how many hosts are configured in total.",
+      "must_contain_any": ["eu.mqknown.example.com"],
+      "must_not_contain": [],
+      "expected_output": "Yes - https://eu.mqknown.example.com is in media_qualtrics.settings allowed_hosts, which contains three hosts: https://qualtrics.com, https://eu.mqknown.example.com, https://survey.mqknown.example.com.",
+      "setup": "agent-module-documentation/evaluation/verify/media_qualtrics-multihost-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/media_qualtrics-multihost-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "media_qualtrics-add-host",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, allow the custom Qualtrics vanity domain https://survey.mqtask.example.com to be embedded via media_qualtrics, keeping the existing default host too. Apply the change to the live site configuration.",
+      "reset": "agent-module-documentation/evaluation/verify/media_qualtrics-add-host-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/media_qualtrics-add-host-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/media_qualtrics-add-host-reset.sh",
+      "expected_output": "Add 'https://survey.mqtask.example.com' to media_qualtrics.settings allowed_hosts (e.g. edit at /admin/config/media/qualtrics or `drush cset`/config API), so allowed_hosts contains both https://qualtrics.com and https://survey.mqtask.example.com."
+    },
+    {
+      "id": "media_qualtrics-restrict-single",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "Lock down media_qualtrics on this site so that the ONLY host allowed for Qualtrics embeds is https://only.mqtask.example.com. Remove any other hosts. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/media_qualtrics-restrict-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/media_qualtrics-restrict-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/media_qualtrics-restrict-reset.sh",
+      "expected_output": "Set media_qualtrics.settings allowed_hosts to exactly ['https://only.mqtask.example.com'] (replace the whole sequence)."
+    }
+  ]
+}

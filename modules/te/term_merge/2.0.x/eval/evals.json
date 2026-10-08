@@ -1,0 +1,96 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "term_merge",
+  "version": "2.0.x",
+  "note": "Term Merge has no settings form, no configure route (configure=null), no config schema, no Drush commands and no plugins. Its real API surface is: the service term_merge.term_merger (Drupal\\term_merge\\TermMerger implementing TermMergerInterface) with mergeIntoNewTerm(array $terms, string $label): TermInterface and mergeIntoTerm(array $terms, TermInterface $target): void; the three wizard routes entity.taxonomy_vocabulary.merge_form / .merge_target / .merge_confirm under /admin/structure/taxonomy/manage/{taxonomy_vocabulary}/merge[/target|/confirm]; the private tempstore collection 'term_merge' (keys terms, target, terms_to_synonym); the event TermMergeEventNames::TERMS_MERGED = 'term_merge.terms_merged' carrying TermsMergedEvent (getSourceTerms()/getTargetTerm()); and the permission 'merge taxonomy terms' plus the _term_merge_access_check second gate that also requires 'edit terms in <vid>' or 'administer taxonomy'. Reference migration is delegated to the required term_reference_change module's term_reference_change.migrator service. All medium/hard cases use namespaced vocabularies (tm_known, tm_dupes_x9, tm_gate, tm_access), roles (tm_merger, tm_bystander, tm_editor, tm_access_role) and the user tm_access_user.\n\nENVIRONMENT CAVEAT (why no execution case performs an actual merge): on the documentation site every merge throws Drupal\\Core\\Entity\\Query\\QueryException \"'directory' not found\" from Drupal\\term_reference_change\\ReferenceFinder::loadReferencingEntitiesOfType(). ReferenceFinder collects every non-computed entity_reference field targeting taxonomy_term across all bundles and then runs storage->loadByProperties([$fieldName => $tid]); a bundle-level 'directory' field contributed by another module installed on this shared site cannot be resolved by the SQL entity query, so TermMerger::mergeIntoTerm() dies before it deletes anything. That is a pre-existing conflict between term_reference_change and the site's module set, not a term_merge bug and not something these evals should paper over. The execution cases are therefore grounded in term_merge's other verifiable live behaviour - its two-layer access gate - which is the module's most non-obvious surface and which the module's own access checker (Drupal\\term_merge\\Access\\MergeAccess) really evaluates at runtime. On a site without that conflict, an execution case that calls mergeIntoTerm()/mergeIntoNewTerm() and asserts the surviving term plus migrated references would be the natural addition.",
+  "evals": [
+    {
+      "id": "term_merge-service-api",
+      "mode": "recipe",
+      "prompt": "I need to merge taxonomy terms programmatically on a Drupal 11 site that has the term_merge module installed, without going through the admin UI. Which service should I call, and which two methods does it expose for merging into an existing term versus into a brand new term?",
+      "must_contain_any": [
+        "term_merge.term_merger",
+        "mergeIntoNewTerm",
+        "mergeIntoTerm"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Call the service `term_merge.term_merger` (Drupal\\term_merge\\TermMerger, interface TermMergerInterface). It exposes mergeIntoTerm(array $terms_to_merge, TermInterface $target_term): void to merge into an existing term, and mergeIntoNewTerm(array $terms_to_merge, string $new_term_label): TermInterface to create the survivor and return it. Both take loaded term objects, not tids, and both throw \\RuntimeException if the list is empty or the terms span more than one vocabulary.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "term_merge-access-requirements",
+      "mode": "recipe",
+      "prompt": "I granted a role the term_merge module's own permission but the 'Merge' tab still does not show up on my vocabulary's term overview page in Drupal. What permission does term_merge define, and what additional access requirement do its routes enforce on top of it?",
+      "must_contain_any": [
+        "merge taxonomy terms",
+        "_term_merge_access_check",
+        "administer taxonomy"
+      ],
+      "must_not_contain": [],
+      "expected_output": "term_merge defines a single permission, `merge taxonomy terms` (restrict access: true). All three merge routes additionally require `_term_merge_access_check: 'TRUE'`, handled by term_merge.access_checker (Drupal\\term_merge\\Access\\MergeAccess), which grants access only if the account also has `edit terms in <vocabulary_id>` or `administer taxonomy`. Both layers must pass.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "term_merge-react-to-merge",
+      "mode": "recipe",
+      "prompt": "Using the Drupal term_merge module, how can custom code run something (e.g. log it or update an external index) whenever taxonomy terms are merged? Name the event and the methods available on the event object, and say whether the source terms still exist when it fires.",
+      "must_contain_any": [
+        "term_merge.terms_merged",
+        "TermMergeEventNames",
+        "TermsMergedEvent"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Subscribe to TermMergeEventNames::TERMS_MERGED, whose value is the event name 'term_merge.terms_merged'. The listener receives a Drupal\\term_merge\\TermsMergedEvent with getSourceTerms() (the terms being merged away) and getTargetTerm() (the survivor). TermMerger::mergeIntoTerm() dispatches it after references have been migrated but BEFORE the source terms are deleted, so they are still loadable inside the subscriber.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "term_merge-role-grant",
+      "mode": "introspection",
+      "prompt": "This Drupal site has two roles whose machine names start with tm_ and a taxonomy vocabulary tm_known. Only one of those roles can actually use the term_merge Merge form for that vocabulary. Inspect the live site's role configuration and tell me which role it is and which permissions make it pass term_merge's access requirements.",
+      "must_contain_any": [
+        "tm_merger"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The role is tm_merger: user.role.tm_merger grants both `merge taxonomy terms` (term_merge's own permission) and `edit terms in tm_known` (needed by the _term_merge_access_check on the merge routes). tm_bystander only has `edit terms in tm_known` and therefore fails the permission requirement.",
+      "setup": "agent-module-documentation/evaluation/verify/term_merge-role-grant-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/term_merge-role-grant-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "term_merge-vocab-route",
+      "mode": "introspection",
+      "prompt": "This Drupal site has a taxonomy vocabulary displayed as 'TM Dupes' that contains two near-duplicate terms. Its machine name is not simply the lowercased label. Inspect the running site and give me the full admin path of the term_merge Merge form for that vocabulary, plus the two duplicate term names an editor would select on it.",
+      "must_contain_any": [
+        "tm_dupes_x9"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The vocabulary's machine name is tm_dupes_x9, so term_merge's merge form (route entity.taxonomy_vocabulary.merge_form) is at /admin/structure/taxonomy/manage/tm_dupes_x9/merge. The duplicate terms to select are 'Kayak' and 'Kayaks' (the vocabulary also holds the unrelated term 'Canoe').",
+      "setup": "agent-module-documentation/evaluation/verify/term_merge-vocab-route-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/term_merge-vocab-route-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "term_merge-grant-merge-role",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site the role tm_editor currently cannot use the term_merge module's Merge form for the vocabulary tm_gate — the 'Merge' tab does not appear for it. Grant that role exactly what term_merge's merge routes require so it can merge terms in the tm_gate vocabulary, and apply the change to the live site. Do not give it any broader administrative access than term_merge actually needs.",
+      "reset": "agent-module-documentation/evaluation/verify/term_merge-grant-merge-role-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/term_merge-grant-merge-role-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/term_merge-grant-merge-role-cleanup.sh",
+      "expected_output": "term_merge's routes carry both `_permission: 'merge taxonomy terms'` and `_term_merge_access_check: 'TRUE'`, and MergeAccess grants the latter only for 'edit terms in <vid>' or 'administer taxonomy'. So user.role.tm_editor must end up with 'merge taxonomy terms' AND 'edit terms in tm_gate' (e.g. drush role:perm:add tm_editor 'merge taxonomy terms' and drush role:perm:add tm_editor 'edit terms in tm_gate'). Granting only the module's own permission is the classic mistake and is not enough."
+    },
+    {
+      "id": "term_merge-user-can-merge",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "layman",
+      "prompt": "We have a Drupal editor account called tm_access_user. They need to be able to tidy up duplicate tags in our 'TM Access' tag list (vocabulary tm_access) using the Merge screen that the term_merge module adds — right now that screen is off limits to them and they are not a site administrator. Please give that account what it needs on the live site so it can open the Merge screen for that vocabulary, without making it a full administrator.",
+      "reset": "agent-module-documentation/evaluation/verify/term_merge-user-can-merge-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/term_merge-user-can-merge-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/term_merge-user-can-merge-cleanup.sh",
+      "expected_output": "Grant the account's role (tm_access_role) both 'merge taxonomy terms' and 'edit terms in tm_access' (or 'administer taxonomy'), so that Drupal's access_manager resolves entity.taxonomy_vocabulary.merge_form for taxonomy_vocabulary=tm_access to allowed for that user. The verify calls the access manager directly, so both the _permission requirement and term_merge's own MergeAccess checker must pass; uid 1 is explicitly rejected so a root-user shortcut cannot fake it."
+    }
+  ]
+}

@@ -1,0 +1,84 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "imagick",
+  "version": "1.12.x",
+  "note": "Imagick registers an image toolkit (plugin id 'imagick') driven by the PHP Imagick extension (installed on this site) and ~35 extra ImageEffect plugins (ids image_*), each mapping to an imagick_* toolkit operation. The active toolkit is stored in core config system.image key 'toolkit'; the toolkit's own settings live in the imagick.config object (jpeg_quality 75, resize_filter 22, optimize true, strip_metadata true). Medium cases read back a non-default jpeg_quality and an image style's blur effect from the live site; hard cases build image styles that apply an Imagick blur effect and an Imagick WEBP convert effect, verified against real image.style config. All fixtures are namespaced imagick_* / imagick.config so nothing else on the shared site is touched.",
+  "evals": [
+    {
+      "id": "imagick-toolkit-id",
+      "mode": "recipe",
+      "prompt": "I installed the Drupal 'Imagick' module. What is the plugin id of the image toolkit it provides, how does it process images differently from the ImageMagick module, and what PHP requirement does it have?",
+      "must_contain_any": ["imagick"],
+      "must_not_contain": [],
+      "expected_output": "The toolkit plugin id is 'imagick'. It processes images through the PHP Imagick (ImageMagick) extension in-memory, rather than shelling out to the convert binary the way the ImageMagick module does; it therefore requires the imagick PHP extension to be installed. Select it at Configuration > Media > Image toolkit (route system.image_toolkit_settings).",
+      "difficulty": "easy"
+    },
+    {
+      "id": "imagick-config-keys",
+      "mode": "recipe",
+      "prompt": "Which config object stores the Imagick toolkit's settings on a Drupal site, and what are its keys for JPEG quality and for stripping image metadata?",
+      "must_contain_any": ["imagick.config", "jpeg_quality", "strip_metadata"],
+      "must_not_contain": [],
+      "expected_output": "Settings live in the imagick.config config object. Keys: jpeg_quality (default 75), resize_filter (22), optimize (true), strip_metadata (true).",
+      "difficulty": "easy"
+    },
+    {
+      "id": "imagick-effect-plugins",
+      "mode": "recipe",
+      "prompt": "Name three image-style effects the Imagick module adds that core's GD toolkit does not offer, and what is the plugin id prefix for these effects?",
+      "must_contain_any": ["image_blur", "image_composite", "image_polaroid", "image_charcoal", "image_convert", "image_oilpaint", "image_vignette"],
+      "must_not_contain": [],
+      "expected_output": "Imagick adds ~35 effects with plugin ids of the form image_* (added to image styles like any core effect), e.g. image_blur, image_composite (watermark), image_polaroid, image_charcoal, image_oilpaint, image_vignette, image_convert (format conversion). Each maps to an imagick_* toolkit operation.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "imagick-known-quality",
+      "mode": "introspection",
+      "prompt": "On this Drupal site the Imagick toolkit has a non-default JPEG quality configured. Inspect the live configuration and state the JPEG quality value currently set for the Imagick toolkit.",
+      "must_contain_any": ["42"],
+      "must_not_contain": [],
+      "expected_output": "imagick.config jpeg_quality is 42 (drush cget imagick.config jpeg_quality).",
+      "setup": "agent-module-documentation/evaluation/verify/imagick-jpeg-quality-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/imagick-jpeg-quality-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "imagick-known-style",
+      "mode": "introspection",
+      "prompt": "This site has an image style named imagick_known that uses an Imagick effect. Inspect the live image style configuration and state which effect it applies and the blur radius it is configured with.",
+      "must_contain_any": ["image_blur", "radius"],
+      "must_not_contain": [],
+      "expected_output": "The imagick_known image style applies the image_blur effect with radius 8 (type 2/gaussian, sigma 4). Read image.style.imagick_known effects.",
+      "setup": "agent-module-documentation/evaluation/verify/imagick-known-style-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/imagick-known-style-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "imagick-build-blur-style",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, create an image style named imagick_task that applies the Imagick blur effect (plugin id image_blur). Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/imagick-blur-style-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/imagick-blur-style-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/imagick-blur-style-reset.sh",
+      "expected_output": "An image style image.style.imagick_task exists with an effect whose plugin id is image_blur (create the image_style entity and addImageEffect(['id' => 'image_blur', ...])).",
+      "must_contain_any": [],
+      "must_not_contain": []
+    },
+    {
+      "id": "imagick-build-webp-style",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, create an image style named imagick_webp that uses the Imagick 'Convert' effect (image_convert) to output images in WEBP format. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/imagick-convert-style-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/imagick-convert-style-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/imagick-convert-style-reset.sh",
+      "expected_output": "An image style image.style.imagick_webp exists with an image_convert effect whose data.format is WEBP (addImageEffect(['id' => 'image_convert', 'data' => ['format' => 'WEBP']])).",
+      "must_contain_any": [],
+      "must_not_contain": []
+    }
+  ]
+}

@@ -1,0 +1,107 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "views_dependent_filters",
+  "version": "1.4.x",
+  "note": "Views Dependent Filter provides one Views filter handler, plugin_id/field views_dependent_filter (registered on the 'views' table, UI label 'Global: Dependent filter'). It does no query and takes no input; it attaches #states to make dependent exposed filters visible/invisible based on a controller filter. Config lives in views.view.<id> display.<d>.display_options.filters.<key> with plugin_id views_dependent_filter and options condition (values|not_empty), controller_filter, controller_values, dependent_filters, negate. Placement rule: handler goes AFTER the controller filter and BEFORE the dependent filters. Medium cases seed a view with a configured handler and the agent reads it back via drush cget; hard cases give a view with two exposed filters (type, title) and no handler (verify FAILS) and the agent must insert the handler wiring type->title.",
+  "evals": [
+    {
+      "id": "views_dependent_filters-what-to-add",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "In a Drupal View, I want an exposed filter to appear only when another exposed filter has a certain value, using the views_dependent_filters module. What filter do I add to the view and where must it be placed relative to the controlling and dependent filters?",
+      "must_contain_any": [
+        "Dependent filter",
+        "Global: Dependent filter",
+        "views_dependent_filter",
+        "after the controller",
+        "before the dependent"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Add the 'Global: Dependent filter' filter (handler id views_dependent_filter). Place it AFTER the controller filter and BEFORE the dependent filter(s) in the filter order: only earlier filters can be controllers and only later filters can be dependents. Then pick the controller filter, the condition/values, and the dependent filters."
+    },
+    {
+      "id": "views_dependent_filters-options",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "What options does the views_dependent_filters 'Dependent filter' handler expose, and what is the difference between its two condition modes?",
+      "must_contain_any": [
+        "condition",
+        "not_empty",
+        "not empty",
+        "values",
+        "controller_filter",
+        "dependent_filters",
+        "negate"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Options: controller_filter (the controlling exposed filter), condition mode ('values' = show when the controller equals specific controller_values; 'not_empty' = show when the controller has any value/selection), dependent_filters (which later filters to show/hide), and negate (invert to hide instead of show). It also has special handling for Better Exposed Filters and Facets controllers."
+    },
+    {
+      "id": "views_dependent_filters-no-query",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "Does the 'Dependent filter' from views_dependent_filters actually filter the view's query? What does it do technically to a Drupal exposed form?",
+      "must_contain_any": [
+        "no query",
+        "does not filter",
+        "#states",
+        "after_build",
+        "does nothing",
+        "fake filter"
+      ],
+      "must_not_contain": [],
+      "expected_output": "No. Its query() is a no-op and acceptExposedInput() returns TRUE, so it never filters results. It attaches an #after_build callback to the exposed form (views_dependent_filters_exposed_form_after_build) that sets core Form API #states (visible/invisible) on the dependent filter elements based on the controller filter's widget and value. Hidden dependents are ignored on submit."
+    },
+    {
+      "id": "views_dependent_filters-intro-a",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "The view 'vdf_intro_a' on this site uses a views_dependent_filters 'Dependent filter'. Inspect the live view configuration and state which exposed filter is the controller and which exposed filter it controls (the dependent).",
+      "must_contain_any": [
+        "type",
+        "controller_filter"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The controller filter is 'type' and the dependent filter is 'title': in views.view.vdf_intro_a the views_dependent_filter handler has controller_filter: type and dependent_filters: {title: title} (condition mode 'values', triggering value article).",
+      "setup": "agent-module-documentation/evaluation/verify/views_dependent_filters-intro-a-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/views_dependent_filters-intro-a-cleanup.sh"
+    },
+    {
+      "id": "views_dependent_filters-intro-b",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "The view 'vdf_intro_b' has a views_dependent_filters 'Dependent filter'. Inspect its live configuration and report the controller filter and which condition mode ('values' or 'not_empty') it uses.",
+      "must_contain_any": [
+        "not_empty",
+        "not empty"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The controller filter is 'type' and the condition mode is 'not_empty' (show/hide the dependent 'title' whenever the Type filter has any value); this instance also has negate: true, inverting the visibility.",
+      "setup": "agent-module-documentation/evaluation/verify/views_dependent_filters-intro-b-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/views_dependent_filters-intro-b-cleanup.sh"
+    },
+    {
+      "id": "views_dependent_filters-exec-a",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "The view 'vdf_exec_a' has two exposed filters: Type (id 'type') and Title (id 'title'). Using views_dependent_filters, configure it so the Title filter is only shown when the Type filter is set to specific values. Add the 'Global: Dependent filter' handler with controller filter 'type' and dependent filter 'title', positioned between them, and save the view.",
+      "reset": "agent-module-documentation/evaluation/verify/views_dependent_filters-exec-a-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/views_dependent_filters-exec-a-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/views_dependent_filters-exec-a-cleanup.sh",
+      "expected_output": "Insert a filter with plugin_id views_dependent_filter into views.view.vdf_exec_a between 'type' and 'title', with controller_filter: type and dependent_filters: {title: title} (condition 'values'). Save the view."
+    },
+    {
+      "id": "views_dependent_filters-exec-b",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "The view 'vdf_exec_b' has two exposed filters: Type (id 'type') and Title (id 'title'). Using views_dependent_filters, make the Title filter appear only when the Type filter has ANY value selected (the 'not empty' condition mode), with 'type' as the controller and 'title' as the dependent. Apply the change to the live view.",
+      "reset": "agent-module-documentation/evaluation/verify/views_dependent_filters-exec-b-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/views_dependent_filters-exec-b-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/views_dependent_filters-exec-b-cleanup.sh",
+      "expected_output": "Insert a views_dependent_filter handler into views.view.vdf_exec_b between 'type' and 'title' with controller_filter: type, condition: not_empty, and dependent_filters: {title: title}. Save the view."
+    }
+  ]
+}

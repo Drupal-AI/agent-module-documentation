@@ -1,0 +1,92 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "helper",
+  "version": "1.51.x",
+  "note": "Helper is a developer toolkit (services, static utilities, form element, blocks, Twig helpers, Drush commands) with no configure route, no permissions and no plugin manager. Its only site-stored state is the helper.settings config object, whose 'enabled' map of behavior toggles is read by _helper_is_enabled(). Recipe cases are grounded in its real services/Drush/extension points (install-profile:switch and module:schema-version:* Drush commands, the helper_entity_select form element, the module_dependency service tag). Introspection and execution are grounded in the deterministically verifiable helper.settings toggles (core_form_novalidate, redirect_entity_4xx_to_edit, core_text_textarea_widgets) - the module's services are mostly stateless helpers, so live-state verification uses these toggles. Config toggles are restored to shipped defaults (FALSE) on cleanup/reset.",
+  "evals": [
+    {
+      "id": "helper-drush-install-profile",
+      "mode": "recipe",
+      "prompt": "Which Drush command does the Helper module add for changing a Drupal site's active install profile, and what module command does it add to manage a module's update/schema version?",
+      "must_contain_any": [
+        "install-profile:switch",
+        "module:schema-version",
+        "install-profile"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Helper adds drush install-profile:switch <profile> to change the install profile, and module:schema-version:get/set/delete/cleanup (plus module:post-update:reset) to manage a module's schema version.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "helper-entity-select-element",
+      "mode": "recipe",
+      "prompt": "The Helper module provides a Form API element for letting a user pick a single entity of a given type. What is the element's #type, and what property sets which entity type it lists?",
+      "must_contain_any": [
+        "helper_entity_select"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Use '#type' => 'helper_entity_select' with '#target_type' => '<entity_type_id>' (optionally '#target_bundles'). Best for config entities; e.g. ['#type' => 'helper_entity_select', '#target_type' => 'menu'].",
+      "difficulty": "easy"
+    },
+    {
+      "id": "helper-module-dependency-tag",
+      "mode": "recipe",
+      "prompt": "Helper lets you declare that one of your services should only exist when a certain module is enabled. What is the name of the service tag that does this?",
+      "must_contain_any": [
+        "module_dependency"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The 'module_dependency' service tag (e.g. tags: [{ name: module_dependency, module: other_module }]). Helper's ModuleDependencyPass removes the service and its class alias when the named module is not enabled.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "helper-known-novalidate",
+      "mode": "introspection",
+      "prompt": "On this Drupal site, inspect the Helper module's configuration and state whether HTML5 client-side validation has been disabled on all forms via a Helper behavior, and which helper key controls it.",
+      "must_contain_any": [
+        "core_form_novalidate"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Yes - helper.settings:enabled.core_form_novalidate is TRUE, so Helper adds the 'novalidate' attribute to every form (disabling HTML5 validation).",
+      "setup": "agent-module-documentation/evaluation/verify/helper-known-novalidate-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/helper-known-novalidate-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "helper-known-redirect4xx",
+      "mode": "introspection",
+      "prompt": "This site uses a Helper behavior to redirect 403/404 responses on entity pages to that entity's edit form for users who can edit it. Inspect the live Helper configuration and confirm whether that behavior is enabled (name the setting).",
+      "must_contain_any": [
+        "redirect_entity_4xx_to_edit"
+      ],
+      "must_not_contain": [],
+      "expected_output": "helper.settings:enabled.redirect_entity_4xx_to_edit is TRUE, so 403/404 entity views are redirected to the entity edit form when the user has edit access.",
+      "setup": "agent-module-documentation/evaluation/verify/helper-known-redirect4xx-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/helper-known-redirect4xx-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "helper-textarea-widgets",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, use the Helper module to allow textarea widgets to be used on plain 'string' and 'text' field types (the core_text_textarea_widgets helper). Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/helper-textarea-widgets-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/helper-textarea-widgets-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/helper-textarea-widgets-cleanup.sh",
+      "expected_output": "helper.settings:enabled.core_text_textarea_widgets is TRUE (e.g. read the 'enabled' map, set core_text_textarea_widgets to TRUE and save, or drush cset helper.settings enabled.core_text_textarea_widgets 1)."
+    },
+    {
+      "id": "helper-novalidate",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "site-owner",
+      "prompt": "On my site I want to turn off the browser's built-in (HTML5) form validation on every form, using the Helper module. Enable that behavior on the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/helper-novalidate-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/helper-novalidate-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/helper-novalidate-cleanup.sh",
+      "expected_output": "helper.settings:enabled.core_form_novalidate is TRUE (e.g. drush cset helper.settings enabled.core_form_novalidate 1), so Helper adds 'novalidate' to all forms."
+    }
+  ]
+}

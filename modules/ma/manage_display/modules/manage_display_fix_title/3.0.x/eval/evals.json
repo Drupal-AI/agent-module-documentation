@@ -1,0 +1,97 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "manage_display_fix_title",
+  "version": "3.0.x",
+  "note": "manage_display_fix_title is a code-free, OBSOLETE submodule of manage_display: the whole thing is manage_display_fix_title.info.yml declaring lifecycle: obsolete, lifecycle_link https://www.drupal.org/project/manage_display/issues/3291074 and core_version_requirement '^8.8 || ^9'. On this Drupal 11 site `drush en manage_display_fix_title` fails with 'incompatible with this version of Drupal core', so it can never be enabled and no case may assume it is. Its former job (working around core printing an entity title twice) is now done by the PARENT module, which sets the core entity-type flags enable_page_title_template and enable_base_field_custom_preprocess_skipping in manage_display_entity_type_build(); manage_display_update_9201() uninstalls the submodule on legacy sites. Cases are therefore grounded in facts that are genuinely readable from the running site: the submodule's install status (Disabled), its .info.yml metadata via extension.list.module::getAllAvailableInfo() (getExtensionInfo() throws for uninstalled modules), and the parent module's real title-formatter config in core.entity_view_display.node.article.<mode>. View modes are namespaced mdft_*.",
+  "evals": [
+    {
+      "id": "manage_display_fix_title-why-not-installable",
+      "mode": "recipe",
+      "prompt": "I found a submodule called manage_display_fix_title inside the Drupal manage_display project, but `drush en manage_display_fix_title` fails on my Drupal 11 site. Why can it not be installed, and what lifecycle does its info.yml declare?",
+      "must_contain_any": [
+        "obsolete"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Its manage_display_fix_title.info.yml declares `lifecycle: obsolete` (with lifecycle_link https://www.drupal.org/project/manage_display/issues/3291074) and `core_version_requirement: ^8.8 || ^9`. Drupal 11 does not satisfy that constraint, so the install fails with \"module 'manage_display_fix_title' is incompatible with this version of Drupal core\". It is a retired stub kept in the package only for the upgrade path; enable the parent manage_display module instead.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "manage_display_fix_title-what-replaced-it",
+      "mode": "recipe",
+      "prompt": "The Drupal manage_display module used to ship a manage_display_fix_title submodule that worked around core bugs where an entity title got printed twice. In manage_display 3.0.x, what replaced it - which hook does the parent module use and which entity-type flags does it set?",
+      "must_contain_any": [
+        "enable_page_title_template",
+        "enable_base_field_custom_preprocess_skipping",
+        "hook_entity_type_build",
+        "manage_display_entity_type_build"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The parent module now does it directly in manage_display_entity_type_build() (hook_entity_type_build()). It sets enable_base_field_custom_preprocess_skipping = TRUE on node, taxonomy_term, aggregator_feed, aggregator_item and comment, and enable_page_title_template = TRUE on node, taxonomy_term, aggregator_feed and media. It also sets the user entity's label key to 'name'. Because core gained those flags, the submodule became unnecessary and was marked obsolete.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "manage_display_fix_title-removal-path",
+      "mode": "recipe",
+      "prompt": "I am upgrading an old Drupal site that still has the manage_display_fix_title submodule enabled. Does the manage_display module clean it up automatically, and if so which update hook does it, and will I lose any configuration?",
+      "must_contain_any": [
+        "9201",
+        "manage_display_update_9201"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Yes - manage_display_update_9201() in manage_display.install checks module_handler->moduleExists('manage_display_fix_title') and calls the module_installer service to uninstall it. Run `drush updb`. No configuration is lost because the submodule ships no config/install, no config/schema, no routes, no permissions and no code at all - it is only an info.yml file.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "manage_display_fix_title-status",
+      "mode": "introspection",
+      "prompt": "This Drupal site uses the manage_display module to render the Article title through a field formatter in a view mode called mdft_eval. A colleague claims the bundled manage_display_fix_title submodule is doing that work. Inspect the running site and tell me whether manage_display_fix_title is actually installed.",
+      "must_contain_any": [
+        "not installed",
+        "not enabled",
+        "disabled",
+        "uninstalled"
+      ],
+      "must_not_contain": [],
+      "expected_output": "It is not installed - `drush pm:list --filter=manage_display` shows 'Manage Display Fix Title (manage_display_fix_title)  Disabled'. The title rendering in core.entity_view_display.node.article.mdft_eval comes from the parent manage_display module's `title` formatter (tag: h5 there). The submodule is obsolete and cannot be installed on Drupal 11 anyway.",
+      "setup": "agent-module-documentation/evaluation/verify/manage_display_fix_title-status-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/manage_display_fix_title-status-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "manage_display_fix_title-lifecycle",
+      "mode": "introspection",
+      "prompt": "Read the module metadata from this running Drupal site (not from drupal.org) for the bundled submodule manage_display_fix_title, and report the `lifecycle` value and the `core_version_requirement` it declares in its info file.",
+      "must_contain_any": [
+        "obsolete"
+      ],
+      "must_not_contain": [],
+      "expected_output": "lifecycle: obsolete and core_version_requirement: '^8.8 || ^9' (plus lifecycle_link https://www.drupal.org/project/manage_display/issues/3291074, package Fields). Because the module is not installed, it must be read with \\Drupal::service('extension.list.module')->getAllAvailableInfo()['manage_display_fix_title'] - getExtensionInfo() throws UnknownExtensionException for uninstalled modules - or by reading web/modules/contrib/manage_display/modules/manage_display_fix_title/manage_display_fix_title.info.yml.",
+      "setup": "agent-module-documentation/evaluation/verify/manage_display_fix_title-lifecycle-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/manage_display_fix_title-lifecycle-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "manage_display_fix_title-replace",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "This Drupal 11 site has a node view mode 'MDFT Task' (machine name mdft_task) on the Article content type where the title currently renders as a linked H2. Achieve what the obsolete manage_display_fix_title submodule used to provide - a single, unlinked H1 entity title - without installing that submodule. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/manage_display_fix_title-replace-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/manage_display_fix_title-replace-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/manage_display_fix_title-replace-cleanup.sh",
+      "expected_output": "Use the parent module: in core.entity_view_display.node.article.mdft_task set the `title` component's settings.tag to h1 and settings.link_to_entity to FALSE, and leave manage_display_fix_title uninstalled (it is obsolete and incompatible with Drupal 11 - attempting to enable it fails). The parent's hook_entity_type_build() already sets enable_page_title_template so the title is not printed twice."
+    },
+    {
+      "id": "manage_display_fix_title-audit",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "Audit this Drupal site for the bundled manage_display_fix_title submodule and record the findings in Drupal state so a deployment check can read them: store the submodule's declared lifecycle (as it appears in its info file) in the state key `mdft_audit_lifecycle`, and store whether the submodule is currently installed - the literal string `yes` or `no` - in the state key `mdft_audit_installed`.",
+      "reset": "agent-module-documentation/evaluation/verify/manage_display_fix_title-audit-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/manage_display_fix_title-audit-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/manage_display_fix_title-audit-cleanup.sh",
+      "expected_output": "State key mdft_audit_lifecycle must be 'obsolete' and mdft_audit_installed must be 'no' - e.g. `drush state:set mdft_audit_lifecycle obsolete` and `drush state:set mdft_audit_installed no`. The values are checked against the site's real state: the lifecycle read from extension.list.module::getAllAvailableInfo() and moduleHandler()->moduleExists('manage_display_fix_title')."
+    }
+  ]
+}

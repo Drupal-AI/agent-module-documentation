@@ -1,0 +1,96 @@
+{
+    "skill_name": "drupal-module-docs",
+    "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+    "module": "leaflet_demo",
+    "version": "2.2.x",
+    "note": "Leaflet Demo is a trivial single-page showcase submodule of leaflet_more_maps. It has no settings form of its own, no config entity, no permissions beyond the core 'administer site configuration' gate on its one route (leaflet_demo.demo_page at /admin/config/system/leaflet-more-maps/demo), and no persisted state -- its form (LeafletDemoForm) is a plain FormBase whose lat/long/zoom inputs reset on reload. Its info.yml depends only on leaflet, not leaflet_more_maps. Its entire behavior is: call core Leaflet's leaflet_map_get_info() and render one map per entry via leaflet.service. Because of that, its only genuine live-state surface is (a) whether the module itself is enabled/disabled, and (b) that it transparently shows whatever leaflet_more_maps.settings custom maps are currently configured (since that config feeds the same leaflet_map_get_info() the demo page reads). All medium/hard cases are grounded in exactly those two things: introspecting/toggling leaflet_demo's own enabled state, and confirming a leaflet_more_maps custom map is visible to the demo's data source once both are set up.",
+    "evals": [
+        {
+            "id": "leaflet_demo-purpose-and-path",
+            "mode": "recipe",
+            "difficulty": "easy",
+            "prompt": "What does the leaflet_demo submodule (part of the leaflet_more_maps project) do, and at what admin path does it add its page?",
+            "must_contain_any": [
+                "/admin/config/system/leaflet-more-maps/demo",
+                "leaflet_demo.demo_page"
+            ],
+            "must_not_contain": [],
+            "expected_output": "It adds a single admin page (route leaflet_demo.demo_page, path /admin/config/system/leaflet-more-maps/demo, permission 'administer site configuration') that renders every Leaflet map style currently available on the site, all centered on the same point, so you can visually check each one loads (e.g. after entering a provider API key on the Leaflet More Maps settings form)."
+        },
+        {
+            "id": "leaflet_demo-data-source",
+            "mode": "recipe",
+            "difficulty": "easy",
+            "prompt": "What Drupal service does LeafletDemoForm use to render each map on the showcase page, and what function does it call to get the list of maps to render?",
+            "must_contain_any": [
+                "leaflet.service",
+                "LeafletService",
+                "leaflet_map_get_info"
+            ],
+            "must_not_contain": [],
+            "expected_output": "It injects the leaflet.service (Drupal\\leaflet\\LeafletService) and calls leafletRenderMap() once per entry returned by core Leaflet's leaflet_map_get_info(), which returns whatever the leaflet_more_maps hook_leaflet_map_info() (if enabled) plus any other module's leaflet_map_info hooks have registered."
+        },
+        {
+            "id": "leaflet_demo-dependency",
+            "mode": "recipe",
+            "difficulty": "easy",
+            "prompt": "Does leaflet_demo require leaflet_more_maps to be enabled? What module dependency does its info.yml actually declare, and what optional companion module can center the demo on the visitor's current location?",
+            "must_contain_any": [
+                "leaflet:leaflet",
+                "ip_geoloc",
+                "IP Geolocation"
+            ],
+            "must_not_contain": [],
+            "expected_output": "No -- leaflet_demo's info.yml only depends on leaflet:leaflet, not leaflet_more_maps (per its own comment: it will still show core Leaflet's styles if leaflet_more_maps is disabled). The optional companion is 'IP Geolocation Views and Maps' (ip_geoloc), used to center the demo on the visitor's HTML5-detected location instead of the hardcoded default (Greenwich Observatory)."
+        },
+        {
+            "id": "leaflet_demo-enabled-state",
+            "mode": "introspection",
+            "difficulty": "medium",
+            "prompt": "On this Drupal site, is the leaflet_demo submodule currently enabled? If so, confirm the path of its map showcase page.",
+            "must_contain_any": [
+                "enabled",
+                "/admin/config/system/leaflet-more-maps/demo"
+            ],
+            "must_not_contain": [],
+            "expected_output": "Yes, leaflet_demo is currently enabled (visible via `drush pm:list --status=enabled`), and its showcase page is at /admin/config/system/leaflet-more-maps/demo (route leaflet_demo.demo_page).",
+            "setup": "agent-module-documentation/evaluation/verify/leaflet_demo-enabled-state-setup.sh",
+            "cleanup": "agent-module-documentation/evaluation/verify/leaflet_demo-enabled-state-cleanup.sh"
+        },
+        {
+            "id": "leaflet_demo-custom-map-visible",
+            "mode": "introspection",
+            "difficulty": "medium",
+            "prompt": "leaflet_demo is enabled on this site and leaflet_more_maps has a custom map already configured. Since leaflet_demo's showcase page renders every map returned by leaflet_map_get_info(), inspect the live leaflet_more_maps.settings config and state the name of the custom map that would appear on the demo page.",
+            "must_contain_any": [
+                "LMM Demo Showcase Combo"
+            ],
+            "must_not_contain": [],
+            "expected_output": "The custom map is named 'LMM Demo Showcase Combo' (leaflet_more_maps.settings:leaflet_more_maps_custom_maps.1.map-key, combining google-satellite layer and opentopomap layer). It would appear on the demo page keyed '~LMM Demo Showcase Combo' because leaflet_demo renders whatever leaflet_map_get_info() returns, which includes leaflet_more_maps' assembled custom maps.",
+            "setup": "agent-module-documentation/evaluation/verify/leaflet_demo-custom-map-visible-setup.sh",
+            "cleanup": "agent-module-documentation/evaluation/verify/leaflet_demo-custom-map-visible-cleanup.sh"
+        },
+        {
+            "id": "leaflet_demo-enable-module",
+            "mode": "execution",
+            "difficulty": "hard",
+            "persona": "drupal-expert",
+            "prompt": "On this Drupal site, enable the leaflet_demo submodule so its map showcase page becomes available. Apply the change to the live site.",
+            "reset": "agent-module-documentation/evaluation/verify/leaflet_demo-enable-module-reset.sh",
+            "verify": "agent-module-documentation/evaluation/verify/leaflet_demo-enable-module-verify.sh",
+            "cleanup": "agent-module-documentation/evaluation/verify/leaflet_demo-enable-module-cleanup.sh",
+            "expected_output": "Run `drush en leaflet_demo -y` (or enable it via the Extend page). Note: because the module's info.yml declares `configure: admin/config/system/leaflet-more-maps/demo` (a path, not a route name), the install command can exit non-zero with a RouteNotFoundException while finishing -- the module is installed anyway, so confirm with `drush pm:list --status=enabled` rather than trusting the exit code. Afterwards leaflet_demo appears enabled and the route leaflet_demo.demo_page resolves, serving the showcase page at /admin/config/system/leaflet-more-maps/demo."
+        },
+        {
+            "id": "leaflet_demo-enable-with-custom-map",
+            "mode": "execution",
+            "difficulty": "hard",
+            "persona": "drupal-expert",
+            "prompt": "On this Drupal site, enable the leaflet_demo submodule AND use Leaflet More Maps to assemble a custom map named 'LMM Demo Verify Combo' combining the Google satellite layer and the OpenTopoMap layer, so it will appear on the demo showcase page. Apply the change to the live site.",
+            "reset": "agent-module-documentation/evaluation/verify/leaflet_demo-enable-with-custom-map-reset.sh",
+            "verify": "agent-module-documentation/evaluation/verify/leaflet_demo-enable-with-custom-map-verify.sh",
+            "cleanup": "agent-module-documentation/evaluation/verify/leaflet_demo-enable-with-custom-map-cleanup.sh",
+            "expected_output": "Enable leaflet_demo (`drush en leaflet_demo -y`) and set leaflet_more_maps.settings:leaflet_more_maps_custom_maps to an entry with map-key 'LMM Demo Verify Combo' and layer-keys ['google-satellite layer', 'opentopomap layer'], then clear the cache. A fresh call to hook_leaflet_map_info() then returns a map keyed '~LMM Demo Verify Combo' with both layers, which leaflet_demo's showcase page will render."
+        }
+    ]
+}

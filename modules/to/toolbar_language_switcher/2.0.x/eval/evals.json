@@ -1,0 +1,84 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "toolbar_language_switcher",
+  "version": "2.0.x",
+  "note": "Admin Toolbar Language Switcher is a configuration-free module: it implements hook_toolbar() to add a toolbar_item (admin_toolbar_langswitch) rendered only for users with permission 'use toolbar_language_switcher', building switch links from languageManager->getLanguageSwitchLinks(TYPE_INTERFACE, current URL) via the tls.render.builder service (RenderBuilder). Depends on core language + toolbar. No settings/config/route/schema/drush/plugins. Because it has no config, the module's only meaningful live state is (a) which roles hold the permission and (b) which languages are enabled (what the switcher lists) - so medium/hard cases are grounded there. Medium cases install known state (a role with the permission; the Spanish language enabled). Hard cases build real state verified against live config: grant the permission to a role, and enable a second language. Fixtures namespaced tls_* / temporary languages.",
+  "evals": [
+    {
+      "id": "tls-how-appears",
+      "mode": "recipe",
+      "prompt": "How does the Admin Toolbar Language Switcher module add its switcher to Drupal's admin toolbar, and what determines whether a given user sees it?",
+      "must_contain_any": ["hook_toolbar", "use toolbar_language_switcher", "toolbar_item"],
+      "must_not_contain": [],
+      "expected_output": "It implements hook_toolbar() (toolbar_language_switcher_toolbar) which returns a toolbar_item render array only when the current user has the 'use toolbar_language_switcher' permission; otherwise it returns an empty array. So visibility is controlled entirely by that permission.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "tls-links-source",
+      "mode": "recipe",
+      "prompt": "In the Admin Toolbar Language Switcher module, which service builds the toolbar item and how are the language switch links generated?",
+      "must_contain_any": ["tls.render.builder", "getLanguageSwitchLinks", "language_manager"],
+      "must_not_contain": [],
+      "expected_output": "The tls.render.builder service (RenderBuilder) builds the tab and tray. The links come from the core language manager's getLanguageSwitchLinks(LanguageInterface::TYPE_INTERFACE, <current page URL>) - the same interface-language switch links the core Language Switcher block uses, scoped to the current page.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "tls-config-deps",
+      "mode": "recipe",
+      "prompt": "Does the Admin Toolbar Language Switcher module have a settings/configuration page, and what does it depend on?",
+      "must_contain_any": ["no configuration", "no settings", "no configure", "toolbar", "language"],
+      "must_not_contain": [],
+      "expected_output": "It has no configuration page, no configure route and no config schema - the only 'configuration' is granting the 'use toolbar_language_switcher' permission and enabling more than one language. It depends on the core 'language' and 'toolbar' modules.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "tls-known-role",
+      "mode": "introspection",
+      "prompt": "On this Drupal site, a role has been granted permission to use the Admin Toolbar Language Switcher. Inspect the live configuration and give the machine id of the role that holds the 'use toolbar_language_switcher' permission.",
+      "must_contain_any": ["tls_eval_role"],
+      "must_not_contain": [],
+      "expected_output": "The role tls_eval_role has the 'use toolbar_language_switcher' permission (check user.role.* config or `drush role:list`/Role::hasPermission).",
+      "setup": "agent-module-documentation/evaluation/verify/tls-known-role-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/tls-known-role-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "tls-known-language",
+      "mode": "introspection",
+      "prompt": "On this Drupal site, besides English a second language has been enabled - which is what the toolbar language switcher would offer to switch to. Inspect the live site and give the langcode of that additional enabled language.",
+      "must_contain_any": ["es"],
+      "must_not_contain": [],
+      "expected_output": "Spanish (es) is enabled in addition to English (via `drush language:info` or \\Drupal::languageManager()->getLanguages()), so the switcher would list it.",
+      "setup": "agent-module-documentation/evaluation/verify/tls-known-language-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/tls-known-language-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "tls-grant-perm",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site there is a role with machine id tls_task_role that cannot currently see the Admin Toolbar Language Switcher. Grant that role the permission it needs so its users see the language switcher in the toolbar. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/tls-grant-perm-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/tls-grant-perm-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/tls-grant-perm-cleanup.sh",
+      "expected_output": "The tls_task_role role is granted the 'use toolbar_language_switcher' permission (via /admin/people/permissions, `drush role:perm:add tls_task_role 'use toolbar_language_switcher'`, or Role::grantPermission). hasPermission('use toolbar_language_switcher') is TRUE.",
+      "must_contain_any": [],
+      "must_not_contain": []
+    },
+    {
+      "id": "tls-add-language",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "This Drupal site currently only has English enabled, so the toolbar language switcher has nothing to switch to. Enable the German (de) language so the switcher can offer it. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/tls-add-language-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/tls-add-language-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/tls-add-language-cleanup.sh",
+      "expected_output": "The German language (langcode de) is added and enabled (via /admin/config/regional/language/add, `drush language:add de`, or ConfigurableLanguage::createFromLangcode('de')->save()), so \\Drupal::languageManager()->getLanguages() includes 'de'.",
+      "must_contain_any": [],
+      "must_not_contain": []
+    }
+  ]
+}

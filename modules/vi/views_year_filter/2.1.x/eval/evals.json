@@ -1,0 +1,80 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "views_year_filter",
+  "version": "2.1.x",
+  "note": "Views Year Filter adds a bare four-digit year (CCYY) value type to the existing Views date/datetime/Search API date filters via hook_views_plugins_filter_alter(). It registers NO new filter in the Add-filter dialog: it swaps the handler CLASS behind the core `date`, `datetime`, and `search_api_date` filter plugins, adding a value Type option 'A date in CCYY format.' (internal value date_year). In stored view config the year mode is marked by the filter's value.type == 'date_year' (year in value.value, or value.min/value.max for between); the plugin_id stays date/datetime/search_api_date. Cases span three tiers: easy/recipe (response-graded facts about which plugins are altered, the date_year marker, and which date fields it applies to), medium/introspection (a setup script builds a KNOWN view whose created-date filter is in date_year mode for 2019; the agent inspects the live view config to report the year; cleanup deletes the view), and hard/execution (reset clears state, the agent BUILDS a Content view whose date filter uses the year mode for 2020, a verify script checks the live view config).",
+  "evals": [
+    {
+      "id": "vyf-plugin-mechanism",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "On a Drupal 11 site with the Views Year Filter module, which Views filter plugins does it enhance so you can filter a date field by just a four-digit year, and what value 'Type' option does it add?",
+      "must_contain_any": ["date_year", "A date in CCYY format", "date", "datetime"],
+      "must_not_contain": [],
+      "expected_output": "It does not add a new filter to the Add-filter dialog; via hook_views_plugins_filter_alter() it overrides the handler class of the existing `date`, `datetime`, and `search_api_date` Views filter plugins, adding a value Type option 'A date in CCYY format.' (internal value date_year). Smart Date fields are left alone."
+    },
+    {
+      "id": "vyf-config-marker",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "In a saved Drupal view, how can I tell that a date filter is using Views Year Filter's year mode rather than a full-date filter? What is stored, and where does the four-digit year go?",
+      "must_contain_any": ["date_year", "value.type", "type", "value"],
+      "must_not_contain": [],
+      "expected_output": "The filter's plugin_id stays `date` / `datetime` / `search_api_date`; the year mode is marked by the filter's value.type set to 'date_year'. The year is stored in value.value for simple operators, and value.min / value.max for the 'between' operator."
+    },
+    {
+      "id": "vyf-which-fields",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "Which kinds of date fields can Views Year Filter's year mode be used on, and how does it build the SQL for a timestamp column like a node's Authored on (created) versus a plain date field?",
+      "must_contain_any": ["YEAR(", "FROM_UNIXTIME", "created", "changed", "timestamp"],
+      "must_not_contain": [],
+      "expected_output": "It works on core date/timestamp fields (Authored on/created, Updated/changed, Publish on/published_at) via the `date` plugin, Field-UI Datetime fields via `datetime`, and Search API date fields via `search_api_date`. For timestamp columns (created/changed/published_at) it queries YEAR(FROM_UNIXTIME(field)) <op> <year>; for stored date strings it uses YEAR(field) <op> <year>. The Search API handler instead converts the year to a BETWEEN range of timestamps."
+    },
+    {
+      "id": "vyf-known-view-year",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "persona": "drupal-expert",
+      "prompt": "Inspect this running Drupal site (drush available). A View with machine id `eval_vyf_known` exists and uses Views Year Filter on its 'Authored on' (created) date filter. Which YEAR is that filter configured to match? Answer from the view's actual stored config.",
+      "setup": "agent-module-documentation/evaluation/verify/views_year_filter-known-view-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/views_year_filter-known-view-cleanup.sh",
+      "must_contain_any": ["2019", "year 2019", "= 2019"],
+      "must_not_contain": [],
+      "expected_output": "The `created` filter on view eval_vyf_known is in year mode (value.type = date_year) with value.value = 2019. Read from $view->get('display')['default']['display_options']['filters']['created']['value']."
+    },
+    {
+      "id": "vyf-known-view-mode",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "persona": "drupal-expert",
+      "prompt": "Inspect this running Drupal site (drush available). For the View with machine id `eval_vyf_known`, is its 'Authored on' date filter using Views Year Filter's year mode or an ordinary full-date filter? Show what in the stored config tells you, including the filter's plugin_id and value type.",
+      "setup": "agent-module-documentation/evaluation/verify/views_year_filter-known-view-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/views_year_filter-known-view-cleanup.sh",
+      "must_contain_any": ["date_year"],
+      "must_not_contain": [],
+      "expected_output": "It is in year mode: the `created` filter has plugin_id `date` (unchanged) but its value.type is `date_year` (with value.value 2019), which is the marker Views Year Filter uses for the CCYY year mode."
+    },
+    {
+      "id": "vyf-build-view-year2020",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site (drush available), create a View with machine id `eval_vyf_build` on the Content base table (node_field_data) and add an 'Authored on' (created) date filter that uses the Views Year Filter module's YEAR mode (value type date_year) to match the year 2020. Apply it to the live site config; don't just describe it. One-line summary.",
+      "reset": "agent-module-documentation/evaluation/verify/views_year_filter-build-view-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/views_year_filter-build-view-verify.sh",
+      "expected_output": "A View `eval_vyf_build` (base_table node_field_data) exists with a date/datetime filter whose value.type is date_year and year 2020 (plugin_id stays date). Verified against the live view config."
+    },
+    {
+      "id": "vyf-build-view-year2020-layman",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site (drush available), I need a listing of content that was created in 2020 only. Using this site's Views Year Filter capability so I can filter by just the year (not a full date range), build a Content view with machine id `eval_vyf_build` that filters the authored/created date down to the year 2020. Save it to the live site; don't just describe the steps. One-line summary.",
+      "reset": "agent-module-documentation/evaluation/verify/views_year_filter-build-view-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/views_year_filter-build-view-verify.sh",
+      "expected_output": "A View `eval_vyf_build` on node_field_data with a created/authored-on date filter in year mode (value.type date_year) matching 2020. Verified against the live view config."
+    }
+  ]
+}

@@ -1,0 +1,102 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "perimeter",
+  "version": "3.0.x",
+  "note": "Perimeter is a tiny module: one KernelEvents::EXCEPTION subscriber that bans the client IP (via core Ban's ban.ip_manager) when a 404 request path matches a regex in perimeter.settings:not_found_exception_patterns, gated by a whitelist and an optional flood threshold/window. It has no drush commands and no plugin type. The easy `recipe` cases (response-graded) probe the detection mechanism, the core-Ban integration, and the config keys/route/permissions. The medium `introspection` cases put a known value on the live site (a custom pattern, a non-default flood threshold, or a banned test IP) and ask the agent to read it back. The hard `execution` cases reset to a baseline, have the agent configure perimeter (add an xmlrpc.php ban pattern, set a flood threshold) or reproduce perimeter's effect (get a test IP into the ban list), then verify live state. All banned IPs are RFC 5737 TEST-NET-3 (203.0.113.x) and are cleaned up.",
+  "evals": [
+    {
+      "id": "perimeter-detection-mechanism",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "How does the Drupal perimeter module decide to ban a visitor's IP? Which kernel event does it listen to, what kind of request triggers the check, and what does it compare the request against?",
+      "must_contain_any": ["not_found_exception_patterns", "NotFoundHttpException", "404", "KernelEvents::EXCEPTION"],
+      "must_not_contain": [],
+      "expected_output": "It registers an event subscriber on KernelEvents::EXCEPTION. When a request throws a NotFoundHttpException (a 404), it matches the request path against the regex list perimeter.settings:not_found_exception_patterns; on a match it bans the client IP."
+    },
+    {
+      "id": "perimeter-ban-integration",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "In the perimeter module, how is the actual IP ban stored, and where do I go to review or remove a banned IP? Name the service and the module it belongs to.",
+      "must_contain_any": ["ban.ip_manager", "ban", "ban_ip", "/admin/config/people/ban"],
+      "must_not_contain": [],
+      "expected_output": "Perimeter depends on Drupal core's Ban module and calls its ban.ip_manager service (banIp), which writes the IP to the ban_ip table. Manage/unban them on the core Ban page at /admin/config/people/ban (route ban.admin_page)."
+    },
+    {
+      "id": "perimeter-config-keys",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "In the perimeter module on Drupal 11, which config object holds its settings, what are its four keys, and what does a flood_threshold of 0 mean? Where is the settings form?",
+      "must_contain_any": ["perimeter.settings", "flood_threshold", "not_found_exception_patterns", "/admin/config/system/perimeter"],
+      "must_not_contain": [],
+      "expected_output": "Config object perimeter.settings with keys not_found_exception_patterns, whitelisted_ips, flood_threshold, and flood_window. flood_threshold 0 (the default) bans on the first matching request. The settings form is route perimeter.settings at /admin/config/system/perimeter."
+    },
+    {
+      "id": "perimeter-custom-pattern",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "This live Drupal 11 site runs the perimeter module. Besides the module's built-in patterns, has a custom URL ban pattern been added to perimeter.settings? If so, report the exact pattern.",
+      "setup": "agent-module-documentation/evaluation/verify/perimeter-custom-pattern-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/perimeter-custom-pattern-cleanup.sh",
+      "must_contain_any": ["eval-trap-9f3a"],
+      "must_not_contain": [],
+      "expected_output": "Yes. In addition to the 12 built-in patterns, not_found_exception_patterns contains a custom entry /\\/eval-trap-9f3a\\// (matches any path containing eval-trap-9f3a)."
+    },
+    {
+      "id": "perimeter-flood-threshold",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "On this live Drupal 11 site, how many suspicious (matching) requests does perimeter currently tolerate before it bans an IP, and over what time window? Give the config keys and their current values.",
+      "setup": "agent-module-documentation/evaluation/verify/perimeter-flood-threshold-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/perimeter-flood-threshold-cleanup.sh",
+      "must_contain_any": ["5"],
+      "must_not_contain": [],
+      "expected_output": "perimeter.settings:flood_threshold is currently 5 (an IP is banned on the request after 5 matching attempts) and flood_window is 600 seconds. (Install defaults are 0 / 3600.)"
+    },
+    {
+      "id": "perimeter-banned-ip",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "Perimeter bans offending IPs through Drupal core's Ban module. On this live site right now, which IP address(es) are in the ban list? List them.",
+      "setup": "agent-module-documentation/evaluation/verify/perimeter-banned-ip-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/perimeter-banned-ip-cleanup.sh",
+      "must_contain_any": ["203.0.113.45"],
+      "must_not_contain": [],
+      "expected_output": "One IP is banned: 203.0.113.45 (found via ban.ip_manager->findAll() or SELECT ip FROM ban_ip)."
+    },
+    {
+      "id": "perimeter-add-pattern",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, configure Perimeter so that any 404 request whose path contains xmlrpc.php gets the visitor's IP banned. Add the ban rule to the live perimeter configuration now.",
+      "reset": "agent-module-documentation/evaluation/verify/perimeter-add-pattern-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/perimeter-add-pattern-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/perimeter-add-pattern-cleanup.sh",
+      "expected_output": "Append a regex such as /\\/xmlrpc\\.php/ (or /.*xmlrpc\\.php.*/) to perimeter.settings:not_found_exception_patterns and save, so a 404 to /xmlrpc.php matches and bans the IP. Verified by preg_match of the stored patterns against /xmlrpc.php."
+    },
+    {
+      "id": "perimeter-flood-threshold-set",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, change Perimeter so a suspicious visitor is given 3 attempts at banned URLs before their IP is banned (keep a positive flood window). Apply it to the running site.",
+      "reset": "agent-module-documentation/evaluation/verify/perimeter-flood-config-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/perimeter-flood-config-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/perimeter-flood-config-cleanup.sh",
+      "expected_output": "Set perimeter.settings:flood_threshold to 3 (with flood_window >= 1, e.g. the default 3600) and save; caches cleared. Verified by reading flood_threshold === 3 from live config."
+    },
+    {
+      "id": "perimeter-ban-ip",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "A bot at IP 203.0.113.99 has been hammering /wp-login.php on this site. Perimeter would ban it via core Ban - reproduce that end state now: get 203.0.113.99 into the site's ban list the same way Perimeter does.",
+      "reset": "agent-module-documentation/evaluation/verify/perimeter-ban-ip-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/perimeter-ban-ip-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/perimeter-ban-ip-cleanup.sh",
+      "expected_output": "Add 203.0.113.99 to the core Ban list the way perimeter does: \\Drupal::service('ban.ip_manager')->banIp('203.0.113.99') (or drush sql:query insert into ban_ip). Verified by ban.ip_manager->isBanned('203.0.113.99') === true."
+    }
+  ]
+}

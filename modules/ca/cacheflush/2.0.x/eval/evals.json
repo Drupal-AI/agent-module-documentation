@@ -1,0 +1,100 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "cacheflush",
+  "version": "2.0.x",
+  "note": "CacheFlush builds cache-clearing PRESETS (the `cacheflush` content entity, base table `cacheflush`, provided by cacheflush_entity). Service/controller cacheflush.api (CacheflushApi) does clearAll (drupal_flush_all_caches), clearById/clearPresetCache (run a preset's stored #name/#params functions), clearBinCache, clearStorageCache('twig'), clearModuleCache, clearCacheTags. Ready routes /admin/cacheflush/clear/all and /admin/cacheflush/clear/{cacheflush}, permission 'cacheflush clear cache'. Option catalog = cache bins + hook_cacheflush_tabs_options (base adds static/asset/kernel/twig/plugin/module/router). A preset row has title/status/data(serialized). Medium cases inspect real preset rows; hard cases build a published preset whose serialized data clears a specific target (render bin / twig storage), verified via SQL on the cacheflush table (no rendering).",
+  "evals": [
+    {
+      "id": "cacheflush-clear-all-route",
+      "mode": "recipe",
+      "prompt": "With the cacheflush module, what is the ready-made way to flush ALL Drupal caches, and which permission controls it?",
+      "must_contain_any": [
+        "/admin/cacheflush/clear/all",
+        "cacheflush clear cache",
+        "drupal_flush_all_caches",
+        "clearAll"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Visit /admin/cacheflush/clear/all (route cacheflush.presets.clearall, controller CacheflushApi::clearAll which calls drupal_flush_all_caches()). It is gated by the 'cacheflush clear cache' permission.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "cacheflush-what-is-preset",
+      "mode": "recipe",
+      "prompt": "In the cacheflush module, what is a 'preset' and how does clearing one work?",
+      "must_contain_any": [
+        "cacheflush",
+        "preset",
+        "clearById",
+        "clearPresetCache",
+        "entity"
+      ],
+      "must_not_contain": [],
+      "expected_output": "A preset is a `cacheflush` content entity whose `data` field stores the selected cache-clear options as callable #name/#params function definitions. Clearing it (CacheflushApi::clearById/clearPresetCache) runs those functions in order; a disabled preset (status 0) is refused with a 403.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "cacheflush-service-and-options",
+      "mode": "recipe",
+      "prompt": "Which service does cacheflush expose for clearing caches programmatically, and how can another module add its own clearable option to cacheflush presets?",
+      "must_contain_any": [
+        "cacheflush.api",
+        "CacheflushApi",
+        "hook_cacheflush_tabs_options",
+        "clearBinCache"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The service is cacheflush.api (Drupal\\cacheflush\\Controller\\CacheflushApi) with methods like clearBinCache(), clearStorageCache(), clearModuleCache(), clearCacheTags(). Other modules add clearable options by implementing hook_cacheflush_tabs_options() (returning option ids with category + #name/#params functions).",
+      "difficulty": "easy"
+    },
+    {
+      "id": "cacheflush-known-preset",
+      "mode": "introspection",
+      "prompt": "This Drupal site has a cacheflush preset configured. Inspect the cacheflush entities/table and give the title of the preset that exists.",
+      "must_contain_any": [
+        "cf_known"
+      ],
+      "must_not_contain": [],
+      "expected_output": "A published `cacheflush` preset titled 'cf_known' exists (it clears the render cache). Found via e.g. `drush sqlq \"SELECT title, status FROM cacheflush\"`.",
+      "setup": "agent-module-documentation/evaluation/verify/cacheflush-known-preset-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/cacheflush-known-preset-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "cacheflush-which-enabled",
+      "mode": "introspection",
+      "prompt": "This site has two cacheflush presets, cf_on and cf_off. Exactly one is enabled (published). Inspect the live cacheflush entities and state which preset is enabled.",
+      "must_contain_any": [
+        "cf_on"
+      ],
+      "must_not_contain": [],
+      "expected_output": "cf_on is enabled (status = 1); cf_off has status = 0. A disabled preset cannot be cleared (403). Read via `drush sqlq \"SELECT title, status FROM cacheflush\"`.",
+      "setup": "agent-module-documentation/evaluation/verify/cacheflush-enabled-preset-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/cacheflush-enabled-preset-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "cacheflush-build-render-preset",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "Using the cacheflush module, create a published cache-flush preset named exactly 'cf_task' that clears the render cache (the render cache bin) when run. Apply it to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/cacheflush-build-render-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/cacheflush-build-render-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/cacheflush-build-render-cleanup.sh",
+      "expected_output": "A `cacheflush` entity titled 'cf_task' with status=1 whose data selects the render bin (its functions call CacheflushApi::clearBinCache with 'cache.render'), e.g. created via the /admin/structure/cacheflush/add form (Core cache tables → render) or the entity API."
+    },
+    {
+      "id": "cacheflush-build-twig-preset",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "Create a published cacheflush preset named 'cf_task_twig' that wipes the Twig PHP storage cache (the module's 'twig' option) when executed, and save it on this site.",
+      "reset": "agent-module-documentation/evaluation/verify/cacheflush-build-twig-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/cacheflush-build-twig-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/cacheflush-build-twig-cleanup.sh",
+      "expected_output": "A `cacheflush` entity titled 'cf_task_twig' with status=1 whose data includes the 'twig' option (CacheflushApi::clearStorageCache('twig')), created via the preset form ('Other core cache options' → Twig) or the entity API."
+    }
+  ]
+}

@@ -1,0 +1,102 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "wpf",
+  "version": "1.2.x",
+  "note": "Webp fallback image (wpf) generates on-demand .jpg copies of WebP image-style derivatives and swaps them into the Responsive Image fallback <img>. Its config object is wpf.settings with quality (int JPEG quality, default 75) and styles.disabled (array of image-style ids to skip). Config form at /admin/config/media/wpf (route wpf.settings_form). The fallback swap is in hook_preprocess_responsive_image via ImageFactory::getJpg (service wpf.image_factory); the JPEG is generated lazily when its URL is requested because RouteSubscriber overrides the core image.style_public/image.style_private controller (ImageStyleDownloadController::deliver -> ImageFactory::createImageCopy using GD imagecreatefromwebp/imagejpeg or ImageMagick). Requires file + responsive_image + GD. No Drush, no plugins. Medium/hard cases are grounded in the real wpf.settings config (quality and styles.disabled), using core image styles that exist on this site (thumbnail, large).",
+  "evals": [
+    {
+      "id": "wpf-what-it-does",
+      "mode": "recipe",
+      "prompt": "What problem does the Drupal 'Webp fallback image' (wpf) module solve, and when is the fallback JPEG actually created?",
+      "must_contain_any": [
+        "fallback",
+        "webp",
+        "jpg",
+        "jpeg",
+        "responsive",
+        "on demand",
+        "requested"
+      ],
+      "must_not_contain": [],
+      "expected_output": "It provides a JPEG fallback for WebP image-style derivatives so browsers that cannot show WebP still get an image, using the Responsive Image module's fallback <img>. The .jpg is generated lazily/on demand, only when a browser requests that fallback URL (the module overrides the image-style download controller), so unused JPEGs are never created.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "wpf-quality-key",
+      "mode": "recipe",
+      "prompt": "In the Webp fallback image (wpf) module, which configuration object and key control the quality of the generated fallback JPEGs, what is the default, and where is the settings form?",
+      "must_contain_any": [
+        "wpf.settings",
+        "quality",
+        "75",
+        "admin/config/media/wpf"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The key is wpf.settings -> quality (default 75). The settings form is at /admin/config/media/wpf (route wpf.settings_form).",
+      "difficulty": "easy"
+    },
+    {
+      "id": "wpf-disable-style-howto",
+      "mode": "recipe",
+      "prompt": "Using the Webp fallback image (wpf) module, how do I stop it from generating a JPEG fallback for one particular image style? Which config key holds that list?",
+      "must_contain_any": [
+        "styles.disabled",
+        "styles",
+        "disabled",
+        "Disable fallback image for styles"
+      ],
+      "must_not_contain": [],
+      "expected_output": "On the settings form (/admin/config/media/wpf) expand 'Image styles' and tick the style under 'Disable fallback image for styles'. It is stored in wpf.settings -> styles.disabled (an array of image-style ids); ImageFactory skips fallback generation for styles listed there.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "wpf-quality-value",
+      "mode": "introspection",
+      "prompt": "On this Drupal site, inspect the live Webp fallback image configuration and report the JPEG quality value it is currently set to use for generated fallback images.",
+      "must_contain_any": [
+        "40"
+      ],
+      "must_not_contain": [],
+      "expected_output": "wpf.settings -> quality is 40.",
+      "setup": "agent-module-documentation/evaluation/verify/wpf-quality-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/wpf-defaults-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "wpf-disabled-style",
+      "mode": "introspection",
+      "prompt": "On this site, the Webp fallback image module has JPEG fallback generation turned off for exactly one image style. Inspect the live wpf configuration and name that image style.",
+      "must_contain_any": [
+        "thumbnail"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The 'thumbnail' image style is disabled: wpf.settings -> styles.disabled contains 'thumbnail'.",
+      "setup": "agent-module-documentation/evaluation/verify/wpf-disabled-style-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/wpf-defaults-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "wpf-set-quality",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, configure the Webp fallback image module to generate its fallback JPEGs at quality 60. Apply the change to the live wpf.settings configuration.",
+      "reset": "agent-module-documentation/evaluation/verify/wpf-quality-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/wpf-quality-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/wpf-defaults-cleanup.sh",
+      "expected_output": "Set wpf.settings -> quality to 60 (via the Quality field on /admin/config/media/wpf, or drush cset wpf.settings quality 60)."
+    },
+    {
+      "id": "wpf-disable-large",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, using the Webp fallback image module, turn off JPEG fallback generation for the 'large' image style (leave all other styles generating fallbacks). Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/wpf-disable-large-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/wpf-disable-large-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/wpf-defaults-cleanup.sh",
+      "expected_output": "Add 'large' to wpf.settings -> styles.disabled (tick 'large' under 'Disable fallback image for styles' on /admin/config/media/wpf, or set styles.disabled to include 'large')."
+    }
+  ]
+}

@@ -1,0 +1,80 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "views_moderation_state_weights",
+  "version": "1.1.x",
+  "note": "Views moderation state weights exposes content_moderation state weights to Views. Real, verifiable surface: (a) two Views handlers added by hook_views_data() to every MODERATED entity's data + revision tables - field handler moderation_state_weight_field and sort handler moderation_state_weight_sort, both titled 'Moderation state weight'; (b) an internal DB table views_moderation_state_weights (PK workflow+moderation_state, column weight) populated on install and re-synced by content_moderation workflow insert/update/delete hooks. No config UI, permissions, Drush, or exported config. Medium cases seed a namespaced content_moderation workflow with a distinctive state weight and read it back from the module's table; hard cases moderate a namespaced content type (so the handler appears in Views data) and add the module's sort/field handler to a base view, verified against the saved view config. ENV NOTE: saving a View on this shared site can trigger an unrelated group-module AssertionError during the terminate/route-rebuild phase; the save still persists and the separate verify script reads the correct live state.",
+  "evals": [
+    {
+      "id": "views_moderation_state_weights-handlers",
+      "mode": "recipe",
+      "prompt": "I want to sort a Drupal Views listing by content moderation workflow order (draft, then review, then published) rather than alphabetically by state. The views_moderation_state_weights module helps. What Views field and sort does it add, and what is that column called in the Views UI?",
+      "must_contain_any": ["moderation_state_weight_sort", "moderation_state_weight_field", "Moderation state weight", "moderation_state_weight"],
+      "must_not_contain": [],
+      "expected_output": "It adds a Views field handler (moderation_state_weight_field) and a Views sort handler (moderation_state_weight_sort), both labelled 'Moderation state weight', on moderated entity tables. Add the 'Moderation state weight' sort to order by workflow weight.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "views_moderation_state_weights-requirements",
+      "mode": "recipe",
+      "prompt": "What does the views_moderation_state_weights module require to be enabled, and on which entities do its Views field/sort handlers become available?",
+      "must_contain_any": ["content_moderation", "content moderation", "views", "workflows", "moderated"],
+      "must_not_contain": [],
+      "expected_output": "It depends on content_moderation, views and workflows. Its handlers are added (via hook_views_data) only to entity types/tables that actually have a content_moderation workflow assigned (moderated entity types), including their revision tables.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "views_moderation_state_weights-sync-table",
+      "mode": "recipe",
+      "prompt": "How does the views_moderation_state_weights module know each moderation state's weight for sorting, and how is that kept up to date when a workflow changes?",
+      "must_contain_any": ["views_moderation_state_weights", "workflow", "hook", "insert", "update", "delete"],
+      "must_not_contain": [],
+      "expected_output": "It maintains an internal DB table named views_moderation_state_weights (workflow, moderation_state, weight). It is populated on install and re-synced by content_moderation workflow insert/update/delete hooks (update deletes then re-inserts the workflow's rows).",
+      "difficulty": "easy"
+    },
+    {
+      "id": "views_moderation_state_weights-inspect-weight",
+      "mode": "introspection",
+      "prompt": "This site has a content moderation workflow with id 'vmsw_probe'. Using what the views_moderation_state_weights module records, what weight is stored for its 'vmsw_review' moderation state?",
+      "must_contain_any": ["42"],
+      "must_not_contain": [],
+      "expected_output": "The views_moderation_state_weights table row for workflow vmsw_probe, moderation_state vmsw_review has weight 42.",
+      "setup": "agent-module-documentation/evaluation/verify/views_moderation_state_weights-probe-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/views_moderation_state_weights-probe-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "views_moderation_state_weights-inspect-weight2",
+      "mode": "introspection",
+      "prompt": "On this site there is a content moderation workflow 'vmsw_probe2' with a custom state 'vmsw_hold'. According to the weight data the views_moderation_state_weights module tracks, what is the weight of the vmsw_hold state?",
+      "must_contain_any": ["23"],
+      "must_not_contain": [],
+      "expected_output": "The views_moderation_state_weights table has workflow vmsw_probe2, moderation_state vmsw_hold with weight 23.",
+      "setup": "agent-module-documentation/evaluation/verify/views_moderation_state_weights-probe2-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/views_moderation_state_weights-probe2-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "views_moderation_state_weights-add-sort",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "This site has a moderated content type (vmsw_stype) and a View named 'vmsw_sview' listing content. Using the views_moderation_state_weights module, add a sort on the moderation state weight to that view so content is ordered by workflow position, and save it to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/views_moderation_state_weights-sort-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/views_moderation_state_weights-sort-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/views_moderation_state_weights-sort-cleanup.sh",
+      "expected_output": "Add a sort handler with plugin_id moderation_state_weight_sort (field moderation_state_weight) to a display of the vmsw_sview view and save it, e.g. via the Views UI 'Moderation state weight' sort or by editing display_options.sorts in the view config."
+    },
+    {
+      "id": "views_moderation_state_weights-add-field",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "This site has a moderated content type (vmsw_ftype) and a View named 'vmsw_fview'. Using the views_moderation_state_weights module, add the 'Moderation state weight' field to that view so the numeric state weight is displayed, and save it to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/views_moderation_state_weights-field-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/views_moderation_state_weights-field-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/views_moderation_state_weights-field-cleanup.sh",
+      "expected_output": "Add a field handler with plugin_id moderation_state_weight_field (field moderation_state_weight) to a display of the vmsw_fview view and save it, e.g. via the Views UI 'Moderation state weight' field or by editing display_options.fields in the view config."
+    }
+  ]
+}

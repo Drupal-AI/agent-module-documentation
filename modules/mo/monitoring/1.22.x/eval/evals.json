@@ -1,0 +1,99 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "monitoring",
+  "version": "1.22.x",
+  "note": "Sensor framework. A sensor is a SensorPlugin (plugin type monitoring.sensor) plus a monitoring_sensor_config config entity (config prefix monitoring.sensor_config.<id>) storing plugin_id, category, value_type, status, thresholds (type exceeds/falls/inner/outer + warning/critical). Real Drush: monitoring:run/list-sensors/enable/disable/rebuild. Medium cases seed a namespaced sensor config entity (mon_probe) and read it back; hard cases create a sensor config entity (mon_task) and toggle a shipped sensor (core_cron_last_run_age), verified against live config. All grounded in real routes/services/config keys.",
+  "evals": [
+    {
+      "id": "monitoring-run-cli",
+      "mode": "recipe",
+      "prompt": "Using the Monitoring module, how do I run all of a Drupal site's sensors from the command line, and how do I force a fresh (uncached) run of a single sensor?",
+      "must_contain_any": [
+        "monitoring:run",
+        "monitoring-run",
+        "drush monitoring"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Run `drush monitoring:run` for all sensors; for one uncached sensor use `drush monitoring:run <sensor_name> --force`.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "monitoring-what-is-sensor",
+      "mode": "recipe",
+      "prompt": "In the Monitoring module, what is a 'sensor' technically, and what plugin would I implement to add a custom one?",
+      "must_contain_any": [
+        "SensorPlugin",
+        "runSensor",
+        "plugin",
+        "monitoring.sensor"
+      ],
+      "must_not_contain": [],
+      "expected_output": "A sensor is a SensorPlugin plugin (plugin type monitoring.sensor, in Plugin/monitoring/SensorPlugin/), paired with a monitoring_sensor_config entity. To add one, implement a SensorPlugin (extend SensorPluginBase, implement runSensor()).",
+      "difficulty": "easy"
+    },
+    {
+      "id": "monitoring-config-thresholds",
+      "mode": "recipe",
+      "prompt": "Where does Monitoring store an individual sensor's configuration such as its warning/critical thresholds, and what threshold comparison types does it support?",
+      "must_contain_any": [
+        "monitoring.sensor_config",
+        "monitoring_sensor_config",
+        "thresholds",
+        "exceeds",
+        "falls"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Each sensor is a monitoring_sensor_config config entity (config prefix monitoring.sensor_config.<id>) with a thresholds mapping: type is one of exceeds, falls, inner, outer with integer warning/critical bounds.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "monitoring-probe-threshold",
+      "mode": "introspection",
+      "prompt": "This site has a Monitoring sensor with machine name 'mon_probe'. Inspect the live sensor configuration and report its warning threshold value.",
+      "must_contain_any": [
+        "4242"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The mon_probe sensor's thresholds.warning is 4242 (config monitoring.sensor_config.mon_probe).",
+      "setup": "agent-module-documentation/evaluation/verify/monitoring-probe-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/monitoring-probe-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "monitoring-probe-plugin",
+      "mode": "introspection",
+      "prompt": "Inspect the Monitoring sensor named 'mon_probe' on this site and report which sensor plugin (plugin_id) it uses.",
+      "must_contain_any": [
+        "config_value"
+      ],
+      "must_not_contain": [],
+      "expected_output": "mon_probe uses the config_value sensor plugin (plugin_id: config_value in monitoring.sensor_config.mon_probe).",
+      "setup": "agent-module-documentation/evaluation/verify/monitoring-probe-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/monitoring-probe-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "monitoring-create-sensor",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this site, create an enabled Monitoring sensor with machine id 'mon_task' that uses the config_value sensor plugin, in the category 'Custom'. Apply it to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/monitoring-create-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/monitoring-create-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/monitoring-create-cleanup.sh",
+      "expected_output": "A monitoring_sensor_config entity 'mon_task' exists with plugin_id: config_value and status: true (e.g. SensorConfig::create(['id'=>'mon_task','label'=>'...','plugin_id'=>'config_value','category'=>'Custom','status'=>TRUE, ...])->save())."
+    },
+    {
+      "id": "monitoring-enable-cron-sensor",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "layman",
+      "prompt": "I want my site to keep an eye on whether the periodic maintenance task (cron) has been running. Turn on the check that watches how long it has been since cron last ran.",
+      "reset": "agent-module-documentation/evaluation/verify/monitoring-cron-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/monitoring-cron-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/monitoring-cron-cleanup.sh",
+      "expected_output": "The core_cron_last_run_age sensor is enabled (status: true) - e.g. via `drush monitoring:enable core_cron_last_run_age` or by setting monitoring.sensor_config.core_cron_last_run_age status to true."
+    }
+  ]
+}

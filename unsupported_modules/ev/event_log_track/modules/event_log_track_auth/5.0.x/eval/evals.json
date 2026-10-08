@@ -1,0 +1,94 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "event_log_track_auth",
+  "version": "5.0.x",
+  "note": "event_log_track_auth is a submodule of Events Log Track that logs auth events under handler type 'authentication' (operations login, logout, request password, fail) via an event subscriber / entity hooks calling event_log_track.manager->insert(). Medium cases insert a known sentinel row (ref_char ELT_AUTH_MED) into the event_log_track table and read it back; hard cases require writing a 'authentication' row (ref_char ELT_AUTH_HA/ELT_AUTH_HB) to the live table, grounded in this submodule's real type/operation vocabulary and the base logging API. ",
+  "evals": [
+    {
+      "id": "event_log_track_auth-what",
+      "mode": "recipe",
+      "prompt": "On a Drupal site, what does the event_log_track_auth submodule of Events Log Track log, and what handler type and operations does it register?",
+      "must_contain_any": [
+        "authentication",
+        "login",
+        "logout"
+      ],
+      "must_not_contain": [],
+      "expected_output": "It logs auth events, registering the handler type 'authentication' with operations [login, logout, request password, fail] via hook_event_log_track_handlers(); rows are written to the event_log_track table.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "event_log_track_auth-how",
+      "mode": "recipe",
+      "prompt": "How does event_log_track_auth hook into Drupal to capture auth events, and what does it depend on?",
+      "must_contain_any": [
+        "authentication",
+        "event_log_track"
+      ],
+      "must_not_contain": [],
+      "expected_output": "`user_login` / `user_logout` hooks log `login`/`logout`; a `user_login_form` validate handler logs `fail`; the `user_pass` form-submit callback logs `request password`; and a kernel TERMINATE subscriber logs `authorization`/`fail` on any 403 response. It depends on the base event_log_track module, calling event_log_track.manager->insert() with type 'authentication'.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "event_log_track_auth-refs",
+      "mode": "recipe",
+      "prompt": "For a 'authentication' event logged by event_log_track_auth, what is stored in the ref_numeric and ref_char columns of the event_log_track table?",
+      "must_contain_any": [
+        "ref_numeric",
+        "ref_char"
+      ],
+      "must_not_contain": [],
+      "expected_output": "`ref_numeric` = uid, `ref_char` = username. The login/logout descriptions include a live session count.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "event_log_track_auth-known-op",
+      "mode": "introspection",
+      "prompt": "This site's Events Log Track log contains one 'authentication' row with the distinctive ref_char 'ELT_AUTH_MED'. Inspect the event_log_track table and report the operation recorded on that row.",
+      "must_contain_any": [
+        "login"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The row with ref_char='ELT_AUTH_MED' has operation='login' (SELECT operation FROM event_log_track WHERE ref_char='ELT_AUTH_MED').",
+      "setup": "agent-module-documentation/evaluation/verify/event_log_track_auth-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/event_log_track_auth-clear.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "event_log_track_auth-known-desc",
+      "mode": "introspection",
+      "prompt": "In this site's event_log_track log there is a 'authentication' row whose ref_char is 'ELT_AUTH_MED'. Report the exact description text stored on that row.",
+      "must_contain_any": [
+        "ELT_AUTH_DESC"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The description of the ref_char='ELT_AUTH_MED' row is 'ELT_AUTH_DESC'.",
+      "setup": "agent-module-documentation/evaluation/verify/event_log_track_auth-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/event_log_track_auth-clear.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "event_log_track_auth-log-a",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "Record a 'authentication' event (operation 'login') in the Events Log Track log on this site, using ref_char 'ELT_AUTH_HA'. Use the module's logging service (event_log_track.manager->insert(); if you run it from the CLI, first enable the log_cli setting) or otherwise persist the row. Apply it to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/event_log_track_auth-clear.sh",
+      "verify": "agent-module-documentation/evaluation/verify/event_log_track_auth-verifya.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/event_log_track_auth-clear.sh",
+      "expected_output": "A row exists in event_log_track with type='authentication' and ref_char='ELT_AUTH_HA' (e.g. via event_log_track.manager->insert(['type'=>'authentication','operation'=>'login','description'=>'...','ref_char'=>'ELT_AUTH_HA']))."
+    },
+    {
+      "id": "event_log_track_auth-log-b",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "Record a 'authentication' event for the 'logout' operation in Events Log Track using ref_char 'ELT_AUTH_HB'. Apply it to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/event_log_track_auth-clear.sh",
+      "verify": "agent-module-documentation/evaluation/verify/event_log_track_auth-verifyb.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/event_log_track_auth-clear.sh",
+      "expected_output": "A row exists in event_log_track with type='authentication', operation='logout' and ref_char='ELT_AUTH_HB'."
+    }
+  ]
+}

@@ -1,0 +1,80 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "commerce_square",
+  "version": "1.8.x",
+  "note": "Commerce Square provides a Drupal Commerce on-site payment gateway plugin `square` (Amex/Visa/MC/Discover/JCB/UnionPay/DinersClub; modes test=Sandbox, live=Production; supports authorizations & refunds). App-level credentials live in config object commerce_square.settings (app_name, app_secret, sandbox_app_id, sandbox_access_token, production_app_id); production access/refresh tokens live in Drupal STATE (commerce_square.production_access_token etc). Per-gateway settings on the commerce_payment_gateway entity: test_location_id, live_location_id, enable_credit_card_icons, mode. Service commerce_square.connect (class Connect) builds a Square\\SquareClient. Requires square/square. Live charges call Square's API over the network, so ALL medium/hard cases are grounded in LOCAL config/state (the gateway entity and commerce_square.settings), never in real API calls.",
+  "evals": [
+    {
+      "id": "csq-gateway-plugin",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "What kind of Drupal Commerce payment gateway does commerce_square provide (plugin id and type), and what modes does it support?",
+      "must_contain_any": ["square", "OnsitePaymentGateway", "on-site", "onsite"],
+      "must_not_contain": [],
+      "expected_output": "It provides an on-site credit-card payment gateway plugin id `square` (class Square extends OnsitePaymentGatewayBase, supports authorizations and refunds) with two modes: `test` (Sandbox) and `live` (Production)."
+    },
+    {
+      "id": "csq-settings-keys",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "Where does commerce_square store its application-level credentials, and what are the key names for the sandbox application id and sandbox access token?",
+      "must_contain_any": ["commerce_square.settings", "sandbox_app_id", "sandbox_access_token"],
+      "must_not_contain": [],
+      "expected_output": "In the config object commerce_square.settings, keys sandbox_app_id and sandbox_access_token (plus app_name, app_secret, production_app_id). Production access/refresh tokens are kept in Drupal state, not config."
+    },
+    {
+      "id": "csq-library-service",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "Which external PHP library does commerce_square require, and which Drupal service builds a configured Square API client?",
+      "must_contain_any": ["square/square", "commerce_square.connect", "SquareClient"],
+      "must_not_contain": [],
+      "expected_output": "It requires the square/square PHP SDK. The service commerce_square.connect (class Connect) builds a configured Square\\SquareClient via getClient($mode)."
+    },
+    {
+      "id": "csq-gateway",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "This site has a Square payment gateway configured. Inspect the live payment gateway configuration and report the Test (Sandbox) Location ID set on the Square gateway.",
+      "must_contain_any": ["L_TEST_KNOWN"],
+      "must_not_contain": [],
+      "expected_output": "The Square gateway (csq_known) has test_location_id = L_TEST_KNOWN in commerce_payment.commerce_payment_gateway.csq_known configuration.",
+      "setup": "agent-module-documentation/evaluation/verify/commerce_square-gateway-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/commerce_square-gateway-cleanup.sh"
+    },
+    {
+      "id": "csq-sandbox-appid",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "Inspect the live commerce_square application settings on this site and report the configured Sandbox Application ID.",
+      "must_contain_any": ["sandbox-sq0idb-KNOWN123"],
+      "must_not_contain": [],
+      "expected_output": "The Sandbox Application ID is sandbox-sq0idb-KNOWN123 (commerce_square.settings:sandbox_app_id).",
+      "setup": "agent-module-documentation/evaluation/verify/commerce_square-sandbox-appid-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/commerce_square-sandbox-appid-cleanup.sh"
+    },
+    {
+      "id": "csq-create-gateway",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, create a Drupal Commerce payment gateway with the id csq_build that uses the Square payment gateway plugin, in test (Sandbox) mode. Apply it to the live site. (Do not attempt any live Square API call.)",
+      "reset": "agent-module-documentation/evaluation/verify/commerce_square-create-gateway-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/commerce_square-create-gateway-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/commerce_square-create-gateway-cleanup.sh",
+      "expected_output": "Create a commerce_payment_gateway config entity: PaymentGateway::create(['id'=>'csq_build','label'=>...,'plugin'=>'square','status'=>true,'configuration'=>['mode'=>'test',...]])->save(). Stored as commerce_payment.commerce_payment_gateway.csq_build with plugin square and mode test."
+    },
+    {
+      "id": "csq-settings",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "Set the commerce_square sandbox credentials on this site: put the Sandbox Application ID to sq0idp-BUILD and the Sandbox Access Token to EAAA-BUILD. Apply to the live configuration.",
+      "reset": "agent-module-documentation/evaluation/verify/commerce_square-settings-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/commerce_square-settings-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/commerce_square-settings-cleanup.sh",
+      "expected_output": "In commerce_square.settings set sandbox_app_id='sq0idp-BUILD' and sandbox_access_token='EAAA-BUILD' (e.g. drush cset commerce_square.settings sandbox_app_id sq0idp-BUILD; drush cset commerce_square.settings sandbox_access_token EAAA-BUILD)."
+    }
+  ]
+}

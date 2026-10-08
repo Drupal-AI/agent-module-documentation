@@ -1,0 +1,58 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "gdpr",
+  "version": "3.1.x",
+  "note": "The base gdpr module is an umbrella/toolkit: a Checklist-API checklist (configure route checklistapi.checklists.gdpr_checklist at /admin/config/gdpr/checklist), a Content links settings form (/admin/config/gdpr/content-links) storing per-language page URLs in config gdpr.content_mapping (key links.<langcode>.<key>, keys privacy_policy/terms_of_use/about_us/impressum), and a per-user page /user/{user}/gdpr (route gdpr.collected_user_data, permission 'view gdpr data summary') that redirects into the gdpr_tasks/gdpr_consent views. Permissions: administer gdpr settings, view gdpr data summary. No config schema, no Drush in the base module. Real features are in submodules (anonymizer, gdpr_fields, gdpr_consent, gdpr_tasks, gdpr_dump). Medium/hard ground in the gdpr.content_mapping config: introspection reads the recorded privacy-policy link; execution records one and verifies it.",
+  "evals": [
+    {
+      "id": "gdpr-configure-route",
+      "mode": "recipe",
+      "prompt": "What is the main configuration page of the Drupal gdpr base module, and which contrib module powers it?",
+      "must_contain_any": ["checklist", "checklistapi", "/admin/config/gdpr/checklist", "checklistapi.checklists.gdpr_checklist"],
+      "must_not_contain": [],
+      "expected_output": "Its configure route is checklistapi.checklists.gdpr_checklist - a GDPR self-assessment checklist at /admin/config/gdpr/checklist, powered by the Checklist API (checklistapi) module.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "gdpr-content-mapping-config",
+      "mode": "recipe",
+      "prompt": "Where does the gdpr base module store the Privacy policy / Terms of use / About us / Impressum page links configured on its Content links form, and how is that data keyed?",
+      "must_contain_any": ["gdpr.content_mapping", "links", "privacy_policy", "langcode"],
+      "must_not_contain": [],
+      "expected_output": "In the config object gdpr.content_mapping under key 'links', keyed by language then content key: links.<langcode>.<key> where key is one of privacy_policy, terms_of_use, about_us, impressum. Values are stored as URIs (internal:/path or full URLs).",
+      "difficulty": "easy"
+    },
+    {
+      "id": "gdpr-user-data-page",
+      "mode": "recipe",
+      "prompt": "The gdpr module adds an 'All your data' page to user profiles. What is its path, which permission controls access, and what does it show?",
+      "must_contain_any": ["/user/", "gdpr", "view gdpr data summary", "gdpr.collected_user_data"],
+      "must_not_contain": [],
+      "expected_output": "Path /user/{user}/gdpr (route gdpr.collected_user_data), gated by the 'view gdpr data summary' permission (admins with 'administer gdpr settings' can see any user's page; others only their own). It redirects to the GDPR Tasks 'my data requests' view or the GDPR Consent agreements page when those submodules are enabled.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "gdpr-known-content-link",
+      "mode": "introspection",
+      "prompt": "On this Drupal site, the gdpr module's Content links have been configured. Inspect the live gdpr configuration and state the Privacy policy link that is set for the default language.",
+      "must_contain_any": ["/privacy-policy", "privacy-policy", "internal:/privacy-policy"],
+      "must_not_contain": [],
+      "expected_output": "In config gdpr.content_mapping, links.<default-langcode>.privacy_policy is 'internal:/privacy-policy' (i.e. the internal path /privacy-policy).",
+      "setup": "agent-module-documentation/evaluation/verify/gdpr-content-link-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/gdpr-content-link-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "gdpr-set-content-link",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, use the gdpr module's Content links configuration to record the site's Privacy policy page as the internal path /privacy-policy for the default language, and apply it to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/gdpr-content-link-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/gdpr-content-link-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/gdpr-content-link-exec-cleanup.sh",
+      "expected_output": "Config gdpr.content_mapping gains links.<default-langcode>.privacy_policy set to a non-empty value (e.g. internal:/privacy-policy). Set it via the Content links form (/admin/config/gdpr/content-links) or by saving the gdpr.content_mapping config's 'links' array."
+    }
+  ]
+}

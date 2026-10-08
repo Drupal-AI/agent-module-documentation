@@ -1,0 +1,103 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "link_field_autocomplete_filter",
+  "version": "2.0.x",
+  "note": "Link Field Autocomplete Filter restricts which content types a Link field's internal-link autocomplete suggests, per field instance. State is two third-party settings on the field's FieldConfig: field.field.<entity>.<bundle>.<field> -> third_party_settings.link_field_autocomplete_filter.{negate (bool: 0 include / 1 exclude), allowed_content_types (list of node-type ids)}. The 'Autocomplete Filter' fieldset appears on a link field's instance edit form; hook_field_widget_single_element_form_alter sets the uri element's #selection_handler=default:node and #selection_settings[target_bundles]. No configure route/permission/Drush/plugin. Medium/hard cases create namespaced content types lfaf_* with a link field and read/write those third-party settings.",
+  "evals": [
+    {
+      "id": "link_field_autocomplete_filter-where-stored",
+      "mode": "recipe",
+      "prompt": "The Drupal contrib module link_field_autocomplete_filter limits which content types show up in a Link field's autocomplete. Where is that per-field choice stored, and which two setting keys hold the mode and the list of content types?",
+      "must_contain_any": [
+        "third_party_settings",
+        "allowed_content_types",
+        "negate",
+        "field_config",
+        "FieldConfig"
+      ],
+      "must_not_contain": [],
+      "expected_output": "It is stored as third-party settings on the field instance's FieldConfig (field.field.<entity>.<bundle>.<field> -> third_party_settings.link_field_autocomplete_filter). The keys are 'negate' (0 include / 1 exclude) and 'allowed_content_types' (the list of node-type ids).",
+      "difficulty": "easy"
+    },
+    {
+      "id": "link_field_autocomplete_filter-include-exclude",
+      "mode": "recipe",
+      "prompt": "In link_field_autocomplete_filter, what does the 'negate' setting do, and what happens if I don't check any content types on a link field?",
+      "must_contain_any": [
+        "exclude",
+        "include",
+        "all",
+        "negate"
+      ],
+      "must_not_contain": [],
+      "expected_output": "negate = 0 means 'Include the selected below' (only the checked types are allowed); negate = 1 means 'Exclude the selected below' (the checked types are removed and the rest allowed). If no content types are checked, the module does nothing and all content types are allowed (core default).",
+      "difficulty": "easy"
+    },
+    {
+      "id": "link_field_autocomplete_filter-widget-effect",
+      "mode": "recipe",
+      "prompt": "How does link_field_autocomplete_filter actually make the Link field autocomplete only suggest certain content types, and what does it do if someone submits a link to a now-disallowed node type?",
+      "must_contain_any": [
+        "target_bundles",
+        "selection_handler",
+        "default:node",
+        "setError",
+        "cannot be referenced"
+      ],
+      "must_not_contain": [],
+      "expected_output": "In hook_field_widget_single_element_form_alter it sets the uri element's #selection_handler to 'default:node' and #selection_settings['target_bundles'] to the allowed bundle list (inverted when negate=1). It also adds an element validator that calls $form_state->setError with 'This node ... cannot be referenced.' if the entered node's type is not allowed.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "link_field_autocomplete_filter-read-allowed",
+      "mode": "introspection",
+      "prompt": "On this Drupal site, the content type 'lfaf_m1' has a Link field 'field_lfaf_m1' configured with link_field_autocomplete_filter. Inspect the live field configuration and state which content type(s) its autocomplete is allowed to suggest.",
+      "must_contain_any": [
+        "page"
+      ],
+      "must_not_contain": [],
+      "expected_output": "It allows only the 'page' (Basic page) content type: field.field.node.lfaf_m1.field_lfaf_m1 has third_party_settings.link_field_autocomplete_filter.allowed_content_types = {page} with negate false (include mode).",
+      "setup": "agent-module-documentation/evaluation/verify/link_field_autocomplete_filter-read-allowed-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/link_field_autocomplete_filter-read-allowed-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "link_field_autocomplete_filter-read-mode",
+      "mode": "introspection",
+      "prompt": "On this Drupal site, the content type 'lfaf_m2' has a Link field 'field_lfaf_m2' using link_field_autocomplete_filter. Inspect the live configuration and state whether the filter is in INCLUDE or EXCLUDE mode, and which content type it targets.",
+      "must_contain_any": [
+        "exclude",
+        "Exclude",
+        "negate"
+      ],
+      "must_not_contain": [],
+      "expected_output": "It is in EXCLUDE mode: third_party_settings.link_field_autocomplete_filter.negate is 1 (true) and allowed_content_types targets 'article', so Article is excluded and all other content types are suggested.",
+      "setup": "agent-module-documentation/evaluation/verify/link_field_autocomplete_filter-read-mode-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/link_field_autocomplete_filter-read-mode-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "link_field_autocomplete_filter-set-include",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, the content type 'lfaf_h1' has a Link field 'field_lfaf_h1'. Using link_field_autocomplete_filter, configure that field so its internal-link autocomplete only suggests the 'page' (Basic page) content type. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/link_field_autocomplete_filter-set-include-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/link_field_autocomplete_filter-set-include-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/link_field_autocomplete_filter-set-include-cleanup.sh",
+      "expected_output": "On field.field.node.lfaf_h1.field_lfaf_h1 set third_party_settings.link_field_autocomplete_filter.negate = false (include) and allowed_content_types to include 'page' (e.g. {page: page}). Verify checks the allowed set contains 'page' and negate is falsy."
+    },
+    {
+      "id": "link_field_autocomplete_filter-set-exclude",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, the content type 'lfaf_h2' has a Link field 'field_lfaf_h2'. Using link_field_autocomplete_filter, configure that field to EXCLUDE the 'article' content type from its internal-link autocomplete (so every other type is still suggested). Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/link_field_autocomplete_filter-set-exclude-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/link_field_autocomplete_filter-set-exclude-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/link_field_autocomplete_filter-set-exclude-cleanup.sh",
+      "expected_output": "On field.field.node.lfaf_h2.field_lfaf_h2 set third_party_settings.link_field_autocomplete_filter.negate = true (exclude) and allowed_content_types to include 'article' (e.g. {article: article}). Verify checks the targeted set contains 'article' and negate is truthy."
+    }
+  ]
+}

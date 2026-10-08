@@ -1,0 +1,99 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "entity_reference_display",
+  "version": "2.0.x",
+  "note": "Entity Reference Display has a thin surface: no settings form, no configure route (configure=null), no permissions, no Drush, no plugin managers. It provides one field type `entity_reference_display` (label 'Display mode', storage = single varchar(255) holding a view-mode machine name, cardinality forced to 1, per-field settings `exclude`/`negate`) and one formatter `entity_reference_display_default` ('Selected display mode'). Medium/hard cases are grounded in real field storage/config entities: introspection reads a known field's type and settings off the live site; execution creates a display-mode field on a content type and verifies the field storage/config type.",
+  "evals": [
+    {
+      "id": "entity_reference_display-what-it-stores",
+      "mode": "recipe",
+      "prompt": "In Drupal, what does the `entity_reference_display` field type from the Entity Reference Display module store as its value, and what is that used for at render time?",
+      "must_contain_any": [
+        "view mode",
+        "display mode",
+        "machine name"
+      ],
+      "must_not_contain": [],
+      "expected_output": "It stores a single view-mode (display mode) machine name string, such as `default`, `teaser` or `full`, in a varchar(255) column. The companion 'Selected display mode' formatter (entity_reference_display_default) reads that value off the host entity and renders the entity reference field's referenced entities with that view mode.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "entity_reference_display-field-type-id",
+      "mode": "recipe",
+      "prompt": "I want an editor to pick which view mode a referenced entity is rendered with. Which field type id do I add to the bundle, and which formatter id do I set on the entity reference field? Also: how many values can the display-mode field hold?",
+      "must_contain_any": [
+        "entity_reference_display",
+        "Display mode",
+        "Selected display mode"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Add a field of type `entity_reference_display` (label 'Display mode'); it holds exactly one value (cardinality is locked to 1). Then set the entity reference field's formatter to `entity_reference_display_default` (label 'Selected display mode').",
+      "difficulty": "easy"
+    },
+    {
+      "id": "entity_reference_display-settings-keys",
+      "mode": "recipe",
+      "prompt": "How do I limit which view modes the Entity Reference Display 'Display mode' field offers to editors? Name the two field-settings keys and what flipping the boolean does.",
+      "must_contain_any": [
+        "exclude",
+        "negate"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The field settings are `exclude` (a list of view-mode machine names to remove from the options) and `negate` (a boolean). With negate FALSE the excluded modes are hidden; set negate TRUE and `exclude` becomes an allow-list — only the listed modes are offered.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "entity_reference_display-probe-type",
+      "mode": "introspection",
+      "prompt": "This Drupal site has a field named `field_erd_probe` on the Blog post (blog_post) content type. What is that field's field type (machine id), and what view mode has it been configured to EXCLUDE from the editor's options? Inspect the live field configuration to answer.",
+      "must_contain_any": [
+        "entity_reference_display",
+        "full"
+      ],
+      "must_not_contain": [],
+      "expected_output": "field_erd_probe is of field type `entity_reference_display` (the Display mode field). Its field settings set `exclude` to ['full'] with `negate` FALSE, so the 'full' view mode is removed from the options offered to editors.",
+      "setup": "agent-module-documentation/evaluation/verify/entity_reference_display-field-settings-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/entity_reference_display-field-settings-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "entity_reference_display-probe-storage",
+      "mode": "introspection",
+      "prompt": "On this site a display-mode field (field_erd_probe) exists on the blog_post bundle. Look at its field STORAGE definition: what database column type/length does it use to store the value, and what is the field's cardinality? Inspect the live configuration.",
+      "must_contain_any": [
+        "varchar",
+        "255",
+        "255)",
+        "cardinality 1",
+        "one value",
+        "single"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The storage has a single `value` column of type varchar length 255 (a string holding one view-mode machine name), and cardinality is 1 (it holds exactly one value; the module locks cardinality to 1).",
+      "setup": "agent-module-documentation/evaluation/verify/entity_reference_display-field-settings-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/entity_reference_display-field-settings-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "entity_reference_display-add-field",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site the Entity Reference Display module is enabled. Add a display-mode field to the Article content type: create a field storage and field instance named `field_display_mode` on node.article whose field type is the module's `entity_reference_display` (label 'Display mode'). Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/entity_reference_display-add-field-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/entity_reference_display-add-field-verify.sh",
+      "expected_output": "A FieldStorageConfig node.field_display_mode of type entity_reference_display exists, and a FieldConfig instance of it is attached to the article bundle. verify checks both the storage field type and the instance type equal 'entity_reference_display'."
+    },
+    {
+      "id": "entity_reference_display-add-field-drush",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "Entity Reference Display is enabled on this site. Using drush (php:eval or config), create the FieldStorageConfig and FieldConfig for a field `field_display_mode` on the Article node bundle with field type `entity_reference_display`, so editors can later pick a view mode for a reference field. Persist it to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/entity_reference_display-add-field-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/entity_reference_display-add-field-verify.sh",
+      "expected_output": "Same verified end state as entity_reference_display-add-field: node.field_display_mode storage of type entity_reference_display plus an article-bundle instance of it. Phrased as a drush-oriented request; both hard cases share one verify."
+    }
+  ]
+}

@@ -1,0 +1,76 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "cacheflush_advanced",
+  "version": "2.0.x",
+  "note": "cacheflush_advanced adds a 'Custom (advanced)' vertical tab (hook_cacheflush_ui_tabs id vertical_tabs_advance) to the CacheFlush preset form for targeted clears: delete a specific cache id from a bin (stored as CacheflushApi::clearBinCache([bin,'delete',cid]) under data['advanced']) and invalidate cache tags (stored as CacheflushApi::clearCacheTags([tags]) under data['cache_tags']). Depends on cacheflush_ui; no permissions/config/Drush. Medium inspects a preset that clears a known tag; hard builds a preset that invalidates the node_list cache tag, verified via SQL on the cacheflush data blob.",
+  "evals": [
+    {
+      "id": "cacheflush_advanced-what",
+      "mode": "recipe",
+      "prompt": "What does the cacheflush_advanced submodule add to CacheFlush presets?",
+      "must_contain_any": [
+        "cache id",
+        "cid",
+        "cache tag",
+        "Custom (advanced)",
+        "clearCacheTags"
+      ],
+      "must_not_contain": [],
+      "expected_output": "It adds a 'Custom (advanced)' tab to the preset form that lets a preset delete specific cache ids from a chosen bin and invalidate specific cache tags (comma-separated), rather than clearing whole bins.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "cacheflush_advanced-cid-storage",
+      "mode": "recipe",
+      "prompt": "How does cacheflush_advanced store a 'delete this cache id from this bin' instruction in a CacheFlush preset?",
+      "must_contain_any": [
+        "clearBinCache",
+        "delete",
+        "cid",
+        "advanced"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Each advanced row is stored in the preset data (data['advanced']['functions']) as a call to CacheflushApi::clearBinCache with params [<bin_service_id>, 'delete', <cid>], i.e. delete that specific cache id from that bin.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "cacheflush_advanced-tags-storage",
+      "mode": "recipe",
+      "prompt": "How does cacheflush_advanced let a preset invalidate cache tags, and how is that stored?",
+      "must_contain_any": [
+        "clearCacheTags",
+        "cache_tags",
+        "invalidateTags",
+        "cache tags"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The 'Cache tags' field (comma-separated) is stored in data['cache_tags']['functions'] as a call to CacheflushApi::clearCacheTags(<tags>), which runs Cache::invalidateTags(explode(',', $tags)) when the preset is cleared.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "cacheflush_advanced-known",
+      "mode": "introspection",
+      "prompt": "On this site there is a CacheFlush preset named cfa_known configured with an advanced cache-tag invalidation. Inspect the preset and state which cache tag it invalidates.",
+      "must_contain_any": [
+        "node_list"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The preset cfa_known's data has a cache_tags function calling CacheflushApi::clearCacheTags('node_list') — it invalidates the node_list cache tag. Read via `drush sqlq \"SELECT data FROM cacheflush WHERE title='cfa_known'\"`.",
+      "setup": "agent-module-documentation/evaluation/verify/cacheflush_advanced-known-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/cacheflush_advanced-known-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "cacheflush_advanced-build-tag",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "Using cacheflush_advanced, create a published CacheFlush preset named 'cfa_task' that, when run, invalidates the 'node_list' cache tag. Save it to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/cacheflush_advanced-tags-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/cacheflush_advanced-tags-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/cacheflush_advanced-tags-cleanup.sh",
+      "expected_output": "A published `cacheflush` preset 'cfa_task' whose data contains a cache_tags function CacheflushApi::clearCacheTags('node_list') (via the advanced tab's Cache tags field or the entity API)."
+    }
+  ]
+}

@@ -1,0 +1,65 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "exif_orientation",
+  "version": "1.5.x",
+  "note": "EXIF Orientation is a tiny procedural module: two core hooks plus a rotate helper, no config/permissions/plugins. Cases are `recipe` (response-graded) probing documented facts (automatic vs image-effect, which EXIF values map to which rotation, requirements) an agent would otherwise read source to answer; no site mutation.",
+  "evals": [
+    {
+      "id": "exif-orientation-automatic-not-effect",
+      "mode": "recipe",
+      "prompt": "On a Drupal 11 site I installed the exif_orientation module. Do I need to add an image effect to an image style, or does it rotate uploaded images automatically? How does it hook in?",
+      "must_contain_any": ["automatic", "automatically", "hook_file_presave", "file_presave"],
+      "must_not_contain": ["image effect must be added", "add the image effect to the style"],
+      "expected_output": "It is automatic — no image effect needed. It implements hook_file_presave() and rotates the stored file on save/upload; there is no config UI."
+    },
+    {
+      "id": "exif-orientation-value-mapping",
+      "mode": "recipe",
+      "prompt": "In the exif_orientation module, which EXIF Orientation tag values are corrected and how many degrees does each rotate? What about mirrored/flipped values?",
+      "must_contain_any": ["3", "6", "8"],
+      "must_not_contain": [],
+      "expected_output": "Orientation 3 -> 180 degrees, 6 -> 90 degrees, 8 -> 270 degrees. Value 1/missing/other is left alone; odd/mirrored (flipped) values are NOT corrected."
+    },
+    {
+      "id": "exif-orientation-formats",
+      "mode": "recipe",
+      "prompt": "Which image MIME types does the exif_orientation module rotate, and what PHP requirement must be met for it to work?",
+      "must_contain_any": ["image/jpeg", "image/png", "exif_read_data", "exif"],
+      "must_not_contain": [],
+      "expected_output": "Only image/jpeg and image/png are processed, and PHP's EXIF extension (exif_read_data()) must be available or the module no-ops."
+    },
+    {
+      "id": "exif-orientation-why-phone-photos",
+      "mode": "recipe",
+      "prompt": "Why do phone photos (e.g. iPhone) show up sideways in Drupal, and how does exif_orientation fix it at upload?",
+      "must_contain_any": ["EXIF", "Orientation", "rotate"],
+      "must_not_contain": [],
+      "expected_output": "Phones save images in landscape and record display rotation in the EXIF Orientation tag, which browsers/toolkits ignore. exif_orientation reads that tag on file presave and physically rotates the stored file so it is upright."
+    },
+    {
+      "id": "exif-orientation-validator-order",
+      "mode": "recipe",
+      "prompt": "In exif_orientation, why does the module insert its own upload validator before file_validate_image_resolution on image widgets?",
+      "must_contain_any": ["exif_orientation_validate_image_rotation", "before", "strip", "resize"],
+      "must_not_contain": [],
+      "expected_output": "file_validate_image_resolution may resize the image and lose the EXIF data; exif_orientation prepends exif_orientation_validate_image_rotation so rotation happens before any resize strips the EXIF."
+    },
+    {
+      "id": "exif-orientation-no-config",
+      "mode": "recipe",
+      "prompt": "What configuration, settings form, or permissions does the exif_orientation module provide, and how do I set it up?",
+      "must_contain_any": ["no config", "no configuration", "no settings", "just", "drush en exif_orientation"],
+      "must_not_contain": ["administer exif", "settings form at /admin"],
+      "expected_output": "None — no config UI, no settings, no permissions, no image effect. Setup is simply enabling the module (drush en exif_orientation -y)."
+    },
+    {
+      "id": "exif-orientation-manual-trigger",
+      "mode": "recipe",
+      "prompt": "In PHP on Drupal 11, how can I make exif_orientation re-check and rotate an existing image file entity? Is there a public service?",
+      "must_contain_any": ["save()", "hook_file_presave", "File::load"],
+      "must_not_contain": [],
+      "expected_output": "There is no public service; saving the file entity (File::load($fid)->save()) fires hook_file_presave() which runs the rotation. The _exif_orientation_rotate() helper is private."
+    }
+  ]
+}

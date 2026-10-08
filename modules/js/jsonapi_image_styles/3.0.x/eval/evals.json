@@ -1,0 +1,80 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "jsonapi_image_styles",
+  "version": "3.0.x",
+  "note": "JSON:API Image Styles adds a computed base field 'image_style_uri' to File entities and an admin form at /admin/config/services/jsonapi/image_styles that stores an allow-list in jsonapi_image_styles.settings key 'image_styles'. Empty/all-unchecked allow-list exposes ALL image styles; a non-empty selection exposes only those. Selected = value equals the style id (truthy); unselected = '0'. All medium/hard cases are grounded in that config: introspection reads which styles the live config exposes; execution sets the allow-list and verify checks array_filter(image_styles) keys exactly. No permission of its own (settings form gated by core 'Administer image styles'); no Drush; no config schema; no public plugin types.",
+  "evals": [
+    {
+      "id": "jis-field-name",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "In a decoupled Drupal setup I enabled the JSON:API Image Styles module. Which computed field does it add, to which entity type, and where do the image-style derivative URLs show up in a JSON:API response?",
+      "must_contain_any": ["image_style_uri", "file"],
+      "must_not_contain": [],
+      "expected_output": "It adds a computed base field 'image_style_uri' to the File entity type. JSON:API serializes it into each file--file resource's attributes as a map of image_style_machine_name => absolute derivative URL (built with ImageStyle::buildUrl). Include the file (e.g. ?include=field_image) and read image_style_uri off the file resource."
+    },
+    {
+      "id": "jis-config-key",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "Using the JSON:API Image Styles module, how do I limit which image styles are exposed to JSON:API, which config object/key stores that, and what happens if I select none?",
+      "must_contain_any": ["jsonapi_image_styles.settings", "image_styles"],
+      "must_not_contain": [],
+      "expected_output": "Go to /admin/config/services/jsonapi/image_styles (Configuration > Web Services > JSON:API Image Styles) and check the styles to expose. The selection is stored in jsonapi_image_styles.settings under the 'image_styles' key. If none are selected (empty allow-list), ALL defined image styles are exposed - that is the default behaviour."
+    },
+    {
+      "id": "jis-access-route",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "For the JSON:API Image Styles module, what is the settings page path and which permission controls access to it? Does the module define its own permission?",
+      "must_contain_any": ["Administer image styles", "administer image styles", "/admin/config/services/jsonapi/image_styles"],
+      "must_not_contain": [],
+      "expected_output": "The settings form is at /admin/config/services/jsonapi/image_styles (route jsonapi_image_styles.settings). It is gated by the core 'Administer image styles' permission; the module defines no permission of its own."
+    },
+    {
+      "id": "jis-exposed-styles",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "This site restricts which image styles JSON:API Image Styles exposes. Inspect the live configuration and name the image styles that are currently exposed to JSON:API.",
+      "must_contain_any": ["thumbnail", "large"],
+      "must_not_contain": [],
+      "expected_output": "Two styles are exposed: thumbnail and large. jsonapi_image_styles.settings.image_styles selects thumbnail and large (value == id), while medium and wide are '0' (not exposed).",
+      "setup": "agent-module-documentation/evaluation/verify/jsonapi_image_styles-exposed-styles-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/jsonapi_image_styles-exposed-styles-cleanup.sh"
+    },
+    {
+      "id": "jis-is-medium-exposed",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "On this site, is the 'medium' image style exposed to JSON:API through JSON:API Image Styles? Inspect the live configuration and explain which styles are exposed.",
+      "must_contain_any": ["wide", "not"],
+      "must_not_contain": [],
+      "expected_output": "No, 'medium' is not exposed. jsonapi_image_styles.settings.image_styles has only 'wide' selected (truthy); thumbnail, large and medium are '0', so only the 'wide' style is exposed.",
+      "setup": "agent-module-documentation/evaluation/verify/jsonapi_image_styles-is-medium-exposed-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/jsonapi_image_styles-is-medium-exposed-cleanup.sh"
+    },
+    {
+      "id": "jis-expose-thumbnail",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "Configure the JSON:API Image Styles module on this site so that ONLY the 'thumbnail' image style is exposed to JSON:API (no other styles). Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/jsonapi_image_styles-expose-thumbnail-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/jsonapi_image_styles-expose-thumbnail-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/jsonapi_image_styles-expose-thumbnail-cleanup.sh",
+      "expected_output": "Set jsonapi_image_styles.settings.image_styles so that only 'thumbnail' is truthy (e.g. ['thumbnail' => 'thumbnail']) and save. array_filter() of the value must be exactly ['thumbnail']."
+    },
+    {
+      "id": "jis-expose-two",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, configure JSON:API Image Styles to expose exactly the 'thumbnail' and 'large' image styles to JSON:API and no others. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/jsonapi_image_styles-expose-two-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/jsonapi_image_styles-expose-two-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/jsonapi_image_styles-expose-two-cleanup.sh",
+      "expected_output": "Set jsonapi_image_styles.settings.image_styles so that thumbnail and large are truthy and every other style is falsy/absent, then save. array_filter() keys must equal {large, thumbnail}."
+    }
+  ]
+}

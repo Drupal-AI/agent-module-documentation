@@ -1,0 +1,80 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "mask",
+  "version": "2.1.x",
+  "note": "Mask Field applies a jQuery-Mask input mask two ways: (1) per-field-widget settings stored as third_party_settings.mask on a widget component in an entity_form_display (supported widgets string_textfield and telephone_default, declared in mask.mask_field_widgets.yml, a YAML mask_field_widget plugin type); options value/reverse/clearifnotmatch/selectonfocus. (2) a Form API #mask property on textfield/tel elements (hook_element_info_alter + ElementHelper). The mask 'alphabet' is the mask.settings 'translation' table (shipped locked symbols 0/9/#=digit, A=letter-or-number, S=letter) plus use_cdn/plugin_path; configure route mask.settings at admin/config/content/mask, permission 'administer mask module'. Masking is client-side only. Field-based cases use a namespaced content type mask_ct (this minimal site has no 'article' type). Introspection reads a known field mask value and a custom translation symbol; execution sets a field's mask value and adds a custom pattern symbol to mask.settings.",
+  "evals": [
+    {
+      "id": "mask-where-configured",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "On Drupal 11 with the mask module, how do I make a text field only accept a phone-number format like (00) 0000-0000, and where is that mask stored? Which field widgets support this out of the box?",
+      "must_contain_any": ["form display", "Manage form display", "third_party_settings", "third party setting", "string_textfield", "telephone_default"],
+      "must_not_contain": [],
+      "expected_output": "On the bundle's Manage form display, open the Text field (string_textfield) or Telephone (telephone_default) widget cog and enter the Mask in 'Mask settings'. It is stored as third_party_settings.mask (value/reverse/clearifnotmatch/selectonfocus) on that field's component in core.entity_form_display.<entity>.<bundle>.<mode>."
+    },
+    {
+      "id": "mask-form-api-property",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "I am building a custom Drupal form and want to mask an input without configuring a field. What Form API property does the mask module add, and which element types support it?",
+      "must_contain_any": ["#mask", "textfield", "tel"],
+      "must_not_contain": [],
+      "expected_output": "Set the '#mask' render property (['value' => '(00) 0000-0000', ...]) on a 'textfield' or 'tel' element. hook_element_info_alter() / ElementHelper add #mask to those types and render data-mask-* attributes that js/mask.js applies."
+    },
+    {
+      "id": "mask-add-widget-support",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "The mask module only offers its 'Mask settings' on a couple of field widgets. Which widgets does it support by default, and how can my own module make masking available on a different widget?",
+      "must_contain_any": ["mask_field_widgets", "string_textfield", "telephone_default"],
+      "must_not_contain": [],
+      "expected_output": "Out of the box it supports string_textfield and telephone_default (mask.mask_field_widgets.yml). To add another widget, ship a <module>.mask_field_widgets.yml file listing that widget's plugin id (YAML mask_field_widget plugin type, plugin.manager.mask_field_widget)."
+    },
+    {
+      "id": "mask-known-field",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "On this site, the content type 'mask_ct' has a text field field_mask_known whose widget has a Mask configured with the mask module. Inspect the live default form display and tell me the exact mask string that is configured.",
+      "must_contain_any": ["(00) 0000-0000"],
+      "must_not_contain": [],
+      "expected_output": "(00) 0000-0000 - in core.entity_form_display.node.mask_ct.default the field_mask_known (string_textfield) component has third_party_settings.mask.value = '(00) 0000-0000'.",
+      "setup": "agent-module-documentation/evaluation/verify/mask-known-field-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/mask-known-field-cleanup.sh"
+    },
+    {
+      "id": "mask-custom-symbol",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "Someone added a custom mask pattern symbol to this site's Mask Field settings. Inspect the live mask configuration and tell me which symbol character was added and the regular-expression pattern it maps to.",
+      "must_contain_any": ["[a-z]"],
+      "must_not_contain": [],
+      "expected_output": "The symbol 'Z' was added with pattern '[a-z]' (a lowercase letter): mask.settings translation now has a Z entry alongside the shipped locked symbols 0/9/#/A/S.",
+      "setup": "agent-module-documentation/evaluation/verify/mask-custom-symbol-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/mask-custom-symbol-cleanup.sh"
+    },
+    {
+      "id": "mask-apply-field",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this site, the content type 'mask_ct' has a text field field_mask_task using the Text field (string_textfield) widget. Using the mask module, configure the default form display so this field's widget applies the input mask 00/00/0000 (a dd/mm/yyyy date). Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/mask-apply-field-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/mask-apply-field-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/mask-apply-field-cleanup.sh",
+      "expected_output": "In core.entity_form_display.node.mask_ct.default the field_mask_task component carries third_party_settings.mask.value = '00/00/0000' (set via the Mask settings on Manage form display, or by editing the component's third_party_settings and saving)."
+    },
+    {
+      "id": "mask-add-symbol",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "Using the mask module's settings, add a new custom mask pattern symbol 'Q' that matches a single uppercase letter (regex [A-Z]) to this site, so it can be used inside field masks. Apply the change to the live configuration.",
+      "reset": "agent-module-documentation/evaluation/verify/mask-add-symbol-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/mask-add-symbol-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/mask-add-symbol-cleanup.sh",
+      "expected_output": "mask.settings 'translation' gains a 'Q' entry with pattern '[A-Z]' (added via the Patterns table on admin/config/content/mask, or by editing the mask.settings translation config)."
+    }
+  ]
+}

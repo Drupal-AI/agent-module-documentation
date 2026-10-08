@@ -1,0 +1,58 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "search_api_common_field",
+  "version": "1.0.x",
+  "note": "Search API common fields provides ONE Search API processor plugin 'common_field' (locked, hidden) plus a CommonFieldProperty. It has no settings form (configure=null), no permissions, no Drush, no config schema. A 'common field' merges an identically-named property across multiple datasources of one index; all state lives in the search_api.index.<id> config entity: processor_settings.common_field plus a field with datasource_id=null, property_path='common_field', and configuration.property_name=<shared property>. Medium/hard cases are grounded purely in index CONFIG (no live Solr/DB server, index status=false): introspection reads the property_name of a known common field; execution adds a common field to a two-datasource index and verifies it in the index config. NOTE: because common_field is a locked processor it can report as enabled on an index even before a common field exists, so verify gates on the presence of a field whose property_path is 'common_field' with a set property_name.",
+  "evals": [
+    {
+      "id": "search_api_common_field-what-processor",
+      "mode": "recipe",
+      "prompt": "In Drupal Search API, what does the search_api_common_field module add, and what problem does its 'Common field' solve on an index with more than one datasource?",
+      "must_contain_any": ["common_field", "processor", "datasource", "merge", "same name"],
+      "must_not_contain": [],
+      "expected_output": "It adds a Search API processor 'common_field' (Common fields) that merges identically-named properties from different datasources into a single index field, so items from any datasource populate the same field for indexing, filtering, sorting, faceting and display - like Aggregated Fields but across datasources.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "search_api_common_field-how-add",
+      "mode": "recipe",
+      "prompt": "How do I add a common field to a Search API index with search_api_common_field, and which properties can I choose from?",
+      "must_contain_any": ["Add fields", "Common field", "two", "multiple datasources", "more than one datasource"],
+      "must_not_contain": [],
+      "expected_output": "On the index's Fields tab click 'Add fields' and pick 'Common field', then choose the source property. The configuration form only offers property paths that exist on more than one datasource (labelled with the datasources they are used in). Adding it enables the locked common_field processor automatically.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "search_api_common_field-where-stored",
+      "mode": "recipe",
+      "prompt": "Where in Drupal configuration is a search_api_common_field 'Common field' stored, and which setting records the shared source property?",
+      "must_contain_any": ["search_api.index", "field_settings", "property_name", "common_field", "property_path"],
+      "must_not_contain": [],
+      "expected_output": "In the index config entity search_api.index.<id>: the field lives under field_settings with datasource_id: null, property_path: common_field, and configuration.property_name set to the shared source property; processor_settings.common_field records the enabled processor.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "search_api_common_field-known-field",
+      "mode": "introspection",
+      "prompt": "This Drupal site has a Search API index named scf_known with a common field created by search_api_common_field. Inspect the live index configuration and state which shared source property (property_name) that common field merges.",
+      "must_contain_any": ["langcode"],
+      "must_not_contain": [],
+      "expected_output": "The common field on index scf_known has configuration.property_name = langcode (a datasource-independent field with property_path 'common_field').",
+      "setup": "agent-module-documentation/evaluation/verify/search_api_common_field-known-field-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/search_api_common_field-known-field-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "search_api_common_field-add-field",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site there is a Search API index scf_task with two datasources (entity:node and entity:user) and no common field yet. Using search_api_common_field, add a common field to scf_task that merges the shared 'langcode' property across both datasources, and save it to the live index configuration.",
+      "reset": "agent-module-documentation/evaluation/verify/search_api_common_field-add-field-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/search_api_common_field-add-field-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/search_api_common_field-add-field-cleanup.sh",
+      "expected_output": "Index scf_task gains the common_field processor and a field with datasource_id null, property_path 'common_field', and configuration.property_name 'langcode'. Do it with the plugin/fields helpers (createProcessorPlugin + fields_helper createField, addProcessor/addField, save) or via the Fields > Add fields > Common field UI."
+    }
+  ]
+}

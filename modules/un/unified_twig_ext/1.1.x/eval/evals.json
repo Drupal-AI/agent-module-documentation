@@ -1,0 +1,99 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "unified_twig_ext",
+  "version": "1.1.x",
+  "note": "Unified Twig Extensions auto-loads PHP-defined Twig functions/filters/tags from the DEFAULT theme's `<theme>/*/_twig-components/{functions,filters,tags}/` folders (glob is one level below the theme). functions/*.php must set $function (a \\Twig\\TwigFunction); filters/*.php must set $filter (a \\Twig\\TwigFilter); tags/NAME.tag.php must define class Project_NAME_TokenParser. Files starting with '.', '_' or 'pl_' are skipped. Only service is newcity_twig.twig_extension (class ExtensionAdapter, tag twig.extension). No config, permissions, Drush, plugins, or configure route. Medium cases stage a namespaced custom theme `ute_twig` with a known function/filter file for the agent to READ (non-invasive: theme not installed/defaulted). Hard cases require the agent to CREATE a working extension file; verify transiently installs ute_twig, makes it default, renders it via Twig, then always restores default=olivero.",
+  "evals": [
+    {
+      "id": "unified_twig_ext-where-it-looks",
+      "mode": "recipe",
+      "prompt": "I enabled the unified_twig_ext module. Where does it look for custom Twig functions/filters/tags to load, and does it scan every theme or just one?",
+      "must_contain_any": [
+        "_twig-components",
+        "default theme",
+        "system.theme"
+      ],
+      "must_not_contain": [],
+      "expected_output": "It scans only the site's DEFAULT theme (system.theme:default): it globs one directory level below the theme for `_twig-components/` folders (e.g. <theme>/source/_twig-components/) and loads PHP files from their functions/, filters/, and tags/ subfolders. Non-default themes are ignored.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "unified_twig_ext-function-convention",
+      "mode": "recipe",
+      "prompt": "Using unified_twig_ext, how do I add a custom Twig function (say `greeting()`) from my theme? What must the PHP file define and where does it go?",
+      "must_contain_any": [
+        "$function",
+        "TwigFunction",
+        "functions",
+        "_twig-components"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Put a PHP file in <default_theme>/*/_twig-components/functions/ (e.g. greeting.function.php) that sets $function = new \\Twig\\TwigFunction('greeting', fn() => 'hello'); then run drush cr. The loader includes the file and registers $function with Twig. (Filters set $filter; tags define class Project_NAME_TokenParser.)",
+      "difficulty": "easy"
+    },
+    {
+      "id": "unified_twig_ext-skip-and-service",
+      "mode": "recipe",
+      "prompt": "In unified_twig_ext, which files in a _twig-components folder are skipped by the loader, and what is the Twig extension service the module registers?",
+      "must_contain_any": [
+        "pl_",
+        "underscore",
+        "_",
+        "newcity_twig.twig_extension",
+        "ExtensionAdapter"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Files whose base name starts with '.', '_' or 'pl_' are skipped. The module registers one service newcity_twig.twig_extension (class Drupal\\unified_twig_ext\\TwigExtension\\ExtensionAdapter) tagged twig.extension, which loads the extensions via ExtensionLoader.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "unified_twig_ext-read-known-function",
+      "mode": "introspection",
+      "prompt": "On this site there is a custom theme named ute_twig that ships a unified_twig_ext-style Twig function file. Inspect that theme's _twig-components folder and tell me the machine name of the Twig function it registers.",
+      "must_contain_any": [
+        "ute_known_fn"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The file web/themes/custom/ute_twig/source/_twig-components/functions/ute_known.function.php sets $function to a \\Twig\\TwigFunction named 'ute_known_fn'.",
+      "setup": "agent-module-documentation/evaluation/verify/unified_twig_ext-known-fn-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/unified_twig_ext-known-fn-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "unified_twig_ext-read-known-filter",
+      "mode": "introspection",
+      "prompt": "The custom theme ute_twig on this site contains a unified_twig_ext Twig filter file. Inspect the theme and state the machine name of the Twig filter it registers.",
+      "must_contain_any": [
+        "ute_known_filter"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The file web/themes/custom/ute_twig/source/_twig-components/filters/ute_known.filter.php sets $filter to a \\Twig\\TwigFilter named 'ute_known_filter'.",
+      "setup": "agent-module-documentation/evaluation/verify/unified_twig_ext-known-filter-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/unified_twig_ext-known-filter-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "unified_twig_ext-add-function",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "The custom theme ute_twig on this site is set up to use unified_twig_ext. Add a Twig function named `ute_greeting` (following unified_twig_ext's file convention) that returns the string 'ute-hello-world', so that a Twig template rendered with the ute_twig theme can call {{ ute_greeting() }}.",
+      "reset": "agent-module-documentation/evaluation/verify/unified_twig_ext-greeting-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/unified_twig_ext-greeting-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/unified_twig_ext-greeting-cleanup.sh",
+      "expected_output": "Create web/themes/custom/ute_twig/source/_twig-components/functions/ute_greeting.function.php setting $function = new \\Twig\\TwigFunction('ute_greeting', fn() => 'ute-hello-world'); (drush cr). Rendering {{ ute_greeting() }} with ute_twig as the default theme then outputs 'ute-hello-world'."
+    },
+    {
+      "id": "unified_twig_ext-add-filter",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "In the ute_twig theme on this site, add a Twig filter named `ute_shout` via unified_twig_ext's file convention. It must upper-case its input and append an exclamation mark, so that {{ 'hi'|ute_shout }} renders 'HI!'.",
+      "reset": "agent-module-documentation/evaluation/verify/unified_twig_ext-shout-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/unified_twig_ext-shout-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/unified_twig_ext-shout-cleanup.sh",
+      "expected_output": "Create web/themes/custom/ute_twig/source/_twig-components/filters/ute_shout.filter.php setting $filter = new \\Twig\\TwigFilter('ute_shout', fn($s) => strtoupper($s).'!'); (drush cr). Rendering {{ 'hi'|ute_shout }} with ute_twig as the default theme then outputs 'HI!'."
+    }
+  ]
+}

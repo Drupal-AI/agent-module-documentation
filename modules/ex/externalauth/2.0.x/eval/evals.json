@@ -1,0 +1,73 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "externalauth",
+  "version": "2.0.x",
+  "note": "externalauth is a low-level developer helper with no configuration UI. All cases are `recipe` (response-graded), probing its two services (ExternalAuth, Authmap), the authmap mapping, events, and permissions grounded in the docs.",
+  "evals": [
+    {
+      "id": "externalauth-login-register-one-call",
+      "mode": "recipe",
+      "prompt": "In a custom Drupal 11 SSO module I have already verified an external identity (authname + provider). I want a single call that logs the user in if they are already mapped, and otherwise registers a new Drupal user and then logs them in. Which ExternalAuth service method do I call, and what service do I inject? Show the call.",
+      "must_contain_any": ["loginRegister", "externalauth.externalauth"],
+      "must_not_contain": [],
+      "expected_output": "Inject the externalauth.externalauth service (ExternalAuthInterface) and call $externalAuth->loginRegister($authname, $provider, $account_data). It logs in if mapped, otherwise registers then logs in."
+    },
+    {
+      "id": "externalauth-service-methods",
+      "mode": "recipe",
+      "prompt": "On this Drupal site, which service implements the high-level external-auth flow (load / login / register), and what are the two core methods for logging in an already-mapped user versus creating a brand-new mapped Drupal user? Name the service and the methods.",
+      "must_contain_any": ["login", "register", "ExternalAuthInterface", "externalauth.externalauth"],
+      "must_not_contain": [],
+      "expected_output": "The externalauth.externalauth service (ExternalAuthInterface): login($authname, $provider) logs in the mapped user; register($authname, $provider, $account_data) creates a new Drupal user for the external identity and stores the mapping."
+    },
+    {
+      "id": "externalauth-getuid-reverse-lookup",
+      "mode": "recipe",
+      "prompt": "In PHP on a Drupal 11 site, I have an external authname and a provider string and I need to find the Drupal user id that they are mapped to (a reverse lookup). Which service and method do I use?",
+      "must_contain_any": ["getUid", "externalauth.authmap", "AuthmapInterface"],
+      "must_not_contain": [],
+      "expected_output": "The externalauth.authmap service (AuthmapInterface)->getUid($authname, $provider) returns the mapped Drupal uid."
+    },
+    {
+      "id": "externalauth-save-mapping",
+      "mode": "recipe",
+      "prompt": "I resolved a Drupal user account myself and now I want to record, in the authmap, that this account belongs to a given external authname under my provider 'my_sso', optionally storing extra provider data. Which authmap method stores this mapping, and what arguments does it take?",
+      "must_contain_any": ["save", "Authmap", "externalauth.authmap"],
+      "must_not_contain": [],
+      "expected_output": "The externalauth.authmap service: $authmap->save($account, $provider, $authname, $data) stores the mapping (with optional $data) between the Drupal account and the external identifier."
+    },
+    {
+      "id": "externalauth-link-existing-account",
+      "mode": "recipe",
+      "prompt": "A user is already logged into their existing Drupal account and now authenticates with an external provider. I want to attach that external identity to their existing account rather than creating a new one. Which ExternalAuth method does that?",
+      "must_contain_any": ["linkExistingAccount"],
+      "must_not_contain": [],
+      "expected_output": "$externalAuth->linkExistingAccount($authname, $provider, $account) attaches an external identity to an already-existing Drupal account."
+    },
+    {
+      "id": "externalauth-react-to-register-event",
+      "mode": "recipe",
+      "prompt": "When externalauth registers a brand-new user after external authentication, I want to add roles to that account. Which event do I subscribe to, and where are its constants defined? Show the getSubscribedEvents entry.",
+      "must_contain_any": ["ExternalAuthEvents::REGISTER", "externalauth.register", "ExternalAuthRegisterEvent"],
+      "must_not_contain": [],
+      "expected_output": "Subscribe to ExternalAuthEvents::REGISTER (event name externalauth.register, object ExternalAuthRegisterEvent) via a normal EventSubscriberInterface; constants live in Drupal\\externalauth\\Event\\ExternalAuthEvents."
+    },
+    {
+      "id": "externalauth-alter-authmap-event",
+      "mode": "recipe",
+      "prompt": "I need to alter the authname or the data that externalauth is about to store in the authmap, before it is saved. Which event fires at that point, and what event object is passed?",
+      "must_contain_any": ["AUTHMAP_ALTER", "externalauth.authmap_alter", "ExternalAuthAuthmapAlterEvent"],
+      "must_not_contain": [],
+      "expected_output": "ExternalAuthEvents::AUTHMAP_ALTER (externalauth.authmap_alter), passing an ExternalAuthAuthmapAlterEvent, fires before authmap data is stored so you can alter the authname/data."
+    },
+    {
+      "id": "externalauth-permissions",
+      "mode": "recipe",
+      "prompt": "Which permissions does the externalauth module provide for administering the stored authmap mapping data (viewing the People -> Authmap listing and deleting entries)?",
+      "must_contain_any": ["view authmap", "delete authmap"],
+      "must_not_contain": [],
+      "expected_output": "'view authmap' gates viewing the People -> Authmap listing; 'delete authmap' gates deleting external-auth entries."
+    }
+  ]
+}

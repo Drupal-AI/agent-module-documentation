@@ -1,0 +1,102 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "block_access",
+  "version": "1.2.x",
+  "note": "Block Access has no config entity, no settings form, no configure route (configure=null), no Drush and no plugins. Its only surface is permissions generated dynamically per block_content type by \\Drupal\\block_access\\Permissions::get (permission_callbacks), plus a route subscriber that swaps block_content.add_form to the _block_content_access_create check (allow if 'administer blocks' OR 'create <type> block_content'). The active, non-deprecated permissions are 'update own <type> block_content' and 'delete own <type> block_content'; the create/update any/delete any variants are deprecated in 8.x-1.2 and removed in 2.0.0. Medium/hard cases are grounded in real user.role config and the dynamic per-type permission generation (the default 'basic' block content type exists on this site).",
+  "evals": [
+    {
+      "id": "block_access-perms-own",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "On a Drupal 11 site with the contrib module block_access enabled, I want an editor role to be able to edit and delete only the content blocks (block_content) it created, WITHOUT giving it the site-wide 'Administer blocks' permission. Which permissions provided by block_access should I grant for the 'basic' block content type?",
+      "must_contain_any": [
+        "update own basic block_content",
+        "delete own basic block_content",
+        "own basic block_content"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Grant 'update own basic block_content' and 'delete own basic block_content'. block_access generates these per block_content type via Permissions::get(); they scope editing/deleting to blocks the user authored, so you do not need 'administer blocks'."
+    },
+    {
+      "id": "block_access-perms-deprecated",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "In block_access 8.x-1.2, which of its permissions are deprecated and what should I use instead? Name at least one deprecated permission and its core replacement.",
+      "must_contain_any": [
+        "create",
+        "update any",
+        "delete any",
+        "block content",
+        "core",
+        "removed"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The 'create <type> block_content', 'update any <type> block_content' and 'delete any <type> block_content' permissions are deprecated in 8.x-1.2 and removed in 2.0.0. Use core Block Content's own permissions instead: 'create <type> block content', 'edit any <type> block content', 'delete any <type> block content' (note 'block content' with a space, not 'block_content'). The 'update own' / 'delete own' permissions remain active."
+    },
+    {
+      "id": "block_access-add-access",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "How does block_access change access to the 'Add content block' form (route block_content.add_form), and what determines whether a user may create a content block of a given type?",
+      "must_contain_any": [
+        "_block_content_access_create",
+        "administer blocks",
+        "create",
+        "route subscriber",
+        "OR"
+      ],
+      "must_not_contain": [],
+      "expected_output": "A route subscriber (block_access.route_subscriber) removes the default '_permission: administer blocks' requirement on block_content.add_form and replaces it with the custom access check '_block_content_access_create'. CreateBlockContentTypeCheck then allows access if the user has 'administer blocks' OR 'create <type> block_content' (checked with OR)."
+    },
+    {
+      "id": "block_access-role-perm",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "On this Drupal site there is a user role with machine name 'ba_known_editor'. Inspect the live role configuration and state which block_access permission (for the 'basic' block content type) it has been granted.",
+      "must_contain_any": [
+        "update own basic block_content"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The ba_known_editor role has the 'update own basic block_content' permission granted (visible in user.role.ba_known_editor config / via drush role:perm).",
+      "setup": "agent-module-documentation/evaluation/verify/block_access-role-perm-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/block_access-role-perm-cleanup.sh"
+    },
+    {
+      "id": "block_access-type-perms",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "This site has a block content type with machine name 'ba_promo'. block_access generates per-type permissions dynamically. Inspect the live permission list and give one of the OWN-scoped block_access permissions that exists for the ba_promo block content type.",
+      "must_contain_any": [
+        "update own ba_promo block_content",
+        "delete own ba_promo block_content"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Because Permissions::get() iterates over every block_content type, the ba_promo type yields 'update own ba_promo block_content' and 'delete own ba_promo block_content' (plus deprecated create/any variants). These appear in the permission list once the ba_promo block content type exists.",
+      "setup": "agent-module-documentation/evaluation/verify/block_access-type-perms-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/block_access-type-perms-cleanup.sh"
+    },
+    {
+      "id": "block_access-grant-edit-own",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "This site has a user role 'ba_edit_role' that currently has no block permissions. Using block_access, grant that role the ability to edit ONLY the 'basic' content blocks its members authored (not all blocks, and no 'administer blocks'). Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/block_access-grant-edit-own-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/block_access-grant-edit-own-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/block_access-grant-edit-own-cleanup.sh",
+      "expected_output": "Grant 'update own basic block_content' to the ba_edit_role role (e.g. drush role:perm:add ba_edit_role 'update own basic block_content', or add it to user.role.ba_edit_role permissions). The role must NOT be given 'administer blocks'."
+    },
+    {
+      "id": "block_access-grant-delete-own",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "site-owner",
+      "prompt": "I have a role called 'ba_delete_role' on my site. I want people in that role to be able to delete the reusable content blocks they created themselves, but nothing else. Set that up using the block_access module's permissions for the 'basic' block type.",
+      "reset": "agent-module-documentation/evaluation/verify/block_access-grant-delete-own-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/block_access-grant-delete-own-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/block_access-grant-delete-own-cleanup.sh",
+      "expected_output": "Grant 'delete own basic block_content' to the ba_delete_role role. The role must NOT receive 'administer blocks'."
+    }
+  ]
+}

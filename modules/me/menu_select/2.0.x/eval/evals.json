@@ -1,0 +1,98 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "menu_select",
+  "version": "2.0.x",
+  "note": "Menu Select replaces the core parent-item select by decorating the menu.parent_form_selector service and rendering a custom menu_select_tree form element. Its only config is menu_select.settings:search_enabled (boolean, default true) editable at /admin/config/content/menu_select, and its only permission is 'use menu select search' (restrict access: true). It has no configure route in info.yml (data.json configure=null) and defines no plugin types. Medium cases read back a toggled search_enabled and a role grant; hard cases set the config off and create a role with the permission, both verified against live state.",
+  "evals": [
+    {
+      "id": "menu_select-search-toggle",
+      "mode": "recipe",
+      "prompt": "On a Drupal site using the menu_select module, which configuration object and key turn the parent-menu-link search box on or off, and at what admin path is the settings form?",
+      "must_contain_any": [
+        "search_enabled",
+        "menu_select.settings",
+        "/admin/config/content/menu_select"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The boolean menu_select.settings:search_enabled (default true) toggles the autocomplete search box; edit it at /admin/config/content/menu_select (route menu_select.menu_select_config_form) or via `drush config:set menu_select.settings search_enabled 0`.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "menu_select-permission",
+      "mode": "recipe",
+      "prompt": "Which permission does the menu_select module define to gate its parent-link search feature, and is it a restricted permission?",
+      "must_contain_any": [
+        "use menu select search"
+      ],
+      "must_not_contain": [],
+      "expected_output": "menu_select defines the permission 'use menu select search' (machine name 'use menu select search'). It is marked restrict access: true, and granting it also lets the user view links across all menus via the autocomplete. The search textfield only renders when the user has this permission AND search_enabled is true.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "menu_select-how-replaced",
+      "mode": "recipe",
+      "prompt": "How does the menu_select module manage to replace the core 'Parent item' select list on every menu-link and node menu-settings form without patching core?",
+      "must_contain_any": [
+        "menu.parent_form_selector",
+        "decorat",
+        "menu_select_tree",
+        "MenuParentFormSelector"
+      ],
+      "must_not_contain": [],
+      "expected_output": "It decorates the core menu.parent_form_selector service (MenuSelectParentFormSelector extends MenuParentFormSelector). Its parentSelectElement() calls the inner service then swaps the element's #type to the custom menu_select_tree render element, so every place core asks for a parent picker gets the expandable tree/search widget instead.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "menu_select-live-search-value",
+      "mode": "introspection",
+      "prompt": "On this Drupal site, is the menu_select parent-link search box currently enabled or disabled? Inspect the live configuration and state the value of the relevant setting.",
+      "must_contain_any": [
+        "false",
+        "disabled",
+        "off",
+        "not enabled"
+      ],
+      "must_not_contain": [],
+      "expected_output": "It is disabled: menu_select.settings:search_enabled is false on the live site (drush config:get menu_select.settings search_enabled).",
+      "setup": "agent-module-documentation/evaluation/verify/menu_select-search-value-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/menu_select-search-value-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "menu_select-live-search-role",
+      "mode": "introspection",
+      "prompt": "On this site, exactly one custom role has been granted the menu_select 'use menu select search' permission. Inspect the live role configuration and give the machine name of that role.",
+      "must_contain_any": [
+        "menu_select_searcher"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The role machine name is menu_select_searcher; it holds the 'use menu select search' permission (drush role:list, or inspect user.role.menu_select_searcher).",
+      "setup": "agent-module-documentation/evaluation/verify/menu_select-search-role-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/menu_select-search-role-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "menu_select-disable-search",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, disable the menu_select parent-link autocomplete search feature site-wide (leave only the tree widget). Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/menu_select-disable-search-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/menu_select-disable-search-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/menu_select-disable-search-cleanup.sh",
+      "expected_output": "Set menu_select.settings:search_enabled to false (drush config:set menu_select.settings search_enabled 0 -y, or untick 'Enable searching for a menu link' at /admin/config/content/menu_select). Verified when the live config value is boolean false."
+    },
+    {
+      "id": "menu_select-grant-search-role",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, create a new role with machine name menu_select_navigator and grant it the menu_select 'use menu select search' permission. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/menu_select-grant-role-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/menu_select-grant-role-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/menu_select-grant-role-cleanup.sh",
+      "expected_output": "Create role menu_select_navigator (drush role:create menu_select_navigator) and add the permission (drush role:perm:add menu_select_navigator 'use menu select search'). Verified when the role exists and hasPermission('use menu select search') is true."
+    }
+  ]
+}

@@ -1,0 +1,96 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "jsonapi_hypermedia",
+  "version": "1.10.x",
+  "note": "JSON:API Hypermedia is a developer/API module with NO config UI (configure=null), no permissions, no routes, no Drush. It adds a plugin type (@JsonapiHypermediaLinkProvider, namespace Plugin/jsonapi_hypermedia/LinkProvider, manager service jsonapi_hypermedia_provider.manager) and decorates the core JSON:API link-collection normalizer to inject access-aware links into JSON:API 'links' objects. Out of the box NO link providers are installed, so the provider manager has 0 definitions. Medium/hard cases are therefore grounded in the plugin system: the medium fixture enables a tiny custom module (jsonapi_hypermedia_ping) that registers a LinkProvider with link_key 'jsonapi_hypermedia_eval_ping', which the agent discovers via the provider manager; the hard case asks the agent to code a LinkProvider module (jsonapi_hypermedia_task, link_key 'task_action' on the entrypoint) verified by inspecting the manager's discovered definitions. Fixture modules are namespaced under web/modules/custom and are ALWAYS uninstalled (drush pmu) before their directory is removed.",
+  "evals": [
+    {
+      "id": "jsonapi_hypermedia-plugin-type",
+      "mode": "recipe",
+      "prompt": "In the Drupal module jsonapi_hypermedia, what mechanism do I use to add a custom link to JSON:API responses? Name the plugin annotation and the base class, and where the plugin class must live.",
+      "must_contain_any": [
+        "JsonapiHypermediaLinkProvider",
+        "LinkProviderBase",
+        "Plugin/jsonapi_hypermedia/LinkProvider"
+      ],
+      "must_not_contain": [],
+      "expected_output": "You write a LinkProvider plugin: annotate a class @JsonapiHypermediaLinkProvider, extend Drupal\\jsonapi_hypermedia\\Plugin\\LinkProviderBase, and place it in your module's Plugin/jsonapi_hypermedia/LinkProvider namespace. It is discovered by the jsonapi_hypermedia_provider.manager service.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "jsonapi_hypermedia-contexts",
+      "mode": "recipe",
+      "prompt": "In a jsonapi_hypermedia LinkProvider plugin, what does the link_context annotation key control, and what are the three kinds of context you can target?",
+      "must_contain_any": [
+        "top_level_object",
+        "resource_object",
+        "relationship_object"
+      ],
+      "must_not_contain": [],
+      "expected_output": "link_context declares where the provider runs: top_level_object (document-level links, with a subtype like entrypoint/collection/individual/error), resource_object (all resources or a specific type--bundle), or relationship_object (all relationships or a [type, field] tuple).",
+      "difficulty": "easy"
+    },
+    {
+      "id": "jsonapi_hypermedia-omit-link",
+      "mode": "recipe",
+      "prompt": "Using jsonapi_hypermedia, how should a LinkProvider's getLink() prevent a link from appearing at all (for example a 'publish' link on already-published content or for a user without access)?",
+      "must_contain_any": [
+        "createInaccessibleLink",
+        "AccessRestrictedLink",
+        "inaccessible"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Return AccessRestrictedLink::createInaccessibleLink($cacheability) from getLink(); an inaccessible link is dropped from the response, so the link's presence/absence itself is the affordance. Accessible links are built with AccessRestrictedLink::createLink().",
+      "difficulty": "easy"
+    },
+    {
+      "id": "jsonapi_hypermedia-discover-provider",
+      "mode": "introspection",
+      "prompt": "On this Drupal site a custom JSON:API Hypermedia link provider has been installed. Inspect the running site (via the jsonapi_hypermedia provider plugin manager) and state the link key that this custom provider adds to the JSON:API entrypoint.",
+      "must_contain_any": [
+        "jsonapi_hypermedia_eval_ping"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The provider adds the link key 'jsonapi_hypermedia_eval_ping' (relation type 'help') to the entrypoint. It is discoverable in the jsonapi_hypermedia_provider.manager definitions (plugin id jsonapi_hypermedia_ping).",
+      "setup": "agent-module-documentation/evaluation/verify/jsonapi_hypermedia-ping-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/jsonapi_hypermedia-ping-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "jsonapi_hypermedia-provider-relation-type",
+      "mode": "introspection",
+      "prompt": "A custom JSON:API Hypermedia link provider is active on this site. Inspect the running site's jsonapi_hypermedia provider plugin definitions and state the link relation type that this custom provider declares for its link.",
+      "must_contain_any": [
+        "help"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The provider declares link_relation_type 'help' (plugin id jsonapi_hypermedia_ping, link_key jsonapi_hypermedia_eval_ping), visible in the jsonapi_hypermedia_provider.manager definitions.",
+      "setup": "agent-module-documentation/evaluation/verify/jsonapi_hypermedia-ping-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/jsonapi_hypermedia-ping-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "jsonapi_hypermedia-build-provider",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, using the jsonapi_hypermedia module, create and enable a custom module named 'jsonapi_hypermedia_task' (under web/modules/custom) that provides a JSON:API Hypermedia LinkProvider plugin adding a link with the link key 'task_action' to the JSON:API entrypoint (a top-level links object). The plugin should extend LinkProviderBase and return an accessible AccessRestrictedLink. Apply it to the live site so the provider is active.",
+      "reset": "agent-module-documentation/evaluation/verify/jsonapi_hypermedia-task-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/jsonapi_hypermedia-task-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/jsonapi_hypermedia-task-cleanup.sh",
+      "expected_output": "A module jsonapi_hypermedia_task is enabled providing a @JsonapiHypermediaLinkProvider plugin (extends LinkProviderBase) with link_key 'task_action' and link_context top_level_object (e.g. entrypoint); the jsonapi_hypermedia_provider.manager then lists that definition."
+    },
+    {
+      "id": "jsonapi_hypermedia-build-resource-provider",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, using jsonapi_hypermedia, create and enable a custom module named 'jsonapi_hypermedia_res' (under web/modules/custom) providing a LinkProvider plugin that adds a link with link key 'res_action' to JSON:API resource objects (link_context resource_object). Extend LinkProviderBase and return an accessible AccessRestrictedLink. Apply it to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/jsonapi_hypermedia-res-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/jsonapi_hypermedia-res-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/jsonapi_hypermedia-res-cleanup.sh",
+      "expected_output": "A module jsonapi_hypermedia_res is enabled with a @JsonapiHypermediaLinkProvider plugin (extends LinkProviderBase) whose link_key is 'res_action' and whose link_context targets resource_object (true or a type--bundle); the provider manager lists that definition."
+    }
+  ]
+}

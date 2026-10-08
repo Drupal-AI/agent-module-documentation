@@ -1,0 +1,78 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "config_perms",
+  "version": "2.3.x",
+  "note": "Custom Permissions (config_perms) lets an admin define new, role-assignable permissions that each gate one or more Drupal routes, stored as custom_perms_entity config entities (config prefix config_perms.custom_perms_entity.<id>; fields id, label, route, status). The entity LABEL becomes the grantable permission title; a route subscriber replaces the named routes' access requirements with the module's ConfigPermsAccessCheck, which allows access iff the user holds that label permission. Custom permissions support routes only (an old path field was migrated to route in update 8201). Easy cases are response-graded (no site changes). Medium cases stage a known custom_perms_entity and ask the agent to read it back from live config (cleanup deletes it). Hard cases have the agent CREATE a custom_perms_entity that gates the core cron settings route (system.cron_settings) with a non-empty label, verified against live config (exit 0 = pass). A router rebuild (drush cr) is needed for route overrides to apply.",
+  "evals": [
+    {
+      "id": "config_perms-config-entity",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "In the Drupal Custom Permissions (config_perms) module, what is the machine name of the configuration entity type that stores one custom permission, and which of its fields becomes the actual grantable permission title shown on the People > Permissions page?",
+      "must_contain_any": ["custom_perms_entity"],
+      "must_not_contain": [],
+      "expected_output": "The config entity type is custom_perms_entity (config objects named config_perms.custom_perms_entity.<id>). Its exported fields are id, label, route and status; the label field is what becomes the grantable permission title on the permissions page."
+    },
+    {
+      "id": "config_perms-route-mapping",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "How does a custom permission defined by config_perms map to what it protects? Does it gate Drupal routes or arbitrary paths, and how do you attach more than one to a single custom permission?",
+      "must_contain_any": ["route", "routes"],
+      "must_not_contain": [],
+      "expected_output": "Each custom_perms_entity has a route field holding one or more Drupal route machine names (not arbitrary paths — an older path field was migrated to route in update 8201). List several routes by separating them with newlines in the route field. A route subscriber then replaces those routes' access requirements with the module's _config_perms_access_check, which grants access iff the user has the permission named by the entity label."
+    },
+    {
+      "id": "config_perms-configure-route",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "In config_perms, what is the route name and admin path of the form used to add and manage custom permissions, and which permission is required to reach it?",
+      "must_contain_any": ["custom_perms_select_list_form", "/admin/people/custom-permissions/list"],
+      "must_not_contain": [],
+      "expected_output": "The configure form is route custom_perms_select_list_form at /admin/people/custom-permissions/list (a tab under People). It requires the 'administer config permissions' permission."
+    },
+    {
+      "id": "config_perms-known-perm-route",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "This Drupal 11 site already has a custom permission configured via the config_perms module. Inspect the live configuration and report the machine id of that custom_perms_entity, its label, and which Drupal route it gates.",
+      "setup": "agent-module-documentation/evaluation/verify/config_perms-known-permission-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/config_perms-known-permission-cleanup.sh",
+      "must_contain_any": ["system.site_information_settings"],
+      "must_not_contain": [],
+      "expected_output": "The staged entity is known_site_info_perm, label 'Manage site information', and it gates the route system.site_information_settings (the core Site information settings form). It is stored in config object config_perms.custom_perms_entity.known_site_info_perm."
+    },
+    {
+      "id": "config_perms-known-perm-label",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "On this live site, the config_perms module has a custom permission whose config id is known_site_info_perm. What is the exact permission title (the string a site admin would grant to a role) that this entity produces, and is it enabled?",
+      "setup": "agent-module-documentation/evaluation/verify/config_perms-known-permission-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/config_perms-known-permission-cleanup.sh",
+      "must_contain_any": ["Manage site information"],
+      "must_not_contain": [],
+      "expected_output": "The permission title is the entity's label: 'Manage site information' (the config_perms permission machine name equals the label string). The entity's status is true (enabled), so the permission appears on the permissions page and its route access override is active."
+    },
+    {
+      "id": "config_perms-create-cron-perm-expert",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal 11 site with the Custom Permissions (config_perms) module enabled, create a custom_perms_entity config entity (any machine id) with a non-empty label such as 'Manage cron settings' that gates the core cron settings route system.cron_settings, and make sure it is enabled. Rebuild the router so the access override takes effect.",
+      "reset": "agent-module-documentation/evaluation/verify/config_perms-scoped-route-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/config_perms-scoped-route-verify.sh",
+      "expected_output": "An enabled custom_perms_entity exists whose route field includes system.cron_settings and whose label is non-empty (e.g. 'Manage cron settings'), e.g. config object config_perms.custom_perms_entity.manage_cron_settings with status: true."
+    },
+    {
+      "id": "config_perms-create-cron-perm-layman",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "We use the Custom Permissions module so we can hand out narrow admin access. Set things up so there's a new permission we can give a role that lets them reach only the Cron settings page (that's the admin page at Configuration > System > Cron, route system.cron_settings) and nothing else. Give the permission a clear name and make sure it's turned on.",
+      "reset": "agent-module-documentation/evaluation/verify/config_perms-scoped-route-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/config_perms-scoped-route-verify.sh",
+      "expected_output": "An enabled custom_perms_entity exists whose route field includes system.cron_settings and whose label is non-empty (the label becomes the grantable permission title), so a role can be granted access to just the cron settings page."
+    }
+  ]
+}

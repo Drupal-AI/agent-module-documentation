@@ -1,0 +1,80 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "disable_html5_validation",
+  "version": "2.0.x",
+  "note": "disable_html5_validation is a single hook_form_alter() that sets $form['#attributes']['novalidate'] = 'novalidate' on every form. No config, no configure route, no permissions, no schema, no services, no plugins. Its effect is a rendered <form> attribute and is observable by building any form via entity.form_builder and reading $form['#attributes']['novalidate']. Medium cases create a namespaced content type (field_/type prefix dhv_) and read the attribute back off the live rendered form; the hard override case has the agent write a hook_form_FORM_ID_alter that unsets the attribute for a single form. No dblog is used (watchdog writes are unreliable under drush php:eval on this site).",
+  "evals": [
+    {
+      "id": "disable-html5-validation-attribute",
+      "mode": "recipe",
+      "prompt": "What does the Drupal contrib module disable_html5_validation do to forms, and specifically which HTML attribute does it add to the <form> element to achieve it?",
+      "must_contain_any": ["novalidate"],
+      "must_not_contain": [],
+      "expected_output": "It implements hook_form_alter() and sets $form['#attributes']['novalidate'] = 'novalidate' on every form, so the rendered <form> carries the HTML5 novalidate attribute and the browser skips native client-side validation; Drupal server-side validation is unchanged.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "disable-html5-validation-hook",
+      "mode": "recipe",
+      "prompt": "Which Drupal hook does the disable_html5_validation module implement to disable HTML5 validation, and does it target specific forms or all of them?",
+      "must_contain_any": ["hook_form_alter", "form_alter"],
+      "must_not_contain": [],
+      "expected_output": "It implements hook_form_alter() (disable_html5_validation_form_alter). The hook runs for every form and unconditionally adds novalidate, so it affects all forms site-wide with no allow/deny list and no configuration.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "disable-html5-validation-exclude-one",
+      "mode": "recipe",
+      "prompt": "disable_html5_validation removes HTML5 browser validation from all forms, but I want the browser validation back on just one form (say the user login form). How do I re-enable it for a single form?",
+      "must_contain_any": ["hook_form_FORM_ID_alter", "form_user_login_form_alter", "unset", "FORM_ID_alter"],
+      "must_not_contain": [],
+      "expected_output": "There is no per-form setting. Implement your own hook_form_FORM_ID_alter() (e.g. MYMODULE_form_user_login_form_alter) and unset($form['#attributes']['novalidate']); FORM_ID alters run after the generic hook_form_alter, so this restores native validation for that one form.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "disable-html5-validation-known-type",
+      "mode": "introspection",
+      "prompt": "On this Drupal site there is a content type with machine name dhv_known. Inspect the live site and determine what HTML attribute the disable_html5_validation module puts on the dhv_known node add/edit form's <form> element to switch off browser validation.",
+      "must_contain_any": ["novalidate"],
+      "must_not_contain": [],
+      "expected_output": "The dhv_known node form's #attributes contains 'novalidate' => 'novalidate' (added by disable_html5_validation_form_alter), so the rendered <form> has the novalidate attribute.",
+      "setup": "agent-module-documentation/evaluation/verify/disable_html5_validation-known-type-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/disable_html5_validation-known-type-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "disable-html5-validation-scope",
+      "mode": "introspection",
+      "prompt": "This site has disable_html5_validation enabled and a test content type dhv_scope. Confirm from the live site whether the module's effect is global by checking both the dhv_scope node form and the core user login form (user_login_form). What attribute appears on each form?",
+      "must_contain_any": ["novalidate"],
+      "must_not_contain": [],
+      "expected_output": "Both the dhv_scope node form and the user_login_form carry #attributes['novalidate'] = 'novalidate'. hook_form_alter runs for every form, so the novalidate attribute is present on both, confirming the effect is global.",
+      "setup": "agent-module-documentation/evaluation/verify/disable_html5_validation-scope-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/disable_html5_validation-scope-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "disable-html5-validation-newtype",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this site disable_html5_validation is enabled. Create a new content type with machine name dhv_task (label 'DHV Task'). Because the module is enabled, its node add/edit form must be rendered with browser HTML5 validation disabled. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/disable_html5_validation-newtype-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/disable_html5_validation-newtype-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/disable_html5_validation-newtype-cleanup.sh",
+      "expected_output": "A content type node.dhv_task exists and its default form (built via entity.form_builder) has #attributes['novalidate'] = 'novalidate', supplied automatically by disable_html5_validation_form_alter."
+    },
+    {
+      "id": "disable-html5-validation-override",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "disable_html5_validation is enabled and adds novalidate to every form on this site, including the user login form. Re-enable native HTML5 browser validation for ONLY the user login form (user_login_form) while leaving it disabled everywhere else. Do this by creating a small custom module named dhv_login_override that implements hook_form_user_login_form_alter() to unset the novalidate attribute. Enable your module.",
+      "reset": "agent-module-documentation/evaluation/verify/disable_html5_validation-override-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/disable_html5_validation-override-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/disable_html5_validation-override-cleanup.sh",
+      "expected_output": "A module dhv_login_override is enabled implementing dhv_login_override_form_user_login_form_alter() that unsets $form['#attributes']['novalidate']. On the live site the built user_login_form no longer has the novalidate attribute, while other forms (e.g. the article node form) still do."
+    }
+  ]
+}

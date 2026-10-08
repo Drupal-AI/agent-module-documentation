@@ -1,0 +1,73 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "ai_automators",
+  "version": "1.4.x",
+  "note": "All recipe (response-graded) — no AI provider/API key needed, so these run in CI without mutating the site or spending on an LLM vendor. Each probes an ai_automators architecture fact an unfamiliar agent would otherwise have to read src/ to answer.",
+  "evals": [
+    {
+      "id": "aiautomators-two-plugin-types",
+      "mode": "recipe",
+      "prompt": "The Drupal ai_automators module defines two plugin types: one for the field-generation 'rule' and one for the 'worker type' (how/when processing runs). Name both plugin types and their Plugin/ namespaces.",
+      "must_contain_any": ["AiAutomatorType", "AiAutomatorProcess"],
+      "must_not_contain": [],
+      "expected_output": "The rule plugin type is AiAutomatorType (namespace Plugin/AiAutomatorType, manager plugin.manager.ai_automator); the worker/process type is AiAutomatorProcessRule (namespace Plugin/AiAutomatorProcess, manager plugin.manager.ai_processor)."
+    },
+    {
+      "id": "aiautomators-write-rule",
+      "mode": "recipe",
+      "prompt": "In ai_automators I want to write a rule that auto-generates a value for a custom field type. Which attribute do I put on the class, which attribute property ties it to a field type, and where does the class live?",
+      "must_contain_any": ["field_rule"],
+      "must_not_contain": [],
+      "expected_output": "Add #[AiAutomatorType] to a class under src/Plugin/AiAutomatorType/ in your module; set field_rule to the target field type id (e.g. 'string'), extend a base class from src/PluginBaseClasses/ (e.g. ComplexTextChat) and implement AiAutomatorTypeInterface."
+    },
+    {
+      "id": "aiautomators-worker-types",
+      "mode": "recipe",
+      "prompt": "In ai_automators, what are the shipped 'worker type' processing options that control how/when an automator runs on a field (e.g. immediately vs deferred)?",
+      "must_contain_any": ["queue", "batch", "DirectSave", "QueueWorker"],
+      "must_not_contain": [],
+      "expected_output": "The AiAutomatorProcessRule plugins in Plugin/AiAutomatorProcess/: DirectSaveProcessing, QueueWorkerProcessor, BatchProcessing, ActionProcessing, FieldWidgetProcessing."
+    },
+    {
+      "id": "aiautomators-attach-to-field",
+      "mode": "recipe",
+      "prompt": "On this Drupal site with ai_automators, how do I attach an automator to a field, and what config entity stores that configuration? Is there a dedicated settings form?",
+      "must_contain_any": ["ai_automator", "Field UI", "field config"],
+      "must_not_contain": [],
+      "expected_output": "There is no dedicated settings form; configure it on the field's own config form in Field UI (the module alters field_config_edit_form). Each attachment is stored as an ai_automator config entity holding rule, worker_type, entity_type, bundle, field_name, prompt, token."
+    },
+    {
+      "id": "aiautomators-drush-generator",
+      "mode": "recipe",
+      "prompt": "What drush command does ai_automators provide to scaffold a new automator plugin, and is it a runtime command or a code generator?",
+      "must_contain_any": ["drush generate plugin:ai:automator-type", "plugin:ai:automator-type", "ai-automator-type"],
+      "must_not_contain": [],
+      "expected_output": "It is a code generator, not a runtime command: drush generate plugin:ai:automator-type (alias ai-automator-type), which scaffolds an AiAutomatorType plugin under src/Plugin/AiAutomatorType/."
+    },
+    {
+      "id": "aiautomators-run-from-code",
+      "mode": "recipe",
+      "prompt": "In ai_automators, which service lets me run a reusable automator chain from custom code and get back the generated field values, and what method do I call?",
+      "must_contain_any": ["ai_automator.automate", "Automate"],
+      "must_not_contain": [],
+      "expected_output": "The ai_automator.automate service (Drupal\\ai_automators\\Service\\Automate); call ->run($chain_type, $inputs), which creates a disposable automator_chain, runs it, returns [output_field => value] and deletes the temp entity."
+    },
+    {
+      "id": "aiautomators-should-process-event",
+      "mode": "recipe",
+      "prompt": "In ai_automators, I want to override whether a given field should be processed by an automator, without editing the rule. There is no classic hook API for this — what mechanism and which event do I use?",
+      "must_contain_any": ["ShouldProcessFieldEvent", "ai_automator.should_process_field"],
+      "must_not_contain": [],
+      "expected_output": "Use a Symfony event subscriber on ShouldProcessFieldEvent (EVENT_NAME 'ai_automator.should_process_field') and call setShouldProcess(TRUE/FALSE). Other events: ValuesChangeEvent (ai_automator.change_value), ProcessFieldEvent, RuleIsAllowedEvent, VerboseInformationEvent."
+    },
+    {
+      "id": "aiautomators-admin-permission",
+      "mode": "recipe",
+      "prompt": "In ai_automators, which permission machine name gates configuring automators (the AI Automators area and the automator section on field forms)?",
+      "must_contain_any": ["administer ai_automator"],
+      "must_not_contain": [],
+      "expected_output": "administer ai_automator"
+    }
+  ]
+}

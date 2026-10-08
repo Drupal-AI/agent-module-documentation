@@ -1,0 +1,101 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "twig_real_content",
+  "version": "1.0.x",
+  "note": "Twig Real Content is a single Twig extension exposing a test and a filter both named real_content. No config, routes, permissions, schema, Drush, or plugins. The callables: return empty/FALSE for an empty render array, require an already-rendered string/MarkupInterface (else throw TwigRealContentException), then strip_tags() keeping an allowlist (img, iframe, video, svg, object, embed, input, hr, script, style, link, source, drupal-render-placeholder) and trim; the test returns TRUE if anything remains, the filter returns the stripped string. Because there is no config, medium cases store a known markup string in Drupal state for the agent to fetch and evaluate; hard cases have the agent apply the real_content filter/test to a state-provided input and store the result, verified by recomputing with the live extension (new TwigRealContentTwigExtension()). All state keys are namespaced twig_real_content_*.",
+  "evals": [
+    {
+      "id": "twig_real_content-filter-name",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "In a Drupal Twig template, core's `{% if page.sidebar %}` is true even when the sidebar renders only empty wrapper markup. Which Twig test/filter does the twig_real_content module add to check whether a region actually has meaningful content?",
+      "must_contain_any": [
+        "real_content"
+      ],
+      "must_not_contain": [],
+      "expected_output": "It adds a Twig test and filter both named real_content, e.g. `{% if page.sidebar|render is real_content %}` or `{{ var|real_content }}`."
+    },
+    {
+      "id": "twig_real_content-render-first",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "Using twig_real_content, why does `{% if page.sidebar is real_content %}` throw a TwigRealContentException, and what must you do to the variable first?",
+      "must_contain_any": [
+        "render",
+        "|render",
+        "capture",
+        "MarkupInterface",
+        "rendered string"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The test/filter expects an already-rendered string (or MarkupInterface); a raw render array throws TwigRealContentException. Render or capture it first: `{% if page.sidebar|render is real_content %}`."
+    },
+    {
+      "id": "twig_real_content-allowed-tags",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "With twig_real_content, does a region that contains only an <img> (and no text) count as real content? Name some of the HTML tags it treats as meaningful even without text.",
+      "must_contain_any": [
+        "img",
+        "iframe",
+        "video",
+        "svg",
+        "allowlist",
+        "allowed"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Yes. strip_tags() keeps an allowlist of self-meaningful tags — img, iframe, video, svg, object, embed, input, hr, script, style, link, source, drupal-render-placeholder — so an image-only region is real content (test returns TRUE)."
+    },
+    {
+      "id": "twig_real_content-empty-probe",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "This Drupal site has a value in the state system under the key twig_real_content_probe holding a rendered markup string. Fetch it and, using the twig_real_content module's rules, determine whether that markup would count as real content (i.e. would its region be non-empty). Explain the result.",
+      "must_contain_any": [
+        "empty",
+        "false"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The stored markup is `<div class=\"region region-sidebar\"> \\n\\t </div>` — only an empty wrapper and whitespace. After strip_tags()+trim nothing remains, so the real_content filter returns '' and the test returns FALSE: it is NOT real content (the region is empty).",
+      "setup": "agent-module-documentation/evaluation/verify/twig_real_content-empty-probe-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/twig_real_content-empty-probe-cleanup.sh"
+    },
+    {
+      "id": "twig_real_content-img-probe",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "This Drupal site stores a rendered markup string in the state system under the key twig_real_content_probe2. Fetch it and, using the twig_real_content module's rules, determine whether it counts as real content. Explain why.",
+      "must_contain_any": [
+        "true",
+        "meaningful"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The stored markup is `<div class=\"region\"><img src=\"hero.jpg\" alt=\"\"></div>`. Although it has no text, <img> is on twig_real_content's allowlist, so strip_tags() keeps it and the real_content test returns TRUE — it IS meaningful content.",
+      "setup": "agent-module-documentation/evaluation/verify/twig_real_content-img-probe-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/twig_real_content-img-probe-cleanup.sh"
+    },
+    {
+      "id": "twig_real_content-filter-value",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, read the markup string stored in the Drupal state key twig_real_content_in1. Apply the twig_real_content module's real_content FILTER to that string and save the filter's exact return value into the Drupal state key twig_real_content_out1. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/twig_real_content-filter-value-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/twig_real_content-filter-value-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/twig_real_content-filter-value-cleanup.sh",
+      "expected_output": "For input `<div class=\"promo\"><p>Buy now</p><img src=\"x\"></div>` the real_content filter strips the non-allowlisted div/p (text kept, img kept) and trims, yielding `Buy now<img src=\"x\">`; store that in state twig_real_content_out1 (e.g. via `new TwigRealContentTwigExtension()->getFilters()[0]->getCallable()` in drush php:eval, then \\Drupal::state()->set())."
+    },
+    {
+      "id": "twig_real_content-test-bool",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, read the markup string stored in the Drupal state key twig_real_content_in2. Use the twig_real_content module's real_content TEST to decide whether that markup has meaningful content, and store the result in the Drupal state key twig_real_content_out2 as the string \"1\" if it is real content or \"0\" if it is not. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/twig_real_content-test-bool-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/twig_real_content-test-bool-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/twig_real_content-test-bool-cleanup.sh",
+      "expected_output": "For input `<div><svg></svg></div>` the <svg> is allowlisted, so the real_content test returns TRUE; store \"1\" in state twig_real_content_out2 (e.g. `new TwigRealContentTwigExtension()->getTests()[0]->getCallable()` then \\Drupal::state()->set())."
+    }
+  ]
+}

@@ -1,0 +1,80 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "migrate_devel",
+  "version": "3.0.x",
+  "note": "Migrate Devel is a migration debugging dev tool with NO config entities, schema, permissions, or admin UI. Two features: (1) a 'debug' migrate process plugin (Drupal\\migrate_devel\\Plugin\\migrate\\process\\Debug, id 'debug', handle_multiples=TRUE) with keys dump (value|destination|source|source_ids|source_keys), label, multiple; (2) --migrate-debug / --migrate-debug-pre options added to migrate:import that dump each row's Source/Destination/DestinationIdValues via MigrationEventSubscriber on PRE_ROW_SAVE / POST_ROW_SAVE (CLI only). IMPORTANT: on this shared site the migration plugin manager is broken by pathauto's deriver, so medium/hard cases are grounded in migrate_plus migration CONFIG ENTITIES read/written through config STORAGE (drush cget/cset / config factory), which is unaffected — never via the migration plugin manager or migrate:status enumeration. Each medium setup writes a migrate_plus.migration.* config whose process pipeline contains a 'debug' step; each hard reset writes one WITHOUT a debug step and verify checks config storage for a step whose plugin==debug.",
+  "evals": [
+    {
+      "id": "migrate_devel-see-rows",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "I'm running a Drupal migration with Drush and I want to see each row's source and destination data (and the new destination ids) printed as the migration runs. The migrate_devel module enables this. Which option do I add to the migrate:import command?",
+      "must_contain_any": ["--migrate-debug", "migrate-debug"],
+      "must_not_contain": [],
+      "expected_output": "Add --migrate-debug to the import, e.g. `drush migrate:import <id> --migrate-debug`. migrate_devel's MigrationEventSubscriber then dumps each row's Source, Destination, and DestinationIdValues (post row save) via VarDumper on the CLI."
+    },
+    {
+      "id": "migrate_devel-debug-plugin",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "Inside a Drupal migration's process pipeline I want a 'breakpoint' that prints the value at that point and passes it through unchanged. migrate_devel provides a process plugin for this. What is the plugin id, and what does its 'dump' configuration key let me print instead of the value?",
+      "must_contain_any": ["debug", "dump", "destination", "source"],
+      "must_not_contain": [],
+      "expected_output": "Use `plugin: debug` (the Debug process plugin). By default it dumps the incoming value and returns it unchanged. Its `dump` key can instead print: destination (all destination values so far), source (all source values), source_ids, or source_keys. It also supports `label` (printed first) and `multiple: true`."
+    },
+    {
+      "id": "migrate_devel-pre-vs-post",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "With migrate_devel, what is the difference between the --migrate-debug and --migrate-debug-pre options, and at which migrate events do they fire?",
+      "must_contain_any": ["--migrate-debug-pre", "migrate-debug-pre", "PRE_ROW_SAVE", "before", "POST_ROW_SAVE"],
+      "must_not_contain": [],
+      "expected_output": "--migrate-debug dumps Source, Destination and DestinationIdValues AFTER each row is saved (MigrateEvents::POST_ROW_SAVE). --migrate-debug-pre dumps Source and Destination BEFORE the row is saved (MigrateEvents::PRE_ROW_SAVE). Both act only on the CLI."
+    },
+    {
+      "id": "migrate_devel-debug-config",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "This site has a migrate_plus migration in configuration with the id 'migdev_known'. One of its field process pipelines uses the migrate_devel 'debug' process plugin. Inspect the live migration configuration and state which destination field has the debug step and what its 'dump' value is set to. (Note: read the configuration directly; do not rely on drush migrate:status, which is unavailable on this site.)",
+      "must_contain_any": ["body", "source"],
+      "must_not_contain": [],
+      "expected_output": "In migrate_plus.migration.migdev_known the 'body' field's process pipeline has a step `plugin: debug` with `dump: source`. Read it with: drush cget migrate_plus.migration.migdev_known process.body",
+      "setup": "agent-module-documentation/evaluation/verify/migrate_devel-debug-config-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/migrate_devel-debug-config-cleanup.sh"
+    },
+    {
+      "id": "migrate_devel-debug-label",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "The migrate_plus migration with id 'migdev_label' on this site uses a migrate_devel 'debug' step on its title field. Inspect the live migration configuration and report the exact 'label' string configured on that debug step. (Read the config directly with drush cget; migrate:status is unavailable here.)",
+      "must_contain_any": ["MIGDEV-TRACE:", "MIGDEV-TRACE"],
+      "must_not_contain": [],
+      "expected_output": "The debug step on the title field of migrate_plus.migration.migdev_label has label 'MIGDEV-TRACE: '. Read it with: drush cget migrate_plus.migration.migdev_label process.title",
+      "setup": "agent-module-documentation/evaluation/verify/migrate_devel-debug-label-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/migrate_devel-debug-label-cleanup.sh"
+    },
+    {
+      "id": "migrate_devel-add-debug",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "This site has a migrate_plus migration in configuration with id 'migdev_task' (config object migrate_plus.migration.migdev_task). Its 'body' field is currently mapped straight from the source with no debugging. Using migrate_devel, add a debug step to the body field's process pipeline so the value flowing into it is dumped during import. Apply the change to the live configuration. (Edit the configuration directly; the migration plugin manager / migrate:status is unavailable on this site.)",
+      "reset": "agent-module-documentation/evaluation/verify/migrate_devel-add-debug-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/migrate_devel-add-debug-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/migrate_devel-add-debug-cleanup.sh",
+      "expected_output": "Edit migrate_plus.migration.migdev_task so the body process becomes a pipeline containing a step `- plugin: debug` (e.g. body: [ { plugin: debug, source: body } ]) and save. verify passes when any process step has plugin == debug. Do this via config factory / drush cset, not the migration plugin manager."
+    },
+    {
+      "id": "migrate_devel-dump-destination",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "The migrate_plus migration 'migdev_dump' (config migrate_plus.migration.migdev_dump) on this site needs a diagnostic step that prints the ENTIRE destination row built so far, not just one value. Using the migrate_devel debug process plugin's dump feature, add such a step to the title field's process pipeline and apply it to the live configuration. (Edit config directly; migrate:status is unavailable here.)",
+      "reset": "agent-module-documentation/evaluation/verify/migrate_devel-dump-destination-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/migrate_devel-dump-destination-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/migrate_devel-dump-destination-cleanup.sh",
+      "expected_output": "Add a step `- plugin: debug` with `dump: destination` to the title field's process pipeline in migrate_plus.migration.migdev_dump and save. verify passes only when a process step has plugin == debug AND dump == destination."
+    }
+  ]
+}

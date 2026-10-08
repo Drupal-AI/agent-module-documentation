@@ -1,0 +1,125 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "workbench_access",
+  "version": "2.0.x",
+  "note": "Difficulty-tiered. easy/recipe (response-graded, no site mutation) probes workbench_access-specific architecture facts an unfamiliar agent would have to read source to answer: the access_scheme config entity, the AccessControlHierarchy plugin type and its bundled taxonomy/menu plugins, and sections. medium/introspection asks about the CURRENT live setup: a setup script saves a KNOWN access_scheme config entity and the model must inspect the running site with drush to read its hierarchy plugin id and scheme_settings back; a cleanup script deletes it after. hard/execution (persona drupal-expert) requires the model to actually CREATE an access_scheme config entity with a specific id and hierarchy plugin on the live site (verified against site state), not just answer questions.",
+  "evals": [
+    {
+      "id": "wa-config-entity-type-easy",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "In the Drupal workbench_access module, editorial access is configured through one central config entity type. What is that config entity type id?",
+      "must_contain_any": [
+        "access_scheme"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The access_scheme config entity type (config prefix workbench_access.access_scheme.<id>)."
+    },
+    {
+      "id": "wa-plugin-type-easy",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "workbench_access defines a plugin type that turns some existing hierarchy into editorial 'sections'; an access_scheme names one of these in its `scheme` key. What is the plugin type (and its Plugin/ namespace)?",
+      "must_contain_any": [
+        "AccessControlHierarchy"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The AccessControlHierarchy plugin type (namespace Plugin/AccessControlHierarchy), managed by plugin.manager.workbench_access.scheme."
+    },
+    {
+      "id": "wa-bundled-plugins-easy",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "Which two AccessControlHierarchy plugins ship inside the workbench_access module itself (the two hierarchy sources you can pick when creating an access scheme out of the box)? Give their plugin ids.",
+      "must_contain_any": [
+        "taxonomy"
+      ],
+      "must_not_contain": [],
+      "expected_output": "taxonomy (sections from a vocabulary) and menu (sections from a menu tree)."
+    },
+    {
+      "id": "wa-sections-permission-easy",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "In workbench_access, content is filed into editorial 'sections' and editors are assigned to them. Which permission machine name lets a user bypass all section checks and reach every section? Give the exact permission.",
+      "must_contain_any": [
+        "bypass workbench access"
+      ],
+      "must_not_contain": [],
+      "expected_output": "bypass workbench access"
+    },
+    {
+      "id": "wa-known-scheme-plugin-medium",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "persona": "drupal-expert",
+      "prompt": "This Drupal site (drush available) already has a workbench_access access scheme configured with the machine name `wa_eval_editorial`. Inspect the live configuration and tell me which AccessControlHierarchy plugin (the `scheme` key) that access scheme uses. Give the exact plugin id.",
+      "must_contain_any": [
+        "taxonomy"
+      ],
+      "must_not_contain": [],
+      "setup": "agent-module-documentation/evaluation/verify/workbench_access-known-scheme-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/workbench_access-known-scheme-cleanup.sh",
+      "expected_output": "The wa_eval_editorial access_scheme uses the `taxonomy` hierarchy plugin. Read back from the live workbench_access.access_scheme.wa_eval_editorial config."
+    },
+    {
+      "id": "wa-known-scheme-vocab-medium",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site the workbench_access access scheme `wa_eval_editorial` is already configured. Inspect its live configuration with drush and tell me which taxonomy vocabulary is listed in its scheme_settings (the vocabulary its editorial sections come from).",
+      "must_contain_any": [
+        "tags"
+      ],
+      "must_not_contain": [],
+      "setup": "agent-module-documentation/evaluation/verify/workbench_access-known-scheme-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/workbench_access-known-scheme-cleanup.sh",
+      "expected_output": "scheme_settings.vocabularies contains `tags`. Read back from the live workbench_access.access_scheme.wa_eval_editorial config."
+    },
+    {
+      "id": "wa-known-menu-scheme-medium",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "persona": "drupal-expert",
+      "prompt": "This site has a second workbench_access access scheme with the machine name `wa_eval_nav`. Inspect the live configuration with drush and tell me which AccessControlHierarchy plugin (the `scheme` key) it is driven by. Give the exact plugin id.",
+      "must_contain_any": [
+        "menu"
+      ],
+      "must_not_contain": [],
+      "setup": "agent-module-documentation/evaluation/verify/workbench_access-known-menu-scheme-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/workbench_access-known-menu-scheme-cleanup.sh",
+      "expected_output": "The wa_eval_nav access_scheme uses the `menu` hierarchy plugin. Read back from the live workbench_access.access_scheme.wa_eval_nav config."
+    },
+    {
+      "id": "wa-build-taxonomy-scheme-expert",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site (drush available, workbench_access installed) build and SAVE a new access_scheme config entity with the machine name `section_taxonomy`. It must use the `taxonomy` AccessControlHierarchy plugin (set the entity's `scheme` key to taxonomy) and have a label and plural label. Apply it to the running site via drush/config; do not just describe it. Reply with one line naming the access scheme you created and its hierarchy plugin.",
+      "reset": "agent-module-documentation/evaluation/verify/workbench_access-build-taxonomy-scheme-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/workbench_access-build-taxonomy-scheme-verify.sh",
+      "expected_output": "An enabled access_scheme config entity with id section_taxonomy exists on the live site and its scheme (AccessControlHierarchy plugin) is taxonomy. Verified against live site state, not the response text."
+    },
+    {
+      "id": "wa-build-taxonomy-scheme-layman",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "layman",
+      "prompt": "On my Drupal site I want to control which editors can edit which content by grouping content into editorial areas that come from my category terms. Please set this up so a new 'section' scheme based on my taxonomy shows up in the Workbench Access configuration, and call it section_taxonomy. Tell me in one line what you set up.",
+      "reset": "agent-module-documentation/evaluation/verify/workbench_access-build-taxonomy-scheme-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/workbench_access-build-taxonomy-scheme-verify.sh",
+      "expected_output": "Same verified end state as the expert variant: an enabled access_scheme config entity with id section_taxonomy driven by the taxonomy hierarchy plugin. The agent must map the plain-English request onto workbench_access and build a real taxonomy-based access scheme."
+    },
+    {
+      "id": "wa-build-menu-scheme-expert",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site (drush available, workbench_access installed) build and SAVE a new access_scheme config entity with the machine name `section_menu`. It must use the `menu` AccessControlHierarchy plugin (set the entity's `scheme` key to menu) and have a label and plural label. Apply it to the running site via drush/config; do not just describe it. Reply with one line naming the access scheme you created and its hierarchy plugin.",
+      "reset": "agent-module-documentation/evaluation/verify/workbench_access-build-menu-scheme-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/workbench_access-build-menu-scheme-verify.sh",
+      "expected_output": "An enabled access_scheme config entity with id section_menu exists on the live site and its scheme (AccessControlHierarchy plugin) is menu. Verified against live site state, not the response text."
+    }
+  ]
+}

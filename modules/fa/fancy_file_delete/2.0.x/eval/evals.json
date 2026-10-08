@@ -1,0 +1,80 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "fancy_file_delete",
+  "version": "2.0.x",
+  "note": "Fancy File Delete deletes managed files by FID, orphaned managed files, and unmanaged on-disk files, all through the fancy_file_delete.batch service. Orphan = a managed file whose only file_usage reference is type=node pointing at a node that no longer exists (ffd_orphan_filter query: file_managed LEFT JOIN file_usage LEFT JOIN node WHERE fu.type='node' AND n.nid IS NULL). Unmanaged = a file on disk absent from file_managed (UnmanagedFilesService). A normal delete uses File::delete() and REFUSES a still-referenced file; a FORCE delete drops the file_managed + file_usage rows and the entity directly. Drush: fancy:file-delete (aliases ffd, fancy-file-delete), comma-separated FIDs, --force option, confirm prompt (-y to auto-accept). NOTE: this site is PostgreSQL, so raw SQL string literals need single quotes; drush php:eval leaks deprecation notices to stdout, so introspection answers should be read from tagged/queried output. Introspection cases seed a known orphaned/unmanaged file and read it back; the execution case seeds an orphan that (because of its stale usage row) can only be removed by a FORCE delete, verified gone against live state.",
+  "evals": [
+    {
+      "id": "ffd-drush-command",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "On a Drupal 11 site with Fancy File Delete installed, which Drush command deletes managed files by their file ID, what are its aliases, how do you pass several FIDs at once, and how do you force-remove a file that is still referenced?",
+      "must_contain_any": ["fancy:file-delete", "ffd"],
+      "must_not_contain": [],
+      "expected_output": "drush fancy:file-delete <fid> (aliases ffd and fancy-file-delete). Pass a comma-separated list for several, e.g. drush ffd 12,15,20. Add --force to remove a file even if it is still referenced in file_usage; add -y to skip the confirmation prompt."
+    },
+    {
+      "id": "ffd-orphan-definition",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "In Fancy File Delete, what exactly does it consider an 'orphaned' file versus an 'unmanaged' file, and which Views filter surfaces the orphaned ones?",
+      "must_contain_any": ["file_usage", "file_managed", "Orphan File Delete", "ffd_orphan_filter"],
+      "must_not_contain": [],
+      "expected_output": "Orphaned = a managed file (in file_managed) whose only file_usage reference is of type node pointing at a node that no longer exists (surfaced by the 'Orphan File Delete' Views filter, ffd_orphan_filter, added to file_managed). Unmanaged = a file physically present in the files directory but absent from the file_managed table."
+    },
+    {
+      "id": "ffd-routes-permission",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "Where is the Fancy File Delete admin UI (the info page and the Manual delete-by-FID form), and which permission controls access to it? What is the difference between a normal delete and a force delete?",
+      "must_contain_any": ["/admin/config/content/fancy_file_delete", "administer fancy file delete"],
+      "must_not_contain": [],
+      "expected_output": "Admin -> Config -> Content -> Fancy File Delete at /admin/config/content/fancy_file_delete (route fancy_file_delete.info), and the Manual form at /admin/config/content/fancy_file_delete/manual. Both require the 'administer fancy file delete' permission. A normal delete calls File::delete() and skips files still referenced in file_usage; a force delete drops the file_managed and file_usage rows and deletes the entity directly."
+    },
+    {
+      "id": "ffd-find-orphan-introspect",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "persona": "drupal-expert",
+      "prompt": "This site has an orphaned managed file (a file_managed row whose only file_usage reference is a node that no longer exists). Using the same logic Fancy File Delete's 'Orphan File Delete' filter uses, inspect the live site and tell me the filename of the orphaned file and the FID it has.",
+      "setup": "agent-module-documentation/evaluation/verify/fancy_file_delete-orphan-introspect-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/fancy_file_delete-orphan-introspect-cleanup.sh",
+      "must_contain_any": ["ffd_eval_orphan.txt"],
+      "must_not_contain": [],
+      "expected_output": "Running the orphan query (SELECT fm.fid FROM file_managed fm LEFT JOIN file_usage fu ON fm.fid=fu.fid LEFT JOIN node n ON fu.id=n.nid WHERE fu.type='node' AND n.nid IS NULL) finds one orphan: filename ffd_eval_orphan.txt (public://ffd_eval_orphan.txt) with its live FID -- read from the running site, not from docs."
+    },
+    {
+      "id": "ffd-find-unmanaged-introspect",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "persona": "drupal-expert",
+      "prompt": "Fancy File Delete's UNMANAGED workflow finds files on disk that are not tracked in file_managed. Inspect this site's public files directory and tell me the name of an unmanaged file present there (a file on disk that has no matching row in the file_managed table).",
+      "setup": "agent-module-documentation/evaluation/verify/fancy_file_delete-unmanaged-introspect-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/fancy_file_delete-unmanaged-introspect-cleanup.sh",
+      "must_contain_any": ["ffd_eval_unmanaged.txt"],
+      "must_not_contain": [],
+      "expected_output": "Diffing the public:// directory listing against the uri column of file_managed reveals ffd_eval_unmanaged.txt (public://ffd_eval_unmanaged.txt) as an unmanaged file: it exists on disk but has no file_managed row -- read from the live site."
+    },
+    {
+      "id": "ffd-delete-orphan-expert",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site (DDEV, drush available) there is an orphaned managed file named ffd_eval_orphan_del.txt (public://ffd_eval_orphan_del.txt): a file_managed entity whose only file_usage reference points at a node that no longer exists. Because of that stale usage row a normal delete refuses it. Use Fancy File Delete (its Drush command / batch service) to actually remove it from the site -- delete the managed file, its usage row, and the file on disk. Apply it to the live site, then summarize in one line.",
+      "reset": "agent-module-documentation/evaluation/verify/fancy_file_delete-orphan-delete-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/fancy_file_delete-orphan-delete-verify.sh",
+      "expected_output": "The agent finds the FID (e.g. via the orphan query or file_managed lookup on filename ffd_eval_orphan_del.txt) and force-deletes it -- drush ffd <fid> --force -y (or the fancy_file_delete.batch service setBatch([$fid], TRUE, FALSE), or the FORCE VBO action). Afterward no file_managed row, no file_usage row, and no on-disk file remain for ffd_eval_orphan_del.txt. Verified against live state."
+    },
+    {
+      "id": "ffd-delete-orphan-layman",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "layman",
+      "prompt": "My Drupal site has a leftover file called ffd_eval_orphan_del.txt that is still attached to a blog post I already deleted, so the site won't let me remove it normally. Please get rid of it completely -- the file and any leftover record of it -- and tell me in one line what you did.",
+      "reset": "agent-module-documentation/evaluation/verify/fancy_file_delete-orphan-delete-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/fancy_file_delete-orphan-delete-verify.sh",
+      "expected_output": "Same verified end state as the expert variant: the agent must discover that Fancy File Delete's FORCE delete (drush ffd <fid> --force, the fancy_file_delete.batch service, or the FORCE VBO action) is required because the file is still referenced, then apply it so no file_managed row, no file_usage row, and no on-disk file remain for ffd_eval_orphan_del.txt. Verified against live state."
+    }
+  ]
+}

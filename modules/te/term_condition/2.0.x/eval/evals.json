@@ -1,0 +1,80 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "term_condition",
+  "version": "2.0.x",
+  "note": "Term Condition provides one Condition plugin (id: term) used mainly for block visibility. It has no settings form, no configure route (configure=null), no permissions, no Drush, and defines no plugin type of its own. Its persistent state is the condition config stored on the consumer entity - for a placed block that is block.block.<id> -> visibility.term with keys term_uuids (array of taxonomy term UUIDs), negate, context_mapping. v2 stores term UUIDs (not tids). Medium/hard cases are grounded in real placed-block visibility config: introspection reads back which term gates a block and whether the condition is negated; execution adds a Term condition to a live block (gate or hide) verified against block.block.<id>.visibility.term.term_uuids.",
+  "evals": [
+    {
+      "id": "term-condition-what-and-where",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "In the Drupal contrib module term_condition, what does it add and where would a site builder typically use it? Name the plugin it provides.",
+      "must_contain_any": ["condition", "Condition", "block visibility", "Visibility", "term"],
+      "must_not_contain": [],
+      "expected_output": "It provides a Condition plugin with id 'term' (Drupal\\term_condition\\Plugin\\Condition\\Term). Because it is a standard Condition plugin it is used wherever conditions are collected - most commonly the Visibility section of the Block layout placement form - to show/hide a block depending on whether the contextual node references a chosen taxonomy term."
+    },
+    {
+      "id": "term-condition-storage-key",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "When you pick taxonomy terms for the term_condition 'Term' visibility condition on a block, under which config key are the selected terms stored, and are they stored as term IDs or something else?",
+      "must_contain_any": ["term_uuids", "uuid", "UUID"],
+      "must_not_contain": [],
+      "expected_output": "They are stored under the 'term_uuids' key of the condition config (e.g. block.block.<id>.visibility.term.term_uuids) as an array of taxonomy term UUIDs. Version 2 switched from term IDs to UUIDs (converted by term_condition_update_9201) so exported config survives content re-imports."
+    },
+    {
+      "id": "term-condition-empty-behaviour",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "If I add the term_condition 'Term' visibility condition to a block but select no terms at all, and I do not negate the condition, will the block be shown? Explain briefly.",
+      "must_contain_any": ["TRUE", "true", "shown", "displayed", "does not restrict", "passes"],
+      "must_not_contain": [],
+      "expected_output": "Yes. evaluate() returns TRUE when term_uuids is empty and the condition is not negated, so the condition does not restrict and the block is shown. It only starts filtering once you select one or more terms (matching is by the referenced term's UUID via the node's referencedEntities())."
+    },
+    {
+      "id": "term-condition-which-term-gates",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "On this Drupal site the block with id 'tc_gated_block_m1' is restricted using the term_condition 'Term' visibility condition. Inspect the live block configuration and tell me the name of the taxonomy term that gates it.",
+      "must_contain_any": ["TC Gate Term"],
+      "must_not_contain": [],
+      "expected_output": "The term is 'TC Gate Term'. block.block.tc_gated_block_m1 has visibility.term.term_uuids listing one UUID; resolving that UUID (loadEntityByUuid('taxonomy_term', <uuid>)) yields the term named 'TC Gate Term' in vocabulary tc_eval_m1.",
+      "setup": "agent-module-documentation/evaluation/verify/term_condition-gated-term-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/term_condition-gated-term-cleanup.sh"
+    },
+    {
+      "id": "term-condition-is-negated",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "The block 'tc_gated_block_m2' on this site uses the term_condition 'Term' visibility condition. Inspect the live block configuration: is the condition negated (block hidden on matching terms) or not?",
+      "must_contain_any": ["negate", "negated", "Negate", "inverted", "hidden"],
+      "must_not_contain": [],
+      "expected_output": "It is negated: block.block.tc_gated_block_m2 has visibility.term.negate = true, so the block is HIDDEN on nodes that reference the configured term ('TC Hidden Term') rather than shown.",
+      "setup": "agent-module-documentation/evaluation/verify/term_condition-negated-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/term_condition-negated-cleanup.sh"
+    },
+    {
+      "id": "term-condition-gate-block",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site there is a placed block with id 'tc_task_block_h1' and a taxonomy term named 'TC Task Term A'. Using the term_condition module, add a 'Term' visibility condition to that block so it is only shown on nodes that reference 'TC Task Term A'. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/term_condition-gate-block-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/term_condition-gate-block-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/term_condition-gate-block-cleanup.sh",
+      "expected_output": "block.block.tc_task_block_h1 gains visibility.term with id 'term', negate false, context_mapping.node '@node.node_route_context:node', and term_uuids containing the UUID of the term 'TC Task Term A'. Resolve the UUID with Term::load()->uuid()/loadByProperties, then setVisibilityConfig('term', [...]) and save the block."
+    },
+    {
+      "id": "term-condition-hide-block",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site there is a placed block with id 'tc_task_block_h2' and a taxonomy term named 'TC Task Term B'. Using the term_condition module, configure the block so that it is HIDDEN on any node that references 'TC Task Term B' (and shown everywhere else). Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/term_condition-hide-block-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/term_condition-hide-block-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/term_condition-hide-block-cleanup.sh",
+      "expected_output": "block.block.tc_task_block_h2 gains a NEGATED Term condition: visibility.term with negate true and term_uuids containing the UUID of 'TC Task Term B'. Because the condition is negated, the block is hidden on nodes referencing that term."
+    }
+  ]
+}

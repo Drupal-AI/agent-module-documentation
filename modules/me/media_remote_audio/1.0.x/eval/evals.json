@@ -1,0 +1,82 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "media_remote_audio",
+  "version": "1.0.x",
+  "note": "Remote Audio registers an oembed:audio media source (hook_media_source_info_alter, reusing core's OEmbed class) and ships a remote_audio media type with source field field_media_oembed_audio (a core string field) whose form/view displays use core's oEmbed URL widget / oEmbed content formatter. Allowed providers: iHeartRadio, SoundCloud, Spotify. A service provider swaps media.oembed.resource_fetcher for SoundCloudAwareResourceFetcher to normalise SoundCloud oEmbed XML. No configure route, no permissions, no Drush, no plugin types. Cases are grounded in the real media.type.remote_audio config and the oembed:audio source.",
+  "evals": [
+    {
+      "id": "media_remote_audio-providers",
+      "mode": "recipe",
+      "prompt": "On a Drupal site with the media_remote_audio module, which streaming providers can editors embed as 'Remote audio' media, and what URL do they visit to add one?",
+      "must_contain_any": ["SoundCloud", "Spotify", "iHeartRadio", "/media/add/remote_audio"],
+      "must_not_contain": [],
+      "expected_output": "It supports SoundCloud, Spotify, and iHeartRadio. Editors add remote audio at /media/add/remote_audio (or via the Media Library 'Remote audio' option) by pasting the provider's URL.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "media_remote_audio-source-field",
+      "mode": "recipe",
+      "prompt": "In the media_remote_audio module, what is the machine name of the media source plugin used by the Remote audio media type, and what is the source field that stores the audio URL?",
+      "must_contain_any": ["oembed:audio", "field_media_oembed_audio"],
+      "must_not_contain": [],
+      "expected_output": "The media type remote_audio uses the source plugin oembed:audio (core's \\Drupal\\media\\Plugin\\media\\Source\\OEmbed class). The source field is field_media_oembed_audio, a core string field (max_length 255) shown with the oEmbed URL widget.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "media_remote_audio-soundcloud-fetcher",
+      "mode": "recipe",
+      "prompt": "Why does the media_remote_audio module override Drupal core's oEmbed resource fetcher service, and what does its replacement class do for SoundCloud?",
+      "must_contain_any": ["SoundCloudAwareResourceFetcher", "resource_fetcher", "thumbnail", "parseResourceXml"],
+      "must_not_contain": [],
+      "expected_output": "A service provider swaps media.oembed.resource_fetcher for SoundCloudAwareResourceFetcher. Its parseResourceXml() rewrites SoundCloud's hyphenated oEmbed keys to underscores and, when SoundCloud omits thumbnail dimensions, parses them from the thumbnail URL or falls back to 200x200 so core accepts the thumbnail.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "media_remote_audio-restricted-providers",
+      "mode": "introspection",
+      "prompt": "On this Drupal site the Remote audio media type has been restricted to a single allowed oEmbed provider. Inspect the live media.type.remote_audio configuration and state which provider it is currently limited to.",
+      "must_contain_any": ["iHeartRadio"],
+      "must_not_contain": [],
+      "expected_output": "In media.type.remote_audio, source_configuration.providers is ['iHeartRadio'], so only iHeartRadio is allowed (SoundCloud and Spotify are excluded).",
+      "setup": "agent-module-documentation/evaluation/verify/media_remote_audio-restricted-providers-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/media_remote_audio-restricted-providers-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "media_remote_audio-thumb-queue",
+      "mode": "introspection",
+      "prompt": "On this Drupal site, is thumbnail download queuing enabled for the Remote audio media type? Inspect the live configuration and answer with the value of the relevant setting.",
+      "must_contain_any": ["queue_thumbnail_downloads", "true", "enabled", "yes"],
+      "must_not_contain": [],
+      "expected_output": "media.type.remote_audio has queue_thumbnail_downloads set to true on this site (the shipped default is false), so thumbnail downloads are queued rather than fetched synchronously.",
+      "setup": "agent-module-documentation/evaluation/verify/media_remote_audio-thumb-queue-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/media_remote_audio-thumb-queue-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "media_remote_audio-new-type",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "Using the media source provided by the media_remote_audio module, create a new media type with machine name mra_podcast (label 'MRA Podcast') that uses the Remote audio (oembed:audio) source, and make sure it has a working source field. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/media_remote_audio-new-type-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/media_remote_audio-new-type-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/media_remote_audio-new-type-reset.sh",
+      "expected_output": "A media_type entity mra_podcast exists whose source plugin id is oembed:audio and whose source_configuration.source_field points at a real field on the media entity (e.g. create the type, then create its source field via the source's createSourceField()).",
+      "difficulty": "hard"
+    },
+    {
+      "id": "media_remote_audio-restrict-providers-build",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, configure the existing Remote audio media type (remote_audio) so that Spotify is the ONLY oEmbed provider allowed for it, and apply the change to the live configuration.",
+      "reset": "agent-module-documentation/evaluation/verify/media_remote_audio-restrict-providers-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/media_remote_audio-restrict-providers-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/media_remote_audio-restrict-providers-reset.sh",
+      "expected_output": "In media.type.remote_audio, source_configuration.providers contains exactly ['Spotify'] (SoundCloud and iHeartRadio removed).",
+      "difficulty": "hard"
+    }
+  ]
+}

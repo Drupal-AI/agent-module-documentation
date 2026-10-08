@@ -1,0 +1,80 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "next_jsonapi",
+  "version": "2.1.x",
+  "note": "next_jsonapi is a pure service-decoration module: NextJsonapiServiceProvider::alter() re-classes jsonapi.entity_resource to Drupal\\next_jsonapi\\Controller\\EntityResource and calls setMaxSize('%next_jsonapi.size_max%'), with parameter next_jsonapi.size_max = 1000 (core JSON:API max is 50). It has no config entity/permission/route/Drush, so its only live 'state' is the active service class + the container parameter, and whether the module is enabled. Introspection reads get_class(jsonapi.entity_resource) and the size_max parameter from the running container; execution is grounded in enabling/uninstalling the module, verified by whether jsonapi.entity_resource is next_jsonapi's subclass. Actual JSON:API traffic is consumed by the external Next.js app.",
+  "evals": [
+    {
+      "id": "next-jsonapi-what",
+      "mode": "recipe",
+      "prompt": "What does the next_jsonapi submodule do for a decoupled Next.js site?",
+      "must_contain_any": ["1000", "page size", "max", "jsonapi.entity_resource"],
+      "must_not_contain": [],
+      "expected_output": "It raises JSON:API's maximum page size to 1000 (core default is 50) by decorating the jsonapi.entity_resource service with its own EntityResource subclass, so a Next.js build can fetch large collections in fewer requests.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "next-jsonapi-parameter",
+      "mode": "recipe",
+      "prompt": "Which container parameter controls the maximum JSON:API page size in next_jsonapi, and what is its default value?",
+      "must_contain_any": ["next_jsonapi.size_max", "1000"],
+      "must_not_contain": [],
+      "expected_output": "The parameter next_jsonapi.size_max, defined in next_jsonapi.services.yml with default value 1000. Override it (e.g. in a services.yml) to change the cap; there is no admin form.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "next-jsonapi-how",
+      "mode": "recipe",
+      "prompt": "How does next_jsonapi apply its higher page-size limit technically?",
+      "must_contain_any": ["ServiceProvider", "setMaxSize", "EntityResource", "decorat"],
+      "must_not_contain": [],
+      "expected_output": "NextJsonapiServiceProvider::alter() changes the jsonapi.entity_resource service class to Drupal\\next_jsonapi\\Controller\\EntityResource and adds a setMaxSize('%next_jsonapi.size_max%') method call. That subclass overrides getJsonApiParams() to use the larger OffsetPage max when a 'fields' query parameter is present.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "next-jsonapi-live-class",
+      "mode": "introspection",
+      "prompt": "On this live site, inspect the service container and report which PHP class currently serves the jsonapi.entity_resource service (indicating next_jsonapi's decoration is active).",
+      "must_contain_any": ["Drupal\\next_jsonapi\\Controller\\EntityResource", "next_jsonapi"],
+      "must_not_contain": [],
+      "expected_output": "get_class(\\Drupal::service('jsonapi.entity_resource')) is Drupal\\next_jsonapi\\Controller\\EntityResource, showing next_jsonapi has decorated the core service.",
+      "setup": "agent-module-documentation/evaluation/verify/next_jsonapi-live-class-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/next_jsonapi-live-class-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "next-jsonapi-size-max",
+      "mode": "introspection",
+      "prompt": "Inspect the running Drupal container on this site and report the value of the next_jsonapi.size_max parameter (the JSON:API max page size next_jsonapi sets).",
+      "must_contain_any": ["1000"],
+      "must_not_contain": [],
+      "expected_output": "\\Drupal::getContainer()->getParameter('next_jsonapi.size_max') is 1000.",
+      "setup": "agent-module-documentation/evaluation/verify/next_jsonapi-size-max-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/next_jsonapi-size-max-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "next-jsonapi-enable",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "site-owner",
+      "prompt": "I need my headless Next.js site to be able to pull large JSON:API collections (bigger pages) from Drupal. Enable the next_jsonapi module so JSON:API's page-size limit is raised for the front end.",
+      "reset": "agent-module-documentation/evaluation/verify/next_jsonapi-enable-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/next_jsonapi-enable-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/next_jsonapi-enable-cleanup.sh",
+      "expected_output": "next_jsonapi is enabled, so the jsonapi.entity_resource service is now Drupal\\next_jsonapi\\Controller\\EntityResource and the next_jsonapi.size_max parameter (1000) is defined."
+    },
+    {
+      "id": "next-jsonapi-uninstall",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "We are moving this decoupled site from JSON:API to another data layer and no longer want next_jsonapi's JSON:API page-size override. Uninstall the next_jsonapi module (leave the core jsonapi and next modules in place).",
+      "reset": "agent-module-documentation/evaluation/verify/next_jsonapi-uninstall-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/next_jsonapi-uninstall-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/next_jsonapi-uninstall-cleanup.sh",
+      "expected_output": "next_jsonapi is no longer enabled; jsonapi.entity_resource has reverted to the core Drupal\\jsonapi\\Controller\\EntityResource class (not next_jsonapi's subclass), while jsonapi and next remain enabled."
+    }
+  ]
+}

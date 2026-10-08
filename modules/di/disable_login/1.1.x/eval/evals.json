@@ -1,0 +1,80 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "disable_login",
+  "version": "1.1.x",
+  "note": "Disable Login Page adds a route access check to user.login / user.login.http that forbids the login page unless the request carries ?<querystring>=<secret>. Config object disable_login.settings has three keys: disable_login (bool master switch), querystring (parameter name), secret (required value). Configure route disable_login.settings_form (/admin/config/security/disable-login), core 'administer site configuration' permission. No config/install ships, so protection is off until configured. Secret can be altered via hook_disable_login_key_alter(&$secret). Cases are grounded in these keys; medium/hard scripts set and read them and always disable protection on cleanup/reset so login is never left locked.",
+  "evals": [
+    {
+      "id": "disable_login-access-url",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "With the disable_login module protecting my Drupal login page using querystring name 'key' and secret value 'abc123', what URL lets an authorised user reach the login form, and what happens without it?",
+      "must_contain_any": ["?key=abc123", "user/login?key=abc123", "querystring", "?key="],
+      "must_not_contain": [],
+      "expected_output": "Visit /user/login?key=abc123 to reach the form; /user/login without the correct querystring/value returns Access Denied (403)."
+    },
+    {
+      "id": "disable_login-config-keys",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "Which configuration values does the disable_login module use to protect the login page, and where is the settings page?",
+      "must_contain_any": ["disable_login", "querystring", "secret"],
+      "must_not_contain": [],
+      "expected_output": "Config object disable_login.settings with keys disable_login (on/off), querystring (parameter name) and secret (required value). Settings at Configuration > Security > Disable Login Page (/admin/config/security/disable-login)."
+    },
+    {
+      "id": "disable_login-key-hook",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "How can a developer make the disable_login secret key change automatically (for example rotate it monthly) instead of hard-coding one value?",
+      "must_contain_any": ["hook_disable_login_key_alter", "disable_login_key_alter"],
+      "must_not_contain": [],
+      "expected_output": "Implement hook_disable_login_key_alter(&$secret) in a custom module and assign the computed value to $secret (it is passed by reference); the access check uses the altered value."
+    },
+    {
+      "id": "disable_login-current-key",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "This Drupal site has the login page protected by the disable_login module. Inspect the live configuration and give the exact URL an authorised user must use to reach /user/login.",
+      "must_contain_any": ["entry=sesame", "?entry=sesame", "/user/login?entry=sesame"],
+      "must_not_contain": [],
+      "expected_output": "disable_login.settings has disable_login=true, querystring=entry, secret=sesame, so the URL is /user/login?entry=sesame.",
+      "setup": "agent-module-documentation/evaluation/verify/disable_login-protected-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/disable_login-protected-cleanup.sh"
+    },
+    {
+      "id": "disable_login-is-protected",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "Is anonymous access to the /user/login page currently restricted by the disable_login module on this site? Inspect the live configuration to answer yes/no and explain.",
+      "must_contain_any": ["disable_login", "enabled", "true", "restricted", "protected"],
+      "must_not_contain": [],
+      "expected_output": "Yes: disable_login.settings -> disable_login is true, so the access check forbids /user/login unless the request has ?entry=sesame.",
+      "setup": "agent-module-documentation/evaluation/verify/disable_login-protected-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/disable_login-protected-cleanup.sh"
+    },
+    {
+      "id": "disable_login-enable-protection",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, use the disable_login module to block anonymous access to /user/login unless the request includes the querystring parameter 'gate' with the value 'openup'. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/disable_login-enable-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/disable_login-enable-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/disable_login-enable-reset.sh",
+      "expected_output": "Set disable_login.settings: disable_login=true, querystring='gate', secret='openup' (e.g. drush cset disable_login.settings disable_login 1; ... querystring gate; ... secret openup). Then /user/login?gate=openup reaches the form."
+    },
+    {
+      "id": "disable_login-change-key",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "This Drupal site already protects /user/login with the disable_login module. Rotate the credentials so the login page now requires the querystring parameter 'pass' with the value 'letmein' (keeping protection enabled). Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/disable_login-change-key-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/disable_login-change-key-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/disable_login-change-key-cleanup.sh",
+      "expected_output": "Keep disable_login.settings:disable_login=true and set querystring='pass', secret='letmein', so the working URL becomes /user/login?pass=letmein."
+    }
+  ]
+}

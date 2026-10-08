@@ -1,0 +1,100 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "search_api_location",
+  "version": "1.0.x",
+  "note": "Search API Location adds geospatial search to Search API. It registers two Search API data types: 'location' (Latitude/Longitude, for search_api_location_views) and 'rpt' (Spatial Recursive Prefix Tree, for facets_map_widget heatmaps); both convert a geofield WKT value to 'lat,lon' via geoPHP centroid at index time. It defines a 'location_input' plugin type (manager plugin.manager.search_api_location.location_input, annotation @LocationInput, base LocationInputPluginBase) with plugins raw and geocode_map (the geocoder submodule adds 'geocode'). Distance units km/mi via search_api_location_get_units(); hooks hook_search_api_location_units_alter and hook_search_api_location_input_info_alter. The backend must support the data types (Solr known-good; DB backend does not). No settings form (configure=search_api.overview); everything is configured on a Search API index's Fields page. Medium/hard cases are grounded in a self-contained Search API index (sal_test_index, no server) indexing a geofield (field_sal_geo) as the location/rpt data types - no external map/geocoder libraries required.",
+  "evals": [
+    {
+      "id": "search_api_location-data-types",
+      "mode": "recipe",
+      "prompt": "Which Search API data types does the search_api_location module add, and what is each one used for?",
+      "must_contain_any": [
+        "location",
+        "rpt",
+        "Latitude/Longitude",
+        "Recursive Prefix Tree"
+      ],
+      "must_not_contain": [],
+      "expected_output": "It adds two data types: 'location' (Latitude/Longitude) used for Views distance filtering/sorting (search_api_location_views), and 'rpt' (Spatial Recursive Prefix Tree) used for facet heatmaps (facets_map_widget). Both convert a geofield value to a lat,lon string via geoPHP.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "search_api_location-index-geofield",
+      "mode": "recipe",
+      "prompt": "How do I make a geofield searchable by proximity with search_api_location, and what backend requirement must I be aware of?",
+      "must_contain_any": [
+        "geofield",
+        "Latitude",
+        "location",
+        "rpt",
+        "Solr"
+      ],
+      "must_not_contain": [],
+      "expected_output": "On the Search API index's Fields page, add the geofield and set its Type to Latitude/longitude (location) for Views, and/or Recursive Prefix Tree (rpt) for heatmap facets. The backend must support these spatial data types - Search API Solr does; the database backend does not.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "search_api_location-input-plugins",
+      "mode": "recipe",
+      "prompt": "In search_api_location, how does an end user specify the point to search from, what plugin type governs that, and which input plugins ship out of the box?",
+      "must_contain_any": [
+        "location_input",
+        "raw",
+        "geocode_map",
+        "LocationInput"
+      ],
+      "must_not_contain": [],
+      "expected_output": "A Location Input plugin (plugin type 'location_input', annotation @LocationInput, manager plugin.manager.search_api_location.location_input). The base module ships 'raw' (type lat,lon) and 'geocode_map' (pick on a map); the search_api_location_geocoder submodule adds 'geocode' (geocode an address).",
+      "difficulty": "easy"
+    },
+    {
+      "id": "search_api_location-known-location-field",
+      "mode": "introspection",
+      "prompt": "On this Drupal site there is a Search API index named sal_test_index. Inspect it and give the id of the field that is indexed with the Latitude/Longitude (location) data type.",
+      "must_contain_any": [
+        "sal_loc"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The field sal_loc on index sal_test_index has data type 'location' (Latitude/Longitude); it indexes the field_sal_geo geofield.",
+      "setup": "agent-module-documentation/evaluation/verify/search_api_location-index-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/search_api_location-index-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "search_api_location-known-rpt-field",
+      "mode": "introspection",
+      "prompt": "On this Drupal site, the Search API index sal_test_index indexes a geofield twice. Inspect it and give the id of the field that uses the Spatial Recursive Prefix Tree (rpt) data type used for facet heatmaps.",
+      "must_contain_any": [
+        "sal_rpt"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The field sal_rpt on index sal_test_index has data type 'rpt' (Spatial Recursive Prefix Tree).",
+      "setup": "agent-module-documentation/evaluation/verify/search_api_location-index-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/search_api_location-index-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "search_api_location-set-location-type",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, the Search API index sal_test_index has a field sal_loc (indexing the field_sal_geo geofield) but it is set to the wrong data type. Using search_api_location, configure that field to be indexed as Latitude/Longitude so it can be used for proximity search, and apply the change to the live index.",
+      "reset": "agent-module-documentation/evaluation/verify/search_api_location-set-location-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/search_api_location-set-location-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/search_api_location-set-location-cleanup.sh",
+      "expected_output": "Set the sal_loc field's data type to 'location' on index sal_test_index (via the Fields UI or Index::getField('sal_loc')->setType('location') then save). The verify checks sal_loc's type is 'location'."
+    },
+    {
+      "id": "search_api_location-add-rpt-field",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, the Search API index sal_test_index indexes the field_sal_geo geofield only for distance search. To enable an interactive heatmap facet, add the geofield to the index as a Spatial Recursive Prefix Tree (rpt) field, and apply the change to the live index.",
+      "reset": "agent-module-documentation/evaluation/verify/search_api_location-add-rpt-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/search_api_location-add-rpt-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/search_api_location-add-rpt-cleanup.sh",
+      "expected_output": "Add a field to sal_test_index (indexing field_sal_geo) with data type 'rpt' (e.g. a new Field with id like sal_rpt, setType('rpt')), then save the index. The verify checks the index now has at least one field of type 'rpt'."
+    }
+  ]
+}

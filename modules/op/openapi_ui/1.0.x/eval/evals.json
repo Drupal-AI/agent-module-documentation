@@ -1,0 +1,92 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "openapi_ui",
+  "version": "1.0.x",
+  "note": "openapi_ui is a FRAMEWORK: it defines the openapi_ui plugin type (renderers), an openapi_ui render element, and a route param converter, but ships NO renderer plugins itself (those live in the separate openapi_ui_swagger / openapi_ui_redoc projects, neither installed here). The introspectable/buildable surface is therefore the plugin type + element. easy/recipe probes framework facts an unfamiliar agent would have to read src to answer. medium/introspection PLANTS a known renderer plugin via a fixture module (openapi_ui_eval_fixture) so the agent must read plugin.manager.openapi_ui.ui back on the live site; cleanup removes it (baseline = zero renderer plugins). hard/execution requires the agent to actually WRITE a working openapi_ui renderer plugin as a custom module, verified against live plugin-manager + render-element state. All three tiers are present.",
+  "evals": [
+    {
+      "id": "openapi_ui-plugin-type-easy",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "In the Drupal openapi_ui module, I want to add a new API-doc renderer. What plugin type do I implement, which plugin-manager service manages it, and what Plugin/ discovery subdirectory + annotation do my classes use? Name them.",
+      "must_contain_any": [
+        "plugin.manager.openapi_ui.ui"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The openapi_ui plugin type, managed by plugin.manager.openapi_ui.ui; classes go in Plugin/openapi_ui/OpenApiUi with the @OpenApiUi annotation and implement OpenApiUiInterface::build()."
+    },
+    {
+      "id": "openapi_ui-render-element-easy",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "In openapi_ui, which render element #type embeds an API-docs explorer, and what are its two key properties (the one that picks the display library plugin and the one that supplies the OpenAPI spec)?",
+      "must_contain_any": [
+        "#openapi_ui_plugin",
+        "#openapi_schema"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The '#type' => 'openapi_ui' render element; #openapi_ui_plugin selects the renderer plugin (id or instance) and #openapi_schema supplies the spec (array, URL/URI string, Url object, file entity, or callback)."
+    },
+    {
+      "id": "openapi_ui-ships-no-plugins-easy",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "I enabled the Drupal openapi_ui module but nothing renders. Does openapi_ui itself ship any Swagger/ReDoc UI? Which separate module(s) actually provide the renderer plugins I need to install?",
+      "must_contain_any": [
+        "openapi_ui_swagger",
+        "openapi_ui_redoc"
+      ],
+      "must_not_contain": [],
+      "expected_output": "openapi_ui is a framework and ships no renderer plugins; install openapi_ui_swagger (Swagger UI) and/or openapi_ui_redoc (ReDoc), typically alongside the openapi module which generates the spec."
+    },
+    {
+      "id": "openapi_ui-known-plugin-id-medium",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "persona": "drupal-expert",
+      "prompt": "This Drupal site (drush available) has an openapi_ui renderer plugin registered. Inspect the live openapi_ui plugin manager and tell me the exact plugin id of the registered renderer.",
+      "must_contain_any": [
+        "eval_fixture"
+      ],
+      "must_not_contain": [],
+      "setup": "agent-module-documentation/evaluation/verify/openapi_ui-fixture-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/openapi_ui-fixture-cleanup.sh",
+      "expected_output": "The renderer plugin id is eval_fixture. Read back from plugin.manager.openapi_ui.ui->getDefinitions() on the live site (e.g. via drush php:eval)."
+    },
+    {
+      "id": "openapi_ui-known-plugin-label-medium",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site an openapi_ui renderer plugin is registered. Inspect the live openapi_ui plugin manager and quote the human-readable label that plugin advertises in its @OpenApiUi annotation.",
+      "must_contain_any": [
+        "Eval Fixture Renderer"
+      ],
+      "must_not_contain": [],
+      "setup": "agent-module-documentation/evaluation/verify/openapi_ui-fixture-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/openapi_ui-fixture-cleanup.sh",
+      "expected_output": "The plugin's label is 'Eval Fixture Renderer'. Read from the definition's 'label' in plugin.manager.openapi_ui.ui on the live site."
+    },
+    {
+      "id": "openapi_ui-build-plugin-hard",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site (drush available) the openapi_ui framework module is installed but ships no renderer plugins. Create a custom module named `openapi_ui_eval_build` at web/modules/custom/openapi_ui_eval_build that provides ONE openapi_ui renderer plugin: a class in src/Plugin/openapi_ui/OpenApiUi/ carrying the @OpenApiUi annotation (give it an id and label) and implementing OpenApiUiInterface::build() (extending the base Drupal\\openapi_ui\\Plugin\\openapi_ui\\OpenApiUi is fine). Enable the module and clear caches so the plugin registers. Do not just describe it — apply it to the running site. Reply with one line naming the plugin id you registered.",
+      "reset": "agent-module-documentation/evaluation/verify/openapi_ui-build-plugin-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/openapi_ui-build-plugin-verify.sh",
+      "expected_output": "Module openapi_ui_eval_build is installed and plugin.manager.openapi_ui.ui reports a definition provided by it whose class implements OpenApiUiInterface. Verified against live site state, not the response text."
+    },
+    {
+      "id": "openapi_ui-render-element-hard",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site (drush available), create a custom module named `openapi_ui_eval_render` at web/modules/custom/openapi_ui_eval_render that provides ONE openapi_ui renderer plugin whose build(array $render_element) returns a non-empty render array producing visible markup (for example a container or #markup that embeds the passed #openapi_schema) — NOT the empty array the base class returns. Enable the module and clear caches. The goal is that rendering a `#type => 'openapi_ui'` element with this plugin actually outputs markup. Apply it to the running site; do not just describe it. Reply with one line naming the plugin id you registered.",
+      "reset": "agent-module-documentation/evaluation/verify/openapi_ui-render-element-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/openapi_ui-render-element-verify.sh",
+      "expected_output": "Module openapi_ui_eval_render provides an openapi_ui plugin, and rendering a '#type' => 'openapi_ui' element that uses it produces non-empty HTML (build() returns real markup wired through $element['ui']). Verified by rendering on the live site, not the response text."
+    }
+  ]
+}

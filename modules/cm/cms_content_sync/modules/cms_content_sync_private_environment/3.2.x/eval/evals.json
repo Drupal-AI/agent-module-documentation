@@ -1,0 +1,58 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "cms_content_sync_private_environment",
+  "version": "3.2.x",
+  "note": "Lets a backend-unreachable (local/firewalled) site poll the Sync Core for queued requests instead of receiving pushes. Real artifacts: the Drush command cms_content_sync_private_environment:poll (cspep), a cron handler, and the route cms_content_sync_private_environment.private_environment (/admin/config/services/cms_content_sync/private-environment). No config/permission/plugins. Medium introspects the registered route on the live site; hard is an enable-the-integration task (safe to toggle - no dependents). No backend needed.",
+  "evals": [
+    {
+      "id": "ccs-pe-what",
+      "mode": "recipe",
+      "prompt": "What problem does cms_content_sync_private_environment solve, and by what mechanism (push vs poll) does it work?",
+      "must_contain_any": ["poll", "polling", "cannot reach", "can't connect", "firewall", "local"],
+      "must_not_contain": [],
+      "expected_output": "It lets a site the Sync Core backend cannot reach inbound (e.g. a local/firewalled dev environment) take part in syndication by polling the backend for queued requests instead of receiving inbound push calls.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "ccs-pe-poll-command",
+      "mode": "recipe",
+      "prompt": "Which Drush command does cms_content_sync_private_environment provide to poll the backend, what is its alias, and what does its limit argument accept?",
+      "must_contain_any": ["cms_content_sync_private_environment:poll", "cspep"],
+      "must_not_contain": [],
+      "expected_output": "cms_content_sync_private_environment:poll (alias cspep); the limit argument is 'watch', 'all', or a fixed number, with options --pollInterval (watch mode, default 15s) and --host.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "ccs-pe-cron-auth",
+      "mode": "recipe",
+      "prompt": "Besides the Drush command, how else can cms_content_sync_private_environment process pending sync requests, and what authentication must be configured for Content Sync for it to work?",
+      "must_contain_any": ["cron", "Basic Auth", "basic auth"],
+      "must_not_contain": [],
+      "expected_output": "It also processes requests on cron (hook_cron calls RequestHandlerController::processRequests when enabled). It requires Basic Auth to be enabled and configured for Content Sync.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "ccs-pe-route",
+      "mode": "introspection",
+      "prompt": "On this running site, the cms_content_sync_private_environment module is enabled. Inspect the site's registered routes and give the URL path of its private-environment request handler route.",
+      "must_contain_any": ["/admin/config/services/cms_content_sync/private-environment", "private-environment"],
+      "must_not_contain": [],
+      "expected_output": "The route cms_content_sync_private_environment.private_environment has path /admin/config/services/cms_content_sync/private-environment (drush route --name=cms_content_sync_private_environment.private_environment).",
+      "setup": "agent-module-documentation/evaluation/verify/cms_content_sync_private_environment-route-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/cms_content_sync_private_environment-route-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "ccs-pe-enable",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "This Drupal site runs behind a firewall so the Content Sync backend cannot reach it directly. Enable the Content Sync submodule that lets this site participate in syndication by polling the backend for queued requests.",
+      "reset": "agent-module-documentation/evaluation/verify/cms_content_sync_private_environment-enable-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/cms_content_sync_private_environment-enable-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/cms_content_sync_private_environment-enable-cleanup.sh",
+      "expected_output": "The cms_content_sync_private_environment module is enabled (e.g. drush en cms_content_sync_private_environment -y), registering its poll command, cron handler and private-environment route."
+    }
+  ]
+}

@@ -1,0 +1,89 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "realname",
+  "version": "2.0.x",
+  "note": "Real Name has a single config surface: realname.settings:pattern, a Token pattern over `user` fields, with generated names cached in the {realname} table. Easy cases are response-graded recipes; medium cases install a known pattern then read it back; hard cases build the pattern on the live site and are verified by reading realname.settings AND checking a fresh user's computed real name.",
+  "evals": [
+    {
+      "id": "realname-config-key",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "On a Drupal site using the Real Name module, which config object and key store the site-wide name pattern used to build users' display names? Name both exactly.",
+      "must_contain_any": ["realname.settings"],
+      "must_not_contain": [],
+      "expected_output": "The pattern lives in config object `realname.settings`, key `pattern`."
+    },
+    {
+      "id": "realname-configure-route",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "Where is the Real Name settings form in a Drupal admin UI? Give the exact URL path.",
+      "must_contain_any": ["/admin/config/people/realname", "admin/config/people/realname"],
+      "must_not_contain": [],
+      "expected_output": "/admin/config/people/realname (route realname.admin_settings_form, permission 'administer realname')."
+    },
+    {
+      "id": "realname-pattern-alter-hook",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "In the Real Name module, which hook do I implement to change the name pattern for a specific user account just before the tokens are replaced? Give the exact hook function name.",
+      "must_contain_any": ["hook_realname_pattern_alter", "realname_pattern_alter"],
+      "must_not_contain": [],
+      "expected_output": "hook_realname_pattern_alter(&$pattern, $account)."
+    },
+    {
+      "id": "realname-recursion-token",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "Which `user` token must NOT be used in a Real Name pattern because it causes infinite recursion, and what should you use instead to show the login name?",
+      "must_contain_any": ["[user:name]", "user:name"],
+      "must_not_contain": [],
+      "expected_output": "Do not use [user:name] (it recurses through username formatting); use [user:account-name] for the login name."
+    },
+    {
+      "id": "realname-current-pattern-introspect",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "persona": "drupal-expert",
+      "prompt": "This Drupal site has the Real Name module configured. Inspect the running site (drush available) and tell me the exact token pattern currently used to build users' real names.",
+      "setup": "agent-module-documentation/evaluation/verify/realname-current-pattern-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/realname-current-pattern-cleanup.sh",
+      "must_contain_any": ["[user:mail]"],
+      "must_not_contain": [],
+      "expected_output": "The live realname.settings pattern is `[user:mail]` (read from realname.settings on the running site)."
+    },
+    {
+      "id": "realname-uid-pattern-introspect",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site the Real Name module is set up with a composite name pattern that decorates the login name. Inspect the running site (drush available) and report the exact pattern string configured for realname.",
+      "setup": "agent-module-documentation/evaluation/verify/realname-uid-pattern-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/realname-uid-pattern-cleanup.sh",
+      "must_contain_any": ["[user:account-name] (#[user:uid])"],
+      "must_not_contain": [],
+      "expected_output": "The live realname.settings pattern is `[user:account-name] (#[user:uid])` (read from realname.settings on the running site)."
+    },
+    {
+      "id": "realname-mail-pattern-build",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site (DDEV, drush available), configure the Real Name module so every user's displayed name is their email address. Set the realname pattern to `[user:mail]`, apply it to the running site via drush/config (do not just describe it), and rebuild the cached names so new users pick it up. Give a one-line summary of what you changed.",
+      "reset": "agent-module-documentation/evaluation/verify/realname-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/realname-mail-pattern-verify.sh",
+      "expected_output": "realname.settings:pattern is set to [user:mail] AND a freshly-created user's computed real name (realname_update) equals that user's email. Verified against live site state."
+    },
+    {
+      "id": "realname-account-name-build",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site (drush available), configure the Real Name module to use the login-name fallback: set the realname pattern to exactly `[user:account-name]` and apply it to the running site via drush/config, then clear the cached real names so they regenerate. Do not merely describe the steps. State in one line what you changed.",
+      "reset": "agent-module-documentation/evaluation/verify/realname-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/realname-account-name-verify.sh",
+      "expected_output": "realname.settings:pattern is exactly [user:account-name] AND a freshly-created user's computed real name (realname_update) equals that user's login name. Verified against live site state."
+    }
+  ]
+}

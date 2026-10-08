@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+# Execution RESET: ensure the target documentation IP (198.51.100.42, TEST-NET-2) is NOT banned,
+# so verify FAILS until the agent bans it. Idempotent. Exit 0.
+set -uo pipefail
+cd /var/www/html
+drush php:eval '\Drupal::service("ban.ip_manager")->unbanIp("198.51.100.42");' >/dev/null 2>&1
+echo "reset: IP 198.51.100.42 is not banned"

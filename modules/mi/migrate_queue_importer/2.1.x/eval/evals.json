@@ -1,0 +1,105 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "migrate_queue_importer",
+  "version": "2.1.x",
+  "note": "Migration queue importer schedules Migrate API migrations to run on cron via the Queue API. It defines a cron_migration config entity (config name migrate_queue_importer.cron_migration.<id>) with keys id, label, migration (migration plugin id string), time (interval in SECONDS), update, sync, ignore_dependencies (booleans); status is the entity key (enabled/disabled). hook_cron() queues active, due cron migrations (and dependencies) onto the 'migrations_importer' queue, whose QueueWorker runs MigrateExecutable::import(). One permission: 'administer cron migrations'. UI at /admin/config/migrate_queue_importer/cron_migration. Requires migrate_tools + migrate_plus. Medium/hard cases are grounded in real cron_migration config entities; the referenced migration ids are stored as plain strings (the entity does not require the migration to exist), so cases can use placeholder migration ids without importing anything.",
+  "evals": [
+    {
+      "id": "migrate_queue_importer-how",
+      "mode": "recipe",
+      "prompt": "How does the migrate_queue_importer module actually run a migration, and when? What Drupal subsystem does it use to do the work?",
+      "must_contain_any": [
+        "cron",
+        "queue",
+        "Queue API",
+        "migrations_importer",
+        "hook_cron"
+      ],
+      "must_not_contain": [],
+      "expected_output": "On each cron run its hook_cron() finds active cron_migration entities whose interval has elapsed and pushes them onto the 'migrations_importer' queue; a QueueWorker then imports each via MigrateExecutable::import(). So migrations run on cron through the Queue API, not immediately.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "migrate_queue_importer-entity",
+      "mode": "recipe",
+      "prompt": "In migrate_queue_importer, what config entity represents a scheduled migration, and what are its main fields (including how the schedule interval is expressed)?",
+      "must_contain_any": [
+        "cron_migration",
+        "time",
+        "interval",
+        "migration",
+        "update",
+        "sync",
+        "ignore_dependencies"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The cron_migration config entity (migrate_queue_importer.cron_migration.<id>) with keys id, label, migration (the migration plugin id), time (interval in seconds), and the boolean flags update, sync and ignore_dependencies, plus a status (enabled/disabled).",
+      "difficulty": "easy"
+    },
+    {
+      "id": "migrate_queue_importer-flags",
+      "mode": "recipe",
+      "prompt": "When migrate_queue_importer queues a migration, what do the per-migration 'update' and 'sync' options do, and what is the queue/worker called?",
+      "must_contain_any": [
+        "migrations_importer",
+        "update",
+        "sync",
+        "prepareUpdate",
+        "syncSource"
+      ],
+      "must_not_contain": [],
+      "expected_output": "update re-imports rows (calls prepareUpdate() on the id map); sync removes destination items missing from the source (sets syncSource). The queue and QueueWorker plugin id is 'migrations_importer'.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "migrate_queue_importer-known",
+      "mode": "introspection",
+      "prompt": "This site has a scheduled migration configured with migrate_queue_importer named mqi_known. Inspect the live configuration and state which migration id it imports and its interval.",
+      "must_contain_any": [
+        "mqi_sample_migration",
+        "3600"
+      ],
+      "must_not_contain": [],
+      "expected_output": "mqi_known imports the migration 'mqi_sample_migration' with time (interval) 3600 seconds (migrate_queue_importer.cron_migration.mqi_known).",
+      "setup": "agent-module-documentation/evaluation/verify/migrate_queue_importer-known-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/migrate_queue_importer-known-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "migrate_queue_importer-flags-live",
+      "mode": "introspection",
+      "prompt": "A cron migration named mqi_flags is configured on this site (migrate_queue_importer). Inspect the live configuration and state which of the update / sync / ignore_dependencies flags is enabled.",
+      "must_contain_any": [
+        "sync"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Only the 'sync' flag is enabled on mqi_flags (update and ignore_dependencies are false); see migrate_queue_importer.cron_migration.mqi_flags.",
+      "setup": "agent-module-documentation/evaluation/verify/migrate_queue_importer-flags-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/migrate_queue_importer-flags-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "migrate_queue_importer-create",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "Using the migrate_queue_importer module, create an enabled cron migration with machine name mqi_task that schedules the migration 'mqi_target_migration' to run with an interval of 600 seconds. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/migrate_queue_importer-create-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/migrate_queue_importer-create-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/migrate_queue_importer-create-cleanup.sh",
+      "expected_output": "A cron_migration config entity mqi_task exists, enabled (status true), with migration='mqi_target_migration' and time=600 (migrate_queue_importer.cron_migration.mqi_task)."
+    },
+    {
+      "id": "migrate_queue_importer-disable",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "This site has an enabled cron migration named mqi_toggle (migrate_queue_importer). Disable it so it is no longer picked up on cron runs, and apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/migrate_queue_importer-disable-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/migrate_queue_importer-disable-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/migrate_queue_importer-disable-cleanup.sh",
+      "expected_output": "The cron_migration entity mqi_toggle has status false (disabled), e.g. via the disable action/link or $entity->disable()->save()."
+    }
+  ]
+}

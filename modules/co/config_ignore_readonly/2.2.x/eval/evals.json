@@ -1,0 +1,103 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "config_ignore_readonly",
+  "version": "2.2.x",
+  "note": "Config Ignore Readonly is a single-hook bridge: config_ignore_readonly_config_readonly_whitelist_patterns() returns ConfigIgnoreConfig::fromConfig(config('config_ignore.settings'))->getFormated('simple'), i.e. the flat import/update ignore list at config_ignore.settings:ignored_config_entities (simple mode). config_readonly treats those patterns as editable-under-readonly. No UI/settings/permissions/schema/plugins. Medium cases seed config_ignore.settings:ignored_config_entities with a known value and the agent reads it back via drush cget. Hard cases clear that list (verify FAILS because the module then forwards no matching pattern -- note the alter hook still injects unrelated ai_provider_amazeeio patterns, so verify checks specifically for system.site / a glob matching system.rss) then the agent adds the pattern and verify confirms the module forwards it via the invoked hook. Baseline ignored_config_entities is empty; cleanup/reset restore [].",
+  "evals": [
+    {
+      "id": "config_ignore_readonly-what-hook",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "The Drupal module config_ignore_readonly lets some config forms stay editable even when config_readonly has locked the site. Which Drupal hook does it implement, and how does it decide which forms remain editable?",
+      "must_contain_any": [
+        "hook_config_readonly_whitelist_patterns",
+        "config_readonly_whitelist_patterns",
+        "config_ignore",
+        "ignored_config_entities",
+        "whitelist"
+      ],
+      "must_not_contain": [],
+      "expected_output": "It implements hook_config_readonly_whitelist_patterns(). It reads Config Ignore's ignore list (config_ignore.settings:ignored_config_entities, the simple import/update patterns via ConfigIgnoreConfig::getFormated('simple')) and returns those patterns to config_readonly as its whitelist, so any config form whose config is ignored stays editable while readonly is active."
+    },
+    {
+      "id": "config_ignore_readonly-make-editable",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "On a Drupal site with config_readonly active, I want the Basic site settings form (which edits system.site) to remain editable while config_ignore_readonly is enabled. What do I actually change to make that happen?",
+      "must_contain_any": [
+        "config_ignore",
+        "ignored_config_entities",
+        "ignore list",
+        "add system.site"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Add system.site to Config Ignore's ignore list (config_ignore.settings:ignored_config_entities). Because config_ignore_readonly forwards the ignore list to config_readonly's whitelist, ignoring system.site makes the site information form submittable even under readonly. No config_ignore_readonly-specific setting exists."
+    },
+    {
+      "id": "config_ignore_readonly-limitations",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "Which Config Ignore pattern styles does config_ignore_readonly NOT support when deciding which forms stay editable under config_readonly?",
+      "must_contain_any": [
+        "force-import",
+        "force import",
+        "~",
+        "sub-key",
+        "partial",
+        "single key",
+        "all config names"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Force-import patterns like ~webform.webform.contact are not supported, and partial/sub-key patterns like user.mail:register_no_approval_required.body are not supported (the whole config name must be ignored). Also, a form with multiple getEditableConfigNames() only becomes editable when all of them are ignored."
+    },
+    {
+      "id": "config_ignore_readonly-ignored-site",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "On this Drupal site, Config Ignore is configured so that exactly one configuration object stays editable under config_readonly (via config_ignore_readonly). Inspect the live configuration and name that configuration object.",
+      "must_contain_any": [
+        "system.site"
+      ],
+      "must_not_contain": [],
+      "expected_output": "system.site: config_ignore.settings:ignored_config_entities is [system.site], and config_ignore_readonly forwards that to config_readonly's whitelist, so the Basic site settings form stays editable under readonly.",
+      "setup": "agent-module-documentation/evaluation/verify/config_ignore_readonly-ignored-site-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/config_ignore_readonly-ignored-site-cleanup.sh"
+    },
+    {
+      "id": "config_ignore_readonly-ignored-contact",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "This site uses config_ignore_readonly. Inspect Config Ignore's live settings and state which single configuration entity is currently ignored (and therefore has its form editable while config_readonly is active).",
+      "must_contain_any": [
+        "contact.form.feedback"
+      ],
+      "must_not_contain": [],
+      "expected_output": "contact.form.feedback: it is the only entry in config_ignore.settings:ignored_config_entities, so config_ignore_readonly whitelists that config for editing under readonly.",
+      "setup": "agent-module-documentation/evaluation/verify/config_ignore_readonly-ignored-contact-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/config_ignore_readonly-ignored-contact-cleanup.sh"
+    },
+    {
+      "id": "config_ignore_readonly-editable-site",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site config_ignore_readonly, config_ignore and config_readonly are all enabled. Make the Basic site settings configuration (system.site) editable under config_readonly by configuring Config Ignore appropriately, and apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/config_ignore_readonly-editable-site-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/config_ignore_readonly-editable-site-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/config_ignore_readonly-editable-site-cleanup.sh",
+      "expected_output": "Add system.site to config_ignore.settings:ignored_config_entities (simple mode). Then config_ignore_readonly_config_readonly_whitelist_patterns() returns a list containing system.site, so config_readonly leaves that form editable."
+    },
+    {
+      "id": "config_ignore_readonly-editable-glob",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, make the system.rss configuration (and ideally all system.* configuration) remain editable while config_readonly is active, using config_ignore_readonly's mechanism. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/config_ignore_readonly-editable-glob-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/config_ignore_readonly-editable-glob-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/config_ignore_readonly-editable-glob-cleanup.sh",
+      "expected_output": "Add a pattern that matches system.rss -- either system.rss or the glob system.* -- to config_ignore.settings:ignored_config_entities. config_ignore_readonly forwards it to config_readonly's whitelist, so the matching config form(s) stay editable under readonly."
+    }
+  ]
+}

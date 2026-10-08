@@ -1,0 +1,100 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "moderation_dashboard",
+  "version": "4.0.x",
+  "note": "Moderation Dashboard is a bundle of core Views + Layout Builder + two custom blocks, not a service/plugin API. Its own configurable surface is tiny: the config object moderation_dashboard.settings has exactly two boolean keys (redirect_on_login default true, chart_js_cdn default false) plus two permissions (use moderation dashboard, view any moderation dashboard). The dashboard page is the Views route view.moderation_dashboard.page_1 at path user/%user/moderation-dashboard. Execution/introspection cases therefore target those settings and permissions, which are the only things an agent can meaningfully read/write via drush/config. NOTE for graders: verify scripts check STRICT booleans — `drush cset moderation_dashboard.settings redirect_on_login false` is a trap because Drush casts the non-empty string \"false\" to boolean TRUE; the correct way to store boolean false is the config API or `drush cset ... 0`. Hard cases carry persona variants where noted (-expert / -layman) sharing one verify.",
+  "evals": [
+    {
+      "id": "moderation_dashboard-dashboard-route",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "In the Moderation Dashboard module, each user's dashboard is a Views page. What is the route name of that page and what URL path does it live at?",
+      "must_contain_any": ["view.moderation_dashboard.page_1", "user/%user/moderation-dashboard", "user/{user}/moderation-dashboard"],
+      "must_not_contain": [],
+      "expected_output": "The dashboard is the Views page display route `view.moderation_dashboard.page_1`, path `user/%user/moderation-dashboard` (i.e. /user/{uid}/moderation-dashboard)."
+    },
+    {
+      "id": "moderation_dashboard-settings-keys",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "What is the name of the Moderation Dashboard settings config object, and what are the two boolean settings it stores (with their default values)?",
+      "must_contain_any": ["redirect_on_login", "chart_js_cdn"],
+      "must_not_contain": [],
+      "expected_output": "Config object `moderation_dashboard.settings` with two booleans: `redirect_on_login` (default true — redirect to the dashboard after login) and `chart_js_cdn` (default false — load Chart.js from CDN vs a local library)."
+    },
+    {
+      "id": "moderation_dashboard-view-any-permission",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "In the Moderation Dashboard module, which permission must a user be granted so they can view OTHER users' moderation dashboards (not just their own)?",
+      "must_contain_any": ["view any moderation dashboard"],
+      "must_not_contain": [],
+      "expected_output": "The `view any moderation dashboard` permission. (`use moderation dashboard` only grants access to your own dashboard.)"
+    },
+    {
+      "id": "moderation_dashboard-settings-introspect",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site (drush available), inspect the Moderation Dashboard configuration and tell me the current values of its two settings: whether users are redirected to the dashboard after login, and whether Chart.js is loaded from a CDN.",
+      "setup": "agent-module-documentation/evaluation/verify/moderation_dashboard-settings-introspect-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/moderation_dashboard-settings-introspect-cleanup.sh",
+      "must_contain_any": ["redirect_on_login", "chart_js_cdn"],
+      "must_not_contain": [],
+      "expected_output": "Read from moderation_dashboard.settings on the live site: redirect_on_login is FALSE (no redirect after login) and chart_js_cdn is TRUE (Chart.js loaded from the CDN) — the non-default state the setup installed."
+    },
+    {
+      "id": "moderation_dashboard-role-perm-introspect",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "persona": "drupal-expert",
+      "prompt": "This site has a role configured that can access other users' moderation dashboards. Inspect the running site (drush available) and tell me the machine name of that role and which Moderation Dashboard permission(s) it holds.",
+      "setup": "agent-module-documentation/evaluation/verify/moderation_dashboard-role-perm-introspect-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/moderation_dashboard-role-perm-introspect-cleanup.sh",
+      "must_contain_any": ["md_reviewer"],
+      "must_not_contain": [],
+      "expected_output": "Role `md_reviewer` holds `view any moderation dashboard` (and `use moderation dashboard`). Read from the user_role config on the live site."
+    },
+    {
+      "id": "moderation_dashboard-disable-redirect-expert",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site (DDEV, drush available), turn OFF the Moderation Dashboard 'redirect on login' behaviour by setting moderation_dashboard.settings:redirect_on_login to boolean false. Apply it to the running site via drush/config — do not just describe it. Note: storing the literal string \"false\" is wrong (it is truthy); store an actual boolean false. Give a one-line summary.",
+      "reset": "agent-module-documentation/evaluation/verify/moderation_dashboard-disable-redirect-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/moderation_dashboard-disable-redirect-verify.sh",
+      "expected_output": "moderation_dashboard.settings:redirect_on_login === false (boolean) on the live site. Verified against live state."
+    },
+    {
+      "id": "moderation_dashboard-disable-redirect-layman",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "layman",
+      "prompt": "On my site I use the Moderation Dashboard. Right now, whenever my editors log in they get bounced straight to their moderation dashboard, and I don't want that anymore — I want them to land on the normal page after login. Please change the setting on the site so that stops happening, and tell me in one line what you did.",
+      "reset": "agent-module-documentation/evaluation/verify/moderation_dashboard-disable-redirect-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/moderation_dashboard-disable-redirect-verify.sh",
+      "expected_output": "Same end state as the expert variant: moderation_dashboard.settings:redirect_on_login is boolean false. The agent must map 'stop bouncing editors to the dashboard after login' onto the redirect_on_login setting."
+    },
+    {
+      "id": "moderation_dashboard-chartjs-cdn-expert",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site (drush available), configure Moderation Dashboard to load the Chart.js library from the CDN instead of a local copy: set moderation_dashboard.settings:chart_js_cdn to boolean true. Apply it to the running site via drush/config — do not just describe it. Give a one-line summary.",
+      "reset": "agent-module-documentation/evaluation/verify/moderation_dashboard-chartjs-cdn-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/moderation_dashboard-chartjs-cdn-verify.sh",
+      "expected_output": "moderation_dashboard.settings:chart_js_cdn === true (boolean) on the live site. Verified against live state."
+    },
+    {
+      "id": "moderation_dashboard-grant-access-expert",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site (drush available), let members of the `content_editor` role reach their own Moderation Dashboard: grant that role the appropriate Moderation Dashboard permission. Apply it to the running site via drush/config — do not just describe it. State in one line what you changed.",
+      "reset": "agent-module-documentation/evaluation/verify/moderation_dashboard-grant-access-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/moderation_dashboard-grant-access-verify.sh",
+      "expected_output": "The `content_editor` role holds the `use moderation dashboard` permission on the live site. Verified against live role config."
+    }
+  ]
+}

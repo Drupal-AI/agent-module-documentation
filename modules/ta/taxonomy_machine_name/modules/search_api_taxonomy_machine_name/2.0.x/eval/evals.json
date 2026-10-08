@@ -1,0 +1,105 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "search_api_taxonomy_machine_name",
+  "version": "2.0.x",
+  "note": "Submodule of taxonomy_machine_name. It provides a Search API processor 'taxonomy_machine_name_hierarchy' (AddHierarchy - indexes a taxonomy term machine_name field plus all ancestor machine names) and a Views filter 'search_api_taxonomy_machine_name' with Start-at-level/Max-depth options. Medium/hard cases are grounded in a fully namespaced, self-contained Search API index built by the setup/reset scripts: a search_api_db server 'satmn_server' + DISABLED index 'satmn_index' (node datasource) + an article->tags entity_reference field field_satmn_cat + an index field field_satmn_cat_machine_name that indexes the referenced term's machine_name (its field dependencies include the taxonomy_machine_name module, which is what makes the processor supportable). Introspection reads back that the hierarchy processor is enabled and which field it targets; execution adds the processor / enables hierarchy for the field, verified against the stored index config. Cleanups/teardown fully remove the namespaced index, server and field. The index is left DISABLED to avoid indexing churn on the shared site.",
+  "evals": [
+    {
+      "id": "satmn-what-processor",
+      "mode": "recipe",
+      "prompt": "What does the Search API Taxonomy Machine Name submodule's search processor do, and what is its plugin id?",
+      "must_contain_any": [
+        "taxonomy_machine_name_hierarchy",
+        "ancestor",
+        "hierarchy",
+        "machine name",
+        "Index machine name hierarchy"
+      ],
+      "must_not_contain": [],
+      "expected_output": "It provides the processor taxonomy_machine_name_hierarchy ('Index machine name hierarchy', class AddHierarchy) which, for the configured taxonomy machine_name fields, adds every ancestor term's machine_name to the indexed value (loadAllParents) so a search on a parent category also matches descendants.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "satmn-views-filter",
+      "mode": "recipe",
+      "prompt": "How do you filter a Search API view by taxonomy term machine name using the search_api_taxonomy_machine_name submodule, and what extra options does its filter add over the base module's filter?",
+      "must_contain_any": [
+        "search_api_taxonomy_machine_name",
+        "Start at level",
+        "Max depth",
+        "hierarchy_parent",
+        "hierarchy_max_depth",
+        "filter"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Add the machine-name field's filter to a Search API view; hook_views_data_alter automatically maps it to the search_api_taxonomy_machine_name handler. It adds 'Start at level' (hierarchy_parent) and 'Max depth' (hierarchy_max_depth) options that feed loadTree(), on top of the base taxonomy_index_machine_name filter's options.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "satmn-processor-availability",
+      "mode": "recipe",
+      "prompt": "When is the taxonomy_machine_name_hierarchy Search API processor available to add to an index, and what does it do to Solr field mappings when enabled?",
+      "must_contain_any": [
+        "taxonomy_machine_name",
+        "field",
+        "dependency",
+        "dependencies",
+        "multi-value",
+        "sm_",
+        "Solr"
+      ],
+      "must_not_contain": [],
+      "expected_output": "It is available only when the index has a field whose dependencies include the taxonomy_machine_name module (i.e. a term machine_name field). When enabled it makes the affected Solr fields multi-value (sm_ prefixed) via hook_search_api_solr_field_mapping_alter -> alterFieldMapping.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "satmn-processor-enabled",
+      "mode": "introspection",
+      "prompt": "On this Drupal site there is a Search API index named satmn_index. Inspect its live configuration and state whether the search_api_taxonomy_machine_name hierarchy processor is enabled on it, giving the processor's plugin id.",
+      "must_contain_any": [
+        "taxonomy_machine_name_hierarchy"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Yes - the satmn_index has the taxonomy_machine_name_hierarchy processor enabled (visible via $index->getProcessors() or the index's processor_settings).",
+      "setup": "agent-module-documentation/evaluation/verify/search_api_taxonomy_machine_name-processor-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/search_api_taxonomy_machine_name-processor-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "satmn-which-field",
+      "mode": "introspection",
+      "prompt": "The Search API index satmn_index on this site has the taxonomy_machine_name_hierarchy processor enabled. Inspect the processor's live configuration and report the machine name of the index field for which hierarchical machine-name indexing is turned on.",
+      "must_contain_any": [
+        "field_satmn_cat_machine_name"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The processor's configuration has fields.field_satmn_cat_machine_name.status = true, so hierarchy indexing is enabled for the index field field_satmn_cat_machine_name.",
+      "setup": "agent-module-documentation/evaluation/verify/search_api_taxonomy_machine_name-which-field-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/search_api_taxonomy_machine_name-which-field-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "satmn-add-processor",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, the Search API index satmn_index has a taxonomy term machine-name field (field_satmn_cat_machine_name) but is not indexing the term hierarchy. Using the search_api_taxonomy_machine_name submodule, add its machine-name hierarchy processor to this index so ancestor machine names get indexed. Apply the change to the live index.",
+      "reset": "agent-module-documentation/evaluation/verify/search_api_taxonomy_machine_name-add-processor-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/search_api_taxonomy_machine_name-add-processor-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/search_api_taxonomy_machine_name-add-processor-cleanup.sh",
+      "expected_output": "Add the taxonomy_machine_name_hierarchy processor to satmn_index (e.g. create it via the search_api processor plugin manager with fields[field_satmn_cat_machine_name][status]=TRUE, $index->addProcessor($proc); $index->save()). getProcessors() then includes taxonomy_machine_name_hierarchy."
+    },
+    {
+      "id": "satmn-enable-field",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "The Search API index satmn_index has the taxonomy_machine_name_hierarchy processor, but hierarchical machine-name indexing is currently turned off for its field field_satmn_cat_machine_name. Turn it on for that field and save the change to the live index.",
+      "reset": "agent-module-documentation/evaluation/verify/search_api_taxonomy_machine_name-enable-field-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/search_api_taxonomy_machine_name-enable-field-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/search_api_taxonomy_machine_name-enable-field-cleanup.sh",
+      "expected_output": "In the taxonomy_machine_name_hierarchy processor configuration on satmn_index set fields.field_satmn_cat_machine_name.status to TRUE (update the processor configuration and save the index)."
+    }
+  ]
+}

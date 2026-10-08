@@ -1,0 +1,152 @@
+{
+  "name": "MCP Sentinel",
+  "data_name": "mcp_sentinel",
+  "description": "Enterprise governance layer for AI-agent access to Drupal over MCP/JSON:API/GraphQL — policy profiles, per-surface egress ceilings, field redaction, DLP, finite read budgets, tamper-evident audit logging (audit_chain), portable attested policy bundles, sealed-manifest human approval, and reliable webhooks. A security-positive control plane built on Key, encrypt, simple_oauth, consumers.",
+  "version": "2.12.x",
+  "package": "AI / MCP",
+  "composer_namespace": "drupal/mcp_sentinel",
+  "composer_requirements": {},
+  "dependent_modules": [
+    "audit_chain:audit_chain",
+    "drupal:user",
+    "drupal:node",
+    "drupal:jsonapi",
+    "tool:tool",
+    "key:key",
+    "simple_oauth:simple_oauth",
+    "consumers:consumers",
+    "encrypt:encrypt"
+  ],
+  "configure": "mcp_sentinel.settings",
+  "core_version_requirement": "^10.6 || ^11.3",
+  "active_installs": null,
+  "list_position": null,
+  "project_url": "https://www.drupal.org/project/mcp_sentinel",
+  "license": "GPL-2.0-or-later",
+  "php_requirement": ">=8.3",
+  "library_dependencies": [],
+  "suggests": {
+    "drupal/mcp_server": "Exposes MCP Sentinel Tool plugins to MCP clients (via the mcp_sentinel_server submodule). Strongly recommended.",
+    "drupal/graphql_compose": "Enables the mcp_sentinel_graphql submodule: mutation gating, field redaction, and audit for the GraphQL endpoint.",
+    "drupal/mcp_tools": "Adds 222 site-building tools (across 34 optional submodules) via the Tool API; MCP Sentinel governs them.",
+    "drupal/charts": "Optional: upgrades the governance-dashboard inline-SVG charts to interactive, exportable charts. The dashboard works without it."
+  },
+  "submodules": [
+    "mcp_sentinel_approval",
+    "mcp_sentinel_graphql",
+    "mcp_sentinel_server"
+  ],
+  "provides_permissions": true,
+  "provides_drush_commands": true,
+  "provides_config_schema": true,
+  "provides_plugin_types": [],
+  "categories": [
+    "Security"
+  ],
+  "subcategories": [
+    "REST / web services"
+  ],
+  "keywords": [
+    "mcp",
+    "ai agent",
+    "governance",
+    "dlp",
+    "audit",
+    "oauth",
+    "policy bundle",
+    "approval"
+  ],
+  "project_description": "MCP Sentinel is the governance layer for Drupal sites that expose content to AI agents over the Model Context Protocol (MCP), JSON:API, and GraphQL. It decides what an agent may touch, hides what it must not see, records everything it does, and protects content people are editing — so you don't have to build that control yourself.\n\n It sits on top of MCP Server and the Tool API and adds only the governance those projects leave to the site builder. It does not reimplement the protocol, OAuth, or the tool system.\n\n How governance triggers. It applies to traffic on the validated OAuth agent channel — a designated consumer, or an agent scope on the request's token, checked server-side and never from a header. Your public frontend and your own cookie-session admin work are untouched. Each agent's role selects a policy profile, and every action is attributed to its account.\n\n What it does not cover. A policy profile governs requests that reach Drupal through the MCP server's entity-API path. It cannot govern channels that bypass that API — raw SQL, most Drush commands, direct file access, or programmatic entity loads in custom code. drush sql:query is the clearest case: it declares a bootstrap ceiling below the level at which module command files are discovered, so no hook or policy check in any Drupal module can fire for it. That is a property of Drush, not a gap this module can close. The boundary for those paths is who can reach the host: shell and database credentials sit outside this module's threat model and must be controlled separately. Stating this makes the guarantee stronger, because it becomes checkable.\n\n Back to top \n\n What it does \n \n Policy profiles per role — gates, redaction, limits, quotas, and IP rules live on a reusable config entity; the agent's role selects which profile applies. \n Operation gates — a master switch plus independent read, write, delete, and GraphQL-mutation toggles. \n Open-redirect guard — stop an agent from pointing a redirect off-domain (secure by default, with a per-profile host allowlist). \n Entity allow / deny lists — restrict agents to specific entity types, or block sensitive ones (users are blocked by default). Enforced through Drupal's own access system, so JSON:API and GraphQL honour it automatically. \n Field redaction — hide fields like mail or pass from agent requests: stripped from JSON:API/REST, returned as [REDACTED] in GraphQL, and cached separately so nothing leaks across the boundary. \n PII redaction (opt-in) — scan field values for emails, phone numbers, SSNs, and card numbers and mask the matches. A pattern may declare a classification label (2.11.0): a hit can only lower the egress ceiling, never raise or invent one. \n Audit log — every operation and GraphQL query recorded with user, IP, time, and payload metadata; filterable, exportable to CSV or JSON, with automatic retention pruning. \n Escape-hatch permission assertions — a profile declares permissions its governed roles must not hold ( bypass node access , administer users and similar), so a role cannot quietly step around the policy it appears to be under. Violations surface on the status report and through drush mcp-sentinel:role-audit ; deliberate grants are recorded in config as role_id:permission , optionally scoped with role_id:permission@environment (environment from $settings['mcp_sentinel.environment'] in settings.php — never from exported config; fails closed when unset). \n Governed raw SQL (opt-in, off by default) — where an agent genuinely needs to read with SQL, drush mcp-sentinel:sql-query runs it inside Drupal behind a fail-closed check, so deny lists, redaction and the audit chain still apply. Gated on a per-profile allow_raw_sql flag that ships FALSE. \n Tamper-evident trail — every entry is hash-chained (HMAC-SHA256 when keyed via a Key entity) by Audit Chain , so an inserted, deleted or edited row is detectable rather than merely discouraged. drush audit-chain:verify checks it. Optional at-rest …",
+  "maintenance_status": "Actively maintained",
+  "development_status": "Under active development",
+  "security_advisory_coverage": "not-covered",
+  "project_created": "2026-05-30",
+  "project_changed": "2026-08-18",
+  "core_semver_minimum": 10003000,
+  "core_semver_maximum": 12000000,
+  "tooling": {
+    "provides_tool_plugins": true,
+    "tool_plugins": [
+      {
+        "id": "mcp_sentinel_graphql_schema",
+        "label": "Get GraphQL schema",
+        "description": "Returns the GraphQL schema as SDL for a configured GraphQL server, plus its endpoint path. Call this to discover available queries, mutations, and types before issuing GraphQL operations.",
+        "deriver": false,
+        "file": "mcp_sentinel/modules/mcp_sentinel_graphql/src/Plugin/tool/Tool/McpGraphqlSchemaTool.php"
+      },
+      {
+        "id": "mcp_sentinel_bulk_operations",
+        "label": "Bulk publish/unpublish/delete",
+        "description": "Performs a bulk publish, unpublish, or delete over a list of entity IDs. Requires confirm=true. Each item is policy-checked individually and results are reported per ID.",
+        "deriver": false,
+        "file": "mcp_sentinel/src/Plugin/tool/Tool/McpBulkOperationsTool.php"
+      },
+      {
+        "id": "mcp_sentinel_config_get",
+        "label": "Get configuration",
+        "description": "Returns the values of a single Drupal configuration object (e.g. system.site). Governed by MCP Sentinel config-read policy.",
+        "deriver": false,
+        "file": "mcp_sentinel/src/Plugin/tool/Tool/McpConfigGetTool.php"
+      },
+      {
+        "id": "mcp_sentinel_config_list",
+        "label": "List configuration",
+        "description": "Returns the names of Drupal configuration objects, optionally filtered by a name prefix. Governed by MCP Sentinel config-read policy.",
+        "deriver": false,
+        "file": "mcp_sentinel/src/Plugin/tool/Tool/McpConfigListTool.php"
+      },
+      {
+        "id": "mcp_sentinel_config_set",
+        "label": "Set configuration",
+        "description": "Sets one or more top-level keys on a Drupal configuration object. Governed by MCP Sentinel config-write policy; destructive and may require approval.",
+        "deriver": false,
+        "file": "mcp_sentinel/src/Plugin/tool/Tool/McpConfigSetTool.php"
+      },
+      {
+        "id": "mcp_sentinel_content_lock",
+        "label": "Check or manage content lock",
+        "description": "Check whether a content item is locked (being edited by a human). Always call with action=check before updating a node or media entity. Can also set or release locks.",
+        "deriver": false,
+        "file": "mcp_sentinel/src/Plugin/tool/Tool/McpContentLockTool.php"
+      },
+      {
+        "id": "mcp_sentinel_media_create",
+        "label": "Create a media entity",
+        "description": "Creates a media entity of a given type. Provide the source value for the media type source field (a file ID for image/file media, a URL for remote video). Respects MCP Sentinel policy.",
+        "deriver": false,
+        "file": "mcp_sentinel/src/Plugin/tool/Tool/McpMediaUploadTool.php"
+      },
+      {
+        "id": "mcp_sentinel_node_operations",
+        "label": "Create or update a node",
+        "description": "Creates or updates a node. Provide bundle + fields to create; provide id + fields to update. Respects MCP Sentinel policy, content locks, and field validation.",
+        "deriver": false,
+        "file": "mcp_sentinel/src/Plugin/tool/Tool/McpNodeOperationsTool.php"
+      },
+      {
+        "id": "mcp_sentinel_security_policy",
+        "label": "Get MCP security policy",
+        "description": "Returns the active MCP Sentinel security configuration: allowed/denied entity types, permitted operations, and redacted fields. Check this before attempting write operations.",
+        "deriver": false,
+        "file": "mcp_sentinel/src/Plugin/tool/Tool/McpSecurityPolicyTool.php"
+      },
+      {
+        "id": "mcp_sentinel_site_context",
+        "label": "Get site schema context",
+        "description": "Returns all content types with field labels and types, taxonomy vocabularies with term counts, and media types. Call this before creating or editing content to understand the available fields.",
+        "deriver": false,
+        "file": "mcp_sentinel/src/Plugin/tool/Tool/McpSiteContextTool.php"
+      },
+      {
+        "id": "mcp_sentinel_workflow_transition",
+        "label": "Transition moderation state",
+        "description": "Moves a Content Moderation-managed entity to a new state (e.g. draft, published, archived). The transition must be valid for the configured workflow and permitted by policy.",
+        "deriver": false,
+        "file": "mcp_sentinel/src/Plugin/tool/Tool/McpWorkflowTransitionTool.php"
+      }
+    ],
+    "provides_agent_skills": false,
+    "agent_skills": []
+  },
+  "contributor_count": 6
+}

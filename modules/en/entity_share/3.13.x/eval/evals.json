@@ -1,0 +1,102 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "entity_share",
+  "version": "3.13.x",
+  "note": "Entity Share shares content entities between separate Drupal sites over JSON:API. The base entity_share module is a shell (a config landing page + one permission); the load-bearing facts live in its submodules: the SERVER submodule (entity_share_server) defines the `channel` config entity (binds an entity type + bundle + language and exposes it as a JSON:API collection), and the CLIENT submodule (entity_share_client) defines the `remote` config entity (a server's url + auth plugin) plus `import_config`. LIMITATION: a real end-to-end sync needs a SECOND Drupal site running the server — that cannot be exercised on this single site. So the introspection (medium) and execution (hard) cases ground ONLY on creating/reading the `channel` and `remote` CONFIG ENTITIES on this one site; they never perform an actual cross-site pull. Setup/reset ensure the entity_share_server + entity_share_client submodules are enabled so those config entity types exist. All introspection/execution cases touch ONLY eval_intro_* / eval_* ids and leave any real channels/remotes untouched.",
+  "evals": [
+    {
+      "id": "entity_share-client-server-split",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "I want to copy content from one Drupal site to another using Entity Share. Which module do I enable on the site that HOLDS the content, and which on the site that RECEIVES it, and what protocol moves the content between them?",
+      "must_contain_any": ["entity_share_server", "Entity Share Server"],
+      "must_not_contain": [],
+      "expected_output": "Enable Entity Share Server (entity_share_server) on the source/content-holding site to define channels, and Entity Share Client (entity_share_client) on the receiving site to define a remote and pull; content moves over core JSON:API. A site can be both."
+    },
+    {
+      "id": "entity_share-config-entities",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "In Entity Share on Drupal 11, name the config entity type the SERVER side uses to expose content and the config entity type the CLIENT side uses to point at a server, and say what each one holds.",
+      "must_contain_any": ["channel"],
+      "must_not_contain": [],
+      "expected_output": "The server defines a `channel` config entity (binds channel_entity_type + channel_bundle + channel_langcode and optional JSON:API filters/sorts, with role/user/permission access) exposing that set as a JSON:API collection; the client defines a `remote` config entity (a server base url + an auth plugin) that it pulls channels from."
+    },
+    {
+      "id": "entity_share-jsonapi-basis",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "What underlying Drupal transport/API does Entity Share use to share entities between sites, rather than defining its own custom REST endpoints?",
+      "must_contain_any": ["JSON:API", "JSON API", "jsonapi"],
+      "must_not_contain": [],
+      "expected_output": "Entity Share builds on core JSON:API — the server exposes channels as JSON:API collections and the client consumes them, so no custom REST resources are needed."
+    },
+    {
+      "id": "entity_share-intro-channel-bundle",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site (drush available), an Entity Share server channel with id `eval_intro_channel` already exists. Inspect the running site and tell me which entity type and bundle it exposes.",
+      "setup": "agent-module-documentation/evaluation/verify/entity_share-intro-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/entity_share-intro-cleanup.sh",
+      "must_contain_any": ["article"],
+      "must_not_contain": [],
+      "expected_output": "The channel eval_intro_channel exposes the node entity type, article bundle (read live from the `channel` config entity's channel_entity_type=node and channel_bundle=article)."
+    },
+    {
+      "id": "entity_share-intro-remote-url",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site (drush available), an Entity Share client remote with id `eval_intro_remote` already exists. Inspect the running site and tell me the URL it points at.",
+      "setup": "agent-module-documentation/evaluation/verify/entity_share-intro-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/entity_share-intro-cleanup.sh",
+      "must_contain_any": ["https://hub.eval.example.com", "hub.eval.example.com"],
+      "must_not_contain": [],
+      "expected_output": "The remote eval_intro_remote points at https://hub.eval.example.com (read live from the `remote` config entity's url property)."
+    },
+    {
+      "id": "entity_share-intro-channel-langcode",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site (drush available), the Entity Share server channel `eval_intro_channel` already exists. Inspect the running site and tell me which language (langcode) it is configured to expose.",
+      "setup": "agent-module-documentation/evaluation/verify/entity_share-intro-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/entity_share-intro-cleanup.sh",
+      "must_contain_any": ["en"],
+      "must_not_contain": [],
+      "expected_output": "The channel eval_intro_channel exposes English, langcode `en` (read live from the `channel` config entity's channel_langcode property)."
+    },
+    {
+      "id": "entity_share-build-channel",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site (drush available), set up the Entity Share SERVER side to share Article content. Create a `channel` config entity with id `eval_channel` that exposes the node entity type, article bundle (English). Enable the entity_share_server submodule if needed and apply it live; don't just describe it. One-line summary. Note: an actual cross-site pull is out of scope (there is no second site) — only the channel config entity is required.",
+      "reset": "agent-module-documentation/evaluation/verify/entity_share-build-channel-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/entity_share-build-channel-verify.sh",
+      "expected_output": "A `channel` config entity eval_channel exists with channel_entity_type=node and channel_bundle=article. Verified against live site state."
+    },
+    {
+      "id": "entity_share-build-page-channel",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site (drush available), create an Entity Share SERVER channel that shares Basic page content. Create a `channel` config entity with id `eval_page_channel` exposing the node entity type, page bundle. Enable the entity_share_server submodule if needed and apply it live; don't just describe it. One-line summary. Note: no second site exists, so only the channel config entity is required — no live pull.",
+      "reset": "agent-module-documentation/evaluation/verify/entity_share-build-page-channel-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/entity_share-build-page-channel-verify.sh",
+      "expected_output": "A `channel` config entity eval_page_channel exists with channel_entity_type=node and channel_bundle=page. Verified against live site state."
+    },
+    {
+      "id": "entity_share-build-remote",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site (drush available), set up the Entity Share CLIENT side. Create a `remote` config entity with id `eval_remote` pointing at the server URL https://source.eval.example.com (Anonymous authorization is fine). Enable the entity_share_client submodule if needed and apply it live; don't just describe it. One-line summary. Note: no reachable server exists, so only the remote config entity is required — no live pull.",
+      "reset": "agent-module-documentation/evaluation/verify/entity_share-build-remote-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/entity_share-build-remote-verify.sh",
+      "expected_output": "A `remote` config entity eval_remote exists with url https://source.eval.example.com. Verified against live site state."
+    }
+  ]
+}

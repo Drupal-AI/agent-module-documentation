@@ -1,0 +1,99 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "handy_cache_tags",
+  "version": "1.5.x",
+  "note": "Handy Cache Tags is a code-only developer toolkit: no UI/config/permissions/routes/Drush. It provides two cache tags per entity - handy_cache_tags:<entity_type> and handy_cache_tags:<entity_type>:<bundle> - built by the handy_cache_tags.manager service (getTag, getBundleTag, getEntityTags) and auto-invalidated on entity insert/update/delete by handy_cache_tags.handler. Medium introspection makes the agent discover a site-specific bundle (content type hct_probe) and produce its handy bundle tag. Hard execution verifies live invalidation via Drupal's cachetags counter table: reset clears the counter row for handy_cache_tags:node:hct_task, and any correct action (creating/updating a node of that bundle, which fires the module's hook, or calling Cache::invalidateTags with the manager's tag) creates the row.",
+  "evals": [
+    {
+      "id": "handy_cache_tags-tag-format",
+      "mode": "recipe",
+      "prompt": "The handy_cache_tags Drupal module gives developers extra cache tags. What are the two cache tag formats it provides for an entity, using a node of type 'article' as an example?",
+      "must_contain_any": [
+        "handy_cache_tags:node",
+        "handy_cache_tags:node:article"
+      ],
+      "must_not_contain": [],
+      "expected_output": "handy_cache_tags:<entity_type> and handy_cache_tags:<entity_type>:<bundle> - for an Article node: handy_cache_tags:node and handy_cache_tags:node:article.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "handy_cache_tags-service",
+      "mode": "recipe",
+      "prompt": "In the handy_cache_tags module, which service and methods do I use to build the entity-type and bundle cache tag strings, and does the module invalidate them for me?",
+      "must_contain_any": [
+        "handy_cache_tags.manager",
+        "getBundleTag",
+        "getTag",
+        "getEntityTags"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Use the handy_cache_tags.manager service: getTag($type), getBundleTag($entity_type, $bundle), getEntityTags($entity). Yes - the module's hook_entity_insert/update/delete auto-invalidate an entity's two tags via handy_cache_tags.handler; you only attach the tags to your #cache array.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "handy_cache_tags-auto-invalidate",
+      "mode": "recipe",
+      "prompt": "When are the handy_cache_tags cache tags automatically invalidated?",
+      "must_contain_any": [
+        "insert",
+        "update",
+        "delete",
+        "created",
+        "saved",
+        "hook_entity"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Whenever an entity is created, updated, or deleted - hook_entity_insert/update/delete call HandyCacheTagsHandler::invalidateEntity(), which invalidates the entity's handy_cache_tags:<type> and handy_cache_tags:<type>:<bundle> tags. Bundle/field config changes also invalidate the relevant handy tags.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "handy_cache_tags-known-bundle",
+      "mode": "introspection",
+      "prompt": "On this Drupal site there is a content type created for testing handy_cache_tags. Inspect the live site to find that content type, then give the exact bundle-specific handy_cache_tags cache tag string for it (the one handy_cache_tags.manager->getBundleTag() would produce).",
+      "must_contain_any": [
+        "handy_cache_tags:node:hct_probe"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The content type is hct_probe (node bundle), so its bundle cache tag is handy_cache_tags:node:hct_probe. Find the bundle via drush (e.g. node type list / config), then apply the handy_cache_tags:<entity_type>:<bundle> format.",
+      "setup": "agent-module-documentation/evaluation/verify/handy_cache_tags-known-bundle-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/handy_cache_tags-known-bundle-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "handy_cache_tags-invalidate",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site there is a content type with machine name hct_task. Using the handy_cache_tags module's behaviour, cause its bundle-specific handy cache tag (handy_cache_tags:node:hct_task) to be invalidated on the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/handy_cache_tags-invalidate-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/handy_cache_tags-invalidate-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/handy_cache_tags-invalidate-cleanup.sh",
+      "expected_output": "The tag handy_cache_tags:node:hct_task gets invalidated (a counter row appears in the cachetags table). Achieved by triggering the module's auto-invalidation - e.g. create or save a node of type hct_task (fires handy_cache_tags_entity_insert/update) - or by calling \\Drupal\\Core\\Cache\\Cache::invalidateTags([\\Drupal::service('handy_cache_tags.manager')->getBundleTag('node','hct_task')])."
+    },
+    {
+      "id": "handy_cache_tags-known-bundle2",
+      "mode": "introspection",
+      "prompt": "On this Drupal site there is a node content type created for handy_cache_tags testing whose machine name starts with 'hct_probe'. Inspect the live site to find it and give the exact bundle-specific handy_cache_tags cache tag string for that content type.",
+      "must_contain_any": [
+        "handy_cache_tags:node:hct_probe2"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The content type is hct_probe2, so its bundle cache tag is handy_cache_tags:node:hct_probe2 (find the bundle via drush, then apply the handy_cache_tags:<entity_type>:<bundle> format).",
+      "setup": "agent-module-documentation/evaluation/verify/handy_cache_tags-known-bundle2-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/handy_cache_tags-known-bundle2-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "handy_cache_tags-term-invalidate",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site there is a taxonomy vocabulary with machine name hct_vocab. Using the handy_cache_tags module's behaviour, cause the bundle-specific handy cache tag for that vocabulary's terms (handy_cache_tags:taxonomy_term:hct_vocab) to be invalidated on the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/handy_cache_tags-term-invalidate-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/handy_cache_tags-term-invalidate-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/handy_cache_tags-term-invalidate-cleanup.sh",
+      "expected_output": "The tag handy_cache_tags:taxonomy_term:hct_vocab gets invalidated (a counter row appears in the cachetags table) - e.g. create or save a taxonomy term in the hct_vocab vocabulary (fires handy_cache_tags_entity_insert/update), or call Cache::invalidateTags([\\Drupal::service('handy_cache_tags.manager')->getBundleTag('taxonomy_term','hct_vocab')])."
+    }
+  ]
+}

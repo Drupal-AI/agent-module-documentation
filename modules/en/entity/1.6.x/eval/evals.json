@@ -1,0 +1,73 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "entity",
+  "version": "1.6.x",
+  "note": "Entity API is a passive developer framework module (handlers/providers wired into an entity type annotation) with no UI or config surface of its own, so all cases are `recipe` (response-graded), not `execution` (live-state).",
+  "evals": [
+    {
+      "id": "entityapi-permission-provider-handler",
+      "mode": "recipe",
+      "prompt": "In a Drupal 11 module I define a custom content entity type and want the module to auto-generate the full view/create/update/delete permission matrix instead of hand-writing each permission string. Which handler do I declare in the entity type annotation, and under which handler key?",
+      "must_contain_any": ["EntityPermissionProvider", "permission_provider"],
+      "must_not_contain": [],
+      "expected_output": "Declare handlers.permission_provider = \"Drupal\\entity\\EntityPermissionProvider\" in the entity type annotation; it generates the view/create/update/duplicate/delete (own/any, per bundle) permission set automatically."
+    },
+    {
+      "id": "entityapi-access-control-handler",
+      "mode": "recipe",
+      "prompt": "I attached the entity module's permission provider to my custom entity type. What access handler must I also declare so those generated permissions are actually enforced, and what happens if I use it without a permission provider?",
+      "must_contain_any": ["EntityAccessControlHandler"],
+      "must_not_contain": [],
+      "expected_output": "Declare handlers.access = \"Drupal\\entity\\EntityAccessControlHandler\". It requires EntityPermissionProvider and throws otherwise; it maps operations to the generated permissions with owner-aware checks."
+    },
+    {
+      "id": "entityapi-view-own-uncacheable",
+      "mode": "recipe",
+      "prompt": "For my custom entity type I need a 'view own' permission (each user can view only entities they authored). The default entity permission provider does not emit that. Which pair of handlers from the entity module should I use instead, and why is the tradeoff named the way it is?",
+      "must_contain_any": ["UncacheableEntityPermissionProvider", "UncacheableEntityAccessControlHandler"],
+      "must_not_contain": [],
+      "expected_output": "Use UncacheableEntityPermissionProvider (+ UncacheableEntityAccessControlHandler); they add 'view own $entity_type' permissions which force per-user page caching, hence 'uncacheable'."
+    },
+    {
+      "id": "entityapi-permission-granularity",
+      "mode": "recipe",
+      "prompt": "I want per-bundle granularity for my entity type's permissions (e.g. 'view article my_entity' rather than just 'view my_entity'). Which entity type key controls whether the generated permissions are per-type or per-bundle, and what values does it take?",
+      "must_contain_any": ["permission_granularity"],
+      "must_not_contain": [],
+      "expected_output": "The entity type's permission_granularity key, set to 'bundle' (vs 'entity_type'), drives whether EntityPermissionProvider generates per-bundle permission strings like 'view $bundle $entity_type'."
+    },
+    {
+      "id": "entityapi-query-access-handler",
+      "mode": "recipe",
+      "prompt": "Single-entity access checks work, but users still see rows they shouldn't in entity queries and Views listings for my custom entity type. Which entity module handler extends permission enforcement to queries/Views/list builders, and under which annotation handler key does it go?",
+      "must_contain_any": ["QueryAccessHandler", "query_access"],
+      "must_not_contain": [],
+      "expected_output": "Declare handlers.query_access = \"Drupal\\entity\\QueryAccess\\QueryAccessHandler\"; it builds conditions from the generic permissions and applies them via EntityQueryAlter and ViewsQueryAlter."
+    },
+    {
+      "id": "entityapi-query-access-event",
+      "mode": "recipe",
+      "prompt": "Using the entity module's Query Access API, I need to add a custom condition (only show rows where field_owner equals the current user) on top of the built-in permission conditions. What event do I subscribe to, and how is the event name constructed for entity type `my_entity`?",
+      "must_contain_any": ["QueryAccessEvent", "entity.query_access."],
+      "must_not_contain": [],
+      "expected_output": "Subscribe to the QueryAccessEvent named 'entity.query_access.my_entity' and add conditions via $event->getConditions() (a ConditionGroup, e.g. addCondition('field_owner', ...))."
+    },
+    {
+      "id": "entityapi-bundle-plugin",
+      "mode": "recipe",
+      "prompt": "I want a module to define an entity type's bundles and their fields entirely in code rather than as config, using the entity module. Which plugin interface does each bundle implement, and which field definition class do I return from it?",
+      "must_contain_any": ["BundlePluginInterface", "BundleFieldDefinition"],
+      "must_not_contain": [],
+      "expected_output": "Each bundle is a plugin implementing BundlePluginInterface (buildFieldDefinitions()), returning BundleFieldDefinition objects; the entity type declares a bundle_plugin_type and bundle_plugin handler (BundlePluginHandler)."
+    },
+    {
+      "id": "entityapi-revisionable-base",
+      "mode": "recipe",
+      "prompt": "My custom revisionable entity's revision links (version-history / revert) don't resolve correctly. The entity module provides a base class to fix the revision URL route parameters. Which base class should my entity extend instead of core's?",
+      "must_contain_any": ["RevisionableContentEntityBase"],
+      "must_not_contain": [],
+      "expected_output": "Extend Drupal\\entity\\Revision\\RevisionableContentEntityBase, which fixes the revision route parameters (adds {entity_type}_revision) so revision links resolve; pair with RevisionRouteProvider."
+    }
+  ]
+}

@@ -1,0 +1,80 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "cdn_ui",
+  "version": "5.0.x",
+  "note": "cdn_ui is the admin UI submodule for CDN. It has no config of its own; it edits cdn.settings. Easy cases cover its route/permission/target config. Medium/hard cases are grounded in the cdn.settings values the UI form writes (status, mapping.domain, farfuture.status) — the end state a UI save produces — and only touch local config. Baseline restored explicitly by cleanup/reset.",
+  "evals": [
+    {
+      "id": "cdn_ui-route-permission",
+      "mode": "recipe",
+      "prompt": "The Drupal cdn module has no settings page of its own. Its cdn_ui submodule adds one. What is the admin path of that CDN settings form, and which permission controls access to it?",
+      "must_contain_any": ["/admin/config/services/cdn", "administer CDN configuration", "cdn_ui.settings"],
+      "must_not_contain": [],
+      "expected_output": "The form is at /admin/config/services/cdn (route cdn_ui.settings) and is gated by the 'administer CDN configuration' permission.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "cdn_ui-target-config",
+      "mode": "recipe",
+      "prompt": "When I save the CDN UI settings form, which configuration object does it actually write to?",
+      "must_contain_any": ["cdn.settings"],
+      "must_not_contain": [],
+      "expected_output": "It writes cdn.settings (the config object owned by the cdn module). cdn_ui has no config of its own.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "cdn_ui-uninstallable",
+      "mode": "recipe",
+      "prompt": "After I finish configuring the CDN through the CDN UI submodule, can I uninstall CDN UI without losing my CDN configuration? Why?",
+      "must_contain_any": ["uninstall", "cdn.settings", "no state", "keeps"],
+      "must_not_contain": [],
+      "expected_output": "Yes. CDN UI stores no configuration of its own — it only edits cdn.settings — so uninstalling it leaves the CDN configuration intact and the cdn module keeps working.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "cdn_ui-known-domain",
+      "mode": "introspection",
+      "prompt": "On this Drupal site the CDN has been configured through the admin UI. Inspect the live configuration and tell me the CDN domain that the CDN UI Mapping tab currently shows.",
+      "must_contain_any": ["cdn-ui-medium.example.com"],
+      "must_not_contain": [],
+      "expected_output": "cdn-ui-medium.example.com: cdn.settings:mapping.domain is 'cdn-ui-medium.example.com'.",
+      "setup": "agent-module-documentation/evaluation/verify/cdn_ui-known-domain-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/cdn_ui-known-domain-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "cdn_ui-scheme-value",
+      "mode": "introspection",
+      "prompt": "On this Drupal site, inspect the CDN configuration that the CDN UI manages and tell me which URL scheme is currently configured for CDN file URLs.",
+      "must_contain_any": ["http://"],
+      "must_not_contain": [],
+      "expected_output": "http:// — cdn.settings:scheme is 'http://'.",
+      "setup": "agent-module-documentation/evaluation/verify/cdn_ui-scheme-value-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/cdn_ui-scheme-value-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "cdn_ui-enable-with-domain",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "site-builder",
+      "prompt": "On this Drupal site, use the CDN configuration (as the CDN UI settings form would) to turn CDN serving ON and set the CDN domain to cdn-ui-hard.example.com with a simple mapping. Apply the change to the live configuration.",
+      "reset": "agent-module-documentation/evaluation/verify/cdn_ui-enable-with-domain-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/cdn_ui-enable-with-domain-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/cdn_ui-enable-with-domain-cleanup.sh",
+      "expected_output": "cdn.settings has status=TRUE, mapping.type='simple', mapping.domain='cdn-ui-hard.example.com'."
+    },
+    {
+      "id": "cdn_ui-disable-farfuture",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, turn OFF the CDN module's 'Far Future' forever-cacheable file serving in configuration. Apply the change to the live configuration.",
+      "reset": "agent-module-documentation/evaluation/verify/cdn_ui-disable-farfuture-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/cdn_ui-disable-farfuture-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/cdn_ui-disable-farfuture-cleanup.sh",
+      "expected_output": "cdn.settings:farfuture.status is set to FALSE."
+    }
+  ]
+}

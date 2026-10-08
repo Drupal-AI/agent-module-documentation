@@ -1,0 +1,80 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "purge_purger_http",
+  "version": "1.3.x",
+  "note": "Generic HTTP Purger provides two Purge purger plugins - http (HttpPurger, one request per invalidation) and httpbundled (HttpBundledPurger, one request per batch) - both multi_instance. Each instance's config is a httppurgersettings config entity named purge_purger_http.settings.<id> with fields name, invalidationtype (default tag), hostname, port, path, request_method (default BAN), scheme, verify, headers, body, body_content_type, timeout, connect_timeout, cooldown_time, max_requests, runtime_measurement, http_errors. path/headers/body are token-aware (invalidation group for http, invalidations for httpbundled). A httpconfiguration diagnostic check validates enabled purgers. No configure route (edit via Purge purgers UI), no permissions, no Drush. Medium/hard cases are grounded in real httppurgersettings config entities.",
+  "evals": [
+    {
+      "id": "purge_purger_http-plugin-ids",
+      "mode": "recipe",
+      "prompt": "The purge_purger_http module adds HTTP-based Purge purgers. What are the ids of the two purger plugins it provides and how do they differ in how many HTTP requests they send?",
+      "must_contain_any": ["http", "httpbundled"],
+      "must_not_contain": [],
+      "expected_output": "http (HttpPurger) sends one HTTP request per invalidation instruction; httpbundled (HttpBundledPurger) sends a single request for a whole batch of invalidations. Both are multi-instance.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "purge_purger_http-settings-defaults",
+      "mode": "recipe",
+      "prompt": "For a purge_purger_http HTTP purger, what is the default HTTP request method and the default invalidation type, and what is the config object name that stores one instance's settings?",
+      "must_contain_any": ["BAN", "tag", "purge_purger_http.settings"],
+      "must_not_contain": [],
+      "expected_output": "Default request_method is BAN and default invalidationtype is tag. Each instance is stored in the httppurgersettings config entity purge_purger_http.settings.<instance_id>.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "purge_purger_http-tokens",
+      "mode": "recipe",
+      "prompt": "In purge_purger_http, how do you make the request path, a header value, or the body vary per cache-tag/URL being purged? Which token group does the single-item http purger expose versus the bundled one?",
+      "must_contain_any": ["token", "invalidation", "invalidations", "[invalidation:expression]"],
+      "must_not_contain": [],
+      "expected_output": "path, header values and body are run through Purge's token service, so you embed tokens (e.g. [invalidation:expression]). The http purger exposes the 'invalidation' token group (one item), while httpbundled exposes the 'invalidations' group (the whole batch).",
+      "difficulty": "easy"
+    },
+    {
+      "id": "purge_purger_http-known-method",
+      "mode": "introspection",
+      "prompt": "This Drupal site has a purge_purger_http HTTP purger settings entity with id pph_known. Inspect its live configuration and state which HTTP request method it is configured to send.",
+      "must_contain_any": ["PURGE"],
+      "must_not_contain": [],
+      "expected_output": "Config purge_purger_http.settings.pph_known has request_method: PURGE.",
+      "setup": "agent-module-documentation/evaluation/verify/purge_purger_http-known-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/purge_purger_http-known-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "purge_purger_http-known-host",
+      "mode": "introspection",
+      "prompt": "On this site the purge_purger_http settings entity pph_known targets a cache host. Inspect its configuration and give the hostname it sends purge requests to.",
+      "must_contain_any": ["cache.pphknown.test"],
+      "must_not_contain": [],
+      "expected_output": "Config purge_purger_http.settings.pph_known has hostname: cache.pphknown.test (port 80, scheme http).",
+      "setup": "agent-module-documentation/evaluation/verify/purge_purger_http-known-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/purge_purger_http-known-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "purge_purger_http-build-purger",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, using the purge_purger_http module, configure an HTTP purger settings entity that sends PURGE requests to hostname pph-task.example.internal on port 80 over http, invalidating cache tags (invalidationtype tag). Apply it to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/purge_purger_http-build-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/purge_purger_http-build-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/purge_purger_http-build-cleanup.sh",
+      "expected_output": "Create a httppurgersettings config entity (purge_purger_http.settings.<id>) with hostname=pph-task.example.internal, request_method=PURGE, invalidationtype=tag (port 80, scheme http), e.g. via HttpPurgerSettings::create([...])->save()."
+    },
+    {
+      "id": "purge_purger_http-build-purger-layman",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "site-owner",
+      "prompt": "I have a caching proxy at pph-task.example.internal that clears content when it receives a PURGE request. Set up the Generic HTTP Purger so Drupal sends PURGE requests to that host to clear content by cache tag. Make it live on this site.",
+      "reset": "agent-module-documentation/evaluation/verify/purge_purger_http-build-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/purge_purger_http-build-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/purge_purger_http-build-cleanup.sh",
+      "expected_output": "Same verified end state as purge_purger_http-build-purger: an HTTP purger settings entity targeting hostname pph-task.example.internal with request_method PURGE and invalidationtype tag."
+    }
+  ]
+}

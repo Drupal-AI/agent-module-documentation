@@ -1,0 +1,82 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "lagoon_logs",
+  "version": "3.0.x",
+  "note": "Lagoon Logs registers a Drupal logger service (logger.lagoon_logs, tagged 'logger') that ships watchdog messages over UDP to a Logstash endpoint as Logstash JSON via Monolog SocketHandler. All state lives in the lagoon_logs.settings config object: host (default application-logs.lagoon.svc), port (default 5140), identifier (default drupal), disable (default 0). The settings form only toggles disable and shows host/port/identifier read-only; host/port/identifier are changed via config. Medium/hard cases read/write lagoon_logs.settings, verified via drush. Reset/cleanup restore the shipped defaults explicitly (State is unreliable on this site).",
+  "evals": [
+    {
+      "id": "lagoon_logs-default-endpoint",
+      "mode": "recipe",
+      "prompt": "By default, where does the lagoon_logs Drupal module send its logs (host and port), and by what transport?",
+      "must_contain_any": ["application-logs.lagoon.svc", "5140"],
+      "must_not_contain": [],
+      "expected_output": "By default it sends logs over UDP to application-logs.lagoon.svc on port 5140 (config defaults host=application-logs.lagoon.svc, port=5140), using a Monolog SocketHandler with a Logstash JSON formatter.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "lagoon_logs-disable",
+      "mode": "recipe",
+      "prompt": "How do you stop the lagoon_logs module from shipping any logs? Name the configuration key and what happens when it is set.",
+      "must_contain_any": ["disable"],
+      "must_not_contain": [],
+      "expected_output": "Set the 'disable' key in lagoon_logs.settings to 1 (or tick 'Disable module' on /admin/config/development/lagoon_logs). When disable is truthy the factory returns FALSE for the identifier and LagoonLogsLogger::log() returns immediately, sending nothing.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "lagoon_logs-how-it-hooks",
+      "mode": "recipe",
+      "prompt": "How does the lagoon_logs module capture Drupal's log messages — what service tag and library does it use?",
+      "must_contain_any": ["logger", "monolog", "SocketHandler", "logger.lagoon_logs"],
+      "must_not_contain": [],
+      "expected_output": "It defines the service logger.lagoon_logs tagged with 'logger', so Drupal's LoggerChannelFactory routes every watchdog message to it. It builds a Monolog Logger with a SocketHandler (udp://host:port) and a LagoonLogsFormatter (LogstashFormatter) to emit Logstash JSON.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "lagoon_logs-known-endpoint",
+      "mode": "introspection",
+      "prompt": "On this Drupal site the lagoon_logs module has been pointed at a non-default log collector. Inspect the live configuration and report the Logstash host and port it currently sends logs to.",
+      "must_contain_any": ["logs.probe.internal", "6514"],
+      "must_not_contain": [],
+      "expected_output": "host=logs.probe.internal, port=6514 in lagoon_logs.settings. Read with `drush cget lagoon_logs.settings`.",
+      "setup": "agent-module-documentation/evaluation/verify/lagoon_logs-known-endpoint-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/lagoon_logs-known-endpoint-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "lagoon_logs-known-identifier",
+      "mode": "introspection",
+      "prompt": "Inspect this site's lagoon_logs configuration and state the current Logstash leading identifier (application name) it tags logs with.",
+      "must_contain_any": ["probe-app-x"],
+      "must_not_contain": [],
+      "expected_output": "identifier=probe-app-x in lagoon_logs.settings. Discoverable via `drush cget lagoon_logs.settings identifier`.",
+      "setup": "agent-module-documentation/evaluation/verify/lagoon_logs-known-identifier-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/lagoon_logs-known-identifier-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "lagoon_logs-set-endpoint",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, configure the lagoon_logs module to send logs to a custom Logstash collector at host collector.example.net on UDP port 5544. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/lagoon_logs-set-endpoint-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/lagoon_logs-set-endpoint-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/lagoon_logs-set-endpoint-cleanup.sh",
+      "expected_output": "lagoon_logs.settings host == 'collector.example.net' and port == 5544 (e.g. drush cset lagoon_logs.settings host collector.example.net; drush cset lagoon_logs.settings port 5544).",
+      "must_not_contain": []
+    },
+    {
+      "id": "lagoon_logs-disable-shipping",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "site-owner",
+      "prompt": "Our log collector is down and lagoon_logs is generating noise. Turn off log shipping for the lagoon_logs module on this site, and apply it live.",
+      "reset": "agent-module-documentation/evaluation/verify/lagoon_logs-disable-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/lagoon_logs-disable-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/lagoon_logs-disable-cleanup.sh",
+      "expected_output": "lagoon_logs.settings disable is truthy (1). Set via `drush cset lagoon_logs.settings disable 1` or the Disable checkbox on /admin/config/development/lagoon_logs.",
+      "must_not_contain": []
+    }
+  ]
+}

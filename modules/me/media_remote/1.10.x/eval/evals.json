@@ -1,0 +1,94 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "media_remote",
+  "version": "1.10.x",
+  "note": "Media Remote has no configure route (configure=null), no permissions, no Drush commands, no services and defines no plugin types. It provides ONE media source plugin (`media_remote`, label 'Remote Media URL', allowed_field_types {string}, default_thumbnail_filename generic.png, media_library_add form MediaRemoteMediaForm) and 20 provider @FieldFormatter plugins (media_remote_apple_podcasts, _arcgis, _box, _brightcove, _buzzsprout, _dacast, _deezer, _documentcloud, _dropbox, _google, _google_map, _libsyn, _loom, _matterport, _msforms, _npr, _panopto, _planet_estream, _quickbase, _stitcher). The non-obvious mechanic all cases turn on: the provider is selected by the formatter placed on the media type's DEFAULT view display, and every formatter's defaultSettings() stamps its own FQCN into a `formatter_class` setting which MediaRemoteSource::getFormatterClass() reads back from media.<bundle>.default; that class supplies getUrlRegexPattern() for the `media_remote` validation constraint and deriveMediaDefaultNameFromUrl() for auto-naming. Missing that config throws LogicException. IMPORTANT for scripts: saving a media entity fatals on this shared site because of an unrelated pre-existing defect (site_settings_token_info() called via metatag/permissions_by_entity during entity insert), so no script saves media - validation is exercised with Media::create(...)->validate(), which works correctly. Media types are namespaced mr_* and fields field_mr_*.",
+  "evals": [
+    {
+      "id": "media_remote-source-plugin",
+      "mode": "recipe",
+      "prompt": "I need to embed content from a provider that does not implement oEmbed on a Drupal 11 site, and I have installed the media_remote contrib module. When I create a new media type, which media source do I pick (give its human-readable label), and what field type does that source store the URL in?",
+      "must_contain_any": [
+        "Remote Media URL"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Pick the media source labelled \"Remote Media URL\" (plugin id `media_remote`, class Drupal\\media_remote\\Plugin\\media\\Source\\MediaRemoteSource). Its allowed_field_types is {\"string\"}, so the source field is a plain string field holding the remote URL (the auto-created field is named field_media_media_remote). It exposes one metadata attribute, `name`, and falls back to generic.png for thumbnails.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "media_remote-provider-selection",
+      "mode": "recipe",
+      "prompt": "With the Drupal media_remote module, how does the site know which provider (Loom, Google Drive, Box, ...) a given Remote Media type is for? There is no such setting on the media type edit form. Where is the provider actually chosen, and what happens if that step is skipped?",
+      "must_contain_any": [
+        "formatter_class",
+        "default view display",
+        "default display",
+        "Manage display"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The provider is chosen by which media_remote_* field formatter you put on the source field in the media type's DEFAULT view display (core.entity_view_display.media.<bundle>.default). Every formatter's defaultSettings() stamps its own class name into a `formatter_class` setting, and MediaRemoteSource::getFormatterClass() loads media.<bundle>.default to read it back. If the default display has no Media Remote formatter, getFormatterClass() throws \\LogicException('The Remote Media validator needs the _default_ media display to be configured, and for the source field to use any of the formatters provided by the Media Remote module.'). That is why media_remote_form_media_type_add_form_alter() shows a warning and redirects to Manage display right after the type is created.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "media_remote-url-validation",
+      "mode": "recipe",
+      "prompt": "On a Drupal site using media_remote, an editor pastes a YouTube link into a media type configured for Loom and gets an error. Which validation constraint produces that, which method supplies the accepted URL pattern, and what does the error message show the editor?",
+      "must_contain_any": [
+        "getUrlRegexPattern"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The `media_remote` constraint (MediaRemoteConstraint / MediaRemoteConstraintValidator), attached to the source field via MediaRemoteSource::getSourceFieldConstraints(). The validator resolves the configured formatter class through getFormatterClass() and runs preg_match() with that class's static getUrlRegexPattern() - for Loom, '/^https:\\/\\/www\\.loom\\.com\\/share\\/(.*)/'. On failure it adds invalidUrlMessage, 'The given URL is not valid. Valid values are in the format: @example_urls', where @example_urls comes from the formatter's getValidUrlExampleStrings() joined by media_remote_oxford_join() with 'or'. An empty URL gives emptyUrlMessage, 'The URL cannot be empty.'",
+      "difficulty": "easy"
+    },
+    {
+      "id": "media_remote-known-provider",
+      "mode": "introspection",
+      "prompt": "This Drupal site has a media type called 'MR Known' (machine name mr_known) that uses the media_remote module. Inspect the running site and tell me which remote provider it is set up to embed - give the field formatter plugin id that determines this.",
+      "must_contain_any": [
+        "media_remote_documentcloud",
+        "DocumentCloud"
+      ],
+      "must_not_contain": [],
+      "expected_output": "DocumentCloud - the formatter plugin id is `media_remote_documentcloud`. In core.entity_view_display.media.mr_known.default the source field field_mr_url (named in media.type.mr_known source_configuration.source_field) has type: media_remote_documentcloud with settings.formatter_class: Drupal\\media_remote\\Plugin\\Field\\FieldFormatter\\MediaRemoteDocumentcloudFormatter.",
+      "setup": "agent-module-documentation/evaluation/verify/media_remote-known-provider-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/media_remote-known-provider-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "media_remote-known-size",
+      "mode": "introspection",
+      "prompt": "The media type 'MR Size' (machine name mr_size) on this Drupal site embeds Google Drive documents via the media_remote module, and its iframe size has been customised away from the module default. Inspect the live configuration and tell me the configured iframe width and height in pixels.",
+      "must_contain_any": [
+        "1280"
+      ],
+      "must_not_contain": [],
+      "expected_output": "1280 x 720. In core.entity_view_display.media.mr_size.default the field_mr_size component uses type media_remote_google with settings.width: 1280 and settings.height: 720 (the MediaRemoteGoogleFormatter defaults are 960 x 600, so these were overridden).",
+      "setup": "agent-module-documentation/evaluation/verify/media_remote-known-size-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/media_remote-known-size-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "media_remote-loom-type",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal 11 site, use the media_remote module to create a media type with machine name mr_task and label 'MR Task' that embeds Loom videos: it must use the Remote Media URL source with a string source field, and its default media view display must render that source field with the Loom provider formatter so that pasted Loom share URLs validate and non-Loom URLs are rejected. Apply it to the live site. Do not save any media entities.",
+      "reset": "agent-module-documentation/evaluation/verify/media_remote-loom-type-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/media_remote-loom-type-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/media_remote-loom-type-cleanup.sh",
+      "expected_output": "Create MediaType mr_task with source 'media_remote'; create its source field via $type->getSource()->createSourceField($type) (saving the FieldStorageConfig first, giving field_media_media_remote of type string) and record it in source_configuration.source_field; then set the component for that field on core.entity_view_display.media.mr_task.default to type media_remote_loom - setComponent() merges defaultSettings() so settings.formatter_class becomes Drupal\\media_remote\\Plugin\\Field\\FieldFormatter\\MediaRemoteLoomFormatter. Verified by config plus a live constraint check: https://www.loom.com/share/... yields zero violations and https://example.com/not-loom is rejected."
+    },
+    {
+      "id": "media_remote-switch-provider",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "site-builder-layman",
+      "prompt": "Our Drupal site has a remote media type called 'MR Switch' (machine name mr_switch) that was set up for Loom videos, but we actually need it to embed published Google Docs, Sheets and Slides instead. Please reconfigure it so editors paste Google Docs published-to-the-web links, and make the embedded frame 1024 pixels wide by 768 pixels tall. Apply the change to the live site; don't create any media items.",
+      "reset": "agent-module-documentation/evaluation/verify/media_remote-switch-provider-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/media_remote-switch-provider-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/media_remote-switch-provider-cleanup.sh",
+      "expected_output": "On core.entity_view_display.media.mr_switch.default change the field_mr_switch component from media_remote_loom to type media_remote_google, with settings.formatter_class Drupal\\media_remote\\Plugin\\Field\\FieldFormatter\\MediaRemoteGoogleFormatter and settings.width 1024 / settings.height 768. Because the media_remote constraint resolves its regex from that formatter_class, a https://docs.google.com/document/d/e/.../pub URL then validates with zero violations while the old Loom share URL is rejected."
+    }
+  ]
+}

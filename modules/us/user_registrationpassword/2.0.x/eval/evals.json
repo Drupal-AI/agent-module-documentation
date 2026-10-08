@@ -1,0 +1,80 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "user_registrationpassword",
+  "version": "2.0.x",
+  "note": "User Registration Password lets visitors set a password on the registration form when email verification is required, and takes over the activation email. It has no dedicated settings page; it alters core's Account settings form (route entity.user.admin_form, /admin/config/people/accounts). All persistent state is the config object user_registrationpassword.settings (registration in {none=NO_VERIFICATION, default=VERIFICATION_DEFAULT, with-pass=VERIFICATION_PASS; default with-pass}, registration_ftll_expire bool, registration_ftll_timeout int seconds default 86400, registration_redirect path, notify.register_confirmation_with_pass) plus user_registrationpassword.mail. It adds token [user:registrationpassword-url], confirm route user_registrationpassword.confirm, and a REST resource at /user/registerpass. Medium cases seed known values into user_registrationpassword.settings; hard cases mutate it, verified against live config. Scripts touch only this module's config (never core user.settings).",
+  "evals": [
+    {
+      "id": "user_registrationpassword-mode-key",
+      "mode": "recipe",
+      "prompt": "In the Drupal user_registrationpassword module, which config object and key select the registration/verification behaviour, and what are its three allowed values?",
+      "must_contain_any": ["user_registrationpassword.settings", "with-pass", "none", "default", "registration"],
+      "must_not_contain": [],
+      "expected_output": "The config object user_registrationpassword.settings, key 'registration', accepts 'none' (NO_VERIFICATION), 'default' (VERIFICATION_DEFAULT), or 'with-pass' (VERIFICATION_PASS, the shipped default).",
+      "difficulty": "easy"
+    },
+    {
+      "id": "user_registrationpassword-where-configured",
+      "mode": "recipe",
+      "prompt": "There is no separate settings page for user_registrationpassword. Where do I configure it in Drupal (route and admin path)?",
+      "must_contain_any": ["entity.user.admin_form", "/admin/config/people/accounts", "Account settings"],
+      "must_not_contain": [],
+      "expected_output": "It alters core's Account settings form: route entity.user.admin_form at /admin/config/people/accounts.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "user_registrationpassword-token",
+      "mode": "recipe",
+      "prompt": "Which token does user_registrationpassword add so the activation/confirmation link can be placed in the welcome email, and what route does it point to?",
+      "must_contain_any": ["[user:registrationpassword-url]", "registrationpassword-url", "user_registrationpassword.confirm"],
+      "must_not_contain": [],
+      "expected_output": "The token [user:registrationpassword-url] builds a one-time confirmation URL for route user_registrationpassword.confirm (user/registrationpassword/{uid}/{timestamp}/{hash}).",
+      "difficulty": "easy"
+    },
+    {
+      "id": "user_registrationpassword-known-mode",
+      "mode": "introspection",
+      "prompt": "On this Drupal site, inspect the live user_registrationpassword configuration and tell me which registration/verification mode is currently active.",
+      "must_contain_any": ["default"],
+      "must_not_contain": [],
+      "expected_output": "user_registrationpassword.settings 'registration' is 'default' (VERIFICATION_DEFAULT — verification email first, password set later).",
+      "setup": "agent-module-documentation/evaluation/verify/user_registrationpassword-mode-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/user_registrationpassword-mode-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "user_registrationpassword-known-timeout",
+      "mode": "introspection",
+      "prompt": "Read the live user_registrationpassword configuration on this site: is the account activation link set to expire, and after how many seconds?",
+      "must_contain_any": ["3600"],
+      "must_not_contain": [],
+      "expected_output": "Activation-link expiry is enabled (registration_ftll_expire = true) with registration_ftll_timeout = 3600 seconds.",
+      "setup": "agent-module-documentation/evaluation/verify/user_registrationpassword-timeout-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/user_registrationpassword-timeout-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "user_registrationpassword-set-none",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, configure user_registrationpassword so that new visitors are NOT required to verify their email and can set their password directly on the registration form (the NO_VERIFICATION mode). Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/user_registrationpassword-set-none-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/user_registrationpassword-set-none-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/user_registrationpassword-mode-cleanup.sh",
+      "expected_output": "Set user_registrationpassword.settings 'registration' to 'none' (drush cset user_registrationpassword.settings registration none, or via the Account settings form radios)."
+    },
+    {
+      "id": "user_registrationpassword-expire-2h",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "layman",
+      "prompt": "On this Drupal site I want the account activation links from the User Registration Password module to stop working after 2 hours. Please make the activation link expire, with a lifetime of two hours.",
+      "reset": "agent-module-documentation/evaluation/verify/user_registrationpassword-expire-2h-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/user_registrationpassword-expire-2h-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/user_registrationpassword-timeout-cleanup.sh",
+      "expected_output": "Set user_registrationpassword.settings registration_ftll_expire = true and registration_ftll_timeout = 7200 (2 hours in seconds)."
+    }
+  ]
+}

@@ -1,0 +1,84 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "vertical_tabs_config",
+  "version": "2.1.x",
+  "note": "Vertical Tabs Config hides/reorders the vertical tabs on node add/edit forms. Two independent stores, both grounded in code: (1) tab ORDER lives in config object 'vertical_tabs_config.order' under integer keys vertical_tabs_config_<tab> (shipped defaults meta=1..ds_switch_view_mode=8); (2) tab VISIBILITY lives in a CUSTOM DB TABLE 'vertical_tabs_config' with columns content_type, vertical_tab, hidden(0/1), roles(JSON; empty=all roles) - NOT in config. Fixed tab list: meta, options, menu, revision_information, path_settings, author, book, ds_switch_view_mode (Metatag excluded from ordering). Both admin forms require core 'administer site configuration'. Medium cases install known state (a weight value; a hide row) discoverable via drush cget / sqlq. Hard cases build real state verified against the live config and DB table.",
+  "evals": [
+    {
+      "id": "vtc-order-storage",
+      "mode": "recipe",
+      "prompt": "Using the Vertical Tabs Config module on Drupal 11, where is the ORDER (weight) of each node-form vertical tab stored, and what is the key naming pattern? Give the config object and an example key.",
+      "must_contain_any": ["vertical_tabs_config.order", "vertical_tabs_config_"],
+      "must_not_contain": [],
+      "expected_output": "Tab order is stored in the config object vertical_tabs_config.order, one integer weight per tab under keys named vertical_tabs_config_<tab>, e.g. vertical_tabs_config_author. Lower weight sorts higher. Shipped defaults run meta=1 through ds_switch_view_mode=8.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "vtc-visibility-storage",
+      "mode": "recipe",
+      "prompt": "With the Vertical Tabs Config module, where is the per-content-type / per-role VISIBILITY (which tabs are hidden) stored? Is it in Drupal config or somewhere else, and which columns record the rule?",
+      "must_contain_any": ["vertical_tabs_config", "database table", "db table", "hidden"],
+      "must_not_contain": [],
+      "expected_output": "Visibility is stored in a custom database table named vertical_tabs_config (created by the module's hook_schema), NOT in Drupal config. Each row has content_type, vertical_tab, hidden (0/1) and roles (a JSON array; empty means the rule applies to all roles). Because it is a DB table it is not captured by config export.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "vtc-routes-perm",
+      "mode": "recipe",
+      "prompt": "In the Vertical Tabs Config module, at what admin path do you configure tab visibility and order, and which permission protects those forms?",
+      "must_contain_any": ["/admin/config/user-interface/vertical_tabs_config", "administer site configuration"],
+      "must_not_contain": [],
+      "expected_output": "Both forms live under /admin/config/user-interface/vertical_tabs_config (visibility at that path, order at .../order) and are protected by the core 'administer site configuration' permission; the module defines no permission of its own.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "vtc-known-order",
+      "mode": "introspection",
+      "prompt": "On this Drupal site, the Vertical Tabs Config order for the 'Authoring information' tab has been changed from its default. Inspect the live configuration and give the integer weight currently set for that tab.",
+      "must_contain_any": ["99"],
+      "must_not_contain": [],
+      "expected_output": "vertical_tabs_config.order:vertical_tabs_config_author is 99 (readable via `drush cget vertical_tabs_config.order vertical_tabs_config_author`).",
+      "setup": "agent-module-documentation/evaluation/verify/vertical_tabs_config-order-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/vertical_tabs_config-order-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "vtc-known-hidden",
+      "mode": "introspection",
+      "prompt": "On this Drupal site, Vertical Tabs Config is configured to hide exactly one vertical tab on the Article content type's edit form (for all roles). Inspect the live site and give the machine name of the tab that is hidden.",
+      "must_contain_any": ["author"],
+      "must_not_contain": [],
+      "expected_output": "The 'author' (Authoring information) tab is hidden on article: the vertical_tabs_config table has a row content_type='article', vertical_tab='author', hidden=1, roles='[]' (query with `drush sqlq \"SELECT vertical_tab,hidden FROM vertical_tabs_config WHERE content_type='article' AND hidden=1;\"`).",
+      "setup": "agent-module-documentation/evaluation/verify/vertical_tabs_config-hidden-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/vertical_tabs_config-hidden-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "vtc-set-order",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, using the Vertical Tabs Config module, make the 'Menu settings' vertical tab appear first on node forms by setting its order weight to 1. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/vertical_tabs_config-setorder-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/vertical_tabs_config-setorder-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/vertical_tabs_config-setorder-cleanup.sh",
+      "expected_output": "vertical_tabs_config.order:vertical_tabs_config_menu is set to 1 (e.g. `drush cset vertical_tabs_config.order vertical_tabs_config_menu 1` or via the order form).",
+      "must_contain_any": [],
+      "must_not_contain": []
+    },
+    {
+      "id": "vtc-hide-tab",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, use the Vertical Tabs Config module to hide the 'Promotion options' vertical tab (machine name 'options') on the Article content type's node form for all roles. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/vertical_tabs_config-hide-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/vertical_tabs_config-hide-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/vertical_tabs_config-hide-cleanup.sh",
+      "expected_output": "The vertical_tabs_config table gains a row content_type='article', vertical_tab='options', hidden=1, roles='[]' (empty roles = all roles), e.g. via the visibility form at /admin/config/user-interface/vertical_tabs_config or an INSERT into the table.",
+      "must_contain_any": [],
+      "must_not_contain": []
+    }
+  ]
+}

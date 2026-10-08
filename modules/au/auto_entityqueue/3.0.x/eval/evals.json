@@ -1,0 +1,80 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "auto_entityqueue",
+  "version": "3.0.x",
+  "note": "Auto Entityqueue extends the entityqueue module. Via hook_form_alter it adds an 'Auto Entityqueue' fieldset (checkboxes auto_add and insert_front) to the entity queue add/edit form, stored inside the queue's entity_settings.handler_settings.auto_entityqueue. Via hook_entity_insert it adds each newly created entity (of the queue's target type + target_bundles) to every subqueue of every enabled queue whose auto_add is on (prepending when insert_front, honoring max_size as a rolling window). No configure route, permission, Drush, or config schema of its own; state lives on the EntityQueue config entity (entity_queue.*). Medium/hard cases are grounded in real queue config: introspection reads whether a seeded queue inserts at front and which bundle it targets; execution enables auto_add (and insert_front) on a queue, verified against the live entity_queue config.",
+  "evals": [
+    {
+      "id": "aeq-where-configured",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "How do I make Drupal automatically add new content to an Entityqueue using the auto_entityqueue module, and where is that setting configured?",
+      "must_contain_any": ["auto_add", "Auto Entityqueue", "entityqueue", "auto"],
+      "must_not_contain": [],
+      "expected_output": "On the Entityqueue's add/edit form, tick 'Automatically add entities to queue' in the Auto Entityqueue fieldset. It is stored on the queue config entity at entity_settings.handler_settings.auto_entityqueue.auto_add. New entities of the queue's target type/bundles are then added on creation."
+    },
+    {
+      "id": "aeq-insert-front",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "With auto_entityqueue, by default are auto-added entities placed at the front or back of the queue, and how do I change that?",
+      "must_contain_any": ["insert_front", "front", "back"],
+      "must_not_contain": [],
+      "expected_output": "By default items are appended at the back of the queue; tick 'Insert entities at front of queue' (insert_front) to prepend them instead. Stored at entity_settings.handler_settings.auto_entityqueue.insert_front."
+    },
+    {
+      "id": "aeq-trigger",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "When does auto_entityqueue add an entity to a queue, and which queues does it consider?",
+      "must_contain_any": ["hook_entity_insert", "insert", "created", "creation"],
+      "must_not_contain": [],
+      "expected_output": "It acts on entity creation via hook_entity_insert (not on updates). It adds the entity to every enabled queue whose target type matches, whose target_bundles include the entity's bundle, and whose auto_add is on, appending to (or, with insert_front, prepending to) each of that queue's subqueues; it honors max_size as a rolling window."
+    },
+    {
+      "id": "aeq-front-or-back",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "On this Drupal site there is an entityqueue with machine id 'aeq_known' that auto-adds new content. Inspect the live queue configuration and state whether it inserts auto-added entities at the front or the back of the queue.",
+      "must_contain_any": ["front"],
+      "must_not_contain": [],
+      "expected_output": "Front: entity_queue.aeq_known has handler_settings.auto_entityqueue.insert_front = true (auto_add is also true).",
+      "setup": "agent-module-documentation/evaluation/verify/auto_entityqueue-intro-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/auto_entityqueue-intro-cleanup.sh"
+    },
+    {
+      "id": "aeq-target-bundle",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "The entityqueue 'aeq_known' on this site auto-adds new content of one content type. Inspect the live queue configuration and name the target content type (bundle) it auto-adds.",
+      "must_contain_any": ["article"],
+      "must_not_contain": [],
+      "expected_output": "article: entity_queue.aeq_known has entity_settings.target_type node with handler_settings.target_bundles including 'article'.",
+      "setup": "agent-module-documentation/evaluation/verify/auto_entityqueue-intro-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/auto_entityqueue-intro-cleanup.sh"
+    },
+    {
+      "id": "aeq-enable-autoadd",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site there is an entityqueue with machine id 'aeq_task'. Using the auto_entityqueue module, configure it so new matching entities are automatically added to the queue. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/auto_entityqueue-configure-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/auto_entityqueue-autoadd-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/auto_entityqueue-configure-cleanup.sh",
+      "expected_output": "entity_queue.aeq_task entity_settings.handler_settings.auto_entityqueue.auto_add = true (e.g. load the EntityQueue, set that key in entity_settings, and save)."
+    },
+    {
+      "id": "aeq-enable-front",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, configure the entityqueue with machine id 'aeq_task' via the auto_entityqueue module so that new matching entities are automatically added AND inserted at the front of the queue. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/auto_entityqueue-configure-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/auto_entityqueue-front-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/auto_entityqueue-configure-cleanup.sh",
+      "expected_output": "entity_queue.aeq_task entity_settings.handler_settings.auto_entityqueue has auto_add = true AND insert_front = true."
+    }
+  ]
+}

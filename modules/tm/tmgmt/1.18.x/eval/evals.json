@@ -1,0 +1,73 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "tmgmt",
+  "version": "1.18.x",
+  "note": "TMGMT is a translation framework: job/job-item/message content entities, a tmgmt_translator config entity, Translator + Source plugin types, a review UI, and a Job API. Cases are `recipe` (response-graded) probing documented facts an agent would otherwise read source to answer; no site mutation.",
+  "evals": [
+    {
+      "id": "tmgmt-entities",
+      "mode": "recipe",
+      "prompt": "On a Drupal 11 site using TMGMT, which entity represents one translation task per language, which represents a single translated thing inside it, and are they content or config entities?",
+      "must_contain_any": ["tmgmt_job", "tmgmt_job_item"],
+      "must_not_contain": [],
+      "expected_output": "tmgmt_job (the per-language job) and tmgmt_job_item (one item per source thing) are both content entities; tmgmt_message logs events. Providers are the tmgmt_translator config entity."
+    },
+    {
+      "id": "tmgmt-plugin-types",
+      "mode": "recipe",
+      "prompt": "I want to add a new translation provider to TMGMT that calls an external API. Which plugin type and namespace do I implement, and which attribute annotates the class?",
+      "must_contain_any": ["Plugin/tmgmt/Translator", "TranslatorPlugin"],
+      "must_not_contain": [],
+      "expected_output": "Implement a Translator plugin in Plugin/tmgmt/Translator, extending TranslatorPluginBase and annotated with #[TranslatorPlugin(...)] (Drupal\\tmgmt\\Attribute\\TranslatorPlugin); managed by plugin.manager.tmgmt.translator."
+    },
+    {
+      "id": "tmgmt-source-plugin",
+      "mode": "recipe",
+      "prompt": "In TMGMT, which plugin type exposes translatable text (nodes, config, strings) to the system, and in which src namespace do such plugins live?",
+      "must_contain_any": ["Plugin/tmgmt/Source", "SourcePlugin", "SourceManager"],
+      "must_not_contain": [],
+      "expected_output": "Source plugins (Plugin/tmgmt/Source, #[SourcePlugin], SourcePluginBase, plugin.manager.tmgmt.source) expose translatable data via getData()."
+    },
+    {
+      "id": "tmgmt-create-job-in-code",
+      "mode": "recipe",
+      "prompt": "In PHP on a Drupal 11 TMGMT site, programmatically create a translation job from English to German, add node 1 via the content source, and request translation. Show the key calls.",
+      "must_contain_any": ["Job::create(", "addItem(", "requestTranslation("],
+      "must_not_contain": [],
+      "expected_output": "Job::create(['source_language'=>'en','target_language'=>'de','translator'=>...]); $job->save(); $job->addItem('content','node',1); $job->requestTranslation()."
+    },
+    {
+      "id": "tmgmt-review-ui",
+      "mode": "recipe",
+      "prompt": "Where in TMGMT does an editor review a returned translation and accept it, and what route/path serves a single job item review form?",
+      "must_contain_any": ["entity.tmgmt_job_item.canonical", "/admin/tmgmt/items/", "acceptTranslation"],
+      "must_not_contain": [],
+      "expected_output": "The job-item form (entity.tmgmt_job_item.canonical, /admin/tmgmt/items/{tmgmt_job_item}) shows source vs translation; accepting moves REVIEW to ACCEPTED and saves the translation (JobItem::acceptTranslation())."
+    },
+    {
+      "id": "tmgmt-auto-accept",
+      "mode": "recipe",
+      "prompt": "How do I make a TMGMT provider skip manual review and automatically accept finished translations? Which config key on which entity controls it?",
+      "must_contain_any": ["auto_accept", "tmgmt_translator"],
+      "must_not_contain": [],
+      "expected_output": "Set auto_accept on the tmgmt_translator (Provider) config entity — 'Auto accept finished translations'."
+    },
+    {
+      "id": "tmgmt-checkout-hooks",
+      "mode": "recipe",
+      "prompt": "Which TMGMT hooks let a custom module act right before and right after a job is handed to its translation provider?",
+      "must_contain_any": ["hook_tmgmt_job_before_request_translation", "hook_tmgmt_job_after_request_translation"],
+      "must_not_contain": [],
+      "expected_output": "hook_tmgmt_job_before_request_translation(JobInterface $job) and hook_tmgmt_job_after_request_translation(JobInterface $job); checkout also has hook_tmgmt_job_checkout_before/after_alter()."
+    },
+    {
+      "id": "tmgmt-permissions",
+      "mode": "recipe",
+      "prompt": "Which TMGMT permission gates accepting/rejecting translations versus full administration, and where are they defined?",
+      "must_contain_any": ["accept translation jobs", "administer tmgmt"],
+      "must_not_contain": [],
+      "expected_output": "tmgmt.permissions.yml defines 'administer tmgmt' (restricted, full admin), plus 'create translation jobs', 'submit translation jobs', 'accept translation jobs' (accept/reject), and 'delete translation jobs'."
+    }
+  ]
+}

@@ -1,0 +1,80 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "dimension",
+  "version": "2.1.x",
+  "note": "Dimension provides three calculated field types: length_field_type (component length), area_field_type (width, height), volume_field_type (length, width, height). Each stores a computed 'value' = product of (component x its factor) rounded to value_scale. Per-component FieldConfig settings are factor/min/max/prefix/suffix; storage settings are <key>_precision/<key>_scale. Medium cases read known field settings (an area field's width factor; a length field's min). Hard cases create a namespaced area field and a length field with a factor of 10. All fields are namespaced field_dim_* and removed by cleanup/reset. No drush cr (config/entity reads are live) to avoid an unrelated shared-site group-module cache-rebuild fault.",
+  "evals": [
+    {
+      "id": "dimension-field-types",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "What field types does the Drupal 'dimension' module provide, and what does each measure?",
+      "must_contain_any": ["area_field_type", "length_field_type", "volume_field_type", "area", "length", "volume"],
+      "must_not_contain": [],
+      "expected_output": "Three calculated field types: length_field_type (length), area_field_type (width x height), and volume_field_type (length x width x height)."
+    },
+    {
+      "id": "dimension-calculation",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "In the dimension module, how is the stored dimension value of an Area field computed from what the editor enters?",
+      "must_contain_any": ["factor", "width", "height", "multipl", "product"],
+      "must_not_contain": [],
+      "expected_output": "In preSave() the value is the product of each component times its configurable factor, rounded to value_scale: for Area, value = width x width.factor x height x height.factor. Volume multiplies all three components; Length is length x length.factor."
+    },
+    {
+      "id": "dimension-formatters",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "Besides showing the computed total, how can the dimension module display the individual width/height components of an Area field, and what formatter does that?",
+      "must_contain_any": ["area_components_field_formatter", "components", "Components", "x"],
+      "must_not_contain": [],
+      "expected_output": "Use the 'Dimension: Area Components' formatter (area_components_field_formatter), which renders the raw components via the area-components template as '{{ width }} x {{ height }}'. The plain area_field_formatter instead shows the computed value (with the value prefix/suffix)."
+    },
+    {
+      "id": "dimension-width-factor",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "The Article content type has a dimension Area field named field_dim_known_area. Inspect its live field configuration and state the factor that is applied to the Width component.",
+      "must_contain_any": ["2"],
+      "must_not_contain": [],
+      "expected_output": "The Width component's factor is 2, in FieldConfig node.article.field_dim_known_area settings.width.factor.",
+      "setup": "agent-module-documentation/evaluation/verify/dimension-width-factor-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/dimension-width-factor-cleanup.sh"
+    },
+    {
+      "id": "dimension-length-min",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "The Article content type has a dimension Length field named field_dim_known_len with a minimum value constraint configured. Inspect the live field configuration and state the minimum allowed length.",
+      "must_contain_any": ["5"],
+      "must_not_contain": [],
+      "expected_output": "The Length component's min is 5, in FieldConfig node.article.field_dim_known_len settings.length.min.",
+      "setup": "agent-module-documentation/evaluation/verify/dimension-length-min-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/dimension-length-min-cleanup.sh"
+    },
+    {
+      "id": "dimension-add-area-field",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, add a dimension Area field (the area_field_type) named field_dim_area to the Article content type. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/dimension-add-area-field-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/dimension-add-area-field-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/dimension-add-area-field-cleanup.sh",
+      "expected_output": "A field storage node.field_dim_area of type area_field_type exists and is attached to the article bundle."
+    },
+    {
+      "id": "dimension-length-factor",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, add a dimension Length field (length_field_type) named field_dim_length to the Article content type, configured so the entered length is multiplied by a factor of 10 when the dimension value is calculated (e.g. converting cm to mm). Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/dimension-length-factor-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/dimension-length-factor-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/dimension-length-factor-cleanup.sh",
+      "expected_output": "A length_field_type field node.article.field_dim_length exists and its field settings set the length component's factor to 10 (settings.length.factor = 10)."
+    }
+  ]
+}

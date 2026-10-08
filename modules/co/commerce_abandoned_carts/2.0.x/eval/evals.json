@@ -1,0 +1,80 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "commerce_abandoned_carts",
+  "version": "2.0.x",
+  "note": "Commerce Abandoned Carts sends reminder emails for abandoned Drupal Commerce draft orders from hook_cron(), via commerce.mail_handler, tracking sent orders in the commerce_abandoned_carts DB table. All behaviour is in the config object commerce_abandoned_carts.settings (keys: timeout=1440, history_limit=21600, batch_limit=5, from_email, from_name='', subject='Your order is incomplete.', customer_service_phone_number='', bcc_active=false, bcc_email, testmode=true, testmode_email). Config form route commerce_abandoned_carts.configuration (/admin/commerce/config/abandoned_carts), permission 'administer commerce abandoned carts'. Test mode is ON by default. Medium/hard cases are grounded in that real config object.",
+  "evals": [
+    {
+      "id": "cac-how-sent",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "How does the commerce_abandoned_carts module actually send its abandoned-cart reminder emails? What triggers the send, and which orders does it target?",
+      "must_contain_any": ["cron", "hook_cron", "commerce_abandoned_carts_cron"],
+      "must_not_contain": [],
+      "expected_output": "Sending happens in hook_cron() (commerce_abandoned_carts_cron). On each cron run it finds draft commerce orders with a customer email that have been idle longer than the timeout (but within the history limit) and not yet notified, then sends via commerce.mail_handler. There is no manual send button."
+    },
+    {
+      "id": "cac-testmode",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "I installed commerce_abandoned_carts but no customers are getting emails. It ships in a safe default state. What setting controls this and what do I change to actually send to customers?",
+      "must_contain_any": ["testmode", "test mode", "testmode_email"],
+      "must_not_contain": [],
+      "expected_output": "Test mode is ON by default (testmode: true), which routes every message to testmode_email and never marks orders as sent. Turn testmode off (0) in commerce_abandoned_carts.settings (Commerce > Configuration > Abandoned carts) to send to real customers."
+    },
+    {
+      "id": "cac-config-location",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "Where is the commerce_abandoned_carts configuration form, and which permission and config object back it?",
+      "must_contain_any": ["/admin/commerce/config/abandoned_carts", "administer commerce abandoned carts", "commerce_abandoned_carts.settings"],
+      "must_not_contain": [],
+      "expected_output": "Form at /admin/commerce/config/abandoned_carts (route commerce_abandoned_carts.configuration), permission 'administer commerce abandoned carts', config object commerce_abandoned_carts.settings."
+    },
+    {
+      "id": "cac-timeout",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "On this Drupal site, inspect the commerce_abandoned_carts configuration and report the current 'Send timeout' value (in minutes).",
+      "must_contain_any": ["720"],
+      "must_not_contain": [],
+      "expected_output": "The timeout is 720 minutes (commerce_abandoned_carts.settings:timeout).",
+      "setup": "agent-module-documentation/evaluation/verify/commerce_abandoned_carts-timeout-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/commerce_abandoned_carts-timeout-cleanup.sh"
+    },
+    {
+      "id": "cac-fromname",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "Inspect the live commerce_abandoned_carts settings on this site and report the configured 'From name' used on reminder emails.",
+      "must_contain_any": ["ACME Store", "ACME"],
+      "must_not_contain": [],
+      "expected_output": "The From name is 'ACME Store' (commerce_abandoned_carts.settings:from_name).",
+      "setup": "agent-module-documentation/evaluation/verify/commerce_abandoned_carts-fromname-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/commerce_abandoned_carts-fromname-cleanup.sh"
+    },
+    {
+      "id": "cac-golive",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "Configure commerce_abandoned_carts on this site to go live: set the send timeout to 4320 minutes and turn test mode OFF. Apply the changes to the live configuration.",
+      "reset": "agent-module-documentation/evaluation/verify/commerce_abandoned_carts-golive-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/commerce_abandoned_carts-golive-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/commerce_abandoned_carts-golive-cleanup.sh",
+      "expected_output": "In commerce_abandoned_carts.settings set timeout=4320 and testmode=false (e.g. drush cset commerce_abandoned_carts.settings timeout 4320; drush cset commerce_abandoned_carts.settings testmode 0)."
+    },
+    {
+      "id": "cac-bcc",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "site-owner",
+      "prompt": "I want a copy of every abandoned-cart reminder sent to ops@example.com for monitoring, using the commerce_abandoned_carts module. Turn that on for me on this site.",
+      "reset": "agent-module-documentation/evaluation/verify/commerce_abandoned_carts-bcc-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/commerce_abandoned_carts-bcc-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/commerce_abandoned_carts-bcc-cleanup.sh",
+      "expected_output": "Enable BCC in commerce_abandoned_carts.settings: set bcc_active=true and bcc_email='ops@example.com' (e.g. drush cset commerce_abandoned_carts.settings bcc_active 1; drush cset commerce_abandoned_carts.settings bcc_email ops@example.com)."
+    }
+  ]
+}

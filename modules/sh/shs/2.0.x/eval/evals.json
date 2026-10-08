@@ -1,0 +1,73 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "shs",
+  "version": "2.0.x",
+  "note": "SHS is a taxonomy term-reference field widget rendering cascading per-level dropdowns whose children load via an AJAX JSON endpoint, plus a matching formatter and Views filter overrides. Cases are `recipe` (response-graded) probing documented facts an agent would otherwise read source to answer; no site mutation.",
+  "evals": [
+    {
+      "id": "shs-enable-widget",
+      "mode": "recipe",
+      "prompt": "On a Drupal 11 site I have a taxonomy term reference field and want editors to pick terms through cascading level-by-level dropdowns instead of one flat select. Which module and which field widget do I use, and what field requirement must be met?",
+      "must_contain_any": ["options_shs", "Simple hierarchical select"],
+      "must_not_contain": [],
+      "expected_output": "Use the Simple Hierarchical Select (shs) module's 'Simple hierarchical select' widget (options_shs) on the field's Manage form display. The field must be an entity_reference to taxonomy_term targeting a single vocabulary (one target bundle)."
+    },
+    {
+      "id": "shs-children-endpoint",
+      "mode": "recipe",
+      "prompt": "In SHS, how does each dropdown level get the child terms of the selected parent? Name the route/path and the controller method that returns them.",
+      "must_contain_any": ["shs-term-data", "shs.term_data", "getTermData", "ShsController"],
+      "must_not_contain": [],
+      "expected_output": "The JS calls the shs.term_data route /shs-term-data/{identifier}/{bundle}/{entity_id}, handled by ShsController::getTermData(), which returns one level of the term tree (tid, name, hasChildren) as a cacheable JSON response."
+    },
+    {
+      "id": "shs-force-deepest",
+      "mode": "recipe",
+      "prompt": "I want to force users of an SHS widget to always select a leaf term (deepest level), and I need it enforced server-side, not just in the browser. Which widget setting does this and where is it validated?",
+      "must_contain_any": ["force_deepest"],
+      "must_not_contain": [],
+      "expected_output": "The force_deepest widget setting; it is re-checked server-side in OptionsShsWidget::validateElement() (using shs_term_has_children) so a non-leaf selection is rejected."
+    },
+    {
+      "id": "shs-render-element-truth",
+      "mode": "recipe",
+      "prompt": "Does SHS provide a custom render element like '#type' => 'shs' that I can drop into a form? Explain how the widget is actually built.",
+      "must_contain_any": ["textfield", "no render element", "shs-enabled", "drupalSettings"],
+      "must_not_contain": [],
+      "expected_output": "No — SHS defines no #type shs render element. The options_shs widget rewrites the core options select into a textfield with the shs-enabled class and an #shs settings array; the shs/shs.form Backbone behavior reads drupalSettings.shs and builds the cascading selects in the browser."
+    },
+    {
+      "id": "shs-taxonomy-dependency",
+      "mode": "recipe",
+      "prompt": "Which Drupal core module must be enabled for SHS to work, and what entity type does the widget support?",
+      "must_contain_any": ["taxonomy"],
+      "must_not_contain": [],
+      "expected_output": "It depends on core Taxonomy; the widget only applies to entity_reference fields whose target_type is taxonomy_term (a single target vocabulary)."
+    },
+    {
+      "id": "shs-views-filter",
+      "mode": "recipe",
+      "prompt": "Can I use the SHS cascading select as an exposed filter in Views? Which core Views filters does it override?",
+      "must_contain_any": ["taxonomy_index_tid", "Has taxonomy terms", "hook_views_plugins_filter_alter"],
+      "must_not_contain": [],
+      "expected_output": "Yes. SHS overrides the core taxonomy_index_tid and taxonomy_index_tid_depth filters (via hook_views_plugins_filter_alter), so 'Has taxonomy terms' / 'Has taxonomy terms (with depth)' can be exposed as the hierarchical select; it also swaps search_api_term when Search API is present."
+    },
+    {
+      "id": "shs-alter-term-data",
+      "mode": "recipe",
+      "prompt": "In a custom module I want to modify the list of terms SHS returns for a widget level before it is cached. Which hook do I implement?",
+      "must_contain_any": ["hook_shs_term_data_alter", "shs_term_data_alter"],
+      "must_not_contain": [],
+      "expected_output": "Implement hook_shs_term_data_alter(array &$data, array $context) (or the per-bundle / per-field variants); to alter the JSON string on every request use hook_shs_term_data_response_alter()."
+    },
+    {
+      "id": "shs-formatter",
+      "mode": "recipe",
+      "prompt": "How do I display a stored taxonomy term selected via SHS together with its full parent hierarchy on the page? Which formatter?",
+      "must_contain_any": ["entity_reference_shs", "Simple hierarchical select"],
+      "must_not_contain": [],
+      "expected_output": "Use the 'Simple hierarchical select' display formatter (entity_reference_shs) on Manage display; it renders the term's ancestry as an item_list, with an optional 'link' setting to link each label to its term."
+    }
+  ]
+}

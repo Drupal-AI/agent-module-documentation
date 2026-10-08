@@ -1,0 +1,87 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "url_redirect",
+  "version": "4.0.x",
+  "note": "URL Redirect stores each rule as a url_redirect config entity (url_redirect.url_redirect.<id>) with keys path, redirect_path, redirect_for (Role|User), roles, users, negate, message (Yes|No), status (0|1). A kernel REQUEST subscriber (priority 33) issues a 301 TrustedRedirectResponse when the current user's role/identity matches an enabled rule for the current path (supports <front>, * wildcards, external http(s) targets). Medium cases read back a seeded rule's destination/target role; hard cases build a new rule and verify the config entity's fields on the live site. configure route = entity.url_redirect.collection (/admin/config/system/url_redirect). Depends on core path; provides 3 admin permissions.",
+  "evals": [
+    {
+      "id": "url_redirect-entity-shape",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "In the Drupal url_redirect module, how is a single redirect rule stored, and what fields decide the source path, the destination, and who the redirect applies to?",
+      "must_contain_any": [
+        "url_redirect config entity",
+        "config entity",
+        "url_redirect.url_redirect",
+        "redirect_for",
+        "redirect_path"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Each rule is a url_redirect config entity (url_redirect.url_redirect.<id>). Key fields: path (source), redirect_path (destination), redirect_for (Role or User) with roles/users, plus negate, message (Yes/No) and status (enabled/disabled)."
+    },
+    {
+      "id": "url_redirect-mechanism",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "How does url_redirect actually perform the redirect for a matching visitor, at what point in the request, and what HTTP status code does it send? Does it support wildcards or external URLs?",
+      "must_contain_any": [
+        "301",
+        "TrustedRedirectResponse",
+        "priority 33",
+        "wildcard",
+        "path.matcher"
+      ],
+      "must_not_contain": [],
+      "expected_output": "A KernelEvents::REQUEST subscriber at priority 33 (before the router) matches the path against enabled rules (exact, <front>, or * wildcards via path.matcher), checks the current user's roles/identity (negate inverts), and returns a 301 TrustedRedirectResponse. External http(s):// targets are used as-is; <front>/empty go to the front page; other internal targets are base-URL prefixed. It also runs on 403 EXCEPTION events."
+    },
+    {
+      "id": "url_redirect-known-dest",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "This site has a url_redirect rule (machine name urlr_known) that redirects the path /urlr-known-src. Inspect the live configuration and state the destination path (redirect_path) that this rule sends visitors to.",
+      "must_contain_any": [
+        "/urlr-known-dest"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The urlr_known rule redirects /urlr-known-src to /urlr-known-dest (redirect_path in url_redirect.url_redirect.urlr_known; readable via drush config:get).",
+      "setup": "agent-module-documentation/evaluation/verify/url_redirect-known-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/url_redirect-known-cleanup.sh"
+    },
+    {
+      "id": "url_redirect-target-role",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "A url_redirect rule with machine name urlr_role is configured on this site as a Role-based redirect. Inspect the live configuration and state which role it applies to.",
+      "must_contain_any": [
+        "anonymous"
+      ],
+      "must_not_contain": [],
+      "expected_output": "urlr_role has redirect_for = Role and roles = [anonymous], so it applies to the anonymous role (from url_redirect.url_redirect.urlr_role).",
+      "setup": "agent-module-documentation/evaluation/verify/url_redirect-role-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/url_redirect-role-cleanup.sh"
+    },
+    {
+      "id": "url_redirect-create-rule",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, create a url_redirect rule with machine name urlr_task that redirects the internal path /urlr-task-src to /urlr-task-dest for the authenticated role, and make sure it is enabled. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/url_redirect-create-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/url_redirect-create-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/url_redirect-create-cleanup.sh",
+      "expected_output": "A url_redirect.url_redirect.urlr_task config entity with path=/urlr-task-src, redirect_path=/urlr-task-dest, redirect_for=Role, roles containing authenticated, and status=1."
+    },
+    {
+      "id": "url_redirect-external-rule",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "Create a url_redirect rule with machine name urlr_ext that redirects the internal path /urlr-ext-src to the EXTERNAL URL https://example.com for the authenticated role, enabled, and apply it to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/url_redirect-external-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/url_redirect-external-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/url_redirect-external-cleanup.sh",
+      "expected_output": "A url_redirect.url_redirect.urlr_ext config entity with path=/urlr-ext-src, redirect_path=https://example.com (external, used as-is by TrustedRedirectResponse), redirect_for=Role with authenticated, status=1."
+    }
+  ]
+}

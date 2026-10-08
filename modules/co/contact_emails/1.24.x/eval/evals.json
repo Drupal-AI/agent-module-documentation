@@ -1,0 +1,80 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "contact_emails",
+  "version": "1.24.x",
+  "note": "Contact Emails attaches one or more `contact_email` content entities to a core contact_form, each with subject/body/recipients/reply-to. recipient_type is one of manual|submitter|field|reference|context|default (same set for reply_to_type). When a form has >=1 contact_email, hook_mail_alter sets message['send']=FALSE so core stops sending. One global config object contact_emails.settings has boolean allow_charset_utf_8. Permission: 'manage contact form emails'. Configure route entity.contact_email.full_collection (/admin/structure/contact/emails). Medium/hard cases are grounded in real state: a namespaced contact form (ce_*) plus contact_email entities, and the real config key. Requires contact + contact_storage (both enabled).",
+  "evals": [
+    {
+      "id": "contact_emails-recipient-types",
+      "mode": "recipe",
+      "prompt": "In the Drupal contrib module Contact Emails, each email attached to a contact form has a 'recipient type' that decides where the mail is sent. List the recipient_type options the module supports.",
+      "must_contain_any": ["submitter", "manual", "reference", "recipient_type"],
+      "must_not_contain": [],
+      "expected_output": "recipient_type is one of: manual (literal address list), submitter (the form sender), field (an address in a message field), reference (an email field on a referenced entity), context (owner of the entity in the current route), default (the site email). reply_to_type uses the same set (plus manual reply_to_email).",
+      "difficulty": "easy"
+    },
+    {
+      "id": "contact_emails-suppress-core",
+      "mode": "recipe",
+      "prompt": "I added a managed email to a contact form using the Contact Emails module. Why does the core contact form's own recipient email no longer get sent, and what mechanism stops it?",
+      "must_contain_any": ["hook_mail_alter", "mail_alter", "send", "message['send']", "hasContactEmails"],
+      "must_not_contain": [],
+      "expected_output": "contact_emails_mail_alter() runs on the core contact mail ids (contact_page_mail / contact_page_autoreply); when the form has >=1 contact_email (ContactEmailStorage::hasContactEmails) it sets $message['send'] = FALSE so core does not send, and the module sends the configured emails instead. The form's core recipients/reply fields are also hidden.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "contact_emails-where-managed",
+      "mode": "recipe",
+      "prompt": "On a Drupal site with the Contact Emails module, where do I manage the emails for contact forms, what permission is required, and what is the configure route?",
+      "must_contain_any": ["/admin/structure/contact/emails", "manage contact form emails", "entity.contact_email.full_collection", "contact_email"],
+      "must_not_contain": [],
+      "expected_output": "Manage them at /admin/structure/contact/emails (route entity.contact_email.full_collection, the module's configure route) or per form at /admin/structure/contact/manage/{contact_form}/emails. The permission is 'manage contact form emails'; the global settings form needs core 'administer contact forms'.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "contact_emails-known-recipient",
+      "mode": "introspection",
+      "prompt": "This site has a contact form with machine name ce_eval that has a Contact Emails managed email configured. Inspect the live contact_email entities and state the recipient email address that this managed email sends to.",
+      "must_contain_any": ["team@ce-eval.example"],
+      "must_not_contain": [],
+      "expected_output": "The contact_email attached to contact_form ce_eval has recipient_type=manual and recipients='team@ce-eval.example'.",
+      "setup": "agent-module-documentation/evaluation/verify/contact_emails-known-recipient-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/contact_emails-known-recipient-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "contact_emails-charset-setting",
+      "mode": "introspection",
+      "prompt": "On this Drupal site, inspect the Contact Emails global configuration and state whether the 'Allow Charset UTF-8' option is currently turned on, and give the config object and key that holds it.",
+      "must_contain_any": ["true", "allow_charset_utf_8", "enabled", "on"],
+      "must_not_contain": [],
+      "expected_output": "contact_emails.settings:allow_charset_utf_8 is TRUE. Read with `drush cget contact_emails.settings allow_charset_utf_8`.",
+      "setup": "agent-module-documentation/evaluation/verify/contact_emails-charset-setting-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/contact_emails-charset-setting-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "contact_emails-create-email",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "This site has a core contact form with machine name ce_task. Using the Contact Emails module, add a managed email to that form that sends to the fixed address ops@ce-task.example (recipient type manual) with a subject, and make sure the email is enabled. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/contact_emails-create-email-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/contact_emails-create-email-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/contact_emails-create-email-cleanup.sh",
+      "expected_output": "A contact_email entity is created with contact_form=ce_task, recipient_type=manual, recipients containing ops@ce-task.example, status=TRUE (e.g. via the entity API on storage 'contact_email' or the UI at /admin/structure/contact/manage/ce_task/emails/add)."
+    },
+    {
+      "id": "contact_emails-enable-charset",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, use the Contact Emails module's global settings to turn ON the 'Allow Charset UTF-8' option so HTML emails use a UTF-8 charset header. Apply the change to the live configuration.",
+      "reset": "agent-module-documentation/evaluation/verify/contact_emails-enable-charset-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/contact_emails-enable-charset-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/contact_emails-enable-charset-cleanup.sh",
+      "expected_output": "contact_emails.settings:allow_charset_utf_8 is set to TRUE (e.g. `drush cset contact_emails.settings allow_charset_utf_8 true -y` or via the settings form at /admin/structure/contact/emails/settings)."
+    }
+  ]
+}

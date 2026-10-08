@@ -1,0 +1,102 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "email_contact",
+  "version": "2.1.x",
+  "note": "Email Contact provides two display formatters for the core 'email' field: email_contact_link (link/modal to a contact form) and email_contact_inline (embedded form). It also adds route email_contact.form, a hook_mail (key 'contact'), config schema for both formatter settings, and an AjaxEmailContactCommandEvent. No global settings page, no permission (access = entity + field view access), no plugins/Drush. The formatter choice lives in core.entity_view_display.<entity>.<bundle>.<mode> at content.<field>.type with settings. Medium cases seed an email field on Article whose display uses one of the formatters and the agent reads it back via drush cget; hard cases start the field on the core email_mailto formatter (verify FAILS) and the agent must switch the display formatter to email_contact_link / email_contact_inline. All fields namespaced field_ec_*.",
+  "evals": [
+    {
+      "id": "email_contact-formatters",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "I want a Drupal email field to show a contact form instead of the raw address, using the email_contact module. What two field formatters does it provide and how do they differ?",
+      "must_contain_any": [
+        "email_contact_link",
+        "email_contact_inline",
+        "Email contact link",
+        "Email contact inline"
+      ],
+      "must_not_contain": [],
+      "expected_output": "email_contact_link renders a link (optionally an AJAX modal) to a contact form; email_contact_inline embeds the contact form directly in the field output. Both are formatters for the core 'email' field type, chosen per field in Manage display. Neither shows the address itself."
+    },
+    {
+      "id": "email_contact-how-apply",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "There's no settings page for the email_contact module. How do I actually turn an email field into a contact form/link, and where is that choice stored?",
+      "must_contain_any": [
+        "Manage display",
+        "manage-display",
+        "entity_view_display",
+        "formatter",
+        "Format column"
+      ],
+      "must_not_contain": [],
+      "expected_output": "On the entity's Manage display page set the email field's Format to 'Email contact link' or 'Email contact inline'. It is stored in the entity_view_display config (core.entity_view_display.<entity>.<bundle>.<mode>) at content.<field>.type (email_contact_link / email_contact_inline) with the formatter's settings. There is no global config (configure=null)."
+    },
+    {
+      "id": "email_contact-modal-and-recipient",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "With the email_contact 'Email contact link' formatter, can the contact form open in a modal, and who receives the message when a visitor submits it?",
+      "must_contain_any": [
+        "modal",
+        "field",
+        "reply-to",
+        "recipient",
+        "hook_mail"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Yes: the email_contact_link formatter has a 'modal' setting that opens the form in an AJAX modal dialog. On submit, hook_mail (key 'contact') sends the message to the address(es) stored in the email field, with the visitor's address as reply-to; the address is never displayed."
+    },
+    {
+      "id": "email_contact-known-link",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "On this site the Article content type has an email field, field_ec_known, displayed via the email_contact module. Inspect the live default view display and report which email_contact formatter it uses and the link text configured for it.",
+      "must_contain_any": [
+        "email_contact_link",
+        "Reach the author"
+      ],
+      "must_not_contain": [],
+      "expected_output": "field_ec_known uses the email_contact_link formatter with link_text 'Reach the author' (and modal enabled): core.entity_view_display.node.article.default content.field_ec_known type is email_contact_link.",
+      "setup": "agent-module-documentation/evaluation/verify/email_contact-known-link-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/email_contact-known-link-cleanup.sh"
+    },
+    {
+      "id": "email_contact-known-inline",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "The Article content type has an email field field_ec_inline configured with the email_contact module. Inspect the live view display and state which formatter it uses and where the inline form redirects the visitor after submission.",
+      "must_contain_any": [
+        "email_contact_inline"
+      ],
+      "must_not_contain": [],
+      "expected_output": "field_ec_inline uses the email_contact_inline formatter with redirection_to = front (redirect to the front page after submit): content.field_ec_inline type is email_contact_inline.",
+      "setup": "agent-module-documentation/evaluation/verify/email_contact-known-inline-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/email_contact-known-inline-cleanup.sh"
+    },
+    {
+      "id": "email_contact-set-link",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "The Article content type has an email field field_ec_task whose default display currently uses the core Mailto formatter. Using the email_contact module, change its default view display so the field is shown as a link to a contact form (the email_contact_link formatter). Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/email_contact-set-link-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/email_contact-set-link-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/email_contact-set-link-cleanup.sh",
+      "expected_output": "In core.entity_view_display.node.article.default set content.field_ec_task type to email_contact_link (e.g. $vd->setComponent('field_ec_task', ['type'=>'email_contact_link', ...])->save()). getComponent('field_ec_task')['type'] === 'email_contact_link'."
+    },
+    {
+      "id": "email_contact-set-inline",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "The Article content type has an email field field_ec_form whose default display currently uses the core Mailto formatter. Using the email_contact module, change its default view display so the contact form is embedded directly in the page (the email_contact_inline formatter). Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/email_contact-set-inline-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/email_contact-set-inline-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/email_contact-set-inline-cleanup.sh",
+      "expected_output": "In core.entity_view_display.node.article.default set content.field_ec_form type to email_contact_inline and save. getComponent('field_ec_form')['type'] === 'email_contact_inline'."
+    }
+  ]
+}

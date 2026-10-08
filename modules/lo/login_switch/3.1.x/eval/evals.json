@@ -1,0 +1,80 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "login_switch",
+  "version": "3.1.x",
+  "note": "Login Switch alters core user.login/user.register/user.pass routes via a RouteSubscriber and stores everything in one config object login_switch.settings with per-route keys <key>_disabled, <key>_route, <key>_noindex for key in {login,register,password}. disabled+non-empty route => path moved; disabled+empty route => _access:'false' (denied); noindex => X-Robots-Tag:noindex header. Configure route login_switch.settings at /admin/config/people/login-switch gated by core 'administer site configuration'. No plugins, no Drush, no own permissions. All eval cases are grounded in that real config object; medium reads it back, hard writes it.",
+  "evals": [
+    {
+      "id": "login_switch-noindex-header",
+      "mode": "recipe",
+      "prompt": "The Login Switch (login_switch) Drupal module can keep the login/registration/password pages out of search engines. Which HTTP response header (and value) does it add to those pages when the relevant noindex option is enabled?",
+      "must_contain_any": ["X-Robots-Tag", "noindex"],
+      "must_not_contain": [],
+      "expected_output": "It adds the response header 'X-Robots-Tag: noindex' on the user.login / user.register / user.pass routes whose <key>_noindex config flag is true (via the AddNoIndexHeader response subscriber).",
+      "difficulty": "easy"
+    },
+    {
+      "id": "login_switch-move-login-keys",
+      "mode": "recipe",
+      "prompt": "Using the login_switch module, I want to move Drupal's login form from /user/login to a custom path. Which config object and which keys do I set, and what makes the change take effect?",
+      "must_contain_any": ["login_switch.settings", "login_route", "login_disabled"],
+      "must_not_contain": [],
+      "expected_output": "In config object login_switch.settings set login_disabled: true and login_route: 'your-path' (no leading slash). Then rebuild the router / clear caches (drush cr). The LoginSwitchRouteSubscriber calls setPath('/your-path') on the user.login route.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "login_switch-disable-empty",
+      "mode": "recipe",
+      "prompt": "In login_switch, what happens to a user route (e.g. registration) if I tick the 'disable' checkbox but leave the replacement path empty?",
+      "must_contain_any": ["_access", "access", "denied", "false", "disabled"],
+      "must_not_contain": [],
+      "expected_output": "With <key>_disabled true and <key>_route empty, the route subscriber sets the route requirement _access to 'false', so the route becomes fully access-denied (not moved). A non-empty route instead moves the path.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "login_switch-live-login-path",
+      "mode": "introspection",
+      "prompt": "On this Drupal site the login route has been moved to a custom path using login_switch. Inspect the live login_switch.settings configuration and tell me the custom path the login form now lives at.",
+      "must_contain_any": ["ls-secret-login"],
+      "must_not_contain": [],
+      "expected_output": "login_route is 'ls-secret-login' (with login_disabled true), so the login form is served at /ls-secret-login. Read via: drush cget login_switch.settings.",
+      "setup": "agent-module-documentation/evaluation/verify/login_switch-login-path-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/login_switch-login-path-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "login_switch-live-which-noindex",
+      "mode": "introspection",
+      "prompt": "This site uses login_switch. Exactly one of the three auth routes (login, registration, or password reset) is configured to be served with a noindex header. Inspect the live configuration and state which one.",
+      "must_contain_any": ["password", "user.pass", "reset"],
+      "must_not_contain": [],
+      "expected_output": "The password (reset) route: password_noindex is true while login_noindex and register_noindex are false in login_switch.settings, so only user.pass gets X-Robots-Tag: noindex.",
+      "setup": "agent-module-documentation/evaluation/verify/login_switch-noindex-which-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/login_switch-noindex-which-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "login_switch-move-login",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, use the login_switch module to move the login form to the path 'ls-hidden-login' and make the login page send a noindex header. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/login_switch-move-login-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/login_switch-move-login-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/login_switch-move-login-cleanup.sh",
+      "expected_output": "In login_switch.settings set login_disabled true, login_route 'ls-hidden-login', login_noindex true (drush cset then drush cr, or the settings form at /admin/config/people/login-switch)."
+    },
+    {
+      "id": "login_switch-disable-register",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, use the login_switch module to completely disable the default user registration route (it should become access-denied, not moved to another path). Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/login_switch-disable-register-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/login_switch-disable-register-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/login_switch-disable-register-cleanup.sh",
+      "expected_output": "In login_switch.settings set register_disabled true and leave register_route empty, so the route subscriber sets _access 'false' on user.register. Then drush cr."
+    }
+  ]
+}

@@ -1,0 +1,100 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "scheduled_publish",
+  "version": "4.1.x",
+  "note": "Scheduled Publish schedules future content-moderation transitions. It adds a field type scheduled_publish (default widget scheduled_publish, default formatter scheduled_publish_generic_formatter) whose items store value (datetime_iso8601) + moderation_state; add it to a bundle under Content Moderation, usually multi-value. A cron service scheduled_publish.update (ScheduledPublishCron::doUpdate) runs on hook_cron to apply due transitions; Drush command scheduled_publish:doUpdate (alias schp) runs it manually. Admin listing /admin/content/scheduled-publish (+ add/edit/delete), permission 'access scheduled publish pages' (listing needs view any unpublished content). No global settings form. Depends on content_moderation, workflows, datetime. Medium/hard cases are grounded in real scheduled_publish fields on the Article content type (namespaced field_sp*).",
+  "evals": [
+    {
+      "id": "scheduled_publish-field-type",
+      "mode": "recipe",
+      "prompt": "How do I let editors schedule a future content-moderation state change (e.g. auto-publish next Friday) with the Scheduled Publish module? What field type do I add, and what does each entry store?",
+      "must_contain_any": [
+        "scheduled_publish",
+        "moderation state",
+        "date"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Add a field of type 'Scheduled publish' (field type id scheduled_publish) to a moderated bundle. Each entry stores a date/time (value, datetime_iso8601) and a target moderation_state; make it multi-value to queue several transitions.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "scheduled_publish-drush",
+      "mode": "recipe",
+      "prompt": "With the Scheduled Publish module, which Drush command runs the due scheduled moderation transitions immediately, and what normally triggers them?",
+      "must_contain_any": [
+        "scheduled_publish:doUpdate",
+        "schp",
+        "cron"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Run drush scheduled_publish:doUpdate (alias schp) to apply due transitions now. Normally they run automatically on Drupal cron via the scheduled_publish.update service (ScheduledPublishCron::doUpdate).",
+      "difficulty": "easy"
+    },
+    {
+      "id": "scheduled_publish-requirements",
+      "mode": "recipe",
+      "prompt": "What must be true of a content type for a Scheduled Publish field to work, which permission controls the scheduled-publish admin pages, and where is the listing of pending scheduled changes?",
+      "must_contain_any": [
+        "content moderation",
+        "workflow",
+        "access scheduled publish pages",
+        "/admin/content/scheduled-publish"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The bundle must be under Content Moderation (in a workflow) so target moderation states exist. The 'access scheduled publish pages' permission gates the add/edit/delete forms; pending scheduled changes are listed at /admin/content/scheduled-publish (which also needs 'view any unpublished content').",
+      "difficulty": "easy"
+    },
+    {
+      "id": "scheduled_publish-find-field",
+      "mode": "introspection",
+      "prompt": "On this Drupal site, the Article content type has a field provided by the Scheduled Publish module. Inspect the live field configuration and give the machine name of the scheduled_publish field on Article.",
+      "must_contain_any": [
+        "field_spx"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The field is field_spx: field.storage.node.field_spx has type scheduled_publish and it is attached to the article bundle.",
+      "setup": "agent-module-documentation/evaluation/verify/scheduled_publish-field-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/scheduled_publish-field-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "scheduled_publish-cardinality",
+      "mode": "introspection",
+      "prompt": "The Article content type has a Scheduled Publish field named field_spc. Inspect the live field storage and tell me how many values (scheduled transitions) it allows.",
+      "must_contain_any": [
+        "unlimited",
+        "-1",
+        "multiple",
+        "any number"
+      ],
+      "must_not_contain": [],
+      "expected_output": "It allows unlimited values: field.storage.node.field_spc has cardinality -1 (unlimited), so editors can queue any number of scheduled transitions.",
+      "setup": "agent-module-documentation/evaluation/verify/scheduled_publish-card-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/scheduled_publish-card-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "scheduled_publish-create-field",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site (Scheduled Publish is installed), add a Scheduled Publish field with machine name 'field_spt' to the Article content type so editors can schedule moderation-state changes. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/scheduled_publish-create-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/scheduled_publish-create-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/scheduled_publish-create-cleanup.sh",
+      "expected_output": "field.storage.node.field_spt exists with type scheduled_publish and a field.field.node.article.field_spt instance. E.g. FieldStorageConfig::create(['field_name'=>'field_spt','entity_type'=>'node','type'=>'scheduled_publish','cardinality'=>-1])->save(); FieldConfig::create([... 'bundle'=>'article'])->save()."
+    },
+    {
+      "id": "scheduled_publish-create-multi",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "site-owner",
+      "prompt": "On the Article content type, add a Scheduled Publish field named field_spt2 that lets an editor queue MANY scheduled changes at once (not just one). Apply it to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/scheduled_publish-multi-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/scheduled_publish-multi-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/scheduled_publish-multi-cleanup.sh",
+      "expected_output": "field.storage.node.field_spt2 exists with type scheduled_publish and cardinality -1 (unlimited), plus a field.field.node.article.field_spt2 instance, so multiple scheduled transitions can be queued."
+    }
+  ]
+}

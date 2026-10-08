@@ -1,0 +1,99 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "token_views_filter",
+  "version": "2.2.x",
+  "note": "Token Views Filter adds a 'Use tokens' checkbox (option use_tokens) to core Views filters (ids string/numeric/date/datetime/combine/list_field/geofield_proximity_filter) by class-swapping same-id plugins via hook_views_plugins_filter_alter(). The real persisted state is use_tokens: true plus a tokenised value on a filter handler inside a views.view.* config entity; TokensFilterTrait::preQuery() resolves the token with the core token service. Medium/hard cases are grounded in that config: introspection reads a known tvf_* View's tokenised filter, execution enables use_tokens and sets a token value, verified against the live View config. All fixtures are namespaced View config entities prefixed tvf_ and deleted on cleanup.",
+  "evals": [
+    {
+      "id": "token_views_filter-which-filters",
+      "mode": "recipe",
+      "prompt": "What does the Drupal token_views_filter module let you do in a View, and which UI control turns it on for a filter?",
+      "must_contain_any": [
+        "Use tokens",
+        "use_tokens",
+        "token"
+      ],
+      "must_not_contain": [],
+      "expected_output": "It lets a Views filter's value contain replacement tokens (e.g. [current-user:uid]). You enable it by ticking the 'Use tokens' checkbox on a string/numeric/date/datetime/combine/list_field/geofield_proximity filter's settings; it stores use_tokens: true on that filter.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "token_views_filter-storage",
+      "mode": "recipe",
+      "prompt": "With token_views_filter, where is the 'use tokens' setting saved for a Views filter, and how is the token in the value actually resolved at runtime?",
+      "must_contain_any": [
+        "views.view",
+        "use_tokens",
+        "preQuery",
+        "token",
+        "replace"
+      ],
+      "must_not_contain": [],
+      "expected_output": "It is stored as use_tokens: true on the filter handler inside the View config entity (views.view.<id>). At query time TokensFilterTrait::preQuery() calls the core token service: token->replace($value, ['view'=>$view], ['clear'=>TRUE]) against the view/current-page token types.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "token_views_filter-example-token",
+      "mode": "recipe",
+      "prompt": "Using token_views_filter, how would I make a content View show only nodes authored by the currently logged-in user, without a contextual filter? Give an example token.",
+      "must_contain_any": [
+        "[current-user:uid]",
+        "current-user",
+        "current_user"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Add an author/uid filter, tick 'Use tokens', and set its value to [current-user:uid]. token_views_filter replaces the token at query time so the View is scoped to the viewer.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "token_views_filter-known-value",
+      "mode": "introspection",
+      "prompt": "This site has a View with machine name 'tvf_known' that uses token_views_filter on one of its filters. Inspect the live View configuration and report the token value configured on that tokenised filter.",
+      "must_contain_any": [
+        "[current-user:uid]",
+        "current-user:uid"
+      ],
+      "must_not_contain": [],
+      "expected_output": "In views.view.tvf_known the 'title' filter has use_tokens: true and value '[current-user:uid]'. Read with: drush cget views.view.tvf_known display.default.display_options.filters.title.",
+      "setup": "agent-module-documentation/evaluation/verify/token_views_filter-known-value-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/token_views_filter-known-value-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "token_views_filter-which-enabled",
+      "mode": "introspection",
+      "prompt": "The View 'tvf_toggle' on this site has two filters, 'title' and 'created'. Exactly one has token replacement enabled via token_views_filter. Inspect the live View config and state which filter has 'use tokens' enabled.",
+      "must_contain_any": [
+        "title"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The 'title' filter has use_tokens: true in views.view.tvf_toggle; the other filter does not. Check display.default.display_options.filters.*.use_tokens.",
+      "setup": "agent-module-documentation/evaluation/verify/token_views_filter-which-enabled-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/token_views_filter-which-enabled-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "token_views_filter-enable-current-user",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "This site has a View 'tvf_task' with a 'title' string filter that currently does NOT use tokens. Using token_views_filter, enable token replacement on that filter and set its value to [current-user:uid]. Apply the change to the live View.",
+      "reset": "agent-module-documentation/evaluation/verify/token_views_filter-enable-current-user-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/token_views_filter-enable-current-user-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/token_views_filter-enable-current-user-cleanup.sh",
+      "expected_output": "In views.view.tvf_task the title filter must have use_tokens: true and value '[current-user:uid]'. E.g. drush cset -y views.view.tvf_task display.default.display_options.filters.title.use_tokens true and set the value to [current-user:uid]."
+    },
+    {
+      "id": "token_views_filter-enable-site-name",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "The View 'tvf_build' on this site has a 'title' string filter without token support. Make that filter's value resolve to the site name using token_views_filter (token [site:name]) and apply it to the live View.",
+      "reset": "agent-module-documentation/evaluation/verify/token_views_filter-enable-site-name-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/token_views_filter-enable-site-name-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/token_views_filter-enable-site-name-cleanup.sh",
+      "expected_output": "In views.view.tvf_build the title filter must have use_tokens: true and value '[site:name]'."
+    }
+  ]
+}

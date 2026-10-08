@@ -1,0 +1,102 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "rest_api_authentication",
+  "version": "3.1.x",
+  "note": "miniOrange module that secures REST/JSON:API by registering a Drupal authentication_provider (RestAPI, id rest_api_authentication, priority 150). When enable_authentication=1 the provider applies() to /jsonapi/ and ?_format= requests and validates credentials by method: 0 basic_auth, 1 api_key, 2 oauth, 3 jwt, 4 external_oauth (oauth/jwt/headless-sso/multi-app are premium). All state is the rest_api_authentication.settings config object (enable_authentication, authentication_method, api_token, applications map, default_application_id, plus miniOrange customer fields). Runtime authentication of a real HTTP request and any miniOrange/external OAuth call is out of scope for the eval env, so EVERY case is grounded in the local config/auth-provider only: medium reads whether protection is on / which method the default app uses; hard turns protection on and sets the expected api_token - all verified by drush cget, no external auth. Install baseline sets only customer_* fields; the enable/applications/api_token keys are absent until configured, and cleanup clears them back to that baseline.",
+  "evals": [
+    {
+      "id": "rest_api_authentication-how",
+      "mode": "recipe",
+      "prompt": "How does the REST & JSON API Authentication module secure a Drupal site's API, which requests does it protect, and what single setting turns that protection on?",
+      "must_contain_any": [
+        "enable_authentication",
+        "authentication provider",
+        "/jsonapi",
+        "_format",
+        "authentication_provider"
+      ],
+      "must_not_contain": [],
+      "expected_output": "It registers a Drupal authentication provider (RestAPI, id rest_api_authentication, priority 150). When enable_authentication=1 in rest_api_authentication.settings, the provider applies() to requests whose URI contains /jsonapi/ or ?_format= and requires valid credentials; normal page requests are untouched.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "rest_api_authentication-methods",
+      "mode": "recipe",
+      "prompt": "Which API authentication methods does the REST & JSON API Authentication module support for validating incoming API requests?",
+      "must_contain_any": [
+        "API key",
+        "api_key",
+        "Basic",
+        "OAuth",
+        "JWT",
+        "token"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Basic Auth (method 0), API key (1), OAuth (2), JWT (3), and external OAuth (4). Basic Auth and API key are in the free version; OAuth/JWT/external OAuth (and headless SSO / multiple applications) are premium miniOrange features.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "rest_api_authentication-config-object",
+      "mode": "recipe",
+      "prompt": "On a Drupal site with the REST & JSON API Authentication module, in which configuration object are its settings stored, and which key is the master on/off switch for API protection?",
+      "must_contain_any": [
+        "rest_api_authentication.settings",
+        "enable_authentication"
+      ],
+      "must_not_contain": [],
+      "expected_output": "All settings live in the rest_api_authentication.settings config object; enable_authentication (0/1) is the master switch that activates the authentication provider.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "rest_api_authentication-is-enabled",
+      "mode": "introspection",
+      "prompt": "On this Drupal site, is REST/JSON:API authentication protection currently active? Inspect the live configuration to answer.",
+      "must_contain_any": [
+        "enabled"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Yes - protection is enabled: rest_api_authentication.settings has enable_authentication = 1, so the auth provider protects /jsonapi/ and ?_format= API requests.",
+      "setup": "agent-module-documentation/evaluation/verify/rest_api_authentication-enabled-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/rest_api_authentication-enabled-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "rest_api_authentication-default-method",
+      "mode": "introspection",
+      "prompt": "On this site, the REST & JSON API Authentication module has a default API application configured. Inspect the live configuration and tell me which authentication method that default application uses.",
+      "must_contain_any": [
+        "api key",
+        "api_key",
+        "API key"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The default application (app-eval-1) uses the API key method: its authentication_method is 1, which maps to api_key (rest_api_authentication.settings applications + default_application_id).",
+      "setup": "agent-module-documentation/evaluation/verify/rest_api_authentication-method-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/rest_api_authentication-method-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "rest_api_authentication-enable",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, turn on REST & JSON API Authentication so that unauthenticated /jsonapi and ?_format REST requests are no longer served. Apply the change to the live configuration.",
+      "reset": "agent-module-documentation/evaluation/verify/rest_api_authentication-enable-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/rest_api_authentication-enable-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/rest_api_authentication-enable-cleanup.sh",
+      "expected_output": "Set enable_authentication = 1 in rest_api_authentication.settings (via the auth settings form or drush config): \\Drupal::configFactory()->getEditable('rest_api_authentication.settings')->set('enable_authentication', 1)->save();"
+    },
+    {
+      "id": "rest_api_authentication-set-token",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "Configure REST & JSON API Authentication so that the API-key method expects the token 'EVAL-TOKEN-9x'. Apply the change to the live configuration.",
+      "reset": "agent-module-documentation/evaluation/verify/rest_api_authentication-token-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/rest_api_authentication-token-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/rest_api_authentication-token-cleanup.sh",
+      "expected_output": "Set api_token = 'EVAL-TOKEN-9x' in rest_api_authentication.settings (the api-key method compares the presented token against this): ->set('api_token', 'EVAL-TOKEN-9x')->save();"
+    }
+  ]
+}

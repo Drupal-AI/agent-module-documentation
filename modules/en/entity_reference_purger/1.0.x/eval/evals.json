@@ -1,0 +1,80 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "entity_reference_purger",
+  "version": "1.0.x",
+  "note": "Entity Reference Purger removes orphaned entity_reference values from parent entities when the referenced entity is deleted. It is enabled per entity_reference field via two boolean third-party settings under 'entity_reference_purger': remove_orphaned (turn purging on) and use_queue (defer to the cron queue vs purge immediately). For config fields these live on FieldConfig third_party_settings (config field.field.<entity>.<bundle>.<field> -> third_party_settings.entity_reference_purger.*) and are exposed on the field edit form; for base fields via ->setSetting('entity_reference_purger', [...]). Logic is in hook_entity_delete(); queued purges are drained by the entity_reference_purger QueueWorker (cron time 60). No admin page, no permissions, no Drush, no configure route, no plugin types defined. Medium/hard cases are grounded in real FieldConfig third-party settings: introspection reads use_queue on a live field; execution enables remove_orphaned and turns on use_queue, verified against live field.field config.",
+  "evals": [
+    {
+      "id": "erp-enable-field",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "How do I make the entity_reference_purger module clean up orphaned references for a specific entity reference field (added via Manage fields), and where is that choice stored?",
+      "must_contain_any": ["remove_orphaned", "Remove orphaned entity references", "third party setting", "third_party_settings", "field edit form", "field settings"],
+      "must_not_contain": [],
+      "expected_output": "On the entity_reference field's edit form, in the 'Entity Reference Purger' section, tick 'Remove orphaned entity references'. It is stored as a third-party setting on the FieldConfig: field.field.<entity>.<bundle>.<field> -> third_party_settings.entity_reference_purger.remove_orphaned: true."
+    },
+    {
+      "id": "erp-queue-option",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "The entity_reference_purger field settings have a 'Use queue' option. What does enabling use_queue do, and what processes the queued purges?",
+      "must_contain_any": ["queue", "cron", "entity_reference_purger", "QueueWorker", "queue worker"],
+      "must_not_contain": [],
+      "expected_output": "With use_queue on, deletions push jobs onto the 'entity_reference_purger' queue instead of purging immediately; the entity_reference_purger QueueWorker (cron time 60) drains them on cron (or via drush queue:run entity_reference_purger). Recommended when a delete could orphan many references."
+    },
+    {
+      "id": "erp-base-field",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "How do I enable entity_reference_purger orphan removal on a base entity_reference field defined in code (a BaseFieldDefinition), rather than through the UI?",
+      "must_contain_any": ["setSetting", "entity_reference_purger", "remove_orphaned", "BaseFieldDefinition"],
+      "must_not_contain": [],
+      "expected_output": "Add ->setSetting('entity_reference_purger', ['remove_orphaned' => TRUE, 'use_queue' => FALSE]) to the BaseFieldDefinition. The module reads it via getSetting('entity_reference_purger') for base fields (and getThirdPartySettings for config fields)."
+    },
+    {
+      "id": "erp-immediate-field",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "On this Drupal site the Article content type has an entity reference field field_erp_ref that uses entity_reference_purger. Inspect the live field configuration: is it set to remove orphaned references immediately, or via the queue?",
+      "must_contain_any": ["immediate", "immediately", "not use the queue", "without the queue", "use_queue", "false"],
+      "must_not_contain": [],
+      "expected_output": "field_erp_ref has entity_reference_purger.remove_orphaned = true and use_queue = false, so orphaned references are removed immediately on delete (not via the queue).",
+      "setup": "agent-module-documentation/evaluation/verify/entity_reference_purger-immediate-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/entity_reference_purger-immediate-cleanup.sh"
+    },
+    {
+      "id": "erp-queued-field",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "On this Drupal site the Article content type has an entity reference field field_erp_q configured with entity_reference_purger. Inspect the live field configuration and state whether its orphan removal is performed via a queue.",
+      "must_contain_any": ["queue", "queued"],
+      "must_not_contain": [],
+      "expected_output": "field_erp_q has entity_reference_purger.remove_orphaned = true and use_queue = true, so orphaned references are removed via the entity_reference_purger cron queue.",
+      "setup": "agent-module-documentation/evaluation/verify/entity_reference_purger-queued-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/entity_reference_purger-queued-cleanup.sh"
+    },
+    {
+      "id": "erp-enable-purge",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site the Article content type has an entity_reference field field_erp_task with entity_reference_purger orphan removal currently OFF. Turn on 'Remove orphaned entity references' for field_erp_task using entity_reference_purger, and apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/entity_reference_purger-enable-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/entity_reference_purger-enable-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/entity_reference_purger-enable-cleanup.sh",
+      "expected_output": "field.field.node.article.field_erp_task has third_party_settings.entity_reference_purger.remove_orphaned = true (e.g. FieldConfig::setThirdPartySetting('entity_reference_purger','remove_orphaned',TRUE)->save())."
+    },
+    {
+      "id": "erp-switch-to-queue",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site the Article field field_erp_qtask already has entity_reference_purger orphan removal enabled but it purges immediately (use_queue is off). Reconfigure it to defer purging to the queue (turn on 'Use queue') using entity_reference_purger, keeping orphan removal enabled. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/entity_reference_purger-usequeue-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/entity_reference_purger-usequeue-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/entity_reference_purger-usequeue-cleanup.sh",
+      "expected_output": "field.field.node.article.field_erp_qtask has third_party_settings.entity_reference_purger.use_queue = true (with remove_orphaned still true)."
+    }
+  ]
+}

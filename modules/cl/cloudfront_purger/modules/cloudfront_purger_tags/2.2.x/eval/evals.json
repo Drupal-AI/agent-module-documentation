@@ -1,0 +1,75 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "cloudfront_purger_tags",
+  "version": "2.2.x",
+  "note": "Experimental submodule of cloudfront_purger adding cache-tag invalidation. Provides purger plugin id 'cloudfront_tags' (types tag/path/wildcardpath/everything; extends the base cloudfront purger, emitting #<hash> paths for tag invalidations) and a TagsHeader plugin (id 'cloudfront', header_name 'Cache-Tags') that builds the header via filter (purge_queuer_coretags blocklist) -> prioritize (entity tags, then _list, then other) -> hash (xxHash3 truncated to 6 hex chars). Config cloudfront_purger_tags.settings:cache_tag_header_name (default 'Cache-Tags') must match the distribution's CacheTagConfig HeaderName. Swappable services: CacheTagFilterInterface/CacheTagPrioritizerInterface/CacheTagsHashInterface. Medium reads the live header-name config; hard registers the cloudfront_tags purger in Purge (purge.plugins), verified against live config with NO AWS calls (parent stays disabled). Baseline restored (cache_tag_header_name='Cache-Tags', no purgers).",
+  "evals": [
+    {
+      "id": "cloudfront_purger_tags-purger-id",
+      "mode": "recipe",
+      "prompt": "What purger plugin does the CloudFront Purger Tags submodule add, and how is it different from the base cloudfront purger regarding invalidation types?",
+      "must_contain_any": [
+        "cloudfront_tags",
+        "tag"
+      ],
+      "must_not_contain": [],
+      "expected_output": "It adds the 'cloudfront_tags' purger which supports the tag invalidation type in addition to path, wildcardpath and everything. It extends the base cloudfront purger and, for a tag invalidation, sends a '#<hash>' path to CloudFront.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "cloudfront_purger_tags-pipeline",
+      "mode": "recipe",
+      "prompt": "How does CloudFront Purger Tags build the Cache-Tags header value from a response's Drupal cache tags? Describe the steps and how tags are shortened.",
+      "must_contain_any": [
+        "filter",
+        "prioritize",
+        "hash",
+        "xxHash3",
+        "xxh3",
+        "6"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Three steps: filter (drop tags matching the purge_queuer_coretags blocklist), prioritize (entity tags like node:123 first, then _list tags, then other), then hash each tag with xxHash3 truncated to 6 hex characters. The results are comma-joined into the Cache-Tags header.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "cloudfront_purger_tags-distribution-config",
+      "mode": "recipe",
+      "prompt": "For CloudFront Purger Tags to work, what must be configured on the AWS CloudFront distribution, and which Drupal config value must match it? Is there a tag limit to be aware of?",
+      "must_contain_any": [
+        "CacheTagConfig",
+        "HeaderName",
+        "cache_tag_header_name",
+        "50"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The distribution needs CacheTagConfig enabled with a HeaderName that matches cloudfront_purger_tags.settings:cache_tag_header_name (default 'Cache-Tags'). CloudFront stores at most 50 tags per cached object (plus size limits), which is why tags are prioritized and hashed.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "cloudfront_purger_tags-known-header-name",
+      "mode": "introspection",
+      "prompt": "On this site the CloudFront Purger Tags cache-tag header has been given a non-default name. Inspect the live configuration and report the configured header name.",
+      "must_contain_any": [
+        "X-CF-Cache-Tags"
+      ],
+      "must_not_contain": [],
+      "expected_output": "cloudfront_purger_tags.settings:cache_tag_header_name is 'X-CF-Cache-Tags' (default is 'Cache-Tags').",
+      "setup": "agent-module-documentation/evaluation/verify/cloudfront_purger_tags-known-header-name-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/cloudfront_purger_tags-known-header-name-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "cloudfront_purger_tags-add-tags-purger",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "Register the tag-aware CloudFront purger (the one that supports cache-tag invalidation) with the Purge module on this site, so cache-tag invalidations go to CloudFront. Apply it to the live configuration.",
+      "reset": "agent-module-documentation/evaluation/verify/cloudfront_purger_tags-add-tags-purger-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/cloudfront_purger_tags-add-tags-purger-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/cloudfront_purger_tags-add-tags-purger-cleanup.sh",
+      "expected_output": "purge.plugins purgers contains an instance with plugin_id 'cloudfront_tags' (e.g. drush p:purger-add cloudfront_tags)."
+    }
+  ]
+}

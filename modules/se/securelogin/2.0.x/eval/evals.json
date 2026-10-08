@@ -1,0 +1,71 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "securelogin",
+  "version": "2.0.x",
+  "note": "Secure Login forces configured forms to submit over HTTPS and makes authenticated sessions HTTPS-only. Its entire persistent state is the securelogin.settings config object: base_url (nullable uri), secure_forms (bool), all_forms (bool), forms (sequence of form IDs, default [user_login_form,user_form,user_register_form,user_pass_reset,user_pass]), other_forms (sequence). A form is secured when its (base) form ID is in forms/other_forms or all_forms is TRUE; hook_form_alter then sets $form['#https']=TRUE and calls the securelogin.manager service. Config UI at /admin/config/people/securelogin (route securelogin.admin, permission 'administer site configuration'). Developer API: $form['#https']=TRUE, $options['https']=TRUE, and securelogin.manager::secureForm()/secureRedirect(). Modules advertise forms to the checklist via hook_securelogin_alter(). Medium/hard cases are grounded in the real securelogin.settings keys.",
+  "evals": [
+    {
+      "id": "securelogin-where-stored",
+      "mode": "recipe",
+      "prompt": "On a Drupal site using the Secure Login (securelogin) module, which configuration object holds the list of forms that are forced over HTTPS, and what is the setting to make every form on the site submit over the secure URL?",
+      "must_contain_any": ["securelogin.settings", "all_forms"],
+      "must_not_contain": [],
+      "expected_output": "Secure Login stores everything in the securelogin.settings config object. The secured forms are the 'forms' (and 'other_forms') sequences; to submit every form over HTTPS set all_forms to TRUE (drush cset securelogin.settings all_forms true).",
+      "difficulty": "easy"
+    },
+    {
+      "id": "securelogin-mark-form-code",
+      "mode": "recipe",
+      "prompt": "I have a custom Drupal form and I want the Secure Login module to force it to be submitted over HTTPS from code, without adding it in the admin UI. What flag do I set on the form render array?",
+      "must_contain_any": ["#https", "$form['#https']", "secureForm"],
+      "must_not_contain": [],
+      "expected_output": "Set $form['#https'] = TRUE (the same signal Secure Login's form_alter sets for configured forms); you can also call \\Drupal::service('securelogin.manager')->secureForm($form). To force a generated URL to HTTPS use $options['https'] = TRUE.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "securelogin-known-otherform",
+      "mode": "introspection",
+      "prompt": "On this Drupal site an extra custom form ID has been added to Secure Login's 'Other forms to secure' list. Inspect the live securelogin configuration and give that form ID.",
+      "must_contain_any": ["securelogin_probe_form"],
+      "must_not_contain": [],
+      "expected_output": "It is securelogin_probe_form: securelogin.settings other_forms contains ['securelogin_probe_form'] (drush cget securelogin.settings other_forms).",
+      "setup": "agent-module-documentation/evaluation/verify/securelogin-otherforms-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/securelogin-otherforms-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "securelogin-known-baseurl",
+      "mode": "introspection",
+      "prompt": "This site has an explicit Secure Login 'Secure base URL' configured. Inspect the live configuration and report the exact URL value.",
+      "must_contain_any": ["https://secure.securelogin-probe.example"],
+      "must_not_contain": [],
+      "expected_output": "securelogin.settings base_url is https://secure.securelogin-probe.example (drush cget securelogin.settings base_url).",
+      "setup": "agent-module-documentation/evaluation/verify/securelogin-baseurl-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/securelogin-baseurl-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "securelogin-secure-node-forms",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, configure Secure Login so that all node add/edit forms are submitted over HTTPS. Apply the change to the live configuration.",
+      "reset": "agent-module-documentation/evaluation/verify/securelogin-secure-node-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/securelogin-secure-node-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/securelogin-secure-node-reset.sh",
+      "expected_output": "Add the base form ID node_form to securelogin.settings forms (or other_forms) and save, e.g. drush php:eval to append 'node_form' to the forms sequence, or tick 'Node form' on /admin/config/people/securelogin."
+    },
+    {
+      "id": "securelogin-enable-all-forms",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, use the Secure Login module to make every form on the site submit to the secure (HTTPS) URL. Apply the change to the live configuration.",
+      "reset": "agent-module-documentation/evaluation/verify/securelogin-all-forms-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/securelogin-all-forms-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/securelogin-all-forms-reset.sh",
+      "expected_output": "Set securelogin.settings all_forms to TRUE (drush cset securelogin.settings all_forms true -y, or tick 'Submit all forms to secure URL')."
+    }
+  ]
+}

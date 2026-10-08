@@ -1,0 +1,87 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "openid_connect_windows_aad",
+  "version": "2.0.x",
+  "note": "openid_connect_windows_aad ships a single OpenID Connect client plugin (id windows_aad) for the openid_connect framework; it has no config UI, no permissions, no Drush, and no plugin type of its own. Configuration is an openid_connect_client config entity whose `plugin` is windows_aad. Easy `recipe` cases (response-graded) probe the plugin id, its settings keys, and how it registers. Medium `introspection` cases create a known client entity, then ask the agent to read it back off the live site. Hard `execution` cases build a windows_aad client config entity with specific dummy settings, graded by reset->build->verify live-state checks. All checks are config-level: a real login needs a live Microsoft Entra tenant, so no auth is exercised.",
+  "evals": [
+    {
+      "id": "oiac-waad-plugin-id",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "On a Drupal 11 site with the openid_connect_windows_aad module, what is the machine id of the OpenID Connect client plugin it adds, and what config entity value do I set to use it for a Microsoft Entra ID / Azure AD login?",
+      "must_contain_any": ["windows_aad"],
+      "must_not_contain": [],
+      "expected_output": "The module provides an openid_connect client plugin with id `windows_aad` (label \"Windows Azure AD\"). Create an `openid_connect_client` config entity and set its `plugin` key to `windows_aad`."
+    },
+    {
+      "id": "oiac-waad-core-settings",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "For the windows_aad OpenID Connect client plugin, which settings keys hold the Azure app Client ID, the client secret, and the tenant authorization and token endpoints? Where does the client secret actually come from?",
+      "must_contain_any": ["client_id", "client_secret", "authorization_endpoint_wa", "token_endpoint_wa"],
+      "must_not_contain": [],
+      "expected_output": "In the client entity's `settings`: `client_id` (Azure app id), `client_secret` (a KEY entity id, resolved via the Key module, not the raw secret), `authorization_endpoint_wa` and `token_endpoint_wa` (tenant-scoped Entra endpoints). The module depends on drupal/key."
+    },
+    {
+      "id": "oiac-waad-group-mapping",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "How do I map Microsoft Entra / Azure AD groups to Drupal roles with the windows_aad client plugin? Which settings turn it on, choose automatic vs manual mapping, and enforce strict membership?",
+      "must_contain_any": ["map_ad_groups_to_roles", "group_mapping"],
+      "must_not_contain": [],
+      "expected_output": "Set `map_ad_groups_to_roles: true`, then under `group_mapping`: `method` 0 = automatic (group name/id matches role name) or 1 = manual (`mappings` holds `role|group-id` lines, `;`-separated for multiple groups), and `strict: true` removes Drupal roles not backed by a current AD group. Mapping is applied in hook_openid_connect_userinfo_save()."
+    },
+    {
+      "id": "oiac-waad-registration",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "The openid_connect_windows_aad module has no admin form or route of its own. How does its windows_aad plugin register with the openid_connect module, and what config schema type defines its settings?",
+      "must_contain_any": ["OpenIDConnectClient", "src/Plugin/OpenIDConnectClient", "openid_connect.client.plugin.windows_aad"],
+      "must_not_contain": [],
+      "expected_output": "The class carries an @OpenIDConnectClient(id = \"windows_aad\") annotation and lives in src/Plugin/OpenIDConnectClient/; openid_connect's OpenIDConnectClient plugin manager discovers it automatically. Its settings schema is `openid_connect.client.plugin.windows_aad`, selected via the entity's `plugin` key (type: openid_connect.client.plugin.[%parent.plugin])."
+    },
+    {
+      "id": "oiac-waad-known-client",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "An OpenID Connect client has already been configured on this site for Microsoft Entra login. Inspect the openid_connect_client config entities and tell me: which client uses the windows_aad plugin, which Drupal role its Entra groups are mapped to (and is mapping strict?), which user-info Graph API version it uses, and which subject key it maps identities on.",
+      "setup": "agent-module-documentation/evaluation/verify/openid_connect_windows_aad-known-client-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/openid_connect_windows_aad-known-client-cleanup.sh",
+      "must_contain_any": ["eval_entra", "editor", "oid"],
+      "must_not_contain": [],
+      "expected_output": "The client `eval_entra` (openid_connect.client.eval_entra) uses plugin windows_aad. It maps AD groups to the `editor` role via a manual mapping (group_mapping.method 1) with strict = true, uses Microsoft Graph API v1.0 (userinfo_graph_api_wa = 2), and maps identities on subject_key `oid`."
+    },
+    {
+      "id": "oiac-waad-known-endpoints",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "Look at the currently configured Microsoft Entra OpenID Connect client on this site and report the Azure app Client ID it uses and its authorization and token endpoint URLs. Which tenant do those endpoints target?",
+      "setup": "agent-module-documentation/evaluation/verify/openid_connect_windows_aad-known-client-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/openid_connect_windows_aad-known-client-cleanup.sh",
+      "must_contain_any": ["eval-app-0001", "contoso-eval"],
+      "must_not_contain": [],
+      "expected_output": "The windows_aad client `eval_entra` has client_id `eval-app-0001`, authorization_endpoint_wa https://login.microsoftonline.com/contoso-eval/oauth2/v2.0/authorize and token_endpoint_wa https://login.microsoftonline.com/contoso-eval/oauth2/v2.0/token — i.e. the `contoso-eval` tenant."
+    },
+    {
+      "id": "oiac-waad-build-client",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, register a new Microsoft Entra ID login by creating an openid_connect_client config entity that uses the windows_aad plugin. Use these dummy values: Azure app Client ID `acme-dummy-client-id`; authorization endpoint https://login.microsoftonline.com/acme-tenant/oauth2/v2.0/authorize and token endpoint https://login.microsoftonline.com/acme-tenant/oauth2/v2.0/token; enable mapping of AD groups to Drupal roles using a manual mapping that grants the `administrator` role to an Entra group; use the Microsoft Graph API v1.0 for user info; and map identities on the `oid` subject key. The client must be enabled. (No real Azure credentials are needed — this is config-level only.)",
+      "reset": "agent-module-documentation/evaluation/verify/openid_connect_windows_aad-build-client-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/openid_connect_windows_aad-build-client-verify.sh",
+      "expected_output": "Create an enabled `openid_connect_client` config entity with plugin `windows_aad` and settings: client_id `acme-dummy-client-id`, authorization_endpoint_wa/token_endpoint_wa pointing at the `acme-tenant` tenant, map_ad_groups_to_roles true with group_mapping.method 1 and a mappings line granting `administrator`, userinfo_graph_api_wa 2 (Microsoft Graph v1.0), and subject_key `oid`."
+    },
+    {
+      "id": "oiac-waad-build-client-b2c",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "Set up a windows_aad OpenID Connect client on this site for Microsoft Entra with the following config-level requirements: create and enable an openid_connect_client entity using the windows_aad plugin; Azure app Client ID must be `acme-dummy-client-id`; both the authorization and token endpoints must target the `acme-tenant` tenant (e.g. https://login.microsoftonline.com/acme-tenant/oauth2/v2.0/authorize and .../token); enable AD-group-to-role mapping with a manual mapping that assigns the `administrator` role; select Microsoft Graph API v1.0 for the user info endpoint; and set the subject key to `oid`. No Azure credentials required.",
+      "reset": "agent-module-documentation/evaluation/verify/openid_connect_windows_aad-build-client-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/openid_connect_windows_aad-build-client-verify.sh",
+      "expected_output": "An enabled `openid_connect_client` entity with plugin `windows_aad`: client_id `acme-dummy-client-id`, authorization_endpoint_wa and token_endpoint_wa on the `acme-tenant` tenant, map_ad_groups_to_roles true with group_mapping.method 1 and a mappings entry for `administrator`, userinfo_graph_api_wa 2, subject_key `oid`."
+    }
+  ]
+}

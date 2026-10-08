@@ -1,0 +1,119 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "openapi_ui_redoc",
+  "version": "1.0.x",
+  "note": "openapi_ui_redoc is a single-plugin bridge module: one annotated @OpenApiUi(id = \"redoc\") class (src/Plugin/openapi_ui/OpenApiUi/ReDoc.php), two asset libraries and a 25-line jQuery shim. No configure route (configure=null), no permissions, no config schema, no services, no hooks, no Drush, no submodules. ReDoc::build() returns an html_tag <redoc id=\"redoc-ui\" no-auto-auth> element and branches on #openapi_schema: a Drupal\\Core\\Url becomes a spec-url attribute (ReDoc auto-inits), anything else is Json::encode()d into a spec attribute plus the openapi_ui_redoc/redoc_attr shim library which calls Redoc.init(JSON.parse(spec)). Routes/permission come from the openapi module (openapi.documentation, /admin/config/services/openapi/{openapi_ui}/{openapi_generator}, permission 'access openapi api docs'). A real shipped bug grounds the hard tier: openapi_ui_redoc.libraries.yml declares the CDN URL https://rebilly.github.io/ReDoc/releases/latest/redoc.min.js WITHOUT `type: external`, so LibraryDiscoveryParser records it as type: file and core's locale module throws 'Only local files should be passed to _locale_parse_js_file().' -> every ReDoc page returns HTTP 500 until a hook_library_info_alter() marks it external (or self-hosts it). Medium cases install throwaway fixture modules that alter the live plugin label / library URL, or grant the guarding permission to a namespaced role; hard cases make the agent build a real page for each of the two build() branches and verify the rendered HTML through an http_kernel sub-request.",
+  "evals": [
+    {
+      "id": "openapi_ui_redoc-build-output",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "The Drupal module openapi_ui_redoc provides one openapi_ui renderer plugin. What render array does its build() method return — which render element type and HTML tag — and which attributes does it always put on that tag (ignore the spec attributes for now)?",
+      "must_contain_any": [
+        "redoc-ui",
+        "no-auto-auth",
+        "html_tag"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Drupal\\openapi_ui_redoc\\Plugin\\openapi_ui\\OpenApiUi\\ReDoc::build() returns ['#type' => 'html_tag', '#tag' => 'redoc', '#attributes' => ['id' => 'redoc-ui', 'no-auto-auth' => TRUE, ...], '#attached' => ['library' => ['openapi_ui_redoc/redoc']]] — i.e. it prints a <redoc id=\"redoc-ui\" no-auto-auth ...></redoc> custom element. The hardcoded id means only one ReDoc instance per page."
+    },
+    {
+      "id": "openapi_ui_redoc-url-vs-array",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "I am embedding API docs in Drupal with an '#type' => 'openapi_ui' render element and '#openapi_ui_plugin' => 'redoc'. What changes in the generated markup and in the attached asset libraries depending on whether I pass a Drupal\\Core\\Url or a plain PHP array as '#openapi_schema'? Why is the extra library needed in one of the two cases?",
+      "must_contain_any": [
+        "spec-url",
+        "redoc_attr",
+        "Redoc.init"
+      ],
+      "must_not_contain": [],
+      "expected_output": "A Url gets rendered as the spec-url attribute (<redoc spec-url=\"…\">) and only openapi_ui_redoc/redoc is attached — the ReDoc bundle auto-initialises when spec-url is present. An array is Json::encode()d into a spec attribute and the module additionally attaches openapi_ui_redoc/redoc_attr, a jQuery shim (js/redoc.js) that on document ready reads the spec attribute and calls Redoc.init(JSON.parse(spec)); without it ReDoc never initialises and logs 'Redoc spec not provided. UI not loaded.'"
+    },
+    {
+      "id": "openapi_ui_redoc-where-to-look",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "I installed openapi_ui_redoc on a Drupal 11 site alongside the openapi and openapi_jsonapi modules, but openapi_ui_redoc has no settings page of its own. What URL do I visit to read the JSON:API specification rendered with ReDoc, and which permission guards that page?",
+      "must_contain_any": [
+        "/admin/config/services/openapi",
+        "access openapi api docs"
+      ],
+      "must_not_contain": [],
+      "expected_output": "openapi_ui_redoc adds no routes at all (configure = null). The openapi module provides route openapi.documentation at /admin/config/services/openapi/{openapi_ui}/{openapi_generator}, so with the redoc UI plugin and the jsonapi generator the URL is /admin/config/services/openapi/redoc/jsonapi (reachable from the 'Explore with ReDoc' dropbutton on /admin/config/services/openapi). All openapi routes require the permission 'access openapi api docs'."
+    },
+    {
+      "id": "openapi_ui_redoc-live-plugin-label",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "On this Drupal site (drush is available) something has changed the human-readable label that the openapi_ui renderer plugin with id `redoc` advertises — it is no longer the label in the module's own annotation. Inspect the live openapi_ui plugin registry and quote the exact label the `redoc` plugin now reports.",
+      "must_contain_any": [
+        "ReDoc Fixture Build 4711"
+      ],
+      "must_not_contain": [],
+      "expected_output": "drush php:eval on \\Drupal::service('plugin.manager.openapi_ui.ui')->getDefinitions() shows redoc with label 'ReDoc Fixture Build 4711' (a hook_openapi_ui_alter() implementation overrode the annotated label 'ReDoc').",
+      "setup": "agent-module-documentation/evaluation/verify/openapi_ui_redoc-label-alter-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/openapi_ui_redoc-label-alter-cleanup.sh"
+    },
+    {
+      "id": "openapi_ui_redoc-live-library-url",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "openapi_ui_redoc ships an asset library that pulls the ReDoc JavaScript bundle from a CDN. On this Drupal site that URL has been overridden. Inspect the library definition as the running site actually resolves it and give me the exact JavaScript URL the ReDoc library loads now.",
+      "must_contain_any": [
+        "redoc-pinned-9-8-7"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The library is openapi_ui_redoc/redoc. \\Drupal::service('library.discovery')->getLibraryByName('openapi_ui_redoc', 'redoc') shows its single js entry pointing at https://cdn.example.test/redoc-pinned-9-8-7.min.js (type external), not the shipped https://rebilly.github.io/ReDoc/releases/latest/redoc.min.js — a hook_library_info_alter() repointed it.",
+      "setup": "agent-module-documentation/evaluation/verify/openapi_ui_redoc-library-alter-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/openapi_ui_redoc-library-alter-cleanup.sh"
+    },
+    {
+      "id": "openapi_ui_redoc-explorer-role",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "Besides the site administrator, exactly one user role on this Drupal site has been given access to the ReDoc API-documentation explorer page (/admin/config/services/openapi/redoc/jsonapi). Inspect the live site and tell me that role's machine name and the exact permission string that grants it.",
+      "must_contain_any": [
+        "oui_redoc_explorer"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The role is oui_redoc_explorer ('OUI ReDoc explorer'), and the permission is 'access openapi api docs' (defined by the openapi module and required by route openapi.documentation). Visible with drush role:list or drush config:get user.role.oui_redoc_explorer.",
+      "setup": "agent-module-documentation/evaluation/verify/openapi_ui_redoc-explorer-role-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/openapi_ui_redoc-explorer-role-cleanup.sh"
+    },
+    {
+      "id": "openapi_ui_redoc-specurl-page-expert",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal 11 site (drush available, openapi_ui and openapi_ui_redoc already enabled), create and enable a custom module named `oui_redoc_eval_page` at web/modules/custom/oui_redoc_eval_page that exposes the route path `/oui-redoc-eval/docs` with `_access: 'TRUE'`. Its controller must return an openapi_ui render element that uses the ReDoc renderer plugin and takes its specification from the URL https://example.com/oui-redoc-eval/openapi.json (pass it so that ReDoc receives it as a spec URL, not as an inline spec). The page must actually return HTTP 200 and its HTML must contain the <redoc> element with that spec-url plus the ReDoc JavaScript bundle. Do not uninstall or disable any module that is already enabled on this site.",
+      "reset": "agent-module-documentation/evaluation/verify/openapi_ui_redoc-specurl-page-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/openapi_ui_redoc-specurl-page-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/openapi_ui_redoc-specurl-page-cleanup.sh",
+      "expected_output": "A module with a routing.yml + ControllerBase returning ['#type' => 'openapi_ui', '#openapi_ui_plugin' => 'redoc', '#openapi_schema' => Url::fromUri('https://example.com/oui-redoc-eval/openapi.json')]. Because openapi_ui_redoc.libraries.yml declares the rebilly.github.io CDN URL without `type: external`, core's locale module makes the page throw 'Only local files should be passed to _locale_parse_js_file()' and return 500 — so the module must also fix that, e.g. with a hook_library_info_alter() setting $libraries['redoc']['js'][$url]['type'] = 'external' (or by self-hosting the bundle). After drush cr the page returns 200 with <redoc id=\"redoc-ui\" no-auto-auth spec-url=\"https://example.com/oui-redoc-eval/openapi.json\"> and a redoc.min.js script tag."
+    },
+    {
+      "id": "openapi_ui_redoc-specurl-page-layman",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "layman",
+      "prompt": "I want a page on my Drupal site, at the address /oui-redoc-eval/docs, that shows my API documentation using that nice three-panel ReDoc reader. The documentation file lives at https://example.com/oui-redoc-eval/openapi.json and ReDoc should fetch it from there itself. Anyone should be able to open the page — and it has to actually load, not show an error. Please build whatever is needed (call it oui_redoc_eval_page) and switch it on. Please don't turn off anything that is already switched on.",
+      "reset": "agent-module-documentation/evaluation/verify/openapi_ui_redoc-specurl-page-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/openapi_ui_redoc-specurl-page-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/openapi_ui_redoc-specurl-page-cleanup.sh",
+      "expected_output": "Same verified end state as openapi_ui_redoc-specurl-page-expert: an enabled module oui_redoc_eval_page whose /oui-redoc-eval/docs route returns HTTP 200 with <redoc … spec-url=\"https://example.com/oui-redoc-eval/openapi.json\"> and the ReDoc bundle loaded — which requires marking the openapi_ui_redoc/redoc CDN asset as an external library so core's locale module stops fataling on it."
+    },
+    {
+      "id": "openapi_ui_redoc-inline-spec-page",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal 11 site (drush available, openapi_ui and openapi_ui_redoc already enabled), create and enable a custom module named `oui_redoc_eval_inline` at web/modules/custom/oui_redoc_eval_inline serving the route path `/oui-redoc-eval/inline` with `_access: 'TRUE'`. Its controller must render the ReDoc openapi_ui plugin from a specification that is built in PHP as an array (NOT fetched from a URL) — an OpenAPI 3.0.0 document whose info.title is exactly `OUI ReDoc Eval Inline API`. The page must return HTTP 200 and the rendered <redoc> element must carry the inline spec attribute (and no spec-url), with the ReDoc JavaScript bundle loaded. Do not uninstall or disable any module that is already enabled on this site.",
+      "reset": "agent-module-documentation/evaluation/verify/openapi_ui_redoc-inline-spec-page-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/openapi_ui_redoc-inline-spec-page-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/openapi_ui_redoc-inline-spec-page-cleanup.sh",
+      "expected_output": "Controller returns ['#type' => 'openapi_ui', '#openapi_ui_plugin' => 'redoc', '#openapi_schema' => ['openapi' => '3.0.0', 'info' => ['title' => 'OUI ReDoc Eval Inline API', 'version' => '1.0.0'], 'paths' => []]]. ReDoc::build() takes the non-Url branch: Json::encode() into the spec attribute plus the openapi_ui_redoc/redoc_attr shim. As with the spec-url case the module must also declare the ReDoc CDN asset external (hook_library_info_alter) so core's locale module does not fatal the page."
+    }
+  ]
+}

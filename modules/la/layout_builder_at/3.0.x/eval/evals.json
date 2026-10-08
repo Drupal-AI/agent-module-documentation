@@ -1,0 +1,94 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "layout_builder_at",
+  "version": "3.0.x",
+  "note": "Layout Builder Asymmetric Translation has no settings form (configure: null) and no permissions. Its persistent surface is: (a) the layout_builder__layout field storage forced translatable by hook_field_storage_config_presave(), and (b) a field widget plugin layout_builder_at_copy for layout_section fields whose only setting is 'appearance' (unchecked | checked | checked_hidden), stored in core.entity_form_display.<entity>.<bundle>.<mode> -> content.layout_builder__layout. There is also the settings.php flag layout_builder_at_set_content_block_language_to_entity. All medium/hard cases are grounded in that config, using a namespaced content type lbat_demo with Layout Builder per-item overrides enabled. Scripts create lbat_demo inside a try/catch because unrelated modules on this shared site can throw in their node-type insert hooks after the type itself is saved.",
+  "evals": [
+    {
+      "id": "layout_builder_at-widget-id",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "On a Drupal 11 site with the layout_builder_at (Layout Builder Asymmetric Translation) module, how do you expose the 'Copy blocks into translation' checkbox to editors, and what are the possible values of that widget's setting?",
+      "must_contain_any": [
+        "layout_builder_at_copy",
+        "checked_hidden"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Place the field widget layout_builder_at_copy on the layout_builder__layout field in the bundle's Manage form display. Its single setting is 'appearance' with the values unchecked (default), checked, and checked_hidden (forced on and hidden from the editor). Schema key: field.widget.settings.layout_builder_at_copy."
+    },
+    {
+      "id": "layout_builder_at-translatable-field",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "How does the Drupal module layout_builder_at actually make per-translation layouts possible? Which field does it change, and what does it change about it?",
+      "must_contain_any": [
+        "layout_builder__layout",
+        "translatable",
+        "setTranslatable"
+      ],
+      "must_not_contain": [],
+      "expected_output": "It makes the Layout Builder override field translatable. hook_ENTITY_TYPE_presave() for field_storage_config calls setTranslatable(TRUE) on any layout_section storage named layout_builder__layout (OverridesSectionStorage::FIELD_NAME), and hook_install() re-saves existing ones. It also swaps the 'overrides' section storage class for TranslatableOverridesSectionStorage so the Layout tab is reachable on a translation."
+    },
+    {
+      "id": "layout_builder_at-settings-flag",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "When using layout_builder_at on Drupal, new inline blocks added in Layout Builder automatically get the language of the entity. Which setting turns that behaviour off, and where is it set?",
+      "must_contain_any": [
+        "layout_builder_at_set_content_block_language_to_entity",
+        "settings.php"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Add $settings['layout_builder_at_set_content_block_language_to_entity'] = FALSE; to settings.php. It is read with Settings::get() in layout_builder_at_form_layout_builder_add_block_alter(), and defaults to TRUE."
+    },
+    {
+      "id": "layout_builder_at-known-widget",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "On this Drupal site the content type with the machine name lbat_demo uses Layout Builder with per-item overrides, and its Layout field has been configured with the layout_builder_at module's widget. Inspect the live form display configuration and tell me which value the widget's 'Checkbox appearance' setting is set to, and what that value means for editors.",
+      "must_contain_any": [
+        "checked_hidden"
+      ],
+      "must_not_contain": [],
+      "expected_output": "appearance is checked_hidden - `drush cget core.entity_form_display.node.lbat_demo.default content.layout_builder__layout` shows type: layout_builder_at_copy with settings.appearance: checked_hidden, meaning the 'Copy blocks into translation' checkbox is forced on and hidden from the editor (#access FALSE).",
+      "setup": "agent-module-documentation/evaluation/verify/layout_builder_at-known-widget-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/layout_builder_at-known-widget-cleanup.sh"
+    },
+    {
+      "id": "layout_builder_at-overrides-bundle",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "Exactly one content type on this Drupal site allows each content item to have its layout customised with Layout Builder (per-item overrides). Inspect the live site and give the machine name of that content type.",
+      "must_contain_any": [
+        "lbat_demo"
+      ],
+      "must_not_contain": [],
+      "expected_output": "lbat_demo - its default entity view display (core.entity_view_display.node.lbat_demo.default) carries third_party_settings.layout_builder.enabled: true and allow_custom: true, which is what creates the translatable layout_builder__layout field that layout_builder_at operates on.",
+      "setup": "agent-module-documentation/evaluation/verify/layout_builder_at-overrides-bundle-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/layout_builder_at-overrides-bundle-cleanup.sh"
+    },
+    {
+      "id": "layout_builder_at-copy-widget",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site the content type lbat_demo already has Layout Builder enabled with per-item overrides. Using the layout_builder_at module, configure its default form display so that the Layout field uses the Layout Builder Asymmetric Translation widget, with the 'Copy blocks into translation' checkbox ticked by default (but still visible to editors). Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/layout_builder_at-copy-widget-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/layout_builder_at-copy-widget-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/layout_builder_at-copy-widget-cleanup.sh",
+      "expected_output": "core.entity_form_display.node.lbat_demo.default has content.layout_builder__layout with type: layout_builder_at_copy and settings.appearance: checked (set on /admin/structure/types/manage/lbat_demo/form-display or with $form_display->setComponent('layout_builder__layout', [...])->save())."
+    },
+    {
+      "id": "layout_builder_at-hidden-checkbox",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "site-owner",
+      "prompt": "On this Drupal site, when an editor creates a translation of an 'LBAT Demo' item they currently see a 'Copy blocks into translation' checkbox that starts empty. I never want them to think about it: every new translation should always start as a copy of the source layout, and the checkbox should not be shown at all. Change the configuration on the live site so that happens.",
+      "reset": "agent-module-documentation/evaluation/verify/layout_builder_at-hidden-checkbox-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/layout_builder_at-hidden-checkbox-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/layout_builder_at-hidden-checkbox-cleanup.sh",
+      "expected_output": "The layout_builder_at_copy widget on node.lbat_demo's default form display now has settings.appearance: checked_hidden, which the widget maps to #default_value TRUE plus #access FALSE on the checkbox."
+    }
+  ]
+}

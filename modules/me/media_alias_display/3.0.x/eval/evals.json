@@ -1,0 +1,80 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "media_alias_display",
+  "version": "3.0.x",
+  "note": "Media Alias Display overrides entity.media.canonical / entity.media.revision so a file-source media entity's canonical URL streams the underlying file (CacheableBinaryFileResponse) instead of rendering the media page. Requires core media.settings standalone_url=true. Config object media_alias_display.settings has two keys: kill_switch (bool; true = disabled entirely) and media_bundles (sequence of allowed media type ids; empty = all). Settings form at /admin/config/media/media_alias_display (permission administer site configuration). Query args on the alias: ?edit-media (redirect to edit for editors), ?dl / ?download (force download). Medium cases set a known kill_switch / media_bundles value and read it back. Hard cases require enabling the kill switch / restricting to the 'document' bundle, verified against the live config; reset restores shipped defaults (kill_switch=false, media_bundles={}) so verify fails on empty state. No Drush, no own permissions.",
+  "evals": [
+    {
+      "id": "media_alias_display-standalone-requirement",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "For the Media Alias Display module to work, which core Media setting must be enabled, and where is it?",
+      "must_contain_any": ["standalone_url", "Standalone media URL", "standalone media url", "standalone"],
+      "must_not_contain": [],
+      "expected_output": "Core Media's 'Standalone media URL' setting must be on (media.settings standalone_url: true, at /admin/config/media/media-settings). Without it a media entity has no canonical URL for the module to override; the status report warns otherwise."
+    },
+    {
+      "id": "media_alias_display-two-settings",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "What are the two configuration options provided by the Media Alias Display settings form, and what does each do?",
+      "must_contain_any": ["kill_switch", "kill switch", "media_bundles", "media bundles"],
+      "must_not_contain": [],
+      "expected_output": "kill_switch (disable the module entirely) and media_bundles (an allow-list of media type ids the file-streaming applies to; empty = all bundles). Stored in media_alias_display.settings; form at /admin/config/media/media_alias_display."
+    },
+    {
+      "id": "media_alias_display-query-tricks",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "When viewing a file at its media alias with Media Alias Display, how do you force the file to download, and how do you jump to the media edit form?",
+      "must_contain_any": ["?dl", "?download", "download", "edit-media"],
+      "must_not_contain": [],
+      "expected_output": "Append ?dl or ?download to force a download (Content-Disposition: attachment); append ?edit-media to redirect to the media edit form (for users with edit/administer media permission)."
+    },
+    {
+      "id": "media_alias_display-killswitch-state",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "On this site, is the Media Alias Display module actively serving files at their media aliases, or has it been disabled site-wide? Inspect its live configuration to answer.",
+      "must_contain_any": ["kill_switch", "kill switch", "disabled", "true"],
+      "must_not_contain": [],
+      "setup": "agent-module-documentation/evaluation/verify/media_alias_display-killswitch-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/media_alias_display-killswitch-cleanup.sh",
+      "expected_output": "It is disabled site-wide: media_alias_display.settings kill_switch = true (`drush cget media_alias_display.settings kill_switch`)."
+    },
+    {
+      "id": "media_alias_display-restricted-bundle",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "Media Alias Display can be limited to certain media bundles. Inspect this site's configuration and state which media bundle(s) it is currently restricted to.",
+      "must_contain_any": ["document"],
+      "must_not_contain": [],
+      "setup": "agent-module-documentation/evaluation/verify/media_alias_display-bundle-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/media_alias_display-bundle-cleanup.sh",
+      "expected_output": "It is restricted to the 'document' media bundle: media_alias_display.settings media_bundles contains only 'document'. (An empty media_bundles would mean all bundles.)"
+    },
+    {
+      "id": "media_alias_display-enable-killswitch",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, use the Media Alias Display module's kill switch to disable its file-serving behavior site-wide, without uninstalling the module. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/media_alias_display-enable-killswitch-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/media_alias_display-enable-killswitch-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/media_alias_display-enable-killswitch-cleanup.sh",
+      "expected_output": "media_alias_display.settings kill_switch = true. e.g. \\Drupal::configFactory()->getEditable('media_alias_display.settings')->set('kill_switch', TRUE)->save(); or tick 'Kill Switch' on /admin/config/media/media_alias_display."
+    },
+    {
+      "id": "media_alias_display-restrict-bundle",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "Configure the Media Alias Display module so that its file-serving behavior applies only to the 'document' media type (bundle), leaving all other media types rendering normally. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/media_alias_display-restrict-bundle-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/media_alias_display-restrict-bundle-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/media_alias_display-restrict-bundle-cleanup.sh",
+      "expected_output": "media_alias_display.settings media_bundles restricts to document, e.g. {\"document\":\"document\"}. Set with ->set('media_bundles', ['document' => 'document'])->save() or check only 'Document' in the Media Bundles list on the settings form."
+    }
+  ]
+}

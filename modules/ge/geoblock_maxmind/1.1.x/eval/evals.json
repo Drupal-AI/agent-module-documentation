@@ -1,0 +1,95 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "geoblock_maxmind",
+  "version": "1.1.x",
+  "note": "geoblock_maxmind adds a MaxMind .mmdb GeoIP data source (GeoblockDataSource plugin id 'maxmind') to the Geoblock module. Its only config is geoblock_maxmind.settings:download_url (uri, default ''); a Downloader service + hook_cron refresh the local db at private://geoblock_maxmind.mmdb, scheduled by the State key geoblock_maxmind.update_date. Configure route geoblock_maxmind.settings (/admin/config/geoblock/maxmind), permission 'administer geoblock'. No live GeoIP database is present on the test site, so all medium/hard cases are grounded in the config value and State scheduling, not in real IP lookups. Medium cases seed a known download_url / update_date and read them back; hard cases set or clear download_url, verified against live config.",
+  "evals": [
+    {
+      "id": "geoblock_maxmind-config-key",
+      "mode": "recipe",
+      "prompt": "In the Drupal geoblock_maxmind module, which config object and key hold the MaxMind database download URL, and what happens when it is left empty?",
+      "must_contain_any": [
+        "geoblock_maxmind.settings",
+        "download_url"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The config object geoblock_maxmind.settings has the key download_url (a uri, default empty string). When empty, automatic download is disabled and you must maintain the .mmdb file yourself at private://geoblock_maxmind.mmdb; when set to a *.tar.gz archive URL the module downloads and extracts the database.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "geoblock_maxmind-db-path",
+      "mode": "recipe",
+      "prompt": "Where does geoblock_maxmind expect the MaxMind database file to live on disk, and what does its data source do if that file is missing?",
+      "must_contain_any": [
+        "private://geoblock_maxmind.mmdb",
+        "geoblock_maxmind.mmdb",
+        "private"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The database file is expected at private://geoblock_maxmind.mmdb (the geoblock_maxmind.database_path service parameter). If the file is missing/unreadable the 'maxmind' GeoblockDataSource plugin's reader stays null and locate() resolves no country (silently), so Geoblock gets no country for that IP.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "geoblock_maxmind-cron",
+      "mode": "recipe",
+      "prompt": "How does geoblock_maxmind keep the MaxMind database up to date automatically, and what controls when the next update happens?",
+      "must_contain_any": [
+        "cron",
+        "geoblock_maxmind.update_date",
+        "update_date"
+      ],
+      "must_not_contain": [],
+      "expected_output": "hook_cron() re-downloads the database when a valid download_url is set and the current time has reached the State value geoblock_maxmind.update_date; after each attempt it reschedules update_date about one week ahead (strtotime('1 week')). Saving the settings form with a URL also validates the download and seeds that State.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "geoblock_maxmind-known-url",
+      "mode": "introspection",
+      "prompt": "On this Drupal site the geoblock_maxmind module has a MaxMind database download URL configured. Inspect the live configuration and report the exact URL.",
+      "must_contain_any": [
+        "https://mirror.example.org/geoip/GeoLite2-Country-known.tar.gz"
+      ],
+      "must_not_contain": [],
+      "expected_output": "geoblock_maxmind.settings:download_url is https://mirror.example.org/geoip/GeoLite2-Country-known.tar.gz.",
+      "setup": "agent-module-documentation/evaluation/verify/geoblock_maxmind-url-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/geoblock_maxmind-url-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "geoblock_maxmind-next-update",
+      "mode": "introspection",
+      "prompt": "geoblock_maxmind schedules its next automatic MaxMind database update using a State value. Inspect the live site and report the scheduled next-update timestamp (the raw stored value).",
+      "must_contain_any": [
+        "1893456000"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The State key geoblock_maxmind.update_date is 1893456000 (a unix timestamp). Cron only downloads once the current time reaches this value.",
+      "setup": "agent-module-documentation/evaluation/verify/geoblock_maxmind-nextupdate-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/geoblock_maxmind-nextupdate-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "geoblock_maxmind-set-url",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "Configure the geoblock_maxmind module on this Drupal site to auto-download its MaxMind database from https://updates.example.net/maxmind/GeoLite2-Country.tar.gz . Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/geoblock_maxmind-configure-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/geoblock_maxmind-configure-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/geoblock_maxmind-configure-cleanup.sh",
+      "expected_output": "Set geoblock_maxmind.settings:download_url to exactly https://updates.example.net/maxmind/GeoLite2-Country.tar.gz and save (e.g. \\Drupal::configFactory()->getEditable('geoblock_maxmind.settings')->set('download_url', '...')->save())."
+    },
+    {
+      "id": "geoblock_maxmind-disable-download",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-layman",
+      "prompt": "On this Drupal site, geoblock_maxmind is currently set to auto-download its MaxMind database from a URL. Turn off the automatic download so the database is managed manually instead, and apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/geoblock_maxmind-disable-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/geoblock_maxmind-disable-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/geoblock_maxmind-disable-cleanup.sh",
+      "expected_output": "Clear geoblock_maxmind.settings:download_url (set it to an empty string) and save; with no URL the module no longer auto-downloads and the .mmdb is maintained manually."
+    }
+  ]
+}

@@ -1,0 +1,58 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "navigation_menu_role",
+  "version": "1.0.x",
+  "note": "Navigation Menu Role provides ONE derived core block plugin 'navigation_menu_role' (extends SystemMenuBlock, deriver SystemMenuNavigationBlockDeriver -> one derivative per menu: navigation_menu_role:main, :admin, :account, ...). It has no settings form (configure=null), no permissions, no Drush; it defines no plugin type. Its only state is block.block.<id> config entities whose settings carry level (int), depth (0-3), and roles (array of role ids). blockAccess allows the block when roles is empty (everyone) or the user has one of the listed roles. Config schema: block.settings.navigation_menu_role:*. Medium/hard cases are grounded in block config: introspection reads which role a placed block is limited to; execution places a role-restricted navigation_menu_role block and verifies its plugin + settings.roles. Region/theme are irrelevant to the role gating being tested.",
+  "evals": [
+    {
+      "id": "navigation_menu_role-what-and-access",
+      "mode": "recipe",
+      "prompt": "What does the Drupal navigation_menu_role module provide, and how does it decide whether a user can see one of its Navigation menu blocks?",
+      "must_contain_any": ["role", "navigation", "block", "SystemMenuBlock", "visibility"],
+      "must_not_contain": [],
+      "expected_output": "It provides a derived block plugin (navigation_menu_role, one per menu) for the core Navigation sidebar whose visibility is limited by role. Access is allowed when the block's roles setting is empty (everyone) or the current user has at least one of the selected roles (NavigationMenuRoleBlock::blockAccess).",
+      "difficulty": "easy"
+    },
+    {
+      "id": "navigation_menu_role-settings-keys",
+      "mode": "recipe",
+      "prompt": "In a navigation_menu_role block's configuration, which settings control which roles see it and how much of the menu is shown? What is the maximum depth?",
+      "must_contain_any": ["roles", "level", "depth", "3"],
+      "must_not_contain": [],
+      "expected_output": "The block settings are roles (array of role ids; empty means visible to everyone), level (starting menu level) and depth (number of levels, capped at 3 - NAVIGATION_MAX_DEPTH). They are stored under settings in the block.block.<id> config entity (schema block.settings.navigation_menu_role:*).",
+      "difficulty": "easy"
+    },
+    {
+      "id": "navigation_menu_role-plugin-ids",
+      "mode": "recipe",
+      "prompt": "What are the block plugin ids provided by navigation_menu_role, and why do they not appear in the normal Block layout UI?",
+      "must_contain_any": ["navigation_menu_role:", "deriver", "allow_in_navigation", "_block_ui_hidden", "block_alter"],
+      "must_not_contain": [],
+      "expected_output": "There is one derivative per menu, id navigation_menu_role:<menu> (e.g. navigation_menu_role:main, :admin, :account), created by the SystemMenuNavigationBlock deriver. hook_block_alter() marks them allow_in_navigation and _block_ui_hidden, so they are placed via the Navigation UI and hidden from the generic Block layout UI.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "navigation_menu_role-known-block",
+      "mode": "introspection",
+      "prompt": "This Drupal site has a navigation_menu_role menu block placed with id nmr_known. Inspect the live block configuration and state which user role its visibility is restricted to.",
+      "must_contain_any": ["content_editor"],
+      "must_not_contain": [],
+      "expected_output": "Block nmr_known uses plugin navigation_menu_role:main and its settings.roles is ['content_editor'], so only the content_editor role can see it.",
+      "setup": "agent-module-documentation/evaluation/verify/navigation_menu_role-known-block-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/navigation_menu_role-known-block-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "navigation_menu_role-place-block",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, use navigation_menu_role to place a Navigation menu block with id nmr_task for the main menu that is visible only to the content_editor role. Save it to the live site configuration.",
+      "reset": "agent-module-documentation/evaluation/verify/navigation_menu_role-place-block-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/navigation_menu_role-place-block-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/navigation_menu_role-place-block-cleanup.sh",
+      "expected_output": "A block.block config entity id nmr_task with plugin navigation_menu_role:main and settings.roles = ['content_editor'] (level 1, depth 0). Create it with Block::create([...])->save() (theme = system default; region e.g. content) or via the Navigation UI."
+    }
+  ]
+}

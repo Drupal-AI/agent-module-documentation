@@ -1,0 +1,84 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "disable_user_1_edit",
+  "version": "1.7.x",
+  "note": "Disable user 1 edit is a single access hook. Code-grounded facts: disable_user_1_edit_user_access (hook_ENTITY_TYPE_access for user) forbids entity access to user id 1 when active, via AccessResult::forbiddenIf() guarded by a non-existent permission (always forbidden); it does NOT filter $operation so update/delete/view are all blocked. Protection is controlled by config disable_user_1_edit.settings:disabled (integer, default 0) with INVERTED semantics: 0 = restriction ACTIVE (user 1 locked), 1 = restriction OFF (user 1 editable). Settings form route disable_user_1_edit.config_form at /admin/config/people/disable_user_1_edit, permission 'administer disable user 1 edit' (restrict access). No dependencies, drush, or plugins. Medium cases install a known live state (restriction off / on) discoverable via drush cget. Hard cases build real state verified against BOTH the config value AND the live access-hook result (User::load(1) access): make user 1 editable, and re-lock it. Every reset/cleanup restores the shipped default disabled=0 so the shared site stays protected.",
+  "evals": [
+    {
+      "id": "d1e-what-and-flag",
+      "mode": "recipe",
+      "prompt": "What does the disable_user_1_edit module do, and which config value controls it? Be careful to explain the meaning of the value (which value locks user 1 and which unlocks it).",
+      "must_contain_any": ["disable_user_1_edit.settings", "disabled"],
+      "must_not_contain": [],
+      "expected_output": "It blocks entity access to user 1 (the superuser) even for accounts with 'administer users'. It is controlled by config disable_user_1_edit.settings:disabled (default 0). The semantics are inverted: disabled=0 means the restriction is ACTIVE (user 1 locked); disabled=1 means the restriction is OFF (user 1 editable again).",
+      "difficulty": "easy"
+    },
+    {
+      "id": "d1e-route-perm",
+      "mode": "recipe",
+      "prompt": "In the disable_user_1_edit module, at what admin path do you toggle the protection and which permission is required?",
+      "must_contain_any": ["administer disable user 1 edit", "/admin/config/people/disable_user_1_edit"],
+      "must_not_contain": [],
+      "expected_output": "The settings form is at /admin/config/people/disable_user_1_edit (route disable_user_1_edit.config_form) and requires the 'administer disable user 1 edit' permission (which is restrict access: true). It has a single 'Disable restriction' checkbox.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "d1e-mechanism",
+      "mode": "recipe",
+      "prompt": "How does the disable_user_1_edit module actually stop user 1 from being edited, and does it only affect the edit operation?",
+      "must_contain_any": ["hook_ENTITY_TYPE_access", "user_access", "AccessResult", "forbidden"],
+      "must_not_contain": [],
+      "expected_output": "It implements hook_ENTITY_TYPE_access for the user entity (disable_user_1_edit_user_access): when the entity id is 1 and the restriction is active it returns AccessResult::forbiddenIf() guarded by a permission that no role can hold, so access is always forbidden. It does not check $operation, so it forbids update, delete AND view of user 1 - not just editing.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "d1e-known-off",
+      "mode": "introspection",
+      "prompt": "On this Drupal site the disable_user_1_edit module is installed. Inspect the live configuration and state whether editing of user 1 is currently RESTRICTED or currently ALLOWED (and back it up with the setting value).",
+      "must_contain_any": ["allow", "editable", "not restricted", "unlocked", "disabled=1", "disabled\": 1"],
+      "must_not_contain": [],
+      "expected_output": "User 1 editing is currently ALLOWED: disable_user_1_edit.settings:disabled is 1, which turns the restriction OFF (readable via `drush cget disable_user_1_edit.settings disabled`).",
+      "setup": "agent-module-documentation/evaluation/verify/disable_user_1_edit-known-off-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/disable_user_1_edit-known-off-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "d1e-known-on",
+      "mode": "introspection",
+      "prompt": "On this Drupal site the disable_user_1_edit module is installed. Inspect the live configuration and state whether user 1 is currently PROTECTED (locked) or EDITABLE, and give the setting value that proves it.",
+      "must_contain_any": ["protect", "restricted", "locked", "cannot", "disabled=0", "disabled\": 0"],
+      "must_not_contain": [],
+      "expected_output": "User 1 is currently PROTECTED/locked: disable_user_1_edit.settings:disabled is 0, which keeps the restriction ACTIVE (readable via `drush cget disable_user_1_edit.settings disabled`).",
+      "setup": "agent-module-documentation/evaluation/verify/disable_user_1_edit-known-on-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/disable_user_1_edit-known-on-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "d1e-make-editable",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site the disable_user_1_edit module is currently locking user 1 so administrators cannot edit it. A legitimate change to user 1 is needed - reconfigure the module so user 1 becomes editable again (turn the restriction off). Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/disable_user_1_edit-make-editable-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/disable_user_1_edit-make-editable-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/disable_user_1_edit-make-editable-cleanup.sh",
+      "expected_output": "Set disable_user_1_edit.settings:disabled to 1 (tick 'Disable restriction' on the settings form, or `drush cset disable_user_1_edit.settings disabled 1`). Afterwards the access hook no longer forbids user 1 (User::load(1)->access('update') is not forbidden).",
+      "must_contain_any": [],
+      "must_not_contain": []
+    },
+    {
+      "id": "d1e-relock",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site the disable_user_1_edit protection has been switched off, so user 1 is currently editable by administrators. Re-enable the protection so user 1 can no longer be edited via the UI. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/disable_user_1_edit-relock-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/disable_user_1_edit-relock-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/disable_user_1_edit-relock-cleanup.sh",
+      "expected_output": "Set disable_user_1_edit.settings:disabled to 0 (untick 'Disable restriction', or `drush cset disable_user_1_edit.settings disabled 0`). Afterwards the access hook forbids access to user 1 again (User::load(1)->access('update') is forbidden).",
+      "must_contain_any": [],
+      "must_not_contain": []
+    }
+  ]
+}

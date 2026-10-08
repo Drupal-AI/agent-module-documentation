@@ -1,0 +1,96 @@
+{
+    "skill_name": "drupal-module-docs",
+    "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+    "module": "leaflet_more_maps",
+    "version": "2.2.x",
+    "note": "Leaflet More Maps registers 40+ named tile-layer map styles with core Leaflet's hook_leaflet_map_info(), selectable anywhere Leaflet offers a map-style dropdown (Geofield/date-field Leaflet formatter, Leaflet Views). It has one settings form (route leaflet_more_maps.settings, config object leaflet_more_maps.settings, which does NOT exist by default -- no config schema, no shipped install config), one public hook (hook_leaflet_more_maps_list_alter, declared in leaflet_more_maps.api.php), and no plugins/permissions/Drush commands. The config holds provider API keys (thunderforest_api_key, here_api_key, mapbox_access_token, mapycz_api_key, navionics_api_key/navionics_authorized_domain), which are threaded straight into the generated tile urlTemplate strings at hook time, and leaflet_more_maps_custom_maps, an array of custom maps assembled by combining checked layers (keyed '<map-key> <layer-name>') from the default catalog into a new map keyed '~<map-key>'. Core Leaflet's leaflet_map_get_info() caches the merged hook result under the 'leaflet_map_info' cache key, so a config change needs drush cr (or an equivalent fresh invokeAll+alter call) before it's reflected. All medium/hard cases are grounded in that real config: introspection reads back a configured API key or custom-map definition directly via drush cget; execution writes the config and verifies its effect on a live, freshly-computed hook_leaflet_map_info() result (API key threaded into a URL; custom map assembled with the right layers).",
+    "evals": [
+        {
+            "id": "leaflet_more_maps-dependency-and-route",
+            "mode": "recipe",
+            "difficulty": "easy",
+            "prompt": "The Drupal contrib module leaflet_more_maps adds extra map styles to Leaflet. Which other Drupal module must be installed for it to work, and what is the admin path (and permission) of its own settings form?",
+            "must_contain_any": [
+                "leaflet",
+                "/admin/config/system/leaflet-more-maps",
+                "leaflet_more_maps.settings"
+            ],
+            "must_not_contain": [],
+            "expected_output": "It requires the leaflet module (dependency: leaflet:leaflet). Its own settings form is at route leaflet_more_maps.settings, path /admin/config/system/leaflet-more-maps, gated by the 'administer site configuration' permission."
+        },
+        {
+            "id": "leaflet_more_maps-extension-hook",
+            "mode": "recipe",
+            "difficulty": "easy",
+            "prompt": "I want a custom Drupal module to add my organization's private tile server as another selectable Leaflet map style, on top of everything leaflet_more_maps already offers. What hook does leaflet_more_maps invite other modules to implement for this, and which file documents it?",
+            "must_contain_any": [
+                "hook_leaflet_more_maps_list_alter",
+                "leaflet_more_maps_list_alter"
+            ],
+            "must_not_contain": [],
+            "expected_output": "Implement hook_leaflet_more_maps_list_alter(array &$map_info) in your custom module; it's documented (with a CartoDB example) in leaflet_more_maps.api.php. It runs at the end of leaflet_more_maps_leaflet_map_info(), after the built-in catalog and any configured custom maps are assembled and before the whole array is re-sorted alphabetically."
+        },
+        {
+            "id": "leaflet_more_maps-which-need-keys",
+            "mode": "recipe",
+            "difficulty": "easy",
+            "prompt": "On the Leaflet More Maps settings form, which map providers require the admin to enter an API key/access token before their tiles will actually load (as opposed to loading with just a watermark, or working out of the box)?",
+            "must_contain_any": [
+                "HERE",
+                "here_api_key",
+                "Navionics",
+                "navionics"
+            ],
+            "must_not_contain": [],
+            "expected_output": "HERE (here_api_key) and Navionics (navionics_api_key + navionics_authorized_domain) are hard requirements -- their tile urlTemplate is left blank without a key/token, so nothing loads. Thunderforest works without a key but shows a watermark. Mapbox falls back to a bundled public demo token if none is set. Mapy.cz's URL is built either way but the apiKey parameter is empty without one. Stamen/Stadia uses domain-based auth (no key field at all)."
+        },
+        {
+            "id": "leaflet_more_maps-thunderforest-key",
+            "mode": "introspection",
+            "difficulty": "medium",
+            "prompt": "This Drupal site has a Thunderforest API key configured for the Leaflet More Maps module. Inspect the live leaflet_more_maps.settings config and give the key's value.",
+            "must_contain_any": [
+                "lmm-eval-tfkey-7f3a9c"
+            ],
+            "must_not_contain": [],
+            "expected_output": "The value is lmm-eval-tfkey-7f3a9c, readable via `drush cget leaflet_more_maps.settings thunderforest_api_key`.",
+            "setup": "agent-module-documentation/evaluation/verify/leaflet_more_maps-thunderforest-key-setup.sh",
+            "cleanup": "agent-module-documentation/evaluation/verify/leaflet_more_maps-thunderforest-key-cleanup.sh"
+        },
+        {
+            "id": "leaflet_more_maps-custom-map-config",
+            "mode": "introspection",
+            "difficulty": "medium",
+            "prompt": "This Drupal site has a custom Leaflet More Maps map already configured, combining two of the module's built-in layers. Inspect the live leaflet_more_maps.settings config and state the custom map's name (map-key) and which layer keys it includes.",
+            "must_contain_any": [
+                "LMM Weather Combo"
+            ],
+            "must_not_contain": [],
+            "expected_output": "The custom map is named 'LMM Weather Combo' (leaflet_more_maps_custom_maps.1.map-key), combining layer-keys 'osm-cycle layer' and 'stamen-watercolor layer' with reverse-order false. Readable via `drush cget leaflet_more_maps.settings leaflet_more_maps_custom_maps`.",
+            "setup": "agent-module-documentation/evaluation/verify/leaflet_more_maps-custom-map-config-setup.sh",
+            "cleanup": "agent-module-documentation/evaluation/verify/leaflet_more_maps-custom-map-config-cleanup.sh"
+        },
+        {
+            "id": "leaflet_more_maps-thunderforest-threading",
+            "mode": "execution",
+            "difficulty": "hard",
+            "persona": "drupal-expert",
+            "prompt": "On this Drupal site, configure the Leaflet More Maps Thunderforest API key so its value is 'lmm-verify-key-42'. Apply the change to the live site so it is actually threaded into the Thunderforest tile URLs the module generates (e.g. for the osm-cycle map style).",
+            "reset": "agent-module-documentation/evaluation/verify/leaflet_more_maps-thunderforest-threading-reset.sh",
+            "verify": "agent-module-documentation/evaluation/verify/leaflet_more_maps-thunderforest-threading-verify.sh",
+            "cleanup": "agent-module-documentation/evaluation/verify/leaflet_more_maps-thunderforest-threading-cleanup.sh",
+            "expected_output": "Set leaflet_more_maps.settings:thunderforest_api_key to 'lmm-verify-key-42' (via the settings form or `drush php:eval` on config) and clear the cache. A fresh call to hook_leaflet_map_info() then returns an osm-cycle urlTemplate ending in '?apikey=lmm-verify-key-42'."
+        },
+        {
+            "id": "leaflet_more_maps-custom-map-assembly",
+            "mode": "execution",
+            "difficulty": "hard",
+            "persona": "drupal-expert",
+            "prompt": "On this Drupal site, use Leaflet More Maps to assemble a custom map named 'LMM Verify Combo' that combines the Bing hybrid layer and the Esri World Imagery layer, with a layer switcher. Apply the change to the live site.",
+            "reset": "agent-module-documentation/evaluation/verify/leaflet_more_maps-custom-map-assembly-reset.sh",
+            "verify": "agent-module-documentation/evaluation/verify/leaflet_more_maps-custom-map-assembly-verify.sh",
+            "cleanup": "agent-module-documentation/evaluation/verify/leaflet_more_maps-custom-map-assembly-cleanup.sh",
+            "expected_output": "Set leaflet_more_maps.settings:leaflet_more_maps_custom_maps to an entry with map-key 'LMM Verify Combo' and layer-keys ['bing hybrid layer', 'esri-world_imagery layer'] (via the settings form or `drush php:eval` on config), then clear the cache. A fresh call to hook_leaflet_map_info() then returns a map keyed '~LMM Verify Combo' whose layers include both the Bing hybrid layer and the Esri World Imagery layer."
+        }
+    ]
+}

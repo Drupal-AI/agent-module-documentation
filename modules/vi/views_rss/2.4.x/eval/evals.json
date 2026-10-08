@@ -1,0 +1,93 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "views_rss",
+  "version": "2.4.x",
+  "note": "views_rss is the plugin-machinery-only parent: style plugin id rss_fields and row plugin id views_rss_fields (from src/Plugin/views/style/RssFields.php and src/Plugin/views/row/RssFields.php), each requiring the other, with per-View config at display.<id>.display_options.style.options.channel.<namespace>.<module>.<element> (channel) and ...row.options.item.<namespace>.<module>.<element> (item). All actual RSS elements come from the 5 submodules via hook_views_rss_namespaces()/hook_views_rss_channel_elements()/hook_views_rss_item_elements(). Medium/hard cases are grounded in real Views config entities (vrss_p_* machine names) built directly via the View entity API, mirroring what the style/row options forms would save.",
+  "evals": [
+    {
+      "id": "views_rss-style-row-plugins",
+      "mode": "recipe",
+      "prompt": "The Drupal contrib module views_rss (Advanced Views RSS Feed) replaces core's RSS style for a Views Feed display. What are the exact plugin ids of its style plugin and its row plugin, and what do they require of each other?",
+      "must_contain_any": [
+        "rss_fields",
+        "views_rss_fields"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The style plugin id is rss_fields (\"Advanced RSS feed\") and the row plugin id is views_rss_fields (also \"Advanced RSS feed\"). Each plugin's validate() requires the other to be in use on the same Feed display, and the row plugin additionally requires the views_rss_core submodule to be enabled.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "views_rss-element-hooks",
+      "mode": "recipe",
+      "prompt": "Which hooks does the views_rss module invite other modules to implement in order to add RSS <channel>/<item> elements and XML namespaces to a feed built with its style/row plugins?",
+      "must_contain_any": [
+        "hook_views_rss_channel_elements",
+        "hook_views_rss_item_elements",
+        "hook_views_rss_namespaces"
+      ],
+      "must_not_contain": [],
+      "expected_output": "hook_views_rss_namespaces(), hook_views_rss_channel_elements(), and hook_views_rss_item_elements() (plus _alter() variants of each, and hook_views_rss_date_sources()). views_rss_get() in views_rss.module invokes these on every implementing module and caches the merged result in the 'data' cache bin.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "views_rss-rfc822-date",
+      "mode": "recipe",
+      "prompt": "views_rss installs a custom date format for RSS output. What is its machine name/pattern, and what PHP mechanism does the module use to format a timestamp with it?",
+      "must_contain_any": [
+        "rfc822",
+        "RFC822",
+        "RFC-822"
+      ],
+      "must_not_contain": [],
+      "expected_output": "It installs core.date_format.rfc822 with pattern 'D, d M y H:i:s O'. views_rss_format_date($timestamp) formats a UNIX timestamp using PHP's \\DateTimeInterface::RFC822 constant via date().",
+      "difficulty": "easy"
+    },
+    {
+      "id": "views_rss-channel-description",
+      "mode": "introspection",
+      "prompt": "This Drupal site has a View called vrss_p_desc with an RSS feed display already configured using the Advanced Views RSS Feed style plugin. Inspect its live configuration and report the configured text of the channel <description> element.",
+      "must_contain_any": [
+        "kiwi-9182"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Views RSS QA marker: kiwi-9182 - found at views.view.vrss_p_desc: display.feed_1.display_options.style.options.channel.core.views_rss_core.description.",
+      "setup": "agent-module-documentation/evaluation/verify/views_rss-channel-description-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/views_rss-channel-description-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "views_rss-item-title-field",
+      "mode": "introspection",
+      "prompt": "This Drupal site has a View called vrss_p_item with an RSS feed display already configured using the Advanced Views RSS Feed row plugin, mapping some View field to the item <title> RSS element. Inspect its live configuration and report which field id is mapped to the item title element.",
+      "must_contain_any": [
+        "field_vrss_marker_7734"
+      ],
+      "must_not_contain": [],
+      "expected_output": "field_vrss_marker_7734 - found at views.view.vrss_p_item: display.feed_1.display_options.row.options.item.core.views_rss_core.title.",
+      "setup": "agent-module-documentation/evaluation/verify/views_rss-item-title-field-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/views_rss-item-title-field-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "views_rss-build-feed",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, build a new View called vrss_p_task, base table Content (node), with a Feed display using the Advanced Views RSS Feed style plugin (rss_fields) and row plugin (views_rss_fields), mapping the item <title> RSS element to the node's title field. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/views_rss-build-feed-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/views_rss-build-feed-verify.sh",
+      "expected_output": "views.view.vrss_p_task has a display whose display_options.style.type is rss_fields, display_options.row.type is views_rss_fields, and display_options.row.options.item.core.views_rss_core.title is set to a non-empty field id (e.g. 'title')."
+    },
+    {
+      "id": "views_rss-feed-in-links",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, build a new View called vrss_p_links with a Feed display using the Advanced Views RSS Feed style plugin (rss_fields), and enable the 'Display feed icon in the links attached to the view' option in the style plugin's Other feed settings. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/views_rss-feed-in-links-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/views_rss-feed-in-links-verify.sh",
+      "expected_output": "views.view.vrss_p_links has a display whose display_options.style.type is rss_fields and display_options.style.options.feed_settings.feed_in_links is truthy (1/true)."
+    }
+  ]
+}

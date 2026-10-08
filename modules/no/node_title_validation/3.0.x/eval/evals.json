@@ -1,0 +1,80 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "node_title_validation",
+  "version": "3.0.x",
+  "note": "Node Title Validation attaches a NodeTitleValidate constraint to the node title base field (via entity_base_field_info_alter / entity_bundle_field_info_alter) and validates titles per content type against rules stored in node_title_validation.settings -> node_title_validation_config.content_types.<bundle> with keys exclude (comma-separated blocklist), comma (bool), min/max (char length), min-wc/max-wc (word count), unique (per-type uniqueness). Config UI route node_title_validation.admin_form at /admin/config/content/node-title-validation, gated by permission 'node title validation admin control'. The global node_title_validation_config.unique key is stored but not enforced by the validator. Medium/hard cases are grounded in that real config structure on the standard 'article' content type.",
+  "evals": [
+    {
+      "id": "node_title_validation-rule-keys",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "Using the node_title_validation module on Drupal, which kinds of title rules can I enforce per content type? Name the length, word-count, blocklist and uniqueness options it supports.",
+      "must_contain_any": ["min", "max", "word", "min-wc", "blocked", "block", "exclude", "unique", "length"],
+      "must_not_contain": [],
+      "expected_output": "Per content type you can set minimum/maximum character length (min/max), minimum/maximum word count (min-wc/max-wc), a blocklist of characters/words (exclude, plus a comma toggle), and a per-type unique-title flag. They are stored under node_title_validation.settings -> node_title_validation_config.content_types.<bundle>."
+    },
+    {
+      "id": "node_title_validation-mechanism",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "How does node_title_validation actually enforce its title rules on save in Drupal 11? Is it only on the node edit form, or does it apply to programmatic/API saves too?",
+      "must_contain_any": ["constraint", "NodeTitleValidate", "entity validation", "base field", "title field"],
+      "must_not_contain": [],
+      "expected_output": "It adds a NodeTitleValidate symfony constraint to the node title base field (via hook_entity_base_field_info_alter/entity_bundle_field_info_alter). Because it is an entity constraint, it runs on any save path that validates the entity - the node form, $node->validate(), JSON:API/REST, and migrations - not only the UI."
+    },
+    {
+      "id": "node_title_validation-config-route",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "Where is node_title_validation configured in the Drupal admin, and which permission controls access to that settings form?",
+      "must_contain_any": ["node-title-validation", "/admin/config/content", "node_title_validation.admin_form", "node title validation admin control"],
+      "must_not_contain": [],
+      "expected_output": "It is configured at /admin/config/content/node-title-validation (route node_title_validation.admin_form), and access is gated by the module's own permission 'node title validation admin control'."
+    },
+    {
+      "id": "node_title_validation-known-min",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "On this Drupal site, node_title_validation has a minimum title length rule configured for the Article content type. Inspect the live configuration and tell me the minimum number of characters an Article title must have.",
+      "must_contain_any": ["12"],
+      "must_not_contain": [],
+      "expected_output": "Article requires a minimum of 12 characters: node_title_validation.settings -> node_title_validation_config.content_types.article.min = 12. Read with drush cget node_title_validation.settings.",
+      "setup": "agent-module-documentation/evaluation/verify/node_title_validation-known-min-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/node_title_validation-known-min-cleanup.sh"
+    },
+    {
+      "id": "node_title_validation-known-blocked",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "On this Drupal site, node_title_validation blocks a specific word from Article titles. Inspect the live configuration and report which word is on the Article blocklist.",
+      "must_contain_any": ["ntvbanned"],
+      "must_not_contain": [],
+      "expected_output": "The Article blocklist (exclude) contains 'ntvbanned': node_title_validation_config.content_types.article.exclude = 'ntvbanned'.",
+      "setup": "agent-module-documentation/evaluation/verify/node_title_validation-known-blocked-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/node_title_validation-known-blocked-cleanup.sh"
+    },
+    {
+      "id": "node_title_validation-set-min-length",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, use node_title_validation to require that Article node titles are at least 15 characters long. Apply the change to the live configuration.",
+      "reset": "agent-module-documentation/evaluation/verify/node_title_validation-minlen-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/node_title_validation-minlen-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/node_title_validation-minlen-cleanup.sh",
+      "expected_output": "Set node_title_validation.settings -> node_title_validation_config.content_types.article.min to 15 (via the settings form at /admin/config/content/node-title-validation or drush/config)."
+    },
+    {
+      "id": "node_title_validation-require-unique",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "site-owner",
+      "prompt": "On this Drupal site, make sure two Article pages can't have the exact same title - configure node_title_validation so Article titles must be unique. Apply the change.",
+      "reset": "agent-module-documentation/evaluation/verify/node_title_validation-unique-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/node_title_validation-unique-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/node_title_validation-unique-cleanup.sh",
+      "expected_output": "Set the per-type unique flag: node_title_validation_config.content_types.article.unique = true (tick 'Unique node title for article content type' on the settings form). The validator enforces uniqueness scoped to the Article type."
+    }
+  ]
+}

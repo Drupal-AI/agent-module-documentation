@@ -1,0 +1,100 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "drd_agent",
+  "version": "4.1.x",
+  "note": "DRD Agent is the remote-agent side of Drupal Remote Dashboard (DRD). A central DRD portal calls its routes (/drd-agent main endpoint, /drd-agent-crypt, /drd-agent-authorize-secret, /drd-agent-authorize) over encrypted HTTP to run Action classes (Cron, FlushCache, MaintenanceMode, Info, Projects, Update, ...). Everything is stored in State (no config schema): drd_agent.debug_mode (settings form toggle), drd_agent.authorised (authorized dashboards), drd_agent.ott. Settings form drd_agent.settings.form at /admin/config/system/drd (perm 'administer site configuration'; module has no permissions of its own). Drush: drd:agent:setup <token> (alias drd-agent-setup). Defines plugin type drd_pi_auth (manager plugin.manager.drd_pi_auth, annotation @DrdPiAuth) with plugins acquia/pantheon/platformsh. Medium/hard cases are grounded in the module's State keys (drd_agent.debug_mode, drd_agent.authorised); baselines are restored by deleting the keys.",
+  "evals": [
+    {
+      "id": "drd_agent-what-and-endpoint",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "What is the drd_agent module for, and what is the main HTTP endpoint a Drupal Remote Dashboard (DRD) instance calls on a site running it?",
+      "must_contain_any": [
+        "/drd-agent",
+        "remote",
+        "dashboard",
+        "DRD"
+      ],
+      "must_not_contain": [],
+      "expected_output": "drd_agent is the agent installed on a remote Drupal site so a central DRD (Drupal Remote Dashboard) can connect and run maintenance/monitoring actions over encrypted HTTP. The main action endpoint is the /drd-agent route (Agent::get); it also exposes /drd-agent-crypt, /drd-agent-authorize-secret and /drd-agent-authorize."
+    },
+    {
+      "id": "drd_agent-drush-setup",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "Which Drush command does drd_agent provide to configure a site to communicate with a DRD instance, and what argument does it take?",
+      "must_contain_any": [
+        "drd:agent:setup",
+        "drd-agent-setup"
+      ],
+      "must_not_contain": [],
+      "expected_output": "drush drd:agent:setup <token> (alias drd-agent-setup). The token is a base64- and JSON-encoded array of the variables DRD needs; on success it logs a portal URL to open to finish authorizing the agent."
+    },
+    {
+      "id": "drd_agent-pi-auth-plugins",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "drd_agent defines a plugin type for authenticating against hosting-provider infrastructure. What is the plugin type / manager, and which provider plugins ship with it?",
+      "must_contain_any": [
+        "drd_pi_auth",
+        "acquia",
+        "pantheon",
+        "platformsh"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The drd_pi_auth plugin type (manager plugin.manager.drd_pi_auth, annotation @DrdPiAuth, dir Plugin/DrdPiAuth). It ships the acquia, pantheon, and platformsh plugins so DRD can reach sites on those platforms."
+    },
+    {
+      "id": "drd_agent-debug-introspect",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "Is DRD Agent's Debug mode currently enabled on this site? Inspect the live state and report the value.",
+      "must_contain_any": [
+        "true",
+        "enabled",
+        "1",
+        "on"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Debug mode is enabled: State key drd_agent.debug_mode is TRUE (drush state:get drd_agent.debug_mode).",
+      "setup": "agent-module-documentation/evaluation/verify/drd_agent-state-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/drd_agent-state-cleanup.sh"
+    },
+    {
+      "id": "drd_agent-authorised-introspect",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "A DRD dashboard has been authorized to control this site through the drd_agent module. Inspect the live agent state and give the key/id of the authorized dashboard entry.",
+      "must_contain_any": [
+        "drdmed_dash"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The authorized dashboard is keyed drdmed_dash in the State value drd_agent.authorised (drush state:get drd_agent.authorised).",
+      "setup": "agent-module-documentation/evaluation/verify/drd_agent-state-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/drd_agent-state-cleanup.sh"
+    },
+    {
+      "id": "drd_agent-enable-debug",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "Turn on DRD Agent's Debug mode on this site so its interactions with the DRD dashboard are logged for troubleshooting. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/drd_agent-debug-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/drd_agent-debug-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/drd_agent-debug-cleanup.sh",
+      "expected_output": "State key drd_agent.debug_mode is TRUE — set via the DRD Agent settings form at /admin/config/system/drd (Debug mode checkbox) or `drush state:set drd_agent.debug_mode 1`."
+    },
+    {
+      "id": "drd_agent-authorise-dashboard",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "This site's drd_agent should trust a DRD dashboard identified by the key 'drdhard_dash'. Add an entry with that key to the agent's authorized-dashboards state (drd_agent.authorised). Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/drd_agent-authorise-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/drd_agent-authorise-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/drd_agent-authorise-cleanup.sh",
+      "expected_output": "The State array drd_agent.authorised contains a key 'drdhard_dash'. Read the current array (\\Drupal::state()->get('drd_agent.authorised', [])), add the drdhard_dash entry, and save it back with \\Drupal::state()->set('drd_agent.authorised', $array)."
+    }
+  ]
+}

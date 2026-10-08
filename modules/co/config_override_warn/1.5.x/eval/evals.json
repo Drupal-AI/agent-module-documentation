@@ -1,0 +1,101 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "config_override_warn",
+  "version": "1.5.x",
+  "note": "Config Override Warn has no routes, no permissions, no plugins, no Drush and no settings form (configure: null). Its entire surface is (a) one config object `config_override_warn.settings` with the single boolean `show_values` (default TRUE), (b) the service `config_override_warn.form_overrides` (Drupal\\config_override_warn\\FormOverrides) with getFormOverrides()/getFormConfigNames()/getConfigOverrideDiffs()/getConfigOverrides(), and (c) a hook_form_alter() that renders the `config_override_warn_overrides` theme hook into a warning message. Detection works by reflecting into Config's protected moduleOverrides/settingsOverrides after Config::hasOverrides(). All medium/hard cases are grounded in that: introspection reads the live `show_values` value and a live system.site override; execution flips show_values to FALSE and builds a config.factory.override provider module so the module actually has something to warn about on the Basic site settings form.",
+  "evals": [
+    {
+      "id": "config_override_warn-which-forms",
+      "mode": "recipe",
+      "prompt": "On a Drupal 11 site with the contrib module config_override_warn enabled, which configuration forms does it inspect for overridden values, and how does it work out which configuration objects a given form edits?",
+      "must_contain_any": [
+        "getEditableConfigNames",
+        "ConfigFormBase",
+        "hook_form_alter",
+        "EntityForm"
+      ],
+      "must_not_contain": [],
+      "expected_output": "A hook_form_alter() passes every form object to the config_override_warn.form_overrides service. For a ConfigFormBase (anything with the protected getEditableConfigNames(), invoked via ReflectionMethod) it uses those config names; for an EntityForm editing an already-saved config entity it uses the entity's getConfigDependencyName(). Other forms (plain FormBase, content entity forms, config-entity add forms) are ignored. It then checks Config::hasOverrides() and reports the overridden keys as a warning message.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "config_override_warn-hide-values-howto",
+      "mode": "recipe",
+      "prompt": "Our config_override_warn warning messages print the old and new values of overridden configuration, and some of those values are secrets. There is no settings page for the module. Which configuration key do I change, and how, so the warning only names the overridden keys?",
+      "must_contain_any": [
+        "show_values",
+        "config_override_warn.settings"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Set config_override_warn.settings:show_values to FALSE, e.g. `drush config:set config_override_warn.settings show_values 0 -y`, or in PHP via configFactory()->getEditable(...)->set('show_values', FALSE)->save(). The module has configure: null and no form; show_values defaults to TRUE. With it off the service stores NULL per key and the Twig template omits the 'X has been changed to Y' sentence.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "config_override_warn-service-api",
+      "mode": "recipe",
+      "prompt": "I want to check programmatically, from a Drush php:eval, which keys of the Drupal configuration object system.site are currently being overridden — using the config_override_warn module rather than writing my own reflection code. Which service and method should I call?",
+      "must_contain_any": [
+        "config_override_warn.form_overrides",
+        "getConfigOverrideDiffs",
+        "FormOverrides"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Call \\Drupal::service('config_override_warn.form_overrides')->getConfigOverrideDiffs('system.site'). It returns [config_name][key] => ['original' => ..., 'override' => ...] (values already var_export()ed as strings), or NULL per key when show_values is FALSE. Related methods on Drupal\\config_override_warn\\FormOverrides: getFormOverrides(FormInterface), getFormConfigNames(FormInterface), getConfigOverrides(Config).",
+      "difficulty": "easy"
+    },
+    {
+      "id": "config_override_warn-known-override",
+      "mode": "introspection",
+      "prompt": "This Drupal site currently has exactly one overridden key in the system.site configuration object, and config_override_warn would warn about it on the Basic site settings form. Inspect the running site and tell me which key of system.site is overridden and what the effective (overridden) value is.",
+      "must_contain_any": [
+        "slogan"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The overridden key is `slogan`; its effective value is 'Pinned by the deployment pipeline'. Discoverable with \\Drupal::service('config_override_warn.form_overrides')->getConfigOverrideDiffs('system.site'), or by comparing \\Drupal::config('system.site')->get('slogan') with getOriginal('slogan', FALSE).",
+      "setup": "agent-module-documentation/evaluation/verify/config_override_warn-known-override-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/config_override_warn-known-override-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "config_override_warn-show-values",
+      "mode": "introspection",
+      "prompt": "A colleague says the config override warnings on this Drupal site stopped showing the before/after values. config_override_warn.settings holds a single key that controls that. Inspect this running site and tell me that key's current value (not the module's default).",
+      "must_contain_any": [
+        "false",
+        "FALSE",
+        "False",
+        "disabled",
+        "off",
+        " 0"
+      ],
+      "must_not_contain": [],
+      "expected_output": "config_override_warn.settings:show_values is currently FALSE on this site (the module's shipped default is TRUE). Read it with `drush config:get config_override_warn.settings show_values`.",
+      "setup": "agent-module-documentation/evaluation/verify/config_override_warn-show-values-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/config_override_warn-show-values-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "config_override_warn-hide-values",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, config_override_warn currently prints the original and overridden values inside its warning message. Some of those values are credentials, so the warning must keep naming the overridden configuration keys but must stop printing any values. Apply that change to the live site. The module has no settings form.",
+      "reset": "agent-module-documentation/evaluation/verify/config_override_warn-hide-values-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/config_override_warn-hide-values-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/config_override_warn-hide-values-cleanup.sh",
+      "expected_output": "Set config_override_warn.settings:show_values to FALSE on the live site, e.g. `drush config:set config_override_warn.settings show_values 0 -y` or configFactory()->getEditable('config_override_warn.settings')->set('show_values', FALSE)->save()."
+    },
+    {
+      "id": "config_override_warn-provide-override",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site I want to see config_override_warn actually fire on the Basic site settings form: it must report that the `slogan` key of system.site is overridden. settings.php is managed by the hosting platform and must not be edited, so provide the override from a small custom module named cow_eval_task placed in web/modules/custom/cow_eval_task, and enable it. After you are done, \\Drupal::config('system.site')->hasOverrides() must be TRUE and the module's own service must report the slogan key as overridden.",
+      "reset": "agent-module-documentation/evaluation/verify/config_override_warn-provide-override-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/config_override_warn-provide-override-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/config_override_warn-provide-override-cleanup.sh",
+      "expected_output": "Create module cow_eval_task with a service tagged `{ name: config.factory.override }` whose class implements \\Drupal\\Core\\Config\\ConfigFactoryOverrideInterface and returns ['system.site' => ['slogan' => '...']] from loadOverrides(), then `drush en cow_eval_task -y` and rebuild caches. config_override_warn.form_overrides::getConfigOverrideDiffs('system.site') then contains the 'slogan' key, which is what the warning on system.site_information_settings renders."
+    }
+  ]
+}

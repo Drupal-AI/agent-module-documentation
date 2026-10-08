@@ -1,0 +1,58 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "domain_menus",
+  "version": "3.7.x",
+  "note": "Domain Menus gives each Domain its own menus. A menu is a 'domain menu' when its config entity carries a non-empty domain_menus.domains third-party setting (auto-created ones also have domain_menus.auto-created=1). Settings form route domain_menus.settings (/admin/config/domain/domain_menus) writes config object domain_menus.settings (domain_menus_menu_names, domain_menus_filter_node_autocomplete, hide toggles, etc.). Auto-generated menu id pattern is dm<domainId>-<name> (DomainMenusConstants::DOMAIN_MENUS_MENU_ID_PATTERN = 'dm%u-%s'). Two permissions: 'edit assigned domain menus', 'edit active domain menus'. No domains are configured on this test site, so medium/hard are grounded in the menu third-party-setting marker, which works without domain records. Fixture menus are namespaced domainmenus_* to avoid the reserved dm[number]- pattern.",
+  "evals": [
+    {
+      "id": "domain_menus-id-pattern",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "In the Drupal domain_menus module, how are the auto-created per-domain menus named (the machine-name pattern), and what should I avoid naming my own menus?",
+      "must_contain_any": ["dm%u-%s", "dm<", "dm[number]-", "dm1-main", "DOMAIN_MENUS_MENU_ID_PATTERN"],
+      "must_not_contain": [],
+      "expected_output": "Auto-created domain menus are named dm<domainId>-<name> (constant DOMAIN_MENUS_MENU_ID_PATTERN = 'dm%u-%s', e.g. dm1-main). Avoid machine-naming your own menus in the dm[number]- pattern to prevent conflicts."
+    },
+    {
+      "id": "domain_menus-marker",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "How does the domain_menus module know that a given Drupal menu is a 'domain menu'? Where is that stored on the menu?",
+      "must_contain_any": ["third party setting", "third_party_settings", "domain_menus.domains", "setThirdPartySetting", "domains"],
+      "must_not_contain": [],
+      "expected_output": "A menu is a domain menu when its config entity has a non-empty 'domains' third-party setting in the domain_menus namespace (menu->getThirdPartySetting('domain_menus','domains')). Machine-created ones also carry domain_menus.auto-created = 1. Set it on the menu edit form's Domain(s) checkboxes or via setThirdPartySetting()."
+    },
+    {
+      "id": "domain_menus-permissions",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "Which permissions does domain_menus add for delegating menu editing to per-domain editors, and how do they differ?",
+      "must_contain_any": ["edit assigned domain menus", "edit active domain menus"],
+      "must_not_contain": [],
+      "expected_output": "'Edit assigned domain menus' lets a user edit the domain menus of the domains they are assigned; 'Edit active domain menus' further limits that to the currently active domain's menus. Both rely on the domain_access module for the user-domain assignment; 'administer menu' can edit any menu."
+    },
+    {
+      "id": "domain_menus-known-menu",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "On this Drupal site, exactly one menu has been marked as a domain menu via the domain_menus module. Inspect the menu configuration and give the machine name of that domain menu.",
+      "must_contain_any": ["domainmenus_intro"],
+      "must_not_contain": [],
+      "expected_output": "The domain menu is domainmenus_intro: its menu config entity has a non-empty domain_menus.domains third-party setting (getThirdPartySetting('domain_menus','domains')), which is what marks it as a domain menu.",
+      "setup": "agent-module-documentation/evaluation/verify/domain_menus-known-menu-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/domain_menus-known-menu-cleanup.sh"
+    },
+    {
+      "id": "domain_menus-mark-menu",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site there is a plain menu with machine name domainmenus_task. Using the domain_menus module's mechanism, mark it as a domain menu by assigning it to a domain (any domain id is fine for this task). Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/domain_menus-mark-menu-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/domain_menus-mark-menu-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/domain_menus-mark-menu-cleanup.sh",
+      "expected_output": "The menu domainmenus_task has a non-empty 'domains' third-party setting in the domain_menus namespace (e.g. Menu::load('domainmenus_task')->setThirdPartySetting('domain_menus','domains',['default'=>'default'])->save()), so _domain_menus_is_domain_menu() returns TRUE."
+    }
+  ]
+}

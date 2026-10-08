@@ -1,0 +1,99 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "node_edit_protection",
+  "version": "1.2.x",
+  "note": "Node Edit Protection is a zero-config JS 'unsaved changes' guard. hook_form_alter attaches the library node_edit_protection/node_edit_protection to any form whose #attributes['class'] contains 'node-form' (core node add/edit forms). The JS registers window.onbeforeunload returning 'You will lose all unsaved work.' when dirty. No config/schema/permission/Drush/plugin. Medium/hard cases are grounded in verifiable live state: whether the node_edit_protection library is attached to a node form built for a given content type (checked by building the entity form and inspecting #attached['library']). All content types created for evals are namespaced nep_*.",
+  "evals": [
+    {
+      "id": "node_edit_protection-library-id",
+      "mode": "recipe",
+      "prompt": "The Drupal contrib module node_edit_protection warns editors before they navigate away from an unsaved node edit form. Which asset library does it attach to node forms, and what triggers the warning at the browser level?",
+      "must_contain_any": [
+        "node_edit_protection/node_edit_protection",
+        "onbeforeunload",
+        "beforeunload"
+      ],
+      "must_not_contain": [],
+      "expected_output": "hook_form_alter attaches the library node_edit_protection/node_edit_protection. Its JS registers window.onbeforeunload which returns 'You will lose all unsaved work.' when the form is dirty and not being submitted, producing the browser's native leave-page confirmation.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "node_edit_protection-which-forms",
+      "mode": "recipe",
+      "prompt": "On which forms does node_edit_protection activate, and what condition in its hook_form_alter decides that? Does it need any configuration?",
+      "must_contain_any": [
+        "node-form",
+        "node form",
+        "node add",
+        "node edit"
+      ],
+      "must_not_contain": [],
+      "expected_output": "It activates on forms whose #attributes['class'] contains 'node-form' (Drupal's node add/edit forms); hook_form_alter checks array_search('node-form', $form['#attributes']['class']) and only then attaches the library. It is zero-configuration: there is no settings form, config, or permission - enabling the module is the whole setup.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "node_edit_protection-extend",
+      "mode": "recipe",
+      "prompt": "I want node_edit_protection's unsaved-changes guard on a custom (non-node) form. There's no settings page. How do I make it apply to another form?",
+      "must_contain_any": [
+        "#attached",
+        "library",
+        "node-form",
+        "node_edit_protection/node_edit_protection"
+      ],
+      "must_not_contain": [],
+      "expected_output": "In your own hook_form_alter, attach the library ($form['#attached']['library'][] = 'node_edit_protection/node_edit_protection';) and make sure the form carries the 'node-form' class (the JS selectors are hard-coded to .node-form), e.g. $form['#attributes']['class'][] = 'node-form';.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "node_edit_protection-is-enabled-lib",
+      "mode": "introspection",
+      "prompt": "On this Drupal site, is node_edit_protection enabled, and exactly which JavaScript asset library does it attach to node edit forms? Give the full library id (module/library).",
+      "must_contain_any": [
+        "node_edit_protection/node_edit_protection"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Yes, node_edit_protection is enabled (drush pm:list). It defines and attaches the library node_edit_protection/node_edit_protection (declared in node_edit_protection.libraries.yml, depending on core/jquery and core/drupal).",
+      "setup": "agent-module-documentation/evaluation/verify/node_edit_protection-is-enabled-lib-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/node_edit_protection-is-enabled-lib-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "node_edit_protection-attached-to-type",
+      "mode": "introspection",
+      "prompt": "This site has a content type with machine name nep_med. Inspect the live add form for that content type and state whether node_edit_protection's unsaved-changes guard (its JS library) is attached to it. Name the library.",
+      "must_contain_any": [
+        "node_edit_protection/node_edit_protection",
+        "node_edit_protection"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Yes - building the nep_med node add form shows node_edit_protection/node_edit_protection in the form's #attached['library'] (the form carries the 'node-form' class, so hook_form_alter attaches the guard).",
+      "setup": "agent-module-documentation/evaluation/verify/node_edit_protection-attached-to-type-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/node_edit_protection-attached-to-type-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "node_edit_protection-guard-add-form",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, create a content type with machine name nep_neta (label can be anything) and make sure node_edit_protection's unsaved-changes guard applies to its node add form. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/node_edit_protection-guard-add-form-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/node_edit_protection-guard-add-form-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/node_edit_protection-guard-add-form-cleanup.sh",
+      "expected_output": "Create node type nep_neta (e.g. NodeType::create(['type'=>'nep_neta','name'=>'...'])->save()). Because node_edit_protection is enabled, its hook_form_alter attaches node_edit_protection/node_edit_protection to the nep_neta node add form automatically. Verify builds the add form and checks #attached['library'] contains that library."
+    },
+    {
+      "id": "node_edit_protection-guard-edit-form",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, create a content type nep_netb, add one node of that type, and ensure node_edit_protection protects that node's EDIT form against navigating away with unsaved changes. Apply to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/node_edit_protection-guard-edit-form-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/node_edit_protection-guard-edit-form-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/node_edit_protection-guard-edit-form-cleanup.sh",
+      "expected_output": "Create node type nep_netb and save one node of that type. node_edit_protection auto-attaches node_edit_protection/node_edit_protection to that node's edit form. Verify loads a nep_netb node, builds its edit form, and checks #attached['library'] contains the library."
+    }
+  ]
+}

@@ -1,0 +1,89 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "aggregator",
+  "version": "2.2.x",
+  "note": "Aggregator (ex-core, now contrib) ingests RSS/RDF/Atom feeds into aggregator_feed / aggregator_item content entities via a 3-stage fetcher/parser/processor plugin pipeline run on cron. Cases are `recipe` (response-graded): they probe documented facts an agent would otherwise read source to answer; no site mutation.",
+  "evals": [
+    {
+      "id": "agg-content-entities",
+      "mode": "recipe",
+      "prompt": "In the Drupal Aggregator module, what two content entity types does it define, and what does each represent?",
+      "must_contain_any": ["aggregator_feed", "aggregator_item"],
+      "must_not_contain": ["config entity"],
+      "expected_output": "aggregator_feed (a subscribed source: title, url, refresh interval) and aggregator_item (an individual article imported from a feed). Both are content entities."
+    },
+    {
+      "id": "agg-pipeline-plugins",
+      "mode": "recipe",
+      "prompt": "Aggregator imports feeds through three swappable plugin types. Name them, their order, and which interface each implements.",
+      "must_contain_any": ["fetcher", "parser", "processor"],
+      "must_not_contain": [],
+      "expected_output": "Order: fetcher (FetcherInterface, downloads raw data) → parser (ParserInterface, converts to a common item structure) → processor (ProcessorInterface, acts on/stores items). One fetcher and one parser are active; processors can be multiple."
+    },
+    {
+      "id": "agg-configure-route",
+      "mode": "recipe",
+      "prompt": "On a Drupal 11 site, what is the configure route and admin path for the Aggregator global settings form, and where do you add/list feeds?",
+      "must_contain_any": ["aggregator.admin_settings", "/admin/config/services/aggregator/settings"],
+      "must_not_contain": [],
+      "expected_output": "Settings: route aggregator.admin_settings at /admin/config/services/aggregator/settings. Feeds are added/listed at the overview /admin/config/services/aggregator (aggregator.admin_overview)."
+    },
+    {
+      "id": "agg-permissions",
+      "mode": "recipe",
+      "prompt": "Which permissions does Aggregator define, what does each gate, and what security caution applies to the admin one?",
+      "must_contain_any": ["access news feeds", "administer news feeds"],
+      "must_not_contain": [],
+      "expected_output": "'access news feeds' = view /aggregator and feeds/items; 'administer news feeds' = manage feeds/settings (restrict access). Caution: feed creation can be used for SSRF (scan localhost / reach intranet feeds), so grant admin only to trusted roles."
+    },
+    {
+      "id": "agg-cron-import",
+      "mode": "recipe",
+      "prompt": "How does Aggregator actually pull new items from feeds over time on a Drupal site? Describe the cron/queue mechanism.",
+      "must_contain_any": ["cron", "aggregator_feeds", "queue"],
+      "must_not_contain": [],
+      "expected_output": "hook_cron() queues each feed whose refresh interval has elapsed into the 'aggregator_feeds' queue; the AggregatorRefresh queue worker then runs Feed::refreshItems() → ItemsImporter::refresh() (fetch→parse→process)."
+    },
+    {
+      "id": "agg-import-in-code",
+      "mode": "recipe",
+      "prompt": "In PHP on Drupal 11, how do I force an immediate re-import of a single aggregator feed without waiting for cron? Which service and method?",
+      "must_contain_any": ["aggregator.items.importer", "refresh"],
+      "must_not_contain": [],
+      "expected_output": "Load the aggregator_feed entity and call the aggregator.items.importer service (ItemsImporter): $importer->refresh($feed). ItemsImporter::delete($feed) removes its stored items."
+    },
+    {
+      "id": "agg-custom-plugin",
+      "mode": "recipe",
+      "prompt": "I need Aggregator to download feeds through a custom authenticated HTTP client. What kind of plugin do I write, which attribute/interface, and where does it live?",
+      "must_contain_any": ["AggregatorFetcher", "FetcherInterface", "Plugin/aggregator/fetcher"],
+      "must_not_contain": [],
+      "expected_output": "Write a fetcher plugin: a class in src/Plugin/aggregator/fetcher/ annotated with the #[AggregatorFetcher(id, title)] attribute, implementing FetcherInterface::fetch(FeedInterface $feed). It then becomes selectable on the settings form."
+    },
+    {
+      "id": "agg-override-existing-plugin",
+      "mode": "recipe",
+      "prompt": "Without registering a new plugin, how can a module swap the class used for Aggregator's default parser?",
+      "must_contain_any": ["hook_aggregator_parser_info_alter", "_info_alter"],
+      "must_not_contain": [],
+      "expected_output": "Implement hook_aggregator_parser_info_alter(array &$info) and set $info['aggregator']['class'] to your class. Parallel hooks exist for fetcher and processor."
+    },
+    {
+      "id": "agg-expire-setting",
+      "mode": "recipe",
+      "prompt": "How do I stop Aggregator from accumulating unlimited old items, and which config key controls it?",
+      "must_contain_any": ["items.expire", "expire"],
+      "must_not_contain": [],
+      "expected_output": "The 'Discard items older than' age is aggregator.settings items.expire (seconds; default 9676800). It is contributed by the default processor; set it via the settings form or drush config:set. Use FeedStorageInterface::CLEAR_NEVER to keep items forever."
+    },
+    {
+      "id": "agg-origin",
+      "mode": "recipe",
+      "prompt": "Is Aggregator a Drupal core module? What dependencies and external library does the contrib version need?",
+      "must_contain_any": ["laminas/laminas-feed", "contrib"],
+      "must_not_contain": [],
+      "expected_output": "It was a core module, deprecated in core 9.4 and removed in 10.0, now maintained in contrib. Depends on core file, filter, options and requires the laminas/laminas-feed library."
+    }
+  ]
+}

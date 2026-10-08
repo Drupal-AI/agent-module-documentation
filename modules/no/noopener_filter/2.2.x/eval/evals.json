@@ -1,0 +1,80 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "noopener_filter",
+  "version": "2.2.x",
+  "note": "Noopener Filter has two independent mechanisms grounded in real code: (1) a filter plugin id 'filter_noopener' (TYPE_HTML_RESTRICTOR) enabled per text format, which adds rel=\"noopener\" to <a target=\"_blank\"> in WYSIWYG markup; (2) hook_link_alter() gated by the single config flag noopener_filter.settings:filter_links (bool, off by default; the config object only exists once saved), which adds noopener to Drupal-generated new-tab links. Settings form route noopener_filter.settings at /admin/config/noopener-filter/settings, permission 'administer noopener filter'. No config schema, no plugin types, no Drush, no dependencies. Medium cases read back a live text format that has the filter on and the live filter_links value; hard cases enable the filter on a format and turn on the filter_links flag, verified against live config.",
+  "evals": [
+    {
+      "id": "noopener-what-it-adds",
+      "mode": "recipe",
+      "prompt": "What attribute does the Drupal noopener_filter module add to links, and to which links does it add it?",
+      "must_contain_any": ["noopener", "rel=\"noopener\"", "rel"],
+      "must_not_contain": [],
+      "expected_output": "It adds rel=\"noopener\" (prepended to any existing rel value) to anchor tags whose target attribute is _blank (links that open in a new tab). It only adds noopener, not noreferrer.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "noopener-how-to-enable",
+      "mode": "recipe",
+      "prompt": "I enabled the noopener_filter module on Drupal 11. How do I actually make it rewrite my WYSIWYG/CKEditor links so new-tab links get rel=noopener?",
+      "must_contain_any": ["text format", "Text formats", "filter", "filter_noopener", "Add noopener to all links"],
+      "must_not_contain": [],
+      "expected_output": "It is a text-format filter. Go to Configuration > Content authoring > Text formats and editors, configure the relevant format, tick 'Add noopener to all links' (filter plugin id filter_noopener), and save. The filter then adds rel=noopener to target=_blank links rendered through that format.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "noopener-linkflag-key",
+      "mode": "recipe",
+      "prompt": "Besides the text-format filter, noopener_filter can also add rel=noopener to Drupal-generated links (menu links, link generator output). What config key turns that behavior on, and where is the settings form?",
+      "must_contain_any": ["filter_links", "noopener_filter.settings"],
+      "must_not_contain": [],
+      "expected_output": "The hook_link_alter() behavior is gated by the boolean config key noopener_filter.settings:filter_links (off by default). The settings form is at route noopener_filter.settings, /admin/config/noopener-filter/settings, guarded by the 'administer noopener filter' permission.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "noopener-which-format-has-it",
+      "mode": "introspection",
+      "prompt": "On this Drupal site, exactly one text format has the noopener filter enabled. Inspect the live filter configuration and give the machine name of that text format.",
+      "must_contain_any": ["noopener_med_fmt"],
+      "must_not_contain": [],
+      "expected_output": "The format is noopener_med_fmt: its filter.format.noopener_med_fmt config has filters.filter_noopener.status = true.",
+      "setup": "agent-module-documentation/evaluation/verify/noopener_filter-format-enabled-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/noopener_filter-format-enabled-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "noopener-linkflag-state",
+      "mode": "introspection",
+      "prompt": "On this Drupal site, is noopener_filter's global link-alter behavior (rewriting Drupal-generated new-tab links) currently enabled or disabled? Inspect the live configuration to answer and name the config key you checked.",
+      "must_contain_any": ["enabled", "on", "1", "true"],
+      "must_not_contain": [],
+      "expected_output": "Enabled: noopener_filter.settings:filter_links is 1, so hook_link_alter() adds noopener to Drupal-generated target=_blank links.",
+      "setup": "agent-module-documentation/evaluation/verify/noopener_filter-linkflag-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/noopener_filter-linkflag-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "noopener-enable-filter-on-format",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site there is a text format with machine name noopener_hard_fmt. Using the noopener_filter module, enable its 'Add noopener to all links' filter (filter_noopener) on that format and apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/noopener_filter-enable-filter-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/noopener_filter-enable-filter-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/noopener_filter-enable-filter-cleanup.sh",
+      "expected_output": "filter.format.noopener_hard_fmt has filters.filter_noopener.status = true (tick the filter on Manage text format, or set the filters array and save)."
+    },
+    {
+      "id": "noopener-enable-linkflag",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, use the noopener_filter module to turn ON the global setting that makes Drupal-generated links opening in a new tab receive rel=noopener. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/noopener_filter-linkflag-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/noopener_filter-linkflag-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/noopener_filter-linkflag-cleanup-hard.sh",
+      "expected_output": "noopener_filter.settings:filter_links is set to 1 (via the settings form at /admin/config/noopener-filter/settings or drush cset), enabling the hook_link_alter() rewriting."
+    }
+  ]
+}

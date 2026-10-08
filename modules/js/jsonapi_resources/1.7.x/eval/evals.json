@@ -1,0 +1,81 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "jsonapi_resources",
+  "version": "1.7.x",
+  "note": "jsonapi_resources is a developer FRAMEWORK: it lets a module define custom JSON:API-compliant routes by declaring an ordinary route with a `_jsonapi_resource` default (a class or service id extending Drupal\\jsonapi_resources\\Resource\\ResourceBase, with a public process() method) at a path starting with /%jsonapi%. It ships NO routes, resources, config, permissions, or Drush of its own — a bare install exposes nothing, so there is no config to plant. easy/recipe probes framework facts (the base class, how to declare a route, how the response is built) an unfamiliar agent would have to read src to answer. medium/introspection PLANTS a known custom resource route via a fixture module (jsonapi_resources_eval_fixture) so the agent must read the LIVE route table back and report the resource route's path/class; cleanup removes it (baseline = no custom resource routes). hard/execution requires the agent to actually WRITE a custom module declaring a ResourceBase subclass + a route with a _jsonapi_resource default, enable it, and is verified against the live route table + class hierarchy. All three tiers are present.",
+  "evals": [
+    {
+      "id": "jsonapi_resources-base-class-easy",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "In the Drupal jsonapi_resources module, I want to write a custom JSON:API endpoint. Which base class must my resource processor extend, and what one public method must it declare that the module calls to handle the request? Name them exactly.",
+      "must_contain_any": [
+        "ResourceBase"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Extend Drupal\\jsonapi_resources\\Resource\\ResourceBase (or a subclass such as EntityResourceBase / EntityQueryResourceBase) and declare a public process(Request $request, ...) method — the module always calls process(), you cannot name a controller method."
+    },
+    {
+      "id": "jsonapi_resources-route-default-easy",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "Using jsonapi_resources, how do I declare a custom JSON:API resource route in my module.routing.yml? Which route default replaces _controller, what must the route path start with, and which default lists the resource types the route may emit?",
+      "must_contain_any": [
+        "_jsonapi_resource"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Use a `_jsonapi_resource` route default (a class FQN or service id) instead of `_controller`; the path must begin with `/%jsonapi%` (rewritten to the JSON:API base path, /jsonapi); and `_jsonapi_resource_types` lists the resource type names the route may emit (required unless the class overrides getRouteResourceTypes())."
+    },
+    {
+      "id": "jsonapi_resources-response-easy",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "Inside a jsonapi_resources process() method, how do I turn my data into a JSON:API response? Which inherited helper builds the response, and what wrapper object do I pass it?",
+      "must_contain_any": [
+        "createJsonapiResponse"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Build a Drupal\\jsonapi\\JsonApiResource\\ResourceObjectData (containing ResourceObject items) and pass it to the inherited createJsonapiResponse($data, $request, ...), which returns a cache-aware ResourceResponse that JSON:API normalizes."
+    },
+    {
+      "id": "jsonapi_resources-known-route-path-medium",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "persona": "drupal-expert",
+      "prompt": "This Drupal site (drush available) has a module defining a custom jsonapi_resources resource route (a route with a `_jsonapi_resource` default). Inspect the live route table and tell me the exact URL path that resource route is registered at.",
+      "must_contain_any": [
+        "/jsonapi/eval-fixture-info"
+      ],
+      "must_not_contain": [],
+      "setup": "agent-module-documentation/evaluation/verify/jsonapi_resources-known-route-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/jsonapi_resources-known-route-cleanup.sh",
+      "expected_output": "The resource route is registered at /jsonapi/eval-fixture-info. Read from the live route table, e.g. drush php:eval iterating \\Drupal::service('router.route_provider')->getAllRoutes() for the route whose _jsonapi_resource default is set (route jsonapi_resources_eval_fixture.info). Note the stored path already has %jsonapi% replaced by /jsonapi."
+    },
+    {
+      "id": "jsonapi_resources-known-route-class-medium",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site a module registers a custom jsonapi_resources resource route. Inspect the live route table and tell me the exact resource processor class named in that route's `_jsonapi_resource` default.",
+      "must_contain_any": [
+        "Drupal\\jsonapi_resources_eval_fixture\\Resource\\EvalFixtureInfo",
+        "EvalFixtureInfo"
+      ],
+      "must_not_contain": [],
+      "setup": "agent-module-documentation/evaluation/verify/jsonapi_resources-known-route-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/jsonapi_resources-known-route-cleanup.sh",
+      "expected_output": "The _jsonapi_resource default is Drupal\\jsonapi_resources_eval_fixture\\Resource\\EvalFixtureInfo. Read from the live route's getDefault('_jsonapi_resource')."
+    },
+    {
+      "id": "jsonapi_resources-build-resource-hard",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site (drush available) the jsonapi_resources framework module is installed. Create a custom module named `jsonapi_resources_eval_build` at web/modules/custom/jsonapi_resources_eval_build that declares ONE custom JSON:API resource route: a *.routing.yml route whose path begins with /%jsonapi% and whose defaults use a `_jsonapi_resource` pointing at a resource processor class you write in src/Resource/. The class must extend Drupal\\jsonapi_resources\\Resource\\ResourceBase (or a subclass) and declare a public process() method returning a JSON:API ResourceResponse; give the route a public access requirement (e.g. `_access: 'TRUE'`) and either a `_jsonapi_resource_types` default or an overridden getRouteResourceTypes(). Enable the module and rebuild routes/caches so the route registers without the jsonapi_resources route validator throwing. Do not just describe it — apply it to the running site. Reply with one line naming the route path you registered.",
+      "reset": "agent-module-documentation/evaluation/verify/jsonapi_resources-build-resource-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/jsonapi_resources-build-resource-verify.sh",
+      "expected_output": "Module jsonapi_resources_eval_build is installed and the live route table contains a route owned by it whose _jsonapi_resource default resolves to a class that is a subclass of Drupal\\jsonapi_resources\\Resource\\ResourceBase, at a path under /jsonapi. Verified against live route-table + class-hierarchy state, not the response text."
+    }
+  ]
+}

@@ -1,0 +1,99 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "search_api_location_views",
+  "version": "1.0.x",
+  "note": "Search API Location Views adds Views handlers to Search API index fields of data type 'location', via hook_views_data_alter. On the location field it exposes a filter (id search_api_location) and an argument (search_api_location_point); on the backend-defined <field>__distance pseudo-field it exposes a sort (search_api_location_distance) and argument (search_api_location_radius) - the pseudo-field only exists on backends like Solr. Medium/hard cases are grounded in a self-contained Search API index (salv_index, no server) indexing a geofield (field_salv_geo) as a location field, and are verified live by reading the index's Views data (\\Drupal::service('views.views_data')->get('search_api_index_salv_index')[...]['filter'|'argument']['id']). No external map/geocoder library is required.",
+  "evals": [
+    {
+      "id": "search_api_location_views-handlers",
+      "mode": "recipe",
+      "prompt": "Once a Search API index field is indexed as a location type, which Views handlers does search_api_location_views make available for building a proximity search view?",
+      "must_contain_any": [
+        "search_api_location",
+        "search_api_location_point",
+        "search_api_location_distance",
+        "search_api_location_radius"
+      ],
+      "must_not_contain": [],
+      "expected_output": "On the location field: a proximity filter (id search_api_location) and a contextual filter/argument (search_api_location_point). On the <field>__distance pseudo-field (Solr): a sort (search_api_location_distance) and a radius argument (search_api_location_radius).",
+      "difficulty": "easy"
+    },
+    {
+      "id": "search_api_location_views-auto-integration",
+      "mode": "recipe",
+      "prompt": "How does search_api_location_views decide which fields get the proximity Views filter and sort - do I configure it anywhere?",
+      "must_contain_any": [
+        "hook_views_data_alter",
+        "location",
+        "automatically",
+        "data type"
+      ],
+      "must_not_contain": [],
+      "expected_output": "There is no config UI. It implements hook_views_data_alter() and automatically attaches the handlers to every Search API index field whose data type is 'location'. Just set a field's type to Latitude/longitude and the handlers appear on that index's Views table.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "search_api_location_views-distance-field",
+      "mode": "recipe",
+      "prompt": "In search_api_location_views, how is the per-result distance sorted, and what is the special pseudo-field involved? Why might the distance sort not appear on some backends?",
+      "must_contain_any": [
+        "distance",
+        "__distance",
+        "search_api_location_distance",
+        "Solr"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The module targets a distance pseudo-field aliased '<field_id>__distance' and puts the search_api_location_distance sort (and search_api_location_radius argument) on it. That pseudo-field only exists if the backend defines it (e.g. Solr's getBackendDefinedFields); on backends that don't expose it the distance sort isn't attached.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "search_api_location_views-known-filter",
+      "mode": "introspection",
+      "prompt": "On this Drupal site there is a Search API index salv_index with a location field salv_loc. Inspect the site's Views data and state the id of the Views filter handler that search_api_location_views exposes for that field.",
+      "must_contain_any": [
+        "search_api_location"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The salv_loc field's Views filter handler id is 'search_api_location' (in the search_api_index_salv_index Views table).",
+      "setup": "agent-module-documentation/evaluation/verify/search_api_location_views-index-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/search_api_location_views-index-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "search_api_location_views-known-argument",
+      "mode": "introspection",
+      "prompt": "On this Drupal site, the Search API index salv_index has a location field salv_loc. Inspect the Views data and state the id of the Views contextual filter (argument) handler that search_api_location_views exposes for that field so a search point can be passed in the URL.",
+      "must_contain_any": [
+        "search_api_location_point"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The salv_loc field's Views argument handler id is 'search_api_location_point'.",
+      "setup": "agent-module-documentation/evaluation/verify/search_api_location_views-index-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/search_api_location_views-index-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "search_api_location_views-enable-filter",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, the Search API index salv_index has a field salv_loc (indexing the field_salv_geo geofield) but the proximity Views filter is not available for it. Fix the index configuration so that search_api_location_views exposes its proximity filter for that field, and apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/search_api_location_views-filter-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/search_api_location_views-filter-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/search_api_location_views-filter-cleanup.sh",
+      "expected_output": "Set the salv_loc field's data type to 'location' on index salv_index (the filter is only exposed for location-typed fields). The verify checks the search_api_index_salv_index Views data exposes filter id 'search_api_location' for salv_loc."
+    },
+    {
+      "id": "search_api_location_views-add-point-argument",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, the Search API index salv_index does not yet index the geofield (field_salv_geo) at all. Index that geofield as a location field so that search_api_location_views exposes its point contextual filter (argument), and apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/search_api_location_views-argument-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/search_api_location_views-argument-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/search_api_location_views-argument-cleanup.sh",
+      "expected_output": "Add the field_salv_geo geofield to index salv_index with data type 'location'. The verify checks the search_api_index_salv_index Views data exposes an argument with id 'search_api_location_point' for the new field."
+    }
+  ]
+}

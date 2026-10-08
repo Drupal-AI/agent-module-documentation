@@ -1,0 +1,103 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "printable",
+  "version": "3.1.x",
+  "note": "Printable renders printer-friendly (and, via the printable_pdf submodule, PDF) versions of content entities at /{entity_type}/{entity}/printable/{format} (e.g. /node/{nid}/printable/print and /printable/pdf). All state is in the printable.settings config object, edited under /admin/config/user-interface/printable (route printable.configure). It defines two plugin types: PrintableFormat (ids print, and pdf in the submodule) and PrintableLinkExtractor (none/remove/extract/subscript). Permissions: administer printable, view printer friendly versions. Default printable entities: node, comment, user. Medium/hard cases are grounded in the real printable.settings keys: introspection reads pdf_tool and paper_size; execution writes page_orientation and printable_print_link_locations. Baselines are restored explicitly (pdf_tool='', paper_size=A4, page_orientation=Portrait, printable_print_link_locations=[node]).",
+  "evals": [
+    {
+      "id": "printable-urls",
+      "mode": "recipe",
+      "prompt": "With the printable module enabled, what are the URLs that show the printer-friendly HTML version and the PDF version of a node with id 12?",
+      "must_contain_any": [
+        "/node/12/printable/print",
+        "/node/12/printable/pdf",
+        "/printable/print",
+        "/printable/pdf",
+        "printable/{format}"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The printer-friendly page is /node/12/printable/print and the PDF is /node/12/printable/pdf (pattern /{entity_type}/{entity}/printable/{format}, route printable.show_format.node). The PDF format requires the printable_pdf submodule and a configured pdf_tool.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "printable-config",
+      "mode": "recipe",
+      "prompt": "Where is the printable module configured (route/path and config object), and which entity types get a printable version by default?",
+      "must_contain_any": [
+        "printable.settings",
+        "printable.configure",
+        "user-interface/printable",
+        "printable_entities",
+        "node"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Config route printable.configure at /admin/config/user-interface/printable (with /print, /pdf, /links, /links/pdf sub-forms). All settings live in the printable.settings config object. By default printable_entities is [node, comment, user].",
+      "difficulty": "easy"
+    },
+    {
+      "id": "printable-plugins",
+      "mode": "recipe",
+      "prompt": "The printable module has a pluggable system for output formats and for handling in-content links. Name the two plugin types, the shipped format plugin ids, and the link-extractor options.",
+      "must_contain_any": [
+        "PrintableFormat",
+        "PrintableLinkExtractor",
+        "print",
+        "pdf",
+        "extract",
+        "subscript"
+      ],
+      "must_not_contain": [],
+      "expected_output": "PrintableFormat plugins provide output formats: 'print' (this module) and 'pdf' (printable_pdf submodule). PrintableLinkExtractor plugins rewrite in-content links, chosen via printable.settings.extract_links: none (unchanged), remove (drop href), extract (URL in brackets), subscript.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "printable-which-pdf-tool",
+      "mode": "introspection",
+      "prompt": "On this Drupal site, which PDF generation toolkit is currently selected for the printable module? Inspect the live configuration and answer.",
+      "must_contain_any": [
+        "tcpdf"
+      ],
+      "must_not_contain": [],
+      "expected_output": "TCPDF: printable.settings.pdf_tool is 'tcpdf' (read via drush cget printable.settings pdf_tool). This is the pdf_api toolkit id the printable/printable_pdf PDF format uses.",
+      "setup": "agent-module-documentation/evaluation/verify/printable-pdf-tool-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/printable-pdf-tool-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "printable-paper-size",
+      "mode": "introspection",
+      "prompt": "What paper size is the printable module's PDF output configured to use on this site right now? Inspect the running configuration.",
+      "must_contain_any": [
+        "Letter"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Letter: printable.settings.paper_size is 'Letter' (its shipped default is A4). Read via drush cget printable.settings paper_size.",
+      "setup": "agent-module-documentation/evaluation/verify/printable-paper-size-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/printable-paper-size-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "printable-set-orientation",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "Configure the printable module so its generated PDFs use Landscape page orientation instead of Portrait, and apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/printable-orientation-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/printable-orientation-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/printable-orientation-cleanup.sh",
+      "expected_output": "Set printable.settings.page_orientation to 'Landscape', e.g. drush cset printable.settings page_orientation Landscape -y (or via the PDF configuration form at /admin/config/user-interface/printable/pdf, or the config API). \\Drupal::config('printable.settings')->get('page_orientation') then returns 'Landscape'."
+    },
+    {
+      "id": "printable-comment-print-link",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "Right now the printable module only shows Print links on nodes. Configure it so the Print link also appears on comment entities, applied to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/printable-comment-print-link-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/printable-comment-print-link-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/printable-comment-print-link-cleanup.sh",
+      "expected_output": "Add 'comment' to printable.settings.printable_print_link_locations (e.g. set it to ['node','comment'] via the config API, or tick comment on /admin/config/user-interface/printable/links). in_array('comment', printable_print_link_locations) is then TRUE."
+    }
+  ]
+}

@@ -1,0 +1,93 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "monitoring_prometheus",
+  "version": "1.22.x",
+  "note": "Exposes /metrics (route monitoring_prometheus.metrics) for Prometheus scraping of Monitoring sensors. Access gated by permission access monitoring prometheus metrics + IP allowlist (MetricsController::ipAccess). Config monitoring_prometheus.settings: allowed_ips (sequence), custom_labels (sequence). Baseline: submodule not enabled. Medium cases enable it, seed known config, and read it back; hard cases require configuring allowed_ips / custom_labels, verified against live config (reset enables + clears the key). All grounded in real route/permission/config keys.",
+  "evals": [
+    {
+      "id": "mprom-endpoint",
+      "mode": "recipe",
+      "prompt": "The monitoring_prometheus submodule exposes Monitoring sensors for scraping. At what URL path, and which permission controls access to it?",
+      "must_contain_any": [
+        "/metrics",
+        "access monitoring prometheus metrics"
+      ],
+      "must_not_contain": [],
+      "expected_output": "It serves the /metrics path (route monitoring_prometheus.metrics), gated by the 'access monitoring prometheus metrics' permission plus an optional IP allowlist.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "mprom-allowed-ips",
+      "mode": "recipe",
+      "prompt": "How do I restrict which servers may scrape the monitoring_prometheus /metrics endpoint, and in which config object is that stored?",
+      "must_contain_any": [
+        "allowed_ips",
+        "monitoring_prometheus.settings"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Set the allowed_ips sequence in monitoring_prometheus.settings; if non-empty only those client IPs may scrape (empty = any IP, permission still applies). Checked by MetricsController::ipAccess().",
+      "difficulty": "easy"
+    },
+    {
+      "id": "mprom-custom-labels",
+      "mode": "recipe",
+      "prompt": "How can I add extra labels (for example an environment name) to the metrics exported by monitoring_prometheus?",
+      "must_contain_any": [
+        "custom_labels",
+        "monitoring_prometheus.settings"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Set the custom_labels sequence in monitoring_prometheus.settings; those labels are attached to every exported metric.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "mprom-live-allowed-ip",
+      "mode": "introspection",
+      "prompt": "On this site monitoring_prometheus is configured to restrict who can scrape /metrics. Inspect the live monitoring_prometheus.settings and report the IP address in its allowed_ips list.",
+      "must_contain_any": [
+        "10.1.2.3"
+      ],
+      "must_not_contain": [],
+      "expected_output": "allowed_ips contains 10.1.2.3 (monitoring_prometheus.settings:allowed_ips).",
+      "setup": "agent-module-documentation/evaluation/verify/mprom-settings-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/mprom-settings-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "mprom-live-label",
+      "mode": "introspection",
+      "prompt": "monitoring_prometheus on this site is configured to add a custom label to exported metrics. Inspect the live monitoring_prometheus.settings and report the value of the 'env' custom label.",
+      "must_contain_any": [
+        "staging"
+      ],
+      "must_not_contain": [],
+      "expected_output": "custom_labels.env is 'staging' (monitoring_prometheus.settings:custom_labels).",
+      "setup": "agent-module-documentation/evaluation/verify/mprom-settings-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/mprom-settings-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "mprom-restrict-ip",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "Configure monitoring_prometheus so that only the Prometheus server at IP 10.9.8.7 is allowed to scrape the /metrics endpoint. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/mprom-ip-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/mprom-ip-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/mprom-ip-cleanup.sh",
+      "expected_output": "monitoring_prometheus.settings:allowed_ips contains 10.9.8.7 (e.g. drush cset monitoring_prometheus.settings allowed_ips.0 10.9.8.7)."
+    },
+    {
+      "id": "mprom-add-label",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "layman",
+      "prompt": "I scrape several sites into one Prometheus. Please tag this site's exported metrics with an environment label whose value is 'production', so I can tell them apart.",
+      "reset": "agent-module-documentation/evaluation/verify/mprom-label-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/mprom-label-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/mprom-label-cleanup.sh",
+      "expected_output": "monitoring_prometheus.settings:custom_labels contains the value 'production' (e.g. drush cset monitoring_prometheus.settings custom_labels.env production)."
+    }
+  ]
+}

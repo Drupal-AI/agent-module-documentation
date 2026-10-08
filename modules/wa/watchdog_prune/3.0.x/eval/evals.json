@@ -1,0 +1,82 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "watchdog_prune",
+  "version": "3.0.x",
+  "note": "Watchdog Prune deletes rows from the core watchdog (dblog) table on cron (watchdog_prune_cron). Config object watchdog_prune.settings has two keys: watchdog_prune_age (global 'older than' relative-date string, default -18 MONTHS) and watchdog_prune_age_type (newline-separated type|age rules, e.g. 'php|-1 MONTH'). Configure route watchdog_prune.watchdog_prune_settings at /admin/config/development/watchdog-prune, permission 'administer watchdog prune'. No config schema and no default config ship, so the config object is created on first save. Requires core dblog 'Database log messages to keep' (dblog.settings:row_limit) = All (0). No Drush command. Medium/hard cases write/read watchdog_prune.settings; baseline is that the config object does not exist, so cleanup/reset delete it.",
+  "evals": [
+    {
+      "id": "watchdog-prune-when-and-keys",
+      "mode": "recipe",
+      "prompt": "How and when does the Drupal watchdog_prune module delete log entries, and which config keys control it?",
+      "must_contain_any": ["cron", "watchdog_prune_age", "watchdog_prune_cron"],
+      "must_not_contain": [],
+      "expected_output": "It deletes rows from the watchdog (dblog) table on each cron run (hook watchdog_prune_cron). It is controlled by watchdog_prune.settings: watchdog_prune_age (global 'delete entries older than' age, default -18 MONTHS) and watchdog_prune_age_type (per-type type|age rules). There is no Drush command.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "watchdog-prune-core-prereq",
+      "mode": "recipe",
+      "prompt": "I enabled watchdog_prune but old log entries are still being removed by row count, not by age. What Drupal core logging setting must be changed for watchdog_prune to work as intended?",
+      "must_contain_any": ["All", "Database log messages to keep", "row_limit", "0"],
+      "must_not_contain": [],
+      "expected_output": "Core dblog's 'Database log messages to keep' (dblog.settings:row_limit, at admin/config/development/logging) must be set to All (0). Otherwise core trims the watchdog table by row count and undermines watchdog_prune's age-based pruning.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "watchdog-prune-per-type-format",
+      "mode": "recipe",
+      "prompt": "In watchdog_prune, how do I tell it to prune only 'php' log entries older than one month while keeping other types longer? What is the exact format for the per-type setting?",
+      "must_contain_any": ["watchdog_prune_age_type", "php|-1 MONTH", "type|age", "|"],
+      "must_not_contain": [],
+      "expected_output": "Use the 'Delete watchdog entries by type' setting (watchdog_prune_age_type), one rule per line in the form type|age, e.g. php|-1 MONTH. Per-type rules run first and are excluded from the global age rule, so php is pruned at 1 month while other types follow watchdog_prune_age.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "watchdog-prune-read-age",
+      "mode": "introspection",
+      "prompt": "This site has watchdog_prune configured. Inspect the live configuration and state the global age threshold after which watchdog entries are deleted.",
+      "must_contain_any": ["-6 MONTHS", "6 months", "6 MONTH"],
+      "must_not_contain": [],
+      "expected_output": "watchdog_prune.settings:watchdog_prune_age is '-6 MONTHS', i.e. entries older than 6 months are pruned on cron.",
+      "setup": "agent-module-documentation/evaluation/verify/watchdog_prune-read-age-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/watchdog_prune-read-age-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "watchdog-prune-read-type-rule",
+      "mode": "introspection",
+      "prompt": "On this site watchdog_prune has one or more per-type prune rules configured. Inspect the live configuration and state which watchdog log type has a per-type rule and what age it uses.",
+      "must_contain_any": ["php", "-1 MONTH", "1 month"],
+      "must_not_contain": [],
+      "expected_output": "watchdog_prune.settings:watchdog_prune_age_type contains 'php|-1 MONTH', so the php log type is pruned after 1 month.",
+      "setup": "agent-module-documentation/evaluation/verify/watchdog_prune-read-type-rule-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/watchdog_prune-read-type-rule-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "watchdog-prune-set-global-age",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "Configure watchdog_prune on this site so that, on cron, it deletes watchdog log entries older than 3 months. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/watchdog_prune-set-global-age-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/watchdog_prune-set-global-age-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/watchdog_prune-set-global-age-cleanup.sh",
+      "expected_output": "Set watchdog_prune.settings:watchdog_prune_age to '-3 MONTHS' (via the settings form at /admin/config/development/watchdog-prune or by saving the config), then save.",
+      "difficulty_note": "verify passes when watchdog_prune_age is a 3-month age (matches /3\\s*month/i)."
+    },
+    {
+      "id": "watchdog-prune-set-type-rule",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-layman",
+      "prompt": "On my site I want the 'php' log messages to be cleared out once they are older than a month, using the Watchdog Prune module. Set that up on the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/watchdog_prune-set-type-rule-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/watchdog_prune-set-type-rule-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/watchdog_prune-set-type-rule-cleanup.sh",
+      "expected_output": "Add a per-type rule 'php|-1 MONTH' to watchdog_prune.settings:watchdog_prune_age_type (the 'Delete watchdog entries by type' field), then save.",
+      "difficulty_note": "verify passes when watchdog_prune_age_type contains a php rule with a 1-month age (matches /php\\s*\\|/i and /1\\s*month/i)."
+    }
+  ]
+}

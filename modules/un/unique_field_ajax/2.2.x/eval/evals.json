@@ -1,0 +1,80 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "unique_field_ajax",
+  "version": "2.2.x",
+  "note": "Unique Field Ajax has no admin settings page (configure=null) and no permission. Its entire state is third-party settings under the 'unique_field_ajax' namespace on a field.field.* config entity (or node.type.* for titles): keys unique, per_lang, case_sensitive, use_ajax, no_enforce, message, message_warning. The settings fieldset only appears for single-cardinality fields of types string, string_long, list_string, text, email, entity_reference, path, uri, link, integer, decimal, color_field_type. Enforcement attaches #element_validate unique_field_ajax_validate_unique (and an AJAX process on event finishedinput when use_ajax). It invites hook_query_unique_field_ajax_alter() and hook_unique_field_ajax_unique_results_alter(). Medium cases read back which live Article field is marked unique; hard cases set the unique (and case_sensitive) third-party settings on a real field, verified against live config.",
+  "evals": [
+    {
+      "id": "ufa-how-to-make-unique",
+      "mode": "recipe",
+      "prompt": "Using the unique_field_ajax module on Drupal 11, how do I make a single text field on my Article content type reject duplicate values? There's no settings page - where do I turn it on?",
+      "must_contain_any": ["field settings", "Manage fields", "third party", "third_party_settings", "Unique", "field_config_edit_form"],
+      "must_not_contain": [],
+      "expected_output": "There is no admin settings page. Edit the field (Manage fields > the field's settings form), open the 'Unique field settings' fieldset, tick 'Unique' and save. It is stored as a third-party setting unique_field_ajax.unique on the field's config entity (field.field.node.article.<field>).",
+      "difficulty": "easy"
+    },
+    {
+      "id": "ufa-settings-keys",
+      "mode": "recipe",
+      "prompt": "What options does unique_field_ajax offer when you mark a field unique, i.e. the third-party setting keys it stores?",
+      "must_contain_any": ["per_lang", "case_sensitive", "use_ajax", "no_enforce", "message"],
+      "must_not_contain": [],
+      "expected_output": "unique, per_lang (per language), case_sensitive (LIKE BINARY exact case), use_ajax (live AJAX check on event finishedinput), no_enforce (warn but still save), message (custom error) and message_warning (custom warning). Messages support %link and %label tokens.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "ufa-alter-hooks",
+      "mode": "recipe",
+      "prompt": "Which hooks does unique_field_ajax provide so another module can change how uniqueness is checked?",
+      "must_contain_any": ["hook_query_unique_field_ajax_alter", "hook_unique_field_ajax_unique_results_alter", "unique_field_ajax_unique_results_alter", "query_unique_field_ajax_alter"],
+      "must_not_contain": [],
+      "expected_output": "hook_query_unique_field_ajax_alter(AlterableInterface $query) to alter the duplicate-check entity query (it also carries the 'unique_field_ajax' tag and metadata), and hook_unique_field_ajax_unique_results_alter(array &$result, array $metadata) to adjust the matched entity ids before pass/fail is decided.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "ufa-which-field-unique",
+      "mode": "introspection",
+      "prompt": "On this Drupal site the Article content type has a field configured with unique_field_ajax to require unique values. Inspect the live field configuration and give the machine name of that field.",
+      "must_contain_any": ["field_ufa_known"],
+      "must_not_contain": [],
+      "expected_output": "field_ufa_known: field.field.node.article.field_ufa_known has third_party_settings.unique_field_ajax.unique = 1.",
+      "setup": "agent-module-documentation/evaluation/verify/unique_field_ajax-known-field-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/unique_field_ajax-known-field-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "ufa-on-vs-off",
+      "mode": "introspection",
+      "prompt": "The Article content type on this site has two text fields, field_ufa_on and field_ufa_off. Exactly one is configured with unique_field_ajax to enforce uniqueness. Inspect the live configuration and state which field enforces uniqueness.",
+      "must_contain_any": ["field_ufa_on"],
+      "must_not_contain": [],
+      "expected_output": "field_ufa_on enforces uniqueness: its field config has third_party_settings.unique_field_ajax.unique = 1, whereas field_ufa_off has no unique_field_ajax setting.",
+      "setup": "agent-module-documentation/evaluation/verify/unique_field_ajax-on-vs-off-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/unique_field_ajax-on-vs-off-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "ufa-enable-unique",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site the Article content type has a single-value text field field_ufa_task. Using the unique_field_ajax module, configure that field so it requires unique values, and apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/unique_field_ajax-enable-unique-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/unique_field_ajax-enable-unique-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/unique_field_ajax-enable-unique-cleanup.sh",
+      "expected_output": "field.field.node.article.field_ufa_task gains third_party_settings.unique_field_ajax.unique = 1 (via the field's 'Unique field settings' fieldset or setThirdPartySetting)."
+    },
+    {
+      "id": "ufa-case-sensitive-unique",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site the Article content type has a single-value text field field_ufa_case. Using unique_field_ajax, make this field enforce uniqueness AND make the match case-sensitive (so 'Acme' and 'acme' are considered different). Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/unique_field_ajax-case-sensitive-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/unique_field_ajax-case-sensitive-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/unique_field_ajax-case-sensitive-cleanup.sh",
+      "expected_output": "field.field.node.article.field_ufa_case gains third_party_settings.unique_field_ajax.unique = 1 and unique_field_ajax.case_sensitive = 1 (tick both Unique and Case Sensitive, or set both third-party settings)."
+    }
+  ]
+}

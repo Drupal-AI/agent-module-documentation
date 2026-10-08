@@ -1,0 +1,80 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "footnotes",
+  "version": "4.0.x",
+  "note": "Footnotes = a CKEditor 5 button (plugin footnotes_footnotes, toolbar item 'footnotes') that inserts <footnotes> markup + a text-format filter 'filter_footnotes' that renders numbered references and a notes list at display time. No configure route, no permissions of its own. Configuration lives on the text format (filters.filter_footnotes.status + .settings). Depends on ckeditor5/editor/media. Also ships a Footnotes Group block (footnotes_group, setting group_via_js), a 'footnotes' entity extra field, a Search API processor (footnotes_ignore_citations), overridable Twig templates, and a Drush command footnotes:upgrade-3-to-4 (+ hook_footnotes_upgrade_3x4x_build_alter). The shared 'footnote' format on this site does not carry the filter, so medium/hard cases use a namespaced text format 'footnotes_eval' created/destroyed by the scripts, and verify against filter.format.footnotes_eval config. Filter settings: footnotes_collapse, footnotes_css, footnotes_dialog, footnotes_dialog_prevent_bubbling, footnotes_footer_disable, footnotes_preview_show_text, footnotes_preview_character.",
+  "evals": [
+    {
+      "id": "footnotes-enable-two-things",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "In Drupal, I want editors to be able to insert automatically numbered footnotes into body text using the Footnotes module. Footnotes has no settings page — what two things must I enable on a CKEditor 5 text format for footnotes to work end to end?",
+      "must_contain_any": ["filter_footnotes", "toolbar"],
+      "must_not_contain": [],
+      "expected_output": "On the text format you must (1) enable the 'Footnotes filter' (filter_footnotes) so notes render at display time, and (2) add the Footnotes button to that format's CKEditor 5 toolbar (settings.toolbar.items -> footnotes) so editors can insert them. It is all per-format config; there is no global configure route."
+    },
+    {
+      "id": "footnotes-collapse-setting",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "In the Drupal Footnotes filter, which setting makes two identical footnotes (same content cited twice) share a single footnote number instead of producing two separate notes?",
+      "must_contain_any": ["footnotes_collapse"],
+      "must_not_contain": [],
+      "expected_output": "footnotes_collapse (a filter_footnotes setting). When true, footnotes with identical content are collapsed into one number with multiple back-reference links."
+    },
+    {
+      "id": "footnotes-upgrade-command",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "I have older Drupal content authored with Footnotes 3.x markup. What Drush command does the Footnotes module provide to migrate that content to the 4.x markup, and what argument does it take?",
+      "must_contain_any": ["footnotes:upgrade-3-to-4"],
+      "must_not_contain": [],
+      "expected_output": "drush footnotes:upgrade-3-to-4 <entity_type> (e.g. node, paragraph, taxonomy_term, block). It scans that entity type's text/text_long/text_with_summary fields. Optional --use-data-text (default TRUE) writes the reference content in a data-text attribute the way CKEditor 5 does."
+    },
+    {
+      "id": "footnotes-preview-char",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "On this Drupal site there is a text format called 'Footnotes Eval' (machine name footnotes_eval) that uses the Footnotes filter. Inspect its live configuration and report the preview-character override that is configured for footnotes in the editor.",
+      "must_contain_any": ["FN9"],
+      "must_not_contain": [],
+      "expected_output": "The override is 'FN9': filter.format.footnotes_eval -> filters.filter_footnotes.settings.footnotes_preview_character = 'FN9' (drush cget filter.format.footnotes_eval filters.filter_footnotes.settings.footnotes_preview_character).",
+      "setup": "agent-module-documentation/evaluation/verify/footnotes-preview-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/footnotes-eval-cleanup.sh"
+    },
+    {
+      "id": "footnotes-collapse-state",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "On this Drupal site, the text format footnotes_eval uses the Footnotes filter. Inspect its live configuration and state whether identical footnotes are configured to be collapsed into a single note on that format.",
+      "must_contain_any": ["footnotes_collapse", "true", "yes", "enabled", "collapse"],
+      "must_not_contain": [],
+      "expected_output": "Yes — collapsing is enabled: filter.format.footnotes_eval -> filters.filter_footnotes.settings.footnotes_collapse = true, so identical footnotes are merged into one number.",
+      "setup": "agent-module-documentation/evaluation/verify/footnotes-collapse-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/footnotes-eval-cleanup.sh"
+    },
+    {
+      "id": "footnotes-enable-filter",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site there is a text format footnotes_eval that has the Footnotes filter present but currently DISABLED. Enable the Footnotes filter (filter_footnotes) on that format and apply the change to the live site so footnotes will render.",
+      "reset": "agent-module-documentation/evaluation/verify/footnotes-enable-filter-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/footnotes-enable-filter-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/footnotes-eval-cleanup.sh",
+      "expected_output": "filter.format.footnotes_eval -> filters.filter_footnotes.status becomes TRUE (e.g. drush cset filter.format.footnotes_eval filters.filter_footnotes.status true -y, or enable the Footnotes filter on the format's edit form)."
+    },
+    {
+      "id": "footnotes-suppress-footer",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, the text format footnotes_eval has the Footnotes filter enabled and currently prints the footnotes list inline after the text. Reconfigure it so the inline footnotes footer is suppressed (so the notes can instead be rendered via the Footnotes Group block). Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/footnotes-footer-disable-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/footnotes-footer-disable-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/footnotes-eval-cleanup.sh",
+      "expected_output": "filter.format.footnotes_eval -> filters.filter_footnotes.settings.footnotes_footer_disable becomes TRUE (filter still enabled). E.g. drush cset filter.format.footnotes_eval filters.filter_footnotes.settings.footnotes_footer_disable true -y."
+    }
+  ]
+}

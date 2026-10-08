@@ -1,0 +1,65 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "content_lock",
+  "version": "3.0.x",
+  "note": "Content Lock implements pessimistic edit locking via a form_alter + the `content_lock` service, a `content_lock.settings` config object, two permissions, dynamically generated break-lock routes, a lockability hook, and events. Cases are `recipe` (response-graded) probing documented facts an agent would otherwise read source to answer; no site mutation.",
+  "evals": [
+    {
+      "id": "content-lock-strategy",
+      "mode": "recipe",
+      "prompt": "On a Drupal 11 site, what locking strategy does the Content Lock module use, and what happens to a second user who opens the edit form of an entity another user is already editing?",
+      "must_contain_any": ["pessimistic", "disabled", "#disabled"],
+      "must_not_contain": ["optimistic"],
+      "expected_output": "Pessimistic locking: the entity is exclusively locked while the first user edits; a second user gets the edit form fully disabled (read-only) and a message naming the lock owner. The lock releases on submit or navigating away."
+    },
+    {
+      "id": "content-lock-enable-entity-type",
+      "mode": "recipe",
+      "prompt": "How do I make the node entity type (and optionally only certain bundles) lockable in Content Lock? Name the config object and the key that stores which entity types/bundles are locked.",
+      "must_contain_any": ["content_lock.settings", "types"],
+      "must_not_contain": [],
+      "expected_output": "At /admin/config/content/content_lock (route content_lock.settings) enable the entity type and pick bundles; stored in the content_lock.settings config under the `types` key as types.{entity_type_id} = list of bundles (or '*' for all)."
+    },
+    {
+      "id": "content-lock-break-permission",
+      "mode": "recipe",
+      "prompt": "Which permission lets a user forcibly release (break) another user's content lock in the Content Lock module, and what is the other permission it defines?",
+      "must_contain_any": ["break content lock"],
+      "must_not_contain": [],
+      "expected_output": "'break content lock' lets a user break someone else's lock; 'administer content lock' gates the settings form. A user can always release their own lock even without 'break content lock'."
+    },
+    {
+      "id": "content-lock-service-api",
+      "mode": "recipe",
+      "prompt": "In PHP on a Drupal 11 site, which service and method do I call to try to lock an entity for the current user, and which method releases the lock?",
+      "must_contain_any": ["content_lock", "locking(", "release("],
+      "must_not_contain": [],
+      "expected_output": "Use the `content_lock` service (ContentLockInterface). locking($entity, $form_op, $uid) attempts the lock (returns TRUE if held by this user, FALSE if locked by another); release($entity, $form_op, $uid) releases it."
+    },
+    {
+      "id": "content-lock-form-op-modes",
+      "mode": "recipe",
+      "prompt": "Content Lock can restrict locking to specific entity form operations. What are the three form-operation lock modes it supports?",
+      "must_contain_any": ["allowlist", "denylist", "FORM_OP_MODE"],
+      "must_not_contain": [],
+      "expected_output": "Disabled (0, lock on any form op), Allowlist (1, only lock the selected operations), Denylist (2, lock all except the selected operations) — the ContentLockInterface FORM_OP_MODE_* constants, stored under form_op_lock.{type}.mode."
+    },
+    {
+      "id": "content-lock-timeout",
+      "mode": "recipe",
+      "prompt": "How does Content Lock deal with stale/forgotten locks, which config key holds the timeout, and in what unit is it stored versus shown in the form?",
+      "must_contain_any": ["timeout", "releaseExpiredLocks"],
+      "must_not_contain": [],
+      "expected_output": "The `timeout` key on content_lock.settings stores seconds (default 1800) but the settings form edits it in minutes (30). Locks past the timeout are stale; releaseExpiredLocks() frees them, and the deprecated content_lock_timeout submodule auto-releases them."
+    },
+    {
+      "id": "content-lock-lockable-hook",
+      "mode": "recipe",
+      "prompt": "In a custom Drupal module, which hook do I implement to make certain entities un-lockable (excluded from Content Lock)?",
+      "must_contain_any": ["hook_content_lock_entity_lockable", "content_lock_entity_lockable"],
+      "must_not_contain": [],
+      "expected_output": "Implement hook_content_lock_entity_lockable($entity, $config, $form_op); return FALSE to make the entity un-lockable (default TRUE). It is called from the service's isLockable()."
+    }
+  ]
+}

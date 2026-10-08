@@ -1,0 +1,96 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "lightning_media_video",
+  "version": "5.1.x",
+  "note": "Media Video is a glue submodule of Lightning Media whose only code is hook_media_source_info_alter() calling Override::pluginClass($sources['video_file'], VideoFile::class), where VideoFile extends core's video_file source and mixes in FileInputExtensionMatchTrait. It has no routes, permissions, services, settings form (configure = null), config schema, Drush commands or plugin types. config/optional installs TWO media types: media.type.video (source video_file, source field field_media_video_file, default extensions 'mp4') and media.type.remote_video (source oembed:video, source field field_media_oembed_video, source_configuration.providers [YouTube, Vimeo], thumbnails_directory 'public://oembed_thumbnails/[date:custom:Y-m]'). Only the local video_file source is input-matching; remote_video is not.",
+  "evals": [
+    {
+      "id": "lightning_media_video-two-types",
+      "mode": "recipe",
+      "prompt": "How many media types does the Drupal module lightning_media_video install, what are they called, and which media source does each use?",
+      "must_contain_any": [
+        "remote_video",
+        "video_file",
+        "oembed:video"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Two: media.type.video ('Video') using core's video_file source with the source field field_media_video_file (default extensions 'mp4'), and media.type.remote_video ('Remote video') using core's oembed:video source with the source field field_media_oembed_video.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "lightning_media_video-providers",
+      "mode": "recipe",
+      "prompt": "The Remote video media type installed by lightning_media_video only accepts YouTube and Vimeo URLs. Where is that list configured and how do I add another oEmbed provider?",
+      "must_contain_any": [
+        "providers",
+        "source_configuration",
+        "media.type.remote_video"
+      ],
+      "must_not_contain": [],
+      "expected_output": "It is media.type.remote_video's source_configuration.providers array (shipped as [YouTube, Vimeo]) - core's oEmbed system, not lightning_media_video. Edit the media type (Manage media types -> Remote video) or set source_configuration.providers programmatically; the thumbnails_directory key in the same array controls where oEmbed thumbnails are cached.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "lightning_media_video-input-match-scope",
+      "mode": "recipe",
+      "prompt": "On a Drupal site with lightning_media_video, dropping an MP4 into a Lightning Media entity browser resolves to the Video media type automatically, but pasting a YouTube URL does not. Why?",
+      "must_contain_any": [
+        "video_file",
+        "InputMatchInterface",
+        "oembed:video"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Only the local video_file source is swapped for an input-matching subclass (VideoFile implements InputMatchInterface via FileInputExtensionMatchTrait, matching on the source field's file_extensions). The remote_video type keeps core's plain oembed:video source, which does not implement InputMatchInterface, so MediaHelper cannot auto-detect it from a pasted URL.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "lightning_media_video-thumbs-dir",
+      "mode": "introspection",
+      "prompt": "Inspect the live configuration of this Drupal site and tell me where the Remote video media type stores the thumbnails it downloads from YouTube and Vimeo.",
+      "must_contain_any": [
+        "lm_video_thumbs"
+      ],
+      "must_not_contain": [],
+      "expected_output": "media.type.remote_video's source_configuration.thumbnails_directory is public://lm_video_thumbs.",
+      "setup": "agent-module-documentation/evaluation/verify/lightning_media_video-thumbs-dir-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/lightning_media_video-thumbs-dir-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "lightning_media_video-extensions",
+      "mode": "introspection",
+      "prompt": "Inspect this Drupal site and tell me exactly which file extensions the locally hosted Video media type currently accepts for upload, and on which field that setting lives.",
+      "must_contain_any": [
+        "webm"
+      ],
+      "must_not_contain": [],
+      "expected_output": "field.field.media.video.field_media_video_file has settings.file_extensions set to 'mp4 webm ogv'.",
+      "setup": "agent-module-documentation/evaluation/verify/lightning_media_video-extensions-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/lightning_media_video-extensions-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "lightning_media_video-configure",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, make two changes with the lightning_media_video media types: the locally hosted Video type must accept webm and mov uploads in addition to mp4, and the Remote video type must cache its oEmbed thumbnails in public://lm_remote_thumbs. Apply both changes to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/lightning_media_video-configure-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/lightning_media_video-configure-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/lightning_media_video-configure-cleanup.sh",
+      "expected_output": "field.field.media.video.field_media_video_file settings.file_extensions contains mp4, webm and mov; media.type.remote_video source_configuration.thumbnails_directory is exactly 'public://lm_remote_thumbs'."
+    },
+    {
+      "id": "lightning_media_video-create-item",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, create a locally hosted video media item named 'LM Video Task' - the type backed by an uploaded file, not the remote/oEmbed one - whose source field references a real file entity, and make sure it is visible in the media library.",
+      "reset": "agent-module-documentation/evaluation/verify/lightning_media_video-create-item-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/lightning_media_video-create-item-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/lightning_media_video-create-item-cleanup.sh",
+      "expected_output": "A media entity of bundle 'video' (not 'remote_video') named 'LM Video Task' whose field_media_video_file references a saved File entity and whose field_media_in_library is TRUE."
+    }
+  ]
+}

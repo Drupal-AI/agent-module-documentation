@@ -1,0 +1,100 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "config_direct_save",
+  "version": "3.0.x",
+  "note": "Config Direct Save is a single-form utility (route config_direct_save.update_configuration_form at /admin/config/development/configuration/full/update, shown as an 'Update' task on config.sync) gated by the CORE 'export configuration' permission. On submit it dumps the ENTIRE active configuration to the config sync directory (Settings::get('config_sync_directory') = sites/default/files/sync, abs /var/www/html/web/sites/default/files/sync), optionally backing it up to <sync>-<d-m-Y-H-i-s> first. It has NO config object, schema, service, plugin, or Drush command. Medium/hard cases are grounded in the module's real live state: the config SYNC DIRECTORY it reads/writes. The sync directory is already populated with the site's active config, so cases are non-destructive: medium reads a marker file placed among the real config; hard exercises the module's Backup feature (creating a timestamped <sync>-<date> copy) without touching the real sync files. (Role/permission-based cases were intentionally avoided: this shared site currently cannot rebuild its router — a broken gdpr route + a workbench_moderation ParamConverter fatal from other modules make every role/permission save throw, so such cases are not smoke-testable here.)",
+  "evals": [
+    {
+      "id": "config-direct-save-form-access",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "On a Drupal site with the config_direct_save module enabled, what is the URL/path of its configuration-export form, and which permission does a user need to use it?",
+      "must_contain_any": [
+        "/admin/config/development/configuration/full/update",
+        "configuration/full/update",
+        "export configuration"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The form is at /admin/config/development/configuration/full/update (route config_direct_save.update_configuration_form, also shown as an 'Update' local task on the core Synchronize page config.sync). It requires the core 'export configuration' permission; the module ships no permission of its own."
+    },
+    {
+      "id": "config-direct-save-backup",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "In the config_direct_save 'Update configuration' form there is a 'Backup' checkbox. What does checking it do before the configuration is written?",
+      "must_contain_any": [
+        "backup",
+        "copy",
+        "sync directory",
+        "timestamp",
+        "date"
+      ],
+      "must_not_contain": [],
+      "expected_output": "When Backup is checked, the module recursively copies the current config sync directory to a sibling directory named <sync>-<d-m-Y-H-i-s> (a date/time-stamped backup) before it deletes and rewrites the .yml files."
+    },
+    {
+      "id": "config-direct-save-what-exports",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "When I submit the config_direct_save update form, exactly which configuration gets written out, and to where?",
+      "must_contain_any": [
+        "active configuration",
+        "all config",
+        "entire",
+        "sync directory",
+        "config_sync_directory"
+      ],
+      "must_not_contain": [],
+      "expected_output": "It writes the ENTIRE active configuration (every object from the config factory's listAll(), plus every config collection such as language overrides) as .yml files into the config sync directory returned by Settings::get('config_sync_directory') (here sites/default/files/sync), after first deleting the existing .yml files there. It is a full export, with no per-item selection and no diff-review step."
+    },
+    {
+      "id": "config-direct-save-sync-dir-marker",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "Config Direct Save exports configuration to this site's config sync directory. A file named cds_eval_marker.yml is currently present in that directory. Inspect the live site, locate the sync directory, and report the value of the 'note' key inside cds_eval_marker.yml.",
+      "must_contain_any": [
+        "CDS-INTROSPECT-OK"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The config sync directory is Settings::get('config_sync_directory') = sites/default/files/sync (abs /var/www/html/web/sites/default/files/sync). cds_eval_marker.yml there contains `note: CDS-INTROSPECT-OK`.",
+      "setup": "agent-module-documentation/evaluation/verify/config_direct_save-sync-dir-marker-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/config_direct_save-sync-dir-marker-cleanup.sh"
+    },
+    {
+      "id": "config-direct-save-sync-dir-env",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "The config sync directory that config_direct_save exports to contains a file cds_eval_env.yml. Inspect the live site, find that directory, and report the value of the 'deployment_id' key in that file.",
+      "must_contain_any": [
+        "CDS-DEPLOY-7788"
+      ],
+      "must_not_contain": [],
+      "expected_output": "In the sync directory (sites/default/files/sync) the file cds_eval_env.yml contains `deployment_id: CDS-DEPLOY-7788`.",
+      "setup": "agent-module-documentation/evaluation/verify/config_direct_save-sync-dir-env-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/config_direct_save-sync-dir-env-cleanup.sh"
+    },
+    {
+      "id": "config-direct-save-backup-expert",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "Using Config Direct Save's backup capability, make a timestamped backup copy of the current configuration sync directory (the copy the module creates as <sync>-<d-m-Y-H-i-s>) on this live site, so the current config files are preserved before any change.",
+      "reset": "agent-module-documentation/evaluation/verify/config_direct_save-backup-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/config_direct_save-backup-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/config_direct_save-backup-reset.sh",
+      "expected_output": "This is what config_direct_save does when 'Backup' is ticked: it recursively copies the sync directory (sites/default/files/sync) to a sibling directory named sync-<d-m-Y-H-i-s>. Create such a backup directory containing the current config (e.g. system.site.yml). Verified by the presence of a sibling sync-* directory holding system.site.yml."
+    },
+    {
+      "id": "config-direct-save-backup-layman",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "site-owner",
+      "prompt": "Before I change some settings I want a safety copy of my Drupal site's exported configuration files, kept in a separate dated folder. The Config Direct Save module has a backup option for exactly this. Please make that backup now on the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/config_direct_save-backup-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/config_direct_save-backup-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/config_direct_save-backup-reset.sh",
+      "expected_output": "Use Config Direct Save's Backup feature, which copies the config sync directory (sites/default/files/sync) into a dated sibling folder sync-<d-m-Y-H-i-s>. After it runs there is a sync-* backup directory containing the config files (e.g. system.site.yml)."
+    }
+  ]
+}

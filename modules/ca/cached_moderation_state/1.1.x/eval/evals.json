@@ -1,0 +1,97 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "cached_moderation_state",
+  "version": "1.1.x",
+  "note": "Cached moderation state stores each moderated entity's Content Moderation state in a hidden, indexable field named cached_moderation_state (field type cached_moderation_state, no_ui). FieldConfigHandler::sync() runs on install and on every workflow config save to create the field on moderated bundles and delete it from unmoderated ones - you never create the field manually; you enable caching for a bundle by adding it to a content_moderation workflow. Configure/back-fill via /admin/cached-moderation-state/update (permission access cached_moderation_state update_form) or drush cached-moderation-state:update-all/:update/:sync-fields/:list-moderated-bundles. Requires content_moderation+field, PHP 8.1+. Medium introspection has the agent find which bundle has the auto-installed field; hard execution has the agent moderate a bundle (cachedmod_page) so the field auto-installs, verified via field_config existence. Setup/reset build their own content_moderation workflows (cloned from editorial's states) to avoid touching shared config.",
+  "evals": [
+    {
+      "id": "cached_moderation_state-field-name",
+      "mode": "recipe",
+      "prompt": "What does the cached_moderation_state Drupal module add to a moderated entity, and what is the machine name of the field it uses? How do I read the value in code?",
+      "must_contain_any": [
+        "cached_moderation_state"
+      ],
+      "must_not_contain": [],
+      "expected_output": "It adds a hidden, indexable field named cached_moderation_state (field type cached_moderation_state, no_ui) that caches the entity's Content Moderation state. Read it in code as $entity->cached_moderation_state->value (and ->updated for the timestamp).",
+      "difficulty": "easy"
+    },
+    {
+      "id": "cached_moderation_state-enable-and-backfill",
+      "mode": "recipe",
+      "prompt": "With the cached_moderation_state module installed, how does a content type get the cached field, and how do I populate the cached value for content that already existed?",
+      "must_contain_any": [
+        "moderat",
+        "workflow",
+        "sync",
+        "update-all",
+        "batch"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The field is added automatically to any bundle you moderate with Content Moderation (FieldConfigHandler::sync() runs on install and on workflow save). Back-fill existing content with the batch form at /admin/cached-moderation-state/update or `drush cached-moderation-state:update-all` (or :update node:bundle).",
+      "difficulty": "easy"
+    },
+    {
+      "id": "cached_moderation_state-drush",
+      "mode": "recipe",
+      "prompt": "Which Drush commands does the cached_moderation_state module provide to back-fill cached values and to list which bundles are moderated?",
+      "must_contain_any": [
+        "cached-moderation-state:update",
+        "cached-moderation-state:update-all",
+        "cached-moderation-state:list-moderated-bundles",
+        "cached-moderation-state:sync-fields"
+      ],
+      "must_not_contain": [],
+      "expected_output": "cached-moderation-state:update <bundles>, cached-moderation-state:update-all, cached-moderation-state:list-moderated-bundles, and cached-moderation-state:sync-fields (with --batch-size and --only-uninitialized options on the update commands).",
+      "difficulty": "easy"
+    },
+    {
+      "id": "cached_moderation_state-known-bundle",
+      "mode": "introspection",
+      "prompt": "On this Drupal site, the cached_moderation_state module has automatically added its cached field to exactly one content-type bundle (the one that is under content moderation). Inspect the live site and give the machine name of that node bundle.",
+      "must_contain_any": [
+        "cachedmod_known"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The bundle is cachedmod_known: node.cachedmod_known has a cached_moderation_state field instance (e.g. `drush cached-moderation-state:list-moderated-bundles` -> node:cachedmod_known, or list FieldConfig entities of field type cached_moderation_state).",
+      "setup": "agent-module-documentation/evaluation/verify/cached_moderation_state-known-bundle-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/cached_moderation_state-known-bundle-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "cached_moderation_state-enable-caching",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site there is a content type with machine name cachedmod_page that is not yet under content moderation, and a content_moderation workflow named cachedmod_wfp. Enable moderation-state caching for the cachedmod_page content type using the cached_moderation_state module, so that the module installs its cached field on that bundle. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/cached_moderation_state-enable-caching-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/cached_moderation_state-enable-caching-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/cached_moderation_state-enable-caching-cleanup.sh",
+      "expected_output": "Add the node:cachedmod_page bundle to a Content Moderation workflow (e.g. cachedmod_wfp) and save it; cached_moderation_state's FieldConfigHandler::sync() then auto-creates the cached_moderation_state field instance on node.cachedmod_page (verified by that FieldConfig existing). Running `drush cached-moderation-state:sync-fields` after moderating the bundle also ensures the field."
+    },
+    {
+      "id": "cached_moderation_state-node-state",
+      "mode": "introspection",
+      "prompt": "On this Drupal site, the content type cachedmod_known2 is under content moderation and has one node. Inspect the live site and give the value of that node's cached_moderation_state field.",
+      "must_contain_any": [
+        "draft"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The node's cached_moderation_state value is 'draft' (read $node->cached_moderation_state->value for the node of type cachedmod_known2).",
+      "setup": "agent-module-documentation/evaluation/verify/cached_moderation_state-node-state-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/cached_moderation_state-node-state-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "cached_moderation_state-sync-fields",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site the content type cachedmod_sync is under content moderation, but its cached_moderation_state field instance is missing (out of sync). Using the cached_moderation_state module, restore the cached_moderation_state field instance for that moderated bundle. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/cached_moderation_state-sync-fields-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/cached_moderation_state-sync-fields-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/cached_moderation_state-sync-fields-cleanup.sh",
+      "expected_output": "Re-synchronise the field instances so node.cachedmod_sync has its cached_moderation_state FieldConfig again - e.g. `drush cached-moderation-state:sync-fields`, or re-save the workflow that moderates cachedmod_sync (which triggers FieldConfigHandler::sync())."
+    }
+  ]
+}

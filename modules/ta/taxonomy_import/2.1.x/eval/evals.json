@@ -1,0 +1,80 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "taxonomy_import",
+  "version": "2.1.x",
+  "note": "Taxonomy Import bulk-creates taxonomy terms in an EXISTING vocabulary from an uploaded CSV/XML file via the form at /admin/config/content/taxonomy_import/import. Columns/tags map to name, parent (matched by name for hierarchy), description; the CSV header row is skipped. Import behaviour 0 = update same-named term, 1 = force new. The taxonomy_import.term_utils service (TaxonomyUtils::saveTerms($vid,$rows,$forceNewTerms)) does the work and is callable directly. Settings live in config object taxonomy_import.config: file_extensions (default 'csv xml') and file_max_size (default 256000000), edited at /admin/config/content/taxonomy_import/settings_import_taxonomy. Introspection reads those live config values; execution imports terms into a namespaced vocabulary via the service and adds an allowed upload extension, both verified against live state.",
+  "evals": [
+    {
+      "id": "taxonomy_import-formats",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "What file formats can the taxonomy_import module import taxonomy terms from, and where in the admin UI do you run an import?",
+      "must_contain_any": ["CSV", "XML", "/admin/config/content/taxonomy_import", "taxonomy_import.import"],
+      "must_not_contain": [],
+      "expected_output": "It imports terms from a CSV or XML file, uploaded on the import form at /admin/config/content/taxonomy_import/import (route taxonomy_import.import), into an existing vocabulary you select."
+    },
+    {
+      "id": "taxonomy_import-columns",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "In a CSV file imported by taxonomy_import, what do the columns mean, and is the first row imported?",
+      "must_contain_any": ["name", "parent", "header", "first row", "description"],
+      "must_not_contain": [],
+      "expected_output": "Column 1 = term name, column 2 = parent (matched by name to build hierarchy), column 3 = description. The first CSV row is treated as a header and is skipped. Extra columns map to matching custom term fields."
+    },
+    {
+      "id": "taxonomy_import-service",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "How can I import taxonomy terms programmatically with taxonomy_import instead of uploading a file, and what controls whether existing terms are updated or duplicated?",
+      "must_contain_any": ["taxonomy_import.term_utils", "saveTerms", "import behavior", "forceNewTerms"],
+      "must_not_contain": [],
+      "expected_output": "Call the taxonomy_import.term_utils service: TaxonomyUtils::saveTerms($vid, $rows, $forceNewTerms), where $rows are ['name','parent','description'] arrays. The import behaviour / $forceNewTerms flag = 0 updates a same-named term, 1 always creates a new term."
+    },
+    {
+      "id": "taxonomy_import-allowed-ext",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "On this Drupal site, taxonomy_import has been configured with a custom set of allowed upload file extensions. Inspect the live configuration and state which extensions are allowed.",
+      "must_contain_any": ["json"],
+      "must_not_contain": [],
+      "expected_output": "file_extensions is 'csv xml json' (taxonomy_import.config:file_extensions).",
+      "setup": "agent-module-documentation/evaluation/verify/taxonomy_import-ext-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/taxonomy_import-ext-cleanup.sh"
+    },
+    {
+      "id": "taxonomy_import-max-size",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "On this Drupal site, inspect taxonomy_import's configuration and state the maximum upload file size (in bytes) currently allowed for imports.",
+      "must_contain_any": ["12345678"],
+      "must_not_contain": [],
+      "expected_output": "file_max_size is 12345678 bytes (taxonomy_import.config:file_max_size).",
+      "setup": "agent-module-documentation/evaluation/verify/taxonomy_import-size-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/taxonomy_import-size-cleanup.sh"
+    },
+    {
+      "id": "taxonomy_import-import-terms",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site there is an empty taxonomy vocabulary with machine name 'ti_task'. Using the taxonomy_import module, import three terms into it named Red, Green and Blue. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/taxonomy_import-terms-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/taxonomy_import-terms-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/taxonomy_import-terms-cleanup.sh",
+      "expected_output": "Three terms Red, Green, Blue exist in the ti_task vocabulary, e.g. via \\Drupal::service('taxonomy_import.term_utils')->saveTerms('ti_task', [['name'=>'Red','parent'=>'','description'=>''], ...], 1)."
+    },
+    {
+      "id": "taxonomy_import-allow-txt",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, configure taxonomy_import so that .txt files are also accepted for taxonomy imports (in addition to csv and xml). Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/taxonomy_import-setext-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/taxonomy_import-setext-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/taxonomy_import-setext-cleanup.sh",
+      "expected_output": "taxonomy_import.config:file_extensions includes 'txt' (e.g. set to 'csv xml txt' via /admin/config/content/taxonomy_import/settings_import_taxonomy or drush cset taxonomy_import.config file_extensions 'csv xml txt' -y)."
+    }
+  ]
+}

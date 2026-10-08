@@ -1,0 +1,95 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "registration_role",
+  "version": "2.0.x",
+  "note": "Registration Role has exactly one config object, registration_role.setting (SINGULAR 'setting'), with keys role_to_select (sequence of role ids) and registration_mode ('user' = self registration only, 'admin' = also when another user or a CLI script creates the account). Form route registration_role.setting.form at /admin/people/registration-role, gated by its own permission 'administer registration roles'. All runtime behaviour is registration_role_user_presave(): roles are added only when $user->isNew() and either the current user is anonymous and PHP_SAPI is not cli, or registration_mode is 'admin'. That CLI detail is what makes the hard cases verifiable: a Drush-created user gets the roles only in 'admin' mode. No tables, no services, no plugins, no Drush commands.",
+  "evals": [
+    {
+      "id": "registration_role-config-name",
+      "mode": "recipe",
+      "prompt": "On a Drupal 11 site with the registration_role module, which configuration object stores which roles are auto-assigned to new users, what are its keys, and what is the admin path of its settings form?",
+      "must_contain_any": [
+        "registration_role.setting",
+        "role_to_select",
+        "/admin/people/registration-role"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The config object is registration_role.setting (singular 'setting', not 'settings'), with keys role_to_select (a sequence of role ids) and registration_mode ('user' or 'admin'). The form is at /admin/people/registration-role, route registration_role.setting.form, permission 'administer registration roles'.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "registration_role-modes",
+      "mode": "recipe",
+      "prompt": "The Drupal registration_role module has a 'Registration mode' setting. What are the two possible values, what does each one mean, and does a user account created by a Drush script get the configured roles?",
+      "must_contain_any": [
+        "admin",
+        "self registration"
+      ],
+      "must_not_contain": [],
+      "expected_output": "registration_mode is either 'user' (User self registration - roles only when an anonymous visitor registers) or 'admin' (Both user self registration and user creation by admin). registration_role_user_presave() treats PHP_SAPI === 'cli' like an admin-created account, so a Drush-created user receives the roles only when registration_mode is 'admin'.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "registration_role-when-applied",
+      "mode": "recipe",
+      "prompt": "In the Drupal registration_role module, which hook actually assigns the roles, and will editing an existing user account re-apply the configured roles?",
+      "must_contain_any": [
+        "presave",
+        "isNew"
+      ],
+      "must_not_contain": [],
+      "expected_output": "registration_role_user_presave(), an implementation of hook_ENTITY_TYPE_presave() for user entities. It only calls $user->addRole() when $user->isNew() is TRUE, so saving or editing an existing account never re-applies the roles, and a manually removed role is not restored.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "registration_role-known-role",
+      "mode": "introspection",
+      "prompt": "This Drupal site has the registration_role module configured. Inspect the live configuration and tell me which role is automatically given to new users, and whether accounts created by an administrator also receive it.",
+      "must_contain_any": [
+        "registration_role_known"
+      ],
+      "must_not_contain": [],
+      "expected_output": "registration_role.setting:role_to_select contains registration_role_known and registration_mode is 'admin', so administrator-created (and CLI-created) accounts get it too. Read it with: drush cget registration_role.setting",
+      "setup": "agent-module-documentation/evaluation/verify/registration_role-known-role-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/registration_role-known-role-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "registration_role-mode-check",
+      "mode": "introspection",
+      "prompt": "On this Drupal site, registration_role hands out some roles when people sign up. Inspect the running site: how many roles are given out, which ones, and does an account created by an administrator on the People screen get them?",
+      "must_contain_any": [
+        "registration_role_alpha",
+        "registration_role_beta"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Two roles: registration_role_alpha and registration_role_beta. registration_mode is 'user' (self registration only), so accounts an administrator creates do NOT get them. Read it with: drush cget registration_role.setting",
+      "setup": "agent-module-documentation/evaluation/verify/registration_role-mode-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/registration_role-mode-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "registration_role-assign-role",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "This Drupal site has the registration_role module enabled and a role with machine name registration_role_task. Configure the live site so every newly created user account gets that role - not only people who register themselves, but also accounts created by an administrator or by a script. Apply the configuration to the running site.",
+      "reset": "agent-module-documentation/evaluation/verify/registration_role-assign-role-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/registration_role-assign-role-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/registration_role-assign-role-cleanup.sh",
+      "expected_output": "Set registration_role.setting:role_to_select to include registration_role_task and registration_role.setting:registration_mode to 'admin' (Both user self registration and user creation by admin). The verify script then creates a user from the CLI and requires that it really comes out with the role."
+    },
+    {
+      "id": "registration_role-selfonly",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "site-owner",
+      "prompt": "On this Drupal site there is a role called 'Registration Role Self Only' (machine name registration_role_selfonly). People who sign up for an account themselves should get that role automatically - but accounts that our staff create for someone must NOT get it. That role should be the only one handed out on registration. Set this up on the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/registration_role-selfonly-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/registration_role-selfonly-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/registration_role-selfonly-cleanup.sh",
+      "expected_output": "Set registration_role.setting:role_to_select to exactly [registration_role_selfonly] and registration_role.setting:registration_mode to 'user' (User self registration). The verify script creates an account from the CLI -- which registration_role treats as admin-created -- and requires that it does NOT receive the role."
+    }
+  ]
+}

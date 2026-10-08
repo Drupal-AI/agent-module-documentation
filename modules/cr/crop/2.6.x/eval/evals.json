@@ -1,0 +1,73 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "crop",
+  "version": "2.6.x",
+  "note": "Crop is an API-only storage module (no editing UI), so all cases are `recipe` (response-graded): they probe the crop content entity API, the crop_type config entity, the crop_crop image effect, CropEntityProvider plugins, and media/settings integration — facts an agent would otherwise read source to answer.",
+  "evals": [
+    {
+      "id": "crop-find-in-code",
+      "mode": "recipe",
+      "prompt": "On a Drupal 11 site using the Crop API module, in PHP I have an image file URI and a crop type machine name. How do I look up the crop entity that already exists for that image, without loading all crops? Name the method(s).",
+      "must_contain_any": ["Crop::findCrop", "findCrop", "Crop::cropExists", "cropExists", "getCropFromImageStyleId"],
+      "must_not_contain": [],
+      "expected_output": "Use the static helpers on Drupal\\crop\\Entity\\Crop: Crop::findCrop($uri, $type) returns the CropInterface (or NULL), Crop::cropExists($uri, $type) returns a bool, and Crop::getCropFromImageStyleId($uri, $sid) resolves it via an image style's crop_crop effect."
+    },
+    {
+      "id": "crop-create-set-geometry",
+      "mode": "recipe",
+      "prompt": "In code on a Drupal 11 site with the Crop module, I want to create a crop for a file and store its center coordinates and dimensions, then persist it. Which crop entity methods set the position and size and save it? Show the calls.",
+      "must_contain_any": ["setPosition", "setSize", "Crop::create"],
+      "must_not_contain": [],
+      "expected_output": "Crop::create([...]) then chain ->setPosition($x, $y) (center coords) ->setSize($width, $height) ->save(). Position is the crop center; anchor()/top-left is derived from it."
+    },
+    {
+      "id": "crop-apply-image-effect",
+      "mode": "recipe",
+      "prompt": "I created a crop type in the Crop module but my image derivatives are not cropped. How does a crop type actually get applied to generate a cropped derivative on a Drupal 11 site?",
+      "must_contain_any": ["crop_crop", "Crop image effect", "image effect", "image style"],
+      "must_not_contain": [],
+      "expected_output": "A crop type does nothing until referenced by a Crop image effect (crop_crop) inside an image style. The crop_crop effect (config image.effect.crop_crop, stores crop_type) loads the matching crop entity for the file URI at render time and applies the stored coordinates."
+    },
+    {
+      "id": "crop-type-config-entity",
+      "mode": "recipe",
+      "prompt": "In the Crop module for Drupal 11, what kind of entity is a crop type, and which properties define its aspect ratio and minimum-size constraints? Where are crop types managed?",
+      "must_contain_any": ["crop.type", "config entity", "aspect_ratio", "crop.overview_types", "/admin/config/media/crop"],
+      "must_not_contain": [],
+      "expected_output": "A crop type is a configuration entity (crop.type.*) — a reusable preset with aspect_ratio (a W:H string like 16:9), plus soft_limit_width/height (recommended min, UI warns) and hard_limit_width/height (enforced). Managed at /admin/config/media/crop (route crop.overview_types) under the 'administer crop types' permission."
+    },
+    {
+      "id": "crop-entity-provider-plugin",
+      "mode": "recipe",
+      "prompt": "I have a custom entity type with an image field and I want Crop API to support cropping it on Drupal 11. What plugin do I create, which interface/method must it implement, and where does the plugin live?",
+      "must_contain_any": ["CropEntityProvider", "EntityProviderInterface", "EntityProviderBase", "Plugin/Crop/EntityProvider"],
+      "must_not_contain": [],
+      "expected_output": "Create a CropEntityProvider plugin in Plugin/Crop/EntityProvider, annotated @CropEntityProvider with entity_type = your entity type id, extending Drupal\\crop\\EntityProviderBase (interface EntityProviderInterface) and implementing uri(EntityInterface $entity) to return the image file URI. Core ships file and media providers; rebuild caches after adding."
+    },
+    {
+      "id": "crop-disable-flush-s3",
+      "mode": "recipe",
+      "prompt": "My Drupal 11 site stores files on Amazon S3 and generates image derivatives out-of-band. I want to stop the Crop module from flushing derivatives whenever a crop changes so it does not serve 404s. What setting do I change?",
+      "must_contain_any": ["flush_derivative_images", "crop.settings"],
+      "must_not_contain": [],
+      "expected_output": "Set the crop.settings:flush_derivative_images config to FALSE (default TRUE), e.g. in settings.php: $config['crop.settings']['flush_derivative_images'] = FALSE; so crops changing does not flush/regenerate derivatives on decoupled/cloud storage."
+    },
+    {
+      "id": "crop-media-field-selection",
+      "mode": "recipe",
+      "prompt": "On a Drupal 11 site I want to make Media entities croppable with the Crop module and choose which image field is the croppable one. Where is that configured and how is it stored?",
+      "must_contain_any": ["crop:image_field", "Crop configuration", "media type", "third-party setting"],
+      "must_not_contain": [],
+      "expected_output": "On the media type edit form the module adds a 'Crop configuration' fieldset to pick which image/file field is croppable; the choice is stored as the media type third-party setting crop:image_field. Media cropping is handled by the built-in media CropEntityProvider (crop_media_entity submodule)."
+    },
+    {
+      "id": "crop-provider-info-alter",
+      "mode": "recipe",
+      "prompt": "In the Crop module on Drupal 11, which hook lets me alter the discovered crop entity provider plugin definitions (e.g. relabel the media provider)?",
+      "must_contain_any": ["hook_crop_entity_provider_info_alter", "crop_entity_provider_info_alter"],
+      "must_not_contain": [],
+      "expected_output": "Implement hook_crop_entity_provider_info_alter(array &$providers) — the $providers array is keyed by machine name (e.g. $providers['media']['label'] = ...). Documented in crop.api.php."
+    }
+  ]
+}

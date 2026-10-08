@@ -1,0 +1,74 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "form_options_attributes",
+  "version": "2.1.x",
+  "note": "form_options_attributes is a pure Form API helper: it adds one render-array property (#options_attributes) that attaches HTML attributes to individual select/radios/checkboxes options, plus #options_wrapper_attributes / #options_label_attributes for radios/checkboxes. It has NO admin UI, NO config entities, NO settings config/schema, NO permissions, NO Drush, and NO plugins. MEDIUM (introspection) is OMITTED: there is no per-site configuration to plant and read back \u2014 enabling the module is the entire setup, so a setup/cleanup pair could only assert module-enabled status, which is not a meaningful introspection test and would be fabricated config. HARD (execution) is verifiable by CODE: the agent writes a render array (that RETURNS from a PHP file) using #options_attributes, which the verify script includes, renders in isolation, and greps for the attribute on the correct <option>. select renders cleanly in isolation; radios/checkboxes need full form processing, so the execution cases use select for a robust, deterministic verify. reset deletes the deliverable file so the case FAILs on empty state and PASSes only after a correct build.",
+  "evals": [
+    {
+      "id": "foa-property-and-elements",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "On a Drupal 11 site with the form_options_attributes module enabled, how do I add an HTML attribute (like a data-* attribute or a CSS class) to a SINGLE option of a Form API select/radios/checkboxes element? Name the render-array property and which element types it works on.",
+      "must_contain_any": [
+        "#options_attributes",
+        "options_attributes"
+      ],
+      "must_not_contain": [
+        "#attributes only",
+        "not possible"
+      ],
+      "expected_output": "Add an #options_attributes array to the element, keyed by the same keys as #options; each value is an attributes array formatted like #attributes. It works on #type select, radios, and checkboxes."
+    },
+    {
+      "id": "foa-no-ui-developer-api",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "Where is the configuration/admin page for the form_options_attributes module on a Drupal 11 site, and what permissions does it add?",
+      "must_contain_any": [
+        "no user interface",
+        "no admin",
+        "no configuration",
+        "API module",
+        "no permissions"
+      ],
+      "must_not_contain": [],
+      "expected_output": "There is none. form_options_attributes is a developer API module with no admin UI, no configuration form, and no permissions. You use it purely in code (a custom form or hook_form_alter) by adding #options_attributes; enabling the module is the whole setup."
+    },
+    {
+      "id": "foa-wrapper-label-attributes",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "With form_options_attributes, I want to add attributes not just to each radio/checkbox input but also to each option's surrounding wrapper and its label. Which properties do that, and do they work for select elements too?",
+      "must_contain_any": [
+        "#options_wrapper_attributes",
+        "#options_label_attributes"
+      ],
+      "must_not_contain": [
+        "works for select",
+        "select supports wrapper"
+      ],
+      "expected_output": "Use #options_wrapper_attributes (the option's wrapper <div>) and #options_label_attributes (the option's <label>), keyed like #options. They apply to radios and checkboxes ONLY \u2014 a select has no per-option wrapper or label, so only #options_attributes applies there."
+    },
+    {
+      "id": "foa-build-select-option-attr",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "expert",
+      "prompt": "Using the form_options_attributes module on this Drupal 11 site, create a PHP file at /var/www/html/web/sites/default/files/foa_eval_flat.php that `return`s (the file's top-level statement must be `return [...]`) a Drupal render array for a `#type` => `select` element titled 'Membership' with exactly two options: `basic` => 'Basic' and `premium` => 'Premium'. Only the `premium` <option> must carry the HTML attribute data-tier=\"gold\", added via the module's #options_attributes property (do NOT hand-write raw HTML). The array must be renderable with the core renderer.",
+      "reset": "agent-module-documentation/evaluation/verify/form_options_attributes-select-attr-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/form_options_attributes-select-attr-verify.sh",
+      "expected_output": "A file returning ['#type' => 'select', '#title' => 'Membership', '#options' => ['basic' => 'Basic', 'premium' => 'Premium'], '#options_attributes' => ['premium' => ['data-tier' => 'gold']]]. When rendered, the premium <option> carries data-tier=\"gold\"."
+    },
+    {
+      "id": "foa-build-optgroup-option-attr",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "expert",
+      "prompt": "Using form_options_attributes on this Drupal 11 site, create a PHP file at /var/www/html/web/sites/default/files/foa_eval_group.php that `return`s (top-level `return [...]`) a Drupal render array for a `#type` => `select` element with TWO option groups: 'German' containing `audi` => 'Audi' and `bmw` => 'BMW', and 'Japanese' containing `honda` => 'Honda'. The `bmw` <option> inside the German group must carry data-lux=\"yes\", set through the module's #options_attributes using the correct NESTED keying for grouped options (group label, then option key). Do not hand-write raw HTML; it must render via the core renderer.",
+      "reset": "agent-module-documentation/evaluation/verify/form_options_attributes-optgroup-attr-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/form_options_attributes-optgroup-attr-verify.sh",
+      "expected_output": "A file returning a select whose #options are grouped ('German' => ['audi'=>'Audi','bmw'=>'BMW'], 'Japanese' => ['honda'=>'Honda']) with #options_attributes => ['German' => ['bmw' => ['data-lux' => 'yes']]]. When rendered, the bmw <option> under <optgroup label=\"German\"> carries data-lux=\"yes\"."
+    }
+  ]
+}

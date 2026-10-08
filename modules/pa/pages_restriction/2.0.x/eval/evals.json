@@ -1,0 +1,80 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "pages_restriction",
+  "version": "2.0.x",
+  "note": "Pages Restriction Access stores everything in ONE config object, pages_restriction.settings, edited at /admin/config/development/pages-restriction/settings (route pages_restriction.settings, permission 'administer site configuration'). Keys: pages_restriction (textarea, one 'restricted-path|target-path' mapping per line), keep_parameters (bool 1/0, appends query params to the redirect target), bypass_role (array of role ids that skip restrictions). A kernel REQUEST subscriber redirects a visitor from a restricted path (matched against the current path alias) to its target unless they have a bypass role or a session bypass (pages_restriction.session_service::setBypass). No config schema, no own permissions, no Drush. medium cases read back a known mapping/bypass role from the live config; hard cases write a restriction mapping or toggle keep_parameters, verified against pages_restriction.settings. Shipped install defaults: keep_parameters:1, bypass_role:[] (no pages_restriction key until first save).",
+  "evals": [
+    {
+      "id": "pages_restriction-format",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "In the Drupal pages_restriction module, what is the format for defining which page is restricted and where a blocked visitor gets sent, and in which config object is it stored?",
+      "must_contain_any": ["pages_restriction.settings", "restricted", "|", "target"],
+      "must_not_contain": [],
+      "expected_output": "You enter one mapping per line in the 'Pages Restriction' textarea as restricted-path|target-path (e.g. contact/thank-you|contact/send-your-message). It is saved under the config object pages_restriction.settings, key 'pages_restriction'."
+    },
+    {
+      "id": "pages_restriction-configure-route",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "Where is the admin settings page for the pages_restriction module, and what permission is required to reach it?",
+      "must_contain_any": ["/admin/config/development/pages-restriction/settings", "pages-restriction/settings", "administer site configuration", "pages_restriction.settings"],
+      "must_not_contain": [],
+      "expected_output": "The settings form is at /admin/config/development/pages-restriction/settings (route pages_restriction.settings), gated by the core 'administer site configuration' permission."
+    },
+    {
+      "id": "pages_restriction-bypass",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "How can certain users be allowed to reach a restricted page in the pages_restriction module — both permanently for a role and one-time for a specific user session?",
+      "must_contain_any": ["bypass_role", "bypass", "session", "setBypass"],
+      "must_not_contain": [],
+      "expected_output": "Give a role the bypass via the 'bypass_role' setting (logged-in users in that role skip all restrictions). For a one-time allow, call pages_restriction.session_service->setBypass($path), which stores the path in the pages_restriction_bypass session array so the subscriber lets the user through on the next request."
+    },
+    {
+      "id": "pages_restriction-known-map",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "This site has a page restriction configured. Inspect the live pages_restriction configuration and state which target page a visitor to the restricted path 'pr-secret-page' gets redirected to.",
+      "must_contain_any": ["pr-entry-target"],
+      "must_not_contain": [],
+      "setup": "agent-module-documentation/evaluation/verify/pages_restriction-known-map-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/pages_restriction-known-map-cleanup.sh",
+      "expected_output": "pr-secret-page redirects to pr-entry-target: the mapping 'pr-secret-page|pr-entry-target' is stored in pages_restriction.settings -> pages_restriction."
+    },
+    {
+      "id": "pages_restriction-bypass-role-read",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "Inspect the live pages_restriction configuration on this site and state which user role is currently allowed to bypass all page restrictions.",
+      "must_contain_any": ["administrator"],
+      "must_not_contain": [],
+      "setup": "agent-module-documentation/evaluation/verify/pages_restriction-bypass-role-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/pages_restriction-bypass-role-cleanup.sh",
+      "expected_output": "The 'administrator' role bypasses restrictions: pages_restriction.settings -> bypass_role contains administrator."
+    },
+    {
+      "id": "pages_restriction-add-rule",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "Using the pages_restriction module, configure this site so that visitors to the path 'pr-locked' are redirected to 'pr-redirect'. Apply the change to the live configuration.",
+      "reset": "agent-module-documentation/evaluation/verify/pages_restriction-add-rule-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/pages_restriction-add-rule-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/pages_restriction-add-rule-cleanup.sh",
+      "expected_output": "pages_restriction.settings -> pages_restriction contains a line 'pr-locked|pr-redirect' (restricted path pr-locked mapped to target pr-redirect)."
+    },
+    {
+      "id": "pages_restriction-keep-params",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "site-builder",
+      "prompt": "In the pages_restriction module settings, turn ON the option that preserves the original URL query parameters when a restricted page redirects to its target. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/pages_restriction-keep-params-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/pages_restriction-keep-params-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/pages_restriction-keep-params-cleanup.sh",
+      "expected_output": "pages_restriction.settings -> keep_parameters is set to 1 (truthy), so the subscriber appends the request's query parameters to the redirect target."
+    }
+  ]
+}

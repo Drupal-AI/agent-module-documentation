@@ -1,0 +1,62 @@
+{
+  "name": "Form decorator",
+  "data_name": "form_decorator",
+  "description": "Alter forms with decorator classes instead of hook_form_alter().",
+  "version": "1.1.x",
+  "package": "Forms",
+  "composer_namespace": "drupal/form_decorator",
+  "composer_requirements": {
+    "drupal/core": "^10 || ^11 || ^12"
+  },
+  "dependent_modules": [],
+  "configure": null,
+  "core_version_requirement": "^10 || ^11",
+  "active_installs": null,
+  "list_position": null,
+  "project_url": "https://www.drupal.org/project/form_decorator",
+  "license": "GPL-2.0-or-later",
+  "php_requirement": null,
+  "library_dependencies": [],
+  "suggests": {},
+  "submodules": [
+    "form_decorator_example"
+  ],
+  "provides_permissions": false,
+  "provides_drush_commands": true,
+  "provides_config_schema": false,
+  "provides_plugin_types": [
+    "FormDecorator"
+  ],
+  "categories": [
+    "Developer tools"
+  ],
+  "subcategories": [
+    "Plugin system",
+    "Hook / event system",
+    "Code generation / scaffolding"
+  ],
+  "keywords": [
+    "forms",
+    "decorator",
+    "alter",
+    "services",
+    "developer",
+    "form_alter",
+    "plugin"
+  ],
+  "project_description": "This module introduces an innovative way to customize Drupal forms through decoration. Form decoration allows developers to modify and enhance form behavior by applying a layer of additional functionality, without altering the original form class directly.\n\n \nIn Drupal forms are provided by form classes. In the form class you have to provide several methods:\n\n getFormId()\n\nbuildForm()\n\nvalidateForm()\n\nsubmitForm()\n\n It is also possible to inject services using dependency injection and to implement additional methods that are useful for this form.\n\n That is very nice! But there is no easy way to extend a form class. If you want to alter a form you have to rely on hook_form_alter. Of course that works just fine but you loose all the nice features of the original form class (No object, no dependency injection, you have to change submit/validation handlers).\n\n The form_decorator module introduces an easy way to change the form class itself. And because we want to be able to alter one form multiple times we use decoration.\n\n In short: The key benefit over hook_form_alter hooks and event based solutions like https://www.drupal.org/project/hook_event_dispatcher is that in a decorator you can in principle work like you would in the form class itself.\n\n We try to get this into core \n See #3422081 \n\n Examples \n Add custom validation to the user register form:\n\n<?php\n\n#[FormDecorator('form_user_register_form_alter')]\n\nfinal class ValidateOnly extends FormDecoratorBase {\n\n public function validateForm(array &$form, FormStateInterface $form_state) {\n\n $this->inner->validateForm($form, $form_state);\n\n // Do your magic\n\n }\n\n }\n\n }\n\n?>\n\n Use dependency injection:\n\n<?php\n\n#[FormDecorator('form_user_login_form_alter')]\n\nfinal class DependencyInjection extends FormDecoratorBase implements ContainerFactoryPluginInterface {\n\n public static function create(ContainerInterface $container, array $configuration, $plugin_id, $plugin_definition): self {\n\n return new static(\n\n $configuration,\n\n $plugin_id,\n\n $plugin_definition,\n\n $container->get('entity_type.manager')\n\n );\n\n }\n\n public function __construct(\n\n array $configuration,\n\n $plugin_id,\n\n $plugin_definition,\n\n protected EntityTypeManagerInterface $entityTypeManager,\n\n ) {\n\n parent::__construct($configuration, $plugin_id, $plugin_definition);\n\n }\n\n public function buildForm(array $form, FormStateInterface $form_state, ...$args) {\n\n // Do your magic\n\n }\n\n?>\n\n Allow to edit the created date of nodes:\n\n<?php\n\n#[FormDecorator('form_node_form_alter')]\n\nfinal class NodeCreatedDate extends ContentEntityFormDecoratorBase {\n\n public function buildForm(array $form, FormStateInterface $form_state, ...$args) {\n\n $form = $this->inner->buildForm($form, $form_state, ...$args);\n\n $node = $this->getEntity();\n\n assert($node instanceof NodeInterface);\n\n $created_time = time();\n\n if (!$this->getEntity()->isNew()) {\n\n $created_time = $node->getCreatedTime();\n\n }\n\n $form['created_datepicker'] = [\n\n '#title' => $this->t('Created date'),\n\n '#type' => 'datetime',\n\n '#default_value' => DrupalDateTime::createFromTimestamp($created_time),\n\n '#weight' => 100,\n\n ];\n\n return $form;\n\n }\n\n public function save(array $form, FormStateInterface $form_state) {\n\n $node = $this->getEntity();\n\n assert($node instanceof NodeInterface);\n\n $node->setCreatedTime($form_state->getValue('created_datepicker')->getTimestamp());\n\n return $this->inner->save($form, $form_state);\n\n }\n\n?>\n\n Back to top",
+  "maintenance_status": "Actively maintained",
+  "development_status": "Under active development",
+  "security_advisory_coverage": "covered",
+  "project_created": "2024-02-16",
+  "project_changed": "2026-08-18",
+  "core_semver_minimum": 10000000,
+  "core_semver_maximum": 13000000,
+  "tooling": {
+    "provides_tool_plugins": false,
+    "tool_plugins": [],
+    "provides_agent_skills": false,
+    "agent_skills": []
+  },
+  "contributor_count": 10
+}

@@ -1,0 +1,97 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "css_editor",
+  "version": "2.0.x",
+  "note": "CSS Editor has no route and configure: null - it alters core's system_theme_settings form, so its UI is /admin/appearance/settings/<theme>. Persistent state is one config object per theme, css_editor.theme.<theme>, with keys enabled/css/plaintext_enabled/autopreview_enabled plus a `path` key the module writes itself, and the generated stylesheet public://css_editor/<theme>.css produced by the css_editor.css_generator service (Drupal\\css_editor\\CssEditorService). Delivery is guarded by _css_editor_get_stylesheet($theme), which returns FALSE unless enabled is TRUE AND the file exists. All medium/hard cases use the core Stark theme as an isolated sandbox (installed by setup/reset, uninstalled by cleanup) and never touch the site's default or admin theme. Note that hook_cache_flush() regenerates every enabled theme's stylesheet, so the hard 'turn it off' case is verified through the module's own serving predicate rather than through file presence alone.",
+  "evals": [
+    {
+      "id": "css_editor-where-stored",
+      "difficulty": "easy",
+      "mode": "recipe",
+      "prompt": "On a Drupal 11 site with the contrib css_editor module, where do I enter custom CSS for a theme (there is no module settings page), and in which config object is it stored?",
+      "must_contain_any": [
+        "css_editor.theme",
+        "appearance/settings",
+        "theme settings"
+      ],
+      "must_not_contain": [],
+      "expected_output": "In the theme's own settings page, /admin/appearance/settings/<theme>, under the 'Custom CSS' details element added by css_editor_form_system_theme_settings_alter(). It is stored in the config object css_editor.theme.<theme> with keys enabled, css, plaintext_enabled, autopreview_enabled (plus path, written by the module)."
+    },
+    {
+      "id": "css_editor-generated-file",
+      "difficulty": "easy",
+      "mode": "recipe",
+      "prompt": "How does css_editor actually get the CSS onto the page? Where is the generated stylesheet written, which service writes it, and how is it attached so it overrides the theme's own CSS?",
+      "must_contain_any": [
+        "public://css_editor",
+        "css_editor.css_generator",
+        "CssEditorService"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The css_editor.css_generator service (Drupal\\css_editor\\CssEditorService::generateCssFile) writes public://css_editor/<theme>.css and stores that URI in css_editor.theme.<theme>:path. css_editor_library_info_alter() then appends that file to the active theme's own `css_editor` library with weight 9999, and css_editor_page_attachments() attaches '<theme>/css_editor', so it loads after all other CSS."
+    },
+    {
+      "id": "css_editor-not-applied",
+      "difficulty": "easy",
+      "mode": "recipe",
+      "prompt": "I pasted CSS into the css_editor box for my theme and saved, but the rules are not applied on the site. Which two conditions does the module check before it will attach the stylesheet, and what regenerates the file?",
+      "must_contain_any": [
+        "enabled",
+        "file_exists",
+        "_css_editor_get_stylesheet"
+      ],
+      "must_not_contain": [],
+      "expected_output": "_css_editor_get_stylesheet($theme) only returns the file when css_editor.theme.<theme>:enabled is TRUE AND the file at :path actually exists; otherwise nothing is attached. The file is written by css_editor.css_generator::generateCssFile() on form save, and css_editor_cache_flush() calls regenerateAllCssFiles() on every cache clear (drush cr). Also remember the CSS only loads while that theme is the active theme."
+    },
+    {
+      "id": "css_editor-known-theme",
+      "difficulty": "medium",
+      "mode": "introspection",
+      "prompt": "This Drupal site has custom CSS configured through the css_editor module for exactly one theme. Inspect the running site and tell me which theme it is and what CSS selector the custom CSS defines.",
+      "must_contain_any": [
+        "stark"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The Stark theme: css_editor.theme.stark has enabled: true and css '.ce-probe-banner { background-color: #bada55; border: 2px dashed #123456; }', generated to public://css_editor/stark.css. List candidates with \\Drupal::configFactory()->listAll('css_editor.theme.').",
+      "setup": "agent-module-documentation/evaluation/verify/css_editor-known-theme-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/css_editor-known-theme-cleanup.sh"
+    },
+    {
+      "id": "css_editor-disabled-css",
+      "difficulty": "medium",
+      "mode": "introspection",
+      "prompt": "On this Drupal site the Stark theme has custom CSS saved in css_editor, but the rule is never served to visitors. Inspect the live configuration and file system and explain exactly why - name the config key and the file that decide it.",
+      "must_contain_any": [
+        "enabled",
+        "false"
+      ],
+      "must_not_contain": [],
+      "expected_output": "css_editor.theme.stark has css '.ce-offline-note { color: #ff0066; }' but enabled: false, and no generated stylesheet exists at its path (public://css_editor/stark.css). _css_editor_get_stylesheet('stark') therefore returns FALSE, so neither css_editor_library_info_alter() nor css_editor_page_attachments() adds anything.",
+      "setup": "agent-module-documentation/evaluation/verify/css_editor-disabled-css-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/css_editor-disabled-css-cleanup.sh"
+    },
+    {
+      "id": "css_editor-enable-stark",
+      "difficulty": "hard",
+      "mode": "execution",
+      "persona": "drupal-expert",
+      "prompt": "The core Stark theme is installed on this Drupal site. Using the css_editor module, give Stark the custom CSS rule `.ce-task-banner { background-color: #bada55; }` and make sure it would really be served - i.e. the module's generated stylesheet for Stark must exist on disk and contain that rule. Apply it to the live site. Do not change the site's default theme.",
+      "reset": "agent-module-documentation/evaluation/verify/css_editor-enable-stark-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/css_editor-enable-stark-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/css_editor-enable-stark-cleanup.sh",
+      "expected_output": "Set css_editor.theme.stark enabled: TRUE and css: '.ce-task-banner { background-color: #bada55; }', then generate the file - \\Drupal::service('css_editor.css_generator')->generateCssFile('stark') (or a cache rebuild, which calls regenerateAllCssFiles()). Verified: enabled TRUE, the rule present in config, path set, and public://css_editor/stark.css containing ce-task-banner."
+    },
+    {
+      "id": "css_editor-disable-stark",
+      "difficulty": "hard",
+      "mode": "execution",
+      "persona": "site-owner",
+      "prompt": "Someone added custom CSS to our Stark theme through the CSS editor and it is breaking the layout. Please stop that custom CSS from being loaded on the site, but do not throw the CSS away - we want the text kept so we can switch it back on later. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/css_editor-disable-stark-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/css_editor-disable-stark-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/css_editor-disable-stark-cleanup.sh",
+      "expected_output": "Set css_editor.theme.stark:enabled to FALSE (untick 'Enable or disable custom CSS' on /admin/appearance/settings/stark) while leaving the css value intact. Verified through the module's own serving predicate: _css_editor_get_stylesheet('stark') must return FALSE and the .ce-rollback-marker rule must still be present in config."
+    }
+  ]
+}

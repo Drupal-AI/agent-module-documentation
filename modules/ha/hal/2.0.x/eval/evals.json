@@ -1,0 +1,65 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "hal",
+  "version": "2.0.x",
+  "note": "HAL provides a serialization format plus normalizer/encoder services and a link manager, but no admin UI, no plugin type, and no permissions. Cases are `recipe` (response-graded) since they probe documented facts (the format string, the core-to-contrib move, the link manager, custom normalizers, the serialization dependency) an agent would otherwise read source to answer; no site mutation.",
+  "evals": [
+    {
+      "id": "hal-format-string",
+      "mode": "recipe",
+      "prompt": "On a Drupal 11 site with the HAL module enabled, what is the serialization format string I pass to the core serializer to encode an entity as Hypertext Application Language, and which core service do I call?",
+      "must_contain_any": ["hal_json"],
+      "must_not_contain": [],
+      "expected_output": "Call the core `serializer` service's serialize()/normalize() with the format id `hal_json` (e.g. \\Drupal::service('serializer')->serialize($entity, 'hal_json'))."
+    },
+    {
+      "id": "hal-core-to-contrib",
+      "mode": "recipe",
+      "prompt": "My Drupal 9 site used the core HAL module for hal_json output. After upgrading to Drupal 10/11, hal_json no longer works. What happened and how do I restore it?",
+      "must_contain_any": ["contrib", "drupal/hal", "moved", "removed from core"],
+      "must_not_contain": [],
+      "expected_output": "HAL was removed from Drupal core in D10 and moved to the drupal/hal contrib module; require drupal/hal and enable it (drush en hal) to restore the hal_json format."
+    },
+    {
+      "id": "hal-link-manager",
+      "mode": "recipe",
+      "prompt": "On a Drupal site using HAL, which service builds the type and relation URIs that appear in an entity's _links, and which methods generate a bundle/type URI versus a field relation URI?",
+      "must_contain_any": ["hal.link_manager", "getTypeUri", "getRelationUri", "LinkManager"],
+      "must_not_contain": [],
+      "expected_output": "The hal.link_manager service (LinkManager, implementing LinkManagerInterface); getTypeUri() builds the bundle/type URI and getRelationUri() builds a field's relation URI. getTypeInternalIds()/getRelationInternalIds() resolve URIs back to internal IDs."
+    },
+    {
+      "id": "hal-custom-normalizer",
+      "mode": "recipe",
+      "prompt": "I want to add a custom normalizer for a bespoke field type so it serializes correctly in HAL. What base class do I extend and how do I register the service so it applies to the hal_json format?",
+      "must_contain_any": ["Drupal\\hal\\Normalizer\\NormalizerBase", "NormalizerBase", "name: normalizer", "tags"],
+      "must_not_contain": [],
+      "expected_output": "Extend Drupal\\hal\\Normalizer\\NormalizerBase (its $format is hal_json) and register the service tagged { name: normalizer } with a priority high enough to beat the generic normalizer."
+    },
+    {
+      "id": "hal-serialization-dependency",
+      "mode": "recipe",
+      "prompt": "Which core Drupal module does the contrib HAL module depend on, and what other module is typically enabled with it to expose hal_json over HTTP?",
+      "must_contain_any": ["serialization"],
+      "must_not_contain": [],
+      "expected_output": "HAL depends on the core serialization module (its normalizers/encoder extend serialization's); it is typically paired with the rest module (and optionally Views REST exports) to serve hal_json over HTTP."
+    },
+    {
+      "id": "hal-link-domain",
+      "mode": "recipe",
+      "prompt": "The link URIs in my HAL output use the wrong host. Which config object and key set the domain used for HAL type/relation links, and what is the default behavior?",
+      "must_contain_any": ["link_domain", "hal.settings"],
+      "must_not_contain": [],
+      "expected_output": "Set hal.settings:link_domain (e.g. drush cset hal.settings link_domain 'https://api.example.com'); when blank/null it defaults to the site's own domain. Programmatically, LinkManager::setLinkDomain() does the same."
+    },
+    {
+      "id": "hal-uri-alter-hooks",
+      "mode": "recipe",
+      "prompt": "In a custom Drupal module I need to rewrite the type and relation URIs HAL generates for entities. Which hooks do I implement?",
+      "must_contain_any": ["hook_hal_type_uri_alter", "hook_hal_relation_uri_alter", "hal_type_uri_alter", "hal_relation_uri_alter"],
+      "must_not_contain": [],
+      "expected_output": "Implement hook_hal_type_uri_alter(&$uri, $context) for the type URI and hook_hal_relation_uri_alter(&$uri, $context) for relation URIs; both receive the URI by reference and the serializer context."
+    }
+  ]
+}

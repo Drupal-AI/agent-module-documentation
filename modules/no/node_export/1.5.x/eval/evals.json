@@ -1,0 +1,80 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "node_export",
+  "version": "1.5.x",
+  "note": "Node Export exports nodes to JSON and imports them back. Config node_export.settings has node_export_import (replace [default] = new revision of existing node, new = always create, skip = leave existing) and node_export_format (JSON only). Drush: node-export-export (ne-export), node-export-import (ne-import). Permissions node_export.export_node / import_node / administer. Ships node action bulk_node_export. Services NodeExport::export() / NodeImport::import(). Medium/hard cases read/write the real node_export.settings and perform a real JSON export of a node to a file.",
+  "evals": [
+    {
+      "id": "ne-drush",
+      "mode": "recipe",
+      "prompt": "What Drush commands does the node_export module provide for exporting and importing nodes, and what are their aliases?",
+      "must_contain_any": ["node-export-export", "node-export-import", "ne-export", "ne-import"],
+      "must_not_contain": [],
+      "expected_output": "node-export-export (alias ne-export) exports nodes (all or a nid list; --save=y writes a file) and node-export-import (alias ne-import) imports a JSON file.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "ne-format-config",
+      "mode": "recipe",
+      "prompt": "In what format does node_export export content, and which config object/keys store its settings?",
+      "must_contain_any": ["JSON", "node_export.settings", "node_export_import", "node_export_format"],
+      "must_not_contain": [],
+      "expected_output": "It exports JSON (the only implemented format). Settings live in node_export.settings: node_export_format (JSON) and node_export_import (import-conflict behavior).",
+      "difficulty": "easy"
+    },
+    {
+      "id": "ne-import-behavior",
+      "mode": "recipe",
+      "prompt": "When node_export imports a node that already exists on the destination site, what options are there for how to handle it?",
+      "must_contain_any": ["replace", "new", "skip", "revision"],
+      "must_not_contain": [],
+      "expected_output": "node_export_import can be replace (save a new revision of the existing node, default), new (always create a new node), or skip (leave the existing node untouched).",
+      "difficulty": "easy"
+    },
+    {
+      "id": "ne-known-skip",
+      "mode": "introspection",
+      "prompt": "On this Drupal site, inspect the node_export configuration and report what it will do when importing a node that already exists.",
+      "must_contain_any": ["skip"],
+      "must_not_contain": [],
+      "expected_output": "node_export.settings:node_export_import is 'skip', so existing nodes are left untouched on import.",
+      "setup": "agent-module-documentation/evaluation/verify/node_export-import-skip-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/node_export-import-skip-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "ne-known-new",
+      "mode": "introspection",
+      "prompt": "Inspect this site's node_export settings: if I import an export that contains a node whose ID already exists here, will it overwrite it, skip it, or create a new node? Answer based on the current live configuration.",
+      "must_contain_any": ["new", "create a new"],
+      "must_not_contain": [],
+      "expected_output": "node_export.settings:node_export_import is 'new', so importing always creates a brand-new node rather than replacing or skipping.",
+      "setup": "agent-module-documentation/evaluation/verify/node_export-import-new-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/node_export-import-new-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "ne-set-skip",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "Configure the node_export module on this site so that, when importing a node that already exists, it skips it (leaves the existing node untouched). Apply the change to the live configuration.",
+      "reset": "agent-module-documentation/evaluation/verify/node_export-set-skip-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/node_export-set-skip-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/node_export-set-skip-cleanup.sh",
+      "expected_output": "node_export.settings:node_export_import is set to 'skip' (e.g. drush cset node_export.settings node_export_import skip)."
+    },
+    {
+      "id": "ne-export-json",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "This site has a node titled 'NE Export Probe'. Using the node_export module, export the site's node content to JSON and save the exported JSON to the file web/sites/default/files/ne_export_probe.json on this site (so the file contains the exported nodes).",
+      "reset": "agent-module-documentation/evaluation/verify/node_export-export-json-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/node_export-export-json-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/node_export-export-json-cleanup.sh",
+      "expected_output": "web/sites/default/files/ne_export_probe.json exists, is valid JSON, and contains the exported 'NE Export Probe' node (e.g. drush node-export-export all > web/sites/default/files/ne_export_probe.json, or NodeExport::export)."
+    }
+  ]
+}

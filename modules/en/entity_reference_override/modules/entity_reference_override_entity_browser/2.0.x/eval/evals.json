@@ -1,0 +1,62 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "entity_reference_override_entity_browser",
+  "version": "2.0.x",
+  "note": "Thin widget-shim submodule of entity_reference_override. Provides ONE field widget, entity_browser_entity_reference_override (label 'Entity browser', class Drupal\\entity_reference_override_entity_browser\\Plugin\\Field\\FieldWidget\\EntityReferenceOverrideEntityBrowser, multiple_values=TRUE, field_types={entity_reference_override}), extending Entity Browser's EntityReferenceBrowserWidget and adding an override textfield per selected item. No config form, no permissions, no services. Depends on entity_browser + entity_reference_override. Medium introspects the live field-widget plugin definition (cheap plugin.manager.field.widget read). Hard has the agent write the form-display widget-config CODE into a deletable scratch file under web/sites/default/ (entity_reference_override_entity_browser_widget.eval.php) which verify greps and reset deletes -- scratch-file authoring is used because on THIS shared site 'canvas' reacts to display definition changes (saving a form display for this field type hangs) and 'drush cr' fatals in an unrelated canvas/ui_patterns collision. Facts grounded in src/Plugin/Field/FieldWidget/EntityReferenceOverrideEntityBrowser.php and config/schema.",
+  "evals": [
+    {
+      "id": "entity_reference_override_entity_browser-widget-id",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "I use Entity Browser to select entities and I want per-reference title overrides on an entity_reference_override field. Which widget does the entity_reference_override_entity_browser submodule add, and what field type is it for?",
+      "must_contain_any": [
+        "entity_browser_entity_reference_override",
+        "Entity browser",
+        "entity_reference_override"
+      ],
+      "must_not_contain": [],
+      "expected_output": "It adds the field widget entity_browser_entity_reference_override ('Entity browser') for the entity_reference_override field type. Select it on Manage form display; each browsed item gets an override textfield."
+    },
+    {
+      "id": "entity_reference_override_entity_browser-extends",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "How does the entity_reference_override_entity_browser widget relate to Entity Browser, and how does it keep the custom override text while items are added/removed?",
+      "must_contain_any": [
+        "EntityReferenceBrowserWidget",
+        "Entity Browser",
+        "override",
+        "entity_reference_override_default_values"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The widget extends Entity Browser's EntityReferenceBrowserWidget and adds an override textfield to each row of the 'current' items table. It preserves override values across AJAX add/remove by serialising them into a hidden entity_reference_override_default_values element and copying them back in massageFormValues()."
+    },
+    {
+      "id": "entity_reference_override_entity_browser-widget-class",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "On this running Drupal site, inspect the field-widget plugin definitions and tell me the class behind the entity_browser_entity_reference_override widget and which field type it targets.",
+      "must_contain_any": [
+        "EntityReferenceOverrideEntityBrowser",
+        "Drupal\\entity_reference_override_entity_browser\\Plugin\\Field\\FieldWidget\\EntityReferenceOverrideEntityBrowser",
+        "entity_reference_override"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Class Drupal\\entity_reference_override_entity_browser\\Plugin\\Field\\FieldWidget\\EntityReferenceOverrideEntityBrowser, field_types = entity_reference_override. Discoverable with: drush php:eval \"var_export(\\Drupal::service('plugin.manager.field.widget')->getDefinition('entity_browser_entity_reference_override'));\".",
+      "setup": "agent-module-documentation/evaluation/verify/entity_reference_override_entity_browser-widget-def-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/entity_reference_override_entity_browser-widget-def-cleanup.sh"
+    },
+    {
+      "id": "entity_reference_override_entity_browser-write-widget-code",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "Write PHP that sets the node 'article' form display to use the entity_browser_entity_reference_override widget for the field field_my_ref. To avoid mutating this shared site's display config, write the code into the scratch file web/sites/default/entity_reference_override_entity_browser_widget.eval.php (create it). It must load the form display and setComponent() with the entity_browser_entity_reference_override widget.",
+      "reset": "agent-module-documentation/evaluation/verify/entity_reference_override_entity_browser-widget-snippet-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/entity_reference_override_entity_browser-widget-snippet-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/entity_reference_override_entity_browser-widget-snippet-cleanup.sh",
+      "expected_output": "PHP that gets the node/article form display and calls setComponent('field_my_ref', ['type' => 'entity_browser_entity_reference_override', ...])->save()."
+    }
+  ]
+}

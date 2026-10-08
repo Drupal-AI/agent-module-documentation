@@ -1,0 +1,2 @@
+<!-- SPDX-License-Identifier: GPL-2.0-or-later -->
+Commerce Stripe Klarna (v1.2.x): offsite Stripe gateway src/Plugin/Commerce/PaymentGateway/StripeKlarna.php using stripe/stripe-php PaymentIntents; ships a default gateway config. No local webhook route: onReturn() calls PaymentIntent::retrieve() from Stripe and completes only on STATUS_SUCCEEDED, matching the stored payment. SOUND -- status comes from the authoritative Stripe API, not request data. Depends on commerce_payment; requires stripe/stripe-php.

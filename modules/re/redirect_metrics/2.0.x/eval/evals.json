@@ -1,0 +1,80 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "redirect_metrics",
+  "version": "2.0.x",
+  "note": "Redirect metrics adds two base fields to the contrib `redirect` entity (access_count integer init 0, last_access timestamp) via hook_entity_base_field_info, increments them from a KernelEvents::RESPONSE subscriber keyed on the X_REDIRECT_ID response header, and ships one View `redirect_metrics` with page_1 'Popular redirects' (admin/config/search/redirect/popular, sort access_count DESC) and page_2 'Stale redirects' (admin/config/search/redirect/stale, filter last_access < -6 months). No settings form, no permissions, no drush, no plugins. Medium cases seed real redirect entities with known metric values and read them back; hard cases mutate real live state (the shipped View config, and a redirect entity whose access_count the module initialises) verified against the running site.",
+  "evals": [
+    {
+      "id": "redirect_metrics-base-fields",
+      "mode": "recipe",
+      "prompt": "The Drupal contrib module redirect_metrics tracks how redirects are used. Which two fields does it add to the redirect entity to store that data, and what does each hold?",
+      "must_contain_any": ["access_count", "last_access"],
+      "must_not_contain": [],
+      "expected_output": "It adds two base fields to the redirect entity via hook_entity_base_field_info(): access_count (integer, initial value 0 = number of times the redirect was used) and last_access (timestamp = last time it was hit).",
+      "difficulty": "easy"
+    },
+    {
+      "id": "redirect_metrics-counting-mechanism",
+      "mode": "recipe",
+      "prompt": "How does redirect_metrics know when a redirect has been used, so it can increment the count? Name the response header it keys on and where the logic runs.",
+      "must_contain_any": ["X_REDIRECT_ID", "KernelEvents::RESPONSE", "response event", "event subscriber", "RESPONSE"],
+      "must_not_contain": [],
+      "expected_output": "A response-event subscriber (redirect_metrics.request_subscriber) on KernelEvents::RESPONSE reads the X_REDIRECT_ID header that the redirect module sets on its redirect response, loads that redirect, increments access_count, sets last_access to the request time, and saves it.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "redirect_metrics-report-paths",
+      "mode": "recipe",
+      "prompt": "After enabling redirect_metrics, what report pages does it add for viewing redirect usage, and at which admin paths?",
+      "must_contain_any": ["admin/config/search/redirect/popular", "admin/config/search/redirect/stale", "Popular redirects", "Stale redirects"],
+      "must_not_contain": [],
+      "expected_output": "It ships a View with two page displays: 'Popular redirects' at admin/config/search/redirect/popular (sorted by access_count DESC) and 'Stale redirects' at admin/config/search/redirect/stale (redirects whose last_access is older than 6 months), both as tabs under admin/config/search/redirect.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "redirect_metrics-known-count",
+      "mode": "introspection",
+      "prompt": "On this Drupal site there is a redirect whose source path is 'rm-known-src'. Using redirect_metrics' tracking fields, inspect the live redirect entity and state how many times it has been accessed (its access_count value).",
+      "must_contain_any": ["42"],
+      "must_not_contain": [],
+      "expected_output": "The redirect from rm-known-src has access_count = 42 (stored on the redirect entity's redirect_metrics base field access_count).",
+      "setup": "agent-module-documentation/evaluation/verify/redirect_metrics-known-count-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/redirect_metrics-known-count-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "redirect_metrics-most-popular",
+      "mode": "introspection",
+      "prompt": "This site has two redirects created for testing, with source paths 'rm-pop-a' and 'rm-pop-b'. Using the redirect_metrics usage data on the redirect entities, which of the two has been used more (the more popular one)?",
+      "must_contain_any": ["rm-pop-b"],
+      "must_not_contain": [],
+      "expected_output": "rm-pop-b is the more popular redirect: its access_count (500) is higher than rm-pop-a's (3).",
+      "setup": "agent-module-documentation/evaluation/verify/redirect_metrics-most-popular-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/redirect_metrics-most-popular-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "redirect_metrics-stale-threshold",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this site the redirect_metrics 'Stale redirects' report (the page_2 display of the redirect_metrics View at admin/config/search/redirect/stale) currently considers a redirect stale after 6 months of no access. Change it so a redirect is considered stale after 3 months instead, by updating the View's last_access filter to a -3 months offset. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/redirect_metrics-stale-threshold-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/redirect_metrics-stale-threshold-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/redirect_metrics-stale-threshold-reset.sh",
+      "expected_output": "In views.view.redirect_metrics the page_2 display's last_access filter value is set to '-3 months' (operator '<', type offset), so the Stale redirects report now lists redirects unused for 3+ months."
+    },
+    {
+      "id": "redirect_metrics-init-count",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "Create a new redirect on this site whose source path is 'rm-task-src' that redirects to internal path /node (a 301). Because redirect_metrics is enabled, confirm the new redirect starts with its usage counter initialised. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/redirect_metrics-init-count-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/redirect_metrics-init-count-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/redirect_metrics-init-count-reset.sh",
+      "expected_output": "A redirect entity with source path rm-task-src exists; redirect_metrics_redirect_presave() plus the access_count base field's initial value mean its access_count is 0 (not empty)."
+    }
+  ]
+}

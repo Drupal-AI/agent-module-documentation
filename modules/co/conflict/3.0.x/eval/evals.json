@@ -1,0 +1,80 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "conflict",
+  "version": "3.0.x",
+  "note": "Conflict does field-level concurrent-edit detection and three-way merge for entities. It has NO admin UI, configure route, permissions, or Drush; behavior is driven by the conflict.settings config (a resolution_type map entity_type -> bundle -> 'inline'|'dialog', fallback .<type>.<bundle> -> .<type>.default -> .default.default, shipped default inline), FieldComparator plugins (@FieldComparator, manager conflict.field_comparator.manager, default conflict_field_comparator_default), and the entity_conflict.discovery / entity_conflict.resolve events. hook_conflict_paths_alter() is the only hook. Medium/hard cases are grounded in the real conflict.settings config (resolution_type values are plain strings, so setting them is safe); scripts restore the shipped default (inline).",
+  "evals": [
+    {
+      "id": "conflict-what",
+      "mode": "recipe",
+      "prompt": "What does the Drupal 'conflict' module do when two editors save changes to the same node at the same time?",
+      "must_contain_any": ["merge", "conflict", "field", "concurrent", "overwrite"],
+      "must_not_contain": [],
+      "expected_output": "It compares the base, remote (stored) and local (submitted) versions field by field, auto-merges non-conflicting changes, and presents only the genuinely clashing fields for resolution (inline or dialog) instead of silently overwriting one editor's work.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "conflict-resolution-types",
+      "mode": "recipe",
+      "prompt": "In the Drupal conflict module, what are the two conflict-resolution presentation styles, and where is that choice configured (there is no settings form)?",
+      "must_contain_any": ["inline", "dialog", "resolution_type", "conflict.settings"],
+      "must_not_contain": [],
+      "expected_output": "The two styles are 'inline' (embedded in the edit form) and 'dialog' (modal). There is no configure route; you set it in the conflict.settings config object under resolution_type.<entity_type>.<bundle> (falling back to resolution_type.default.default, which ships as inline).",
+      "difficulty": "easy"
+    },
+    {
+      "id": "conflict-field-comparator",
+      "mode": "recipe",
+      "prompt": "How does the Drupal conflict module decide whether a particular field has changed or conflicts, and how could I customize that for a specific field type?",
+      "must_contain_any": ["FieldComparator", "Plugin/Conflict/FieldComparator", "conflict_field_comparator_default", "plugin"],
+      "must_not_contain": [],
+      "expected_output": "Via FieldComparator plugins (@FieldComparator annotation, manager conflict.field_comparator.manager, in Plugin/Conflict/FieldComparator/). The default conflict_field_comparator_default matches everything; write a plugin targeting your field_type (with hasChanged()/getConflictType()) to customize comparison.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "conflict-known-strategy",
+      "mode": "introspection",
+      "prompt": "On this Drupal site, the conflict module has been configured with a specific resolution style for Article nodes. Inspect the live conflict configuration and tell me whether Article uses inline or dialog conflict resolution.",
+      "must_contain_any": ["dialog"],
+      "must_not_contain": [],
+      "expected_output": "Article uses 'dialog': conflict.settings resolution_type.node.article is set to dialog.",
+      "setup": "agent-module-documentation/evaluation/verify/conflict-known-strategy-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/conflict-known-strategy-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "conflict-default-strategy",
+      "mode": "introspection",
+      "prompt": "On this Drupal site, what is the conflict module's site-wide DEFAULT conflict-resolution style (the fallback used when an entity type/bundle has no specific setting)? Inspect the live configuration.",
+      "must_contain_any": ["dialog"],
+      "must_not_contain": [],
+      "expected_output": "The global default is 'dialog': conflict.settings resolution_type.default.default is set to dialog.",
+      "setup": "agent-module-documentation/evaluation/verify/conflict-default-strategy-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/conflict-default-strategy-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "conflict-set-dialog",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, configure the conflict module so that editing conflicts on Article nodes are resolved in a modal dialog (dialog resolution) rather than inline. Apply the change to the live configuration.",
+      "reset": "agent-module-documentation/evaluation/verify/conflict-set-dialog-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/conflict-set-dialog-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/conflict-set-dialog-cleanup.sh",
+      "expected_output": "Set conflict.settings resolution_type.node.article to 'dialog' (e.g. via the config API). Verify checks resolution_type.node.article === 'dialog'."
+    },
+    {
+      "id": "conflict-set-default",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, change the conflict module's site-wide DEFAULT conflict-resolution style (the fallback used for entity types/bundles without a specific setting) from inline to dialog. Apply the change to the live configuration.",
+      "reset": "agent-module-documentation/evaluation/verify/conflict-set-default-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/conflict-set-default-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/conflict-set-default-cleanup.sh",
+      "expected_output": "Set conflict.settings resolution_type.default.default to 'dialog'. Verify checks resolution_type.default.default === 'dialog'."
+    }
+  ]
+}

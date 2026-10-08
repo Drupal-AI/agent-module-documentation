@@ -1,0 +1,99 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "commerce_exchanger",
+  "version": "2.0.x",
+  "note": "Commerce Exchanger models each rate source as a commerce_exchange_rates config entity (keys id/label/plugin/configuration) bound to a commerce_exchanger_provider plugin (manual, ecb, fixer, currencylayer, open_exchange_rates, transferwise). Numeric rates live in DB tables commerce_exchanger_latest_rates/_historical_rates (constants on ExchangerManagerInterface), not config. Services: commerce_exchanger.calculate (DefaultExchangerCalculator::priceConversion), commerce_exchanger.manager (setLatest/getLatest). No configure route; UI at /admin/commerce/config/exchange-rates, permission 'administer commerce exchanger settings'. Evals are grounded in config only (no live rate API): introspection reads back a provider plugin from a created config entity; execution creates a manual source verified via the entity.",
+  "evals": [
+    {
+      "id": "commerce_exchanger-convert-service",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "In a Drupal Commerce site using the commerce_exchanger module, which service and method do I call to convert a commerce_price Price object from its currency into another currency (e.g. to USD)?",
+      "must_contain_any": [
+        "commerce_exchanger.calculate",
+        "priceConversion",
+        "DefaultExchangerCalculator",
+        "ExchangerCalculatorInterface"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Call the commerce_exchanger.calculate service (DefaultExchangerCalculator, ExchangerCalculatorInterface): $converted = \\Drupal::service('commerce_exchanger.calculate')->priceConversion($price, 'USD'); it looks up the stored rate, calls Price::convert() and rounds. Throws ExchangeRatesDataMismatchException if no rate exists."
+    },
+    {
+      "id": "commerce_exchanger-remote-plugin-methods",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "I want to add a custom remote currency exchange-rate provider to commerce_exchanger for a national bank API. What plugin type / base class do I use and which two methods do I mainly need to implement?",
+      "must_contain_any": [
+        "apiUrl",
+        "getRemoteData",
+        "ExchangerProviderRemoteBase",
+        "commerce_exchanger_provider"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Create a commerce_exchanger_provider plugin in Plugin/Commerce/ExchangerProvider, annotated with the CommerceExchangerProvider attribute, extending ExchangerProviderRemoteBase. Mainly implement apiUrl() and getRemoteData(), returning rates as ['USD'=>'1.6'] or ['base'=>'USD','rates'=>[...]]; the base class handles storage, cross-sync and cron."
+    },
+    {
+      "id": "commerce_exchanger-store-rates-manager",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "Where does commerce_exchanger store the actual numeric exchange rates (are they in config?), and which service/method writes the latest rates directly?",
+      "must_contain_any": [
+        "commerce_exchanger.manager",
+        "setLatest",
+        "commerce_exchanger_latest_rates",
+        "ExchangerManager"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Numeric rates are NOT in config; they live in the DB tables commerce_exchanger_latest_rates (and commerce_exchanger_historical_rates). Write them with the commerce_exchanger.manager service (ExchangerManager): $mgr->setLatest($exchanger_id, ['USD'=>['EUR'=>['value'=>'0.92','manual'=>0]]]). Read with getLatest()."
+    },
+    {
+      "id": "commerce_exchanger-which-provider",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "This Drupal Commerce site has an Exchange rates source configured with commerce_exchanger. Inspect the live configuration and state which provider plugin that Exchange rates entity uses and its configured base currency.",
+      "must_contain_any": [
+        "ecb"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The commerce_exchange_rates config entity ce_ecb_intro uses plugin 'ecb' (European Central Bank) with base_currency EUR. Discoverable via `drush cget commerce_exchanger.commerce_exchange_rates.ce_ecb_intro` (plugin: ecb, configuration.base_currency: EUR) or ExchangeRates::load('ce_ecb_intro')->get('plugin').",
+      "setup": "agent-module-documentation/evaluation/verify/commerce_exchanger-provider-intro-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/commerce_exchanger-provider-intro-cleanup.sh"
+    },
+    {
+      "id": "commerce_exchanger-which-base-currency",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "This Drupal Commerce site has an Exchange rates source configured with commerce_exchanger. Inspect the live configuration and state the base currency that its provider is configured to use.",
+      "must_contain_any": [
+        "EUR"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The configured Exchange rates entity (ce_ecb_intro, provider ecb) has configuration.base_currency = EUR. Discoverable via `drush cget commerce_exchanger.commerce_exchange_rates.ce_ecb_intro configuration.base_currency`.",
+      "setup": "agent-module-documentation/evaluation/verify/commerce_exchanger-provider-intro-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/commerce_exchanger-provider-intro-cleanup.sh"
+    },
+    {
+      "id": "commerce_exchanger-create-manual-source",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal Commerce site, use the commerce_exchanger module to create an 'Exchange rates' source (commerce_exchange_rates config entity) with machine id `ce_manual_task`, label 'Task Manual Rates', that uses the manual provider plugin. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/commerce_exchanger-manual-source-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/commerce_exchanger-manual-source-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/commerce_exchanger-manual-source-cleanup.sh",
+      "expected_output": "A commerce_exchange_rates config entity ce_manual_task exists with plugin 'manual' (e.g. ExchangeRates::create(['id'=>'ce_manual_task','label'=>'Task Manual Rates','plugin'=>'manual','configuration'=>['manual'=>TRUE,...]])->save(), or added at /admin/commerce/config/exchange-rates/add)."
+    },
+    {
+      "id": "commerce_exchanger-create-ecb-source",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "site-owner",
+      "prompt": "My Drupal shop needs daily euro-based currency rates from the European Central Bank. Using the Commerce Exchanger module, set up an exchange-rate source that pulls from the ECB. Give it the machine name ce_manual_task. Save it on the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/commerce_exchanger-manual-source-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/commerce_exchanger-ecb-source-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/commerce_exchanger-manual-source-cleanup.sh",
+      "expected_output": "A commerce_exchange_rates config entity ce_manual_task exists using the 'ecb' provider plugin (European Central Bank). The ecb provider is base EUR and refresh_once."
+    }
+  ]
+}

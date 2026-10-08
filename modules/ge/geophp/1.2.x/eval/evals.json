@@ -1,0 +1,98 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "geophp",
+  "version": "1.2.x",
+  "note": "geoPHP is a pure API/library wrapper: it exposes the geoPHP geometry library as the service geophp.geophp (Drupal\\geophp\\GeoPHPWrapper) with methods version(), load($data,$type), getAdapterMap(). No config, permissions, routes, plugins or Drush. The returned geometry objects have the geoPHP API (area(), centroid(), out($format), geometryType(), getBBox(), ...). Because the module has no persistent config of its own, medium cases store a known WKT in Drupal state for the agent to read back and analyse via the live service, and hard cases have the agent compute a geometry property with the service and store the result in a Drupal state key that the verify script reads. All values below were confirmed against the live service (version 1.1, area 100/400, GeoJSON coordinates [5,5]).",
+  "evals": [
+    {
+      "id": "geophp-service-id",
+      "mode": "recipe",
+      "prompt": "In the Drupal geophp module, what service should I use to work with geometries in custom code, and which method parses a WKT or GeoJSON string into a geometry object?",
+      "must_contain_any": [
+        "geophp.geophp",
+        "load(",
+        "->load"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Use the geophp.geophp service (Drupal\\geophp\\GeoPHPWrapper) and call its load($data, $type) method (which delegates to \\geoPHP::load()) to parse a WKT/GeoJSON/etc. string into a geometry object.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "geophp-formats",
+      "mode": "recipe",
+      "prompt": "Which geometry formats can the geoPHP library (wrapped by the Drupal geophp module) read and write, and how do I convert a geometry to GeoJSON?",
+      "must_contain_any": [
+        "WKT",
+        "GeoJSON",
+        "WKB",
+        "out("
+      ],
+      "must_not_contain": [],
+      "expected_output": "geoPHP supports WKT, EWKT, WKB, EWKB, GeoJSON, KML, GPX, GeoRSS, GeoHash and GoogleGeocode. Convert a geometry with $geometry->out('json') for GeoJSON (or 'wkt', 'wkb', 'kml', ...).",
+      "difficulty": "easy"
+    },
+    {
+      "id": "geophp-operations",
+      "mode": "recipe",
+      "prompt": "Using the geophp module's geometry objects, which methods give me a polygon's area and centroid, and what optional PHP extension speeds up advanced spatial operations?",
+      "must_contain_any": [
+        "area(",
+        "centroid(",
+        "GEOS"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Call $geometry->area() for area and $geometry->centroid() for the centroid point. Advanced spatial operations (intersects, buffer, union, ...) are faster/available with the optional GEOS PHP extension.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "geophp-known-geometry",
+      "mode": "introspection",
+      "prompt": "This Drupal site has a WKT geometry stored in the state key 'geophp_eval_input'. Read that value, load it with the geophp.geophp service, and report the area of the geometry.",
+      "must_contain_any": [
+        "400"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The stored geometry is POLYGON((0 0,0 20,20 20,20 0,0 0)); loading it with the geophp.geophp service and calling area() gives 400.",
+      "setup": "agent-module-documentation/evaluation/verify/geophp-known-geometry-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/geophp-known-geometry-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "geophp-known-type",
+      "mode": "introspection",
+      "prompt": "This Drupal site has a WKT geometry stored in the state key 'geophp_eval_input2'. Read that value, load it with the geophp.geophp service, and report its geometry type.",
+      "must_contain_any": [
+        "LineString",
+        "LINESTRING"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The stored geometry is LINESTRING(0 0,3 4); geometryType() returns 'LineString'.",
+      "setup": "agent-module-documentation/evaluation/verify/geophp-known-type-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/geophp-known-type-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "geophp-area-to-state",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, use the geophp.geophp service to load the WKT 'POLYGON((0 0,0 10,10 10,10 0,0 0))', compute its area, and store the resulting numeric area in the Drupal state key 'geophp_eval_area'. Apply it to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/geophp-area-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/geophp-area-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/geophp-area-cleanup.sh",
+      "expected_output": "State key geophp_eval_area is set to 100 (e.g. \\Drupal::state()->set('geophp_eval_area', \\Drupal::service('geophp.geophp')->load('POLYGON((0 0,0 10,10 10,10 0,0 0))','wkt')->area()))."
+    },
+    {
+      "id": "geophp-geojson-to-state",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, use the geophp.geophp service to convert the WKT 'POINT(5 5)' to GeoJSON and store the resulting GeoJSON string in the Drupal state key 'geophp_eval_geojson'. Apply it to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/geophp-geojson-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/geophp-geojson-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/geophp-geojson-cleanup.sh",
+      "expected_output": "State key geophp_eval_geojson holds the GeoJSON for POINT(5 5), i.e. {\"type\":\"Point\",\"coordinates\":[5,5]} (via $geom->out('json'))."
+    }
+  ]
+}

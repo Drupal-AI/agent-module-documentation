@@ -1,0 +1,102 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "field_display_label",
+  "version": "2.0.x",
+  "note": "Field Display Label lets a field show a different label on display than on its edit form. Its entire persistent state is one third-party setting on the FieldConfig: field.field.<entity>.<bundle>.<field> -> third_party_settings.field_display_label.display_label. It adds a 'Display label' textfield to field_config_edit_form and swaps $variables['label'] in hook_preprocess_field() when that setting is non-empty. No config page (configure=null), permission, service, plugin, or Drush. Medium cases read back a known display label (and identify which of two fields has one); hard cases set / change the display_label third-party setting, verified against the live FieldConfig. All fixtures are namespaced field_fdl_* on node.article.",
+  "evals": [
+    {
+      "id": "field_display_label-where-set",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "Using the field_display_label module, how do I make a field show one label on the edit form but a different label when the content is viewed, and where is that display label stored?",
+      "must_contain_any": [
+        "third_party_settings",
+        "third party setting",
+        "display_label",
+        "field_config_edit_form",
+        "Manage fields"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Edit the field (field_config_edit_form, via Manage fields) and fill in the 'Display label'. It is stored as a third-party setting on the FieldConfig: field.field.<entity>.<bundle>.<field> -> third_party_settings.field_display_label.display_label."
+    },
+    {
+      "id": "field_display_label-mechanism",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "How does the field_display_label module actually change the label shown for a field when the content is rendered, without editing a Twig template?",
+      "must_contain_any": [
+        "preprocess_field",
+        "hook_preprocess_field",
+        "variables['label']",
+        "$variables"
+      ],
+      "must_not_contain": [],
+      "expected_output": "It implements hook_preprocess_field() (FieldDisplayLabelHooks::preprocessField): if the field's field_display_label.display_label third-party setting is non-empty it overwrites $variables['label'] with it, so only the displayed label changes."
+    },
+    {
+      "id": "field_display_label-per-bundle",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "With field_display_label, if the same field is used on two content types, can it show a different display label on each? Why?",
+      "must_contain_any": [
+        "per-bundle",
+        "per bundle",
+        "FieldConfig",
+        "field instance",
+        "field.field."
+      ],
+      "must_not_contain": [],
+      "expected_output": "Yes. The display label is stored on the per-bundle FieldConfig (field.field.<entity>.<bundle>.<field>), so each bundle's instance of the field can carry its own field_display_label.display_label."
+    },
+    {
+      "id": "field_display_label-known",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "On this Drupal site, the Article content type has a field named field_fdl_known whose display label was customised with field_display_label. Inspect the live field configuration and report the display label that will be shown when the field is viewed.",
+      "must_contain_any": [
+        "FDL Known Display"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The display label is 'FDL Known Display': field.field.node.article.field_fdl_known has third_party_settings.field_display_label.display_label = 'FDL Known Display' (drush cget field.field.node.article.field_fdl_known third_party_settings.field_display_label).",
+      "setup": "agent-module-documentation/evaluation/verify/field_display_label-known-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/field_display_label-known-cleanup.sh"
+    },
+    {
+      "id": "field_display_label-which",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "The Article content type on this site has two fields, field_fdl_a and field_fdl_b. Exactly one of them has a custom display label set via field_display_label. Inspect the live configuration and state which field has one and what its display label is.",
+      "must_contain_any": [
+        "field_fdl_a",
+        "Special A Label"
+      ],
+      "must_not_contain": [],
+      "expected_output": "field_fdl_a has the custom display label 'Special A Label' (third_party_settings.field_display_label.display_label), while field_fdl_b has none.",
+      "setup": "agent-module-documentation/evaluation/verify/field_display_label-which-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/field_display_label-which-cleanup.sh"
+    },
+    {
+      "id": "field_display_label-set",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, the Article content type has a field field_fdl_task. Using the field_display_label module, make this field display the label 'Rendered Title' when its content is viewed (while leaving its form label unchanged). Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/field_display_label-set-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/field_display_label-set-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/field_display_label-set-cleanup.sh",
+      "expected_output": "Set the field_display_label display_label third-party setting on field.field.node.article.field_fdl_task to 'Rendered Title' (e.g. $fc->setThirdPartySetting('field_display_label','display_label','Rendered Title')->save(), or fill in 'Display label' on the field edit form)."
+    },
+    {
+      "id": "field_display_label-change",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "site-owner",
+      "prompt": "On this site, the Article field field_fdl_edit currently shows the display label 'Old Label' when viewed. Change it so the field is shown as 'Customer Name' instead. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/field_display_label-change-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/field_display_label-change-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/field_display_label-change-cleanup.sh",
+      "expected_output": "Update the field_display_label display_label third-party setting on field.field.node.article.field_fdl_edit from 'Old Label' to 'Customer Name' and save. Verified: display_label === 'Customer Name'."
+    }
+  ]
+}

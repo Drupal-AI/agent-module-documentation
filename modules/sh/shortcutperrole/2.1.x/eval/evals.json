@@ -1,0 +1,80 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "shortcutperrole",
+  "version": "2.1.x",
+  "note": "Shortcut per Role maps a core Shortcut set to each user role. Its only persistent state is the simple config object shortcutperrole.settings with keys role.<role_id>: <shortcut_set_id>. Behavior comes from hook_shortcut_default_set(), which returns the set for the account's highest-weight (last-loaded) matching role, or 'default' when unset. Config form is route shortcutperrole.admin_config at admin/config/user-interface/shortcut/roles (permission 'administer shortcut per role'). All medium/hard cases are grounded in shortcutperrole.settings: introspection reads back the configured set id for a role; execution assigns the core 'default' set to a role and verifies the stored config value. (Shortcut-set config entities cannot be created on this shared site because entity creation triggers a route rebuild that a pre-existing broken commerce_giftcard state makes fatal; the existing 'default' set is used instead.)",
+  "evals": [
+    {
+      "id": "shortcutperrole-config-location",
+      "mode": "recipe",
+      "prompt": "In the Drupal contrib module shortcutperrole, where is the role-to-shortcut-set assignment stored? Name the config object and the key structure.",
+      "must_contain_any": ["shortcutperrole.settings", "role."],
+      "must_not_contain": [],
+      "expected_output": "It is stored in the simple config object shortcutperrole.settings under role.<role_id>: <shortcut_set_id> (e.g. role.content_editor: editors_set). No entities or fields are involved.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "shortcutperrole-multi-role-rule",
+      "mode": "recipe",
+      "prompt": "With shortcutperrole enabled, a user has two roles that are each mapped to a different shortcut set. Which set does the user actually get, and which hook decides it?",
+      "must_contain_any": ["highest", "weight", "hook_shortcut_default_set", "last"],
+      "must_not_contain": [],
+      "expected_output": "hook_shortcut_default_set() intersects the account's roles with all roles in role order and returns the set mapped to the last / highest-weight matching role (falling back to 'default' if none is set).",
+      "difficulty": "easy"
+    },
+    {
+      "id": "shortcutperrole-config-route",
+      "mode": "recipe",
+      "prompt": "Where is the admin form for shortcutperrole, and what permission protects it?",
+      "must_contain_any": ["admin/config/user-interface/shortcut/roles", "shortcutperrole.admin_config", "administer shortcut per role"],
+      "must_not_contain": [],
+      "expected_output": "The form is at admin/config/user-interface/shortcut/roles (route shortcutperrole.admin_config), gated by the 'administer shortcut per role' permission.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "shortcutperrole-known-editor-mapping",
+      "mode": "introspection",
+      "prompt": "On this Drupal site, shortcutperrole has a shortcut set assigned to the 'content_editor' role. Inspect the live configuration and state the shortcut set id configured for that role.",
+      "must_contain_any": ["spr_editors"],
+      "must_not_contain": [],
+      "expected_output": "shortcutperrole.settings has role.content_editor = spr_editors.",
+      "setup": "agent-module-documentation/evaluation/verify/shortcutperrole-known-mapping-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/shortcutperrole-known-mapping-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "shortcutperrole-known-admin-mapping",
+      "mode": "introspection",
+      "prompt": "This site has shortcutperrole mappings configured for both the administrator and content_editor roles. Which shortcut set id is assigned to the administrator role?",
+      "must_contain_any": ["spr_admin_set"],
+      "must_not_contain": [],
+      "expected_output": "shortcutperrole.settings has role.administrator = spr_admin_set (and role.content_editor = spr_editor_set).",
+      "setup": "agent-module-documentation/evaluation/verify/shortcutperrole-admin-mapping-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/shortcutperrole-admin-mapping-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "shortcutperrole-assign-editor",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, use the shortcutperrole module to assign the core 'default' shortcut set as the default for the content_editor role. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/shortcutperrole-assign-editor-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/shortcutperrole-assign-editor-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/shortcutperrole-assign-editor-cleanup.sh",
+      "expected_output": "shortcutperrole.settings has role.content_editor explicitly set to 'default' (e.g. via the Shortcuts Per Role form or by setting the config key)."
+    },
+    {
+      "id": "shortcutperrole-assign-authenticated",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "site-owner",
+      "prompt": "I want every logged-in user on my site to start with the standard set of toolbar quick links (the 'default' shortcuts). Using the shortcut-per-role feature, make that the default for the logged-in (authenticated) user role.",
+      "reset": "agent-module-documentation/evaluation/verify/shortcutperrole-assign-auth-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/shortcutperrole-assign-auth-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/shortcutperrole-assign-auth-cleanup.sh",
+      "expected_output": "shortcutperrole.settings has role.authenticated explicitly set to 'default'."
+    }
+  ]
+}

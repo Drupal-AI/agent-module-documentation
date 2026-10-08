@@ -1,0 +1,80 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "prlp",
+  "version": "2.1.x",
+  "note": "PRLP adds a 'Set New Password' (password_confirm) field to the core user_pass_reset landing page and overrides the user.reset.login controller (PrlpController::prlpResetPassLogin) to save the new password and redirect. Config object prlp.settings has two keys: password_required (bool, default true) and login_destination (string path, default /user/%user/edit; tokens %user -> uid, %front -> site front page). Settings form at /admin/config/people/accounts/prlp (permission 'administer prlp settings'). It dispatches prlp.password_validate / prlp.password_before_save events and honours hook_prlp_login_destination_alter. Medium cases set a known password_required / login_destination value and read it back. Hard cases require making the password optional / changing the destination, verified against the live config; reset restores shipped defaults so verify fails on empty state. No Drush, no plugins.",
+  "evals": [
+    {
+      "id": "prlp-what-it-adds",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "What does the PRLP (Password Reset Landing Page) module add to Drupal's password reset flow?",
+      "must_contain_any": ["set new password", "new password", "password_confirm", "landing page", "reset link", "password field"],
+      "must_not_contain": [],
+      "expected_output": "It adds a 'Set New Password' (password_confirm) field to the core one-time-login / password reset landing page (user_pass_reset form) so users choose a new password on arrival, and overrides user.reset.login to save it and redirect."
+    },
+    {
+      "id": "prlp-two-settings",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "What are PRLP's two configuration settings and where is the settings form?",
+      "must_contain_any": ["password_required", "login_destination"],
+      "must_not_contain": [],
+      "expected_output": "password_required (whether entering a new password is required, default true) and login_destination (where the user is sent after login, default /user/%user/edit). Form at /admin/config/people/accounts/prlp (permission 'administer prlp settings')."
+    },
+    {
+      "id": "prlp-destination-tokens",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "In PRLP, where are users sent after logging in via a reset link by default, and how can that destination be customized?",
+      "must_contain_any": ["login_destination", "/user/%user/edit", "%user", "%front", "hook_prlp_login_destination_alter"],
+      "must_not_contain": [],
+      "expected_output": "By default to /user/%user/edit (%user = uid, %front = site front page). Customize via the login_destination setting, or programmatically with hook_prlp_login_destination_alter(&$login_destination)."
+    },
+    {
+      "id": "prlp-required-state",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "On this site, when a user follows a password reset link, are they required to enter a new password, or is it optional? Inspect PRLP's live configuration to answer.",
+      "must_contain_any": ["optional", "not required", "false", "password_required"],
+      "must_not_contain": [],
+      "setup": "agent-module-documentation/evaluation/verify/prlp-required-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/prlp-required-cleanup.sh",
+      "expected_output": "It is optional: prlp.settings password_required = false (drush cget prlp.settings password_required)."
+    },
+    {
+      "id": "prlp-destination-state",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "Inspect this site's PRLP configuration and tell me which path a user is redirected to after logging in through a password reset link.",
+      "must_contain_any": ["/prlp-landing"],
+      "must_not_contain": [],
+      "setup": "agent-module-documentation/evaluation/verify/prlp-destination-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/prlp-destination-cleanup.sh",
+      "expected_output": "To /prlp-landing: prlp.settings login_destination = /prlp-landing."
+    },
+    {
+      "id": "prlp-make-optional",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "Using the PRLP module, configure this site so that entering a new password on the password reset landing page is optional (users may just log in without setting a new password). Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/prlp-make-optional-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/prlp-make-optional-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/prlp-make-optional-cleanup.sh",
+      "expected_output": "prlp.settings password_required = false. e.g. \\Drupal::configFactory()->getEditable('prlp.settings')->set('password_required', FALSE)->save(); or untick 'Password Entry Required' at /admin/config/people/accounts/prlp."
+    },
+    {
+      "id": "prlp-set-destination",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "Configure PRLP so that after a user logs in via a password reset link they are taken to their account canonical page (path /user/%user, where %user is their user id) instead of the account edit page. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/prlp-set-destination-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/prlp-set-destination-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/prlp-set-destination-cleanup.sh",
+      "expected_output": "prlp.settings login_destination = '/user/%user'. Set via ->set('login_destination', '/user/%user')->save() or the 'Login Destination' field on the settings form."
+    }
+  ]
+}

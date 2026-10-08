@@ -1,0 +1,80 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "site_audit_send",
+  "version": "4.1.x",
+  "note": "site_audit_send (submodule of site_audit, depends on site_audit_report_entity) delivers saved audit reports to a remote endpoint on demand or on cron. Config object site_audit_send.settings: remote_url, remote_label, cron_save_interval, cron_send_interval, cron_delete_interval (seconds; 0 = never). It has NO settings route of its own - these fields are injected into the main Site Audit settings form (/admin/reports/site-audit/settings) via hook_form_site_audit_config_form_alter(). Service site_audit_send.rest_client (RestClient::postReport/testUrl). Send methods via hook_site_audit_send_send_methods() (report_api, email). Event site_audit_report_sent. Medium cases read a known config value; hard cases write remote_url / a cron interval, verified against live config.",
+  "evals": [
+    {
+      "id": "sas-what",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "What does the site_audit_send submodule do, and where do you configure the remote server it sends audit reports to?",
+      "must_contain_any": ["remote", "site_audit_send", "site_audit settings", "/admin/reports/site-audit/settings", "remote_url"],
+      "must_not_contain": [],
+      "expected_output": "It delivers saved Site Audit reports to a remote endpoint (e.g. a Site Audit Server) on demand or on cron. It has no settings page of its own; its Remote Server URL and cron intervals are added into the main Site Audit settings form at /admin/reports/site-audit/settings, and stored in config site_audit_send.settings."
+    },
+    {
+      "id": "sas-config-keys",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "Which configuration keys does site_audit_send use for scheduling recurring audits and for the remote endpoint, and what config object holds them?",
+      "must_contain_any": ["cron_send_interval", "cron_save_interval", "cron_delete_interval", "remote_url", "site_audit_send.settings"],
+      "must_not_contain": [],
+      "expected_output": "Config object site_audit_send.settings holds remote_url, remote_label, and three cron intervals (in seconds, 0 = never): cron_save_interval, cron_send_interval, cron_delete_interval."
+    },
+    {
+      "id": "sas-rest-client",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "Which service and method does site_audit_send use to POST a saved report to the remote server from code?",
+      "must_contain_any": ["site_audit_send.rest_client", "RestClient", "postReport"],
+      "must_not_contain": [],
+      "expected_output": "The site_audit_send.rest_client service (Drupal\\site_audit_send\\RestClient); call postReport($report_entity) to POST the report's fields as JSON to the configured remote_url (testUrl($url) validates an endpoint)."
+    },
+    {
+      "id": "sas-known-url",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "This Drupal site has site_audit_send configured to send reports to a remote server. Inspect the live configuration and report the remote server URL.",
+      "must_contain_any": ["sas-known.example.com"],
+      "must_not_contain": [],
+      "expected_output": "site_audit_send.settings remote_url = https://sas-known.example.com/api/site-audit.",
+      "setup": "agent-module-documentation/evaluation/verify/site_audit_send-known-url-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/site_audit_send-known-url-cleanup.sh"
+    },
+    {
+      "id": "sas-known-interval",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "On this site, site_audit_send is configured to send audit reports on a recurring cron schedule. Inspect the live configuration and report the send interval (in seconds).",
+      "must_contain_any": ["3600"],
+      "must_not_contain": [],
+      "expected_output": "site_audit_send.settings cron_send_interval = 3600 (every hour).",
+      "setup": "agent-module-documentation/evaluation/verify/site_audit_send-known-interval-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/site_audit_send-known-interval-cleanup.sh"
+    },
+    {
+      "id": "sas-set-url",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, configure site_audit_send to send audit reports to the remote endpoint https://sas-task.example.com/api/site-audit . Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/site_audit_send-set-url-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/site_audit_send-set-url-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/site_audit_send-set-url-cleanup.sh",
+      "expected_output": "Set site_audit_send.settings remote_url to https://sas-task.example.com/api/site-audit (via the Remote Settings on the Site Audit settings form, or config). Verify checks the config value exactly."
+    },
+    {
+      "id": "sas-set-cron-save",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-layman",
+      "prompt": "I want my site to automatically save a site audit report once every hour using the site_audit_send module. Set that up on the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/site_audit_send-set-cron-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/site_audit_send-set-cron-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/site_audit_send-set-cron-cleanup.sh",
+      "expected_output": "Set site_audit_send.settings cron_save_interval to 3600 (the 'Save report every' = 1 hour option on the Site Audit settings form, or config). Verify checks cron_save_interval === 3600."
+    }
+  ]
+}

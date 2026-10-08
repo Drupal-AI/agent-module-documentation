@@ -1,0 +1,99 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "insert",
+  "version": "3.0.x",
+  "note": "Insert is a field-widget enhancement (hooks on core file/image widgets), not a field type or plugin. Two config layers: (1) global config object insert.config (route insert.config -> /admin/config/content/insert, permission 'administer filters') with keys absolute, file_field_images_enabled, widgets.file (default [file_generic]) / widgets.image (default [image_image]), css_classes, file_extensions.audio/video; (2) per-widget third_party_settings.insert on an entity_form_display component with keys styles (map of enabled insert style names; empty => Insert button hidden), default (default insert__auto), auto_image_style, link_image, width, rotate. Available style names come from hook_insert_styles: insert__auto, link, audio, video, image (Original image), one per image style, plus submodule styles (colorbox__*, responsive_image__*, media view modes). Medium/hard cases are grounded in that real third_party_settings.insert on Article file/image field widgets. NOTE: on this site lightning_media_image swaps a NEW image-field widget to entity_browser_file on the first form-display save, so image cases use a two-save reset to keep image_image.",
+  "evals": [
+    {
+      "id": "insert-what-and-where",
+      "mode": "recipe",
+      "prompt": "In Drupal, the Insert contrib module lets editors drop an uploaded file or image into a body/text area. It has no field type of its own. How do you actually turn Insert on for a specific image or file field, and where is that per-field choice stored in config?",
+      "must_contain_any": [
+        "form display",
+        "form-display",
+        "Manage form display",
+        "third_party_settings",
+        "third party setting",
+        "entity_form_display"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Insert is enabled per field, per form mode, on the entity's Manage form display: open the file/image field's widget settings and pick the Insert styles. The choice is stored as third_party_settings.insert on that form-display component: core.entity_form_display.<entity>.<bundle>.<mode> -> content.<field>.third_party_settings.insert (keys: styles, default, auto_image_style, link_image, width, rotate).",
+      "difficulty": "easy"
+    },
+    {
+      "id": "insert-source-widgets",
+      "mode": "recipe",
+      "prompt": "By default, which core field-widget plugin ids does the Drupal Insert module attach its Insert button to, and where is that list configured so I could add another widget?",
+      "must_contain_any": [
+        "image_image",
+        "file_generic",
+        "insert.config"
+      ],
+      "must_not_contain": [],
+      "expected_output": "By default Insert attaches to file_generic (file fields) and image_image (image fields). The lists live in the global config object insert.config under widgets.file and widgets.image (editable at /admin/config/content/insert, permission 'administer filters'); add a widget plugin id there to enable Insert on it.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "insert-styles-setting",
+      "mode": "recipe",
+      "prompt": "On a Drupal image field configured with the Insert module, what makes the Insert button appear or not, and what is the default insert style value?",
+      "must_contain_any": [
+        "styles",
+        "insert__auto",
+        "third_party_settings"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The Insert button appears only when the widget's third_party_settings.insert.styles map is non-empty (at least one insert style selected); an empty styles map disables Insert. The default style key is insert__auto (the AUTOMATIC option). Style names come from hook_insert_styles (insert__auto, link, audio, video, image/Original image, one per image style, plus submodule styles).",
+      "difficulty": "easy"
+    },
+    {
+      "id": "insert-known-field",
+      "mode": "introspection",
+      "prompt": "On this Drupal site, the Article content type has a file field whose widget has the Insert module enabled. Inspect the live default form display for Article and give the machine name of that field and which insert style is its default.",
+      "must_contain_any": [
+        "field_insert_known"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The field is field_insert_known: in core.entity_form_display.node.article.default its file_generic component has third_party_settings.insert with styles {link, insert__auto} and default = link.",
+      "setup": "agent-module-documentation/evaluation/verify/insert-known-field-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/insert-known-field-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "insert-enabled-vs-not",
+      "mode": "introspection",
+      "prompt": "The Article content type on this site has two file fields, field_insert_on and field_insert_off. Exactly one of them has the Insert module actually enabled on its edit widget. Inspect the live form-display configuration and state which field has Insert enabled.",
+      "must_contain_any": [
+        "field_insert_on"
+      ],
+      "must_not_contain": [],
+      "expected_output": "field_insert_on has Insert enabled: its component's third_party_settings.insert.styles is non-empty ({link}), whereas field_insert_off has third_party_settings.insert.styles empty, which disables the Insert button.",
+      "setup": "agent-module-documentation/evaluation/verify/insert-enabled-vs-not-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/insert-enabled-vs-not-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "insert-enable-file",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, the Article content type has a file field field_insert_task using the generic file (file_generic) widget. Using the Insert module, configure the default form display so this field offers the 'Link to file' insert style (so editors get an Insert button that drops a link to the file into a text area). Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/insert-enable-file-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/insert-enable-file-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/insert-enable-file-cleanup.sh",
+      "expected_output": "In core.entity_form_display.node.article.default the field_insert_task file_generic component gets third_party_settings.insert.styles containing the 'link' style (e.g. set the component's third_party_settings.insert.styles = ['link' => 'link'] and save, or tick 'Link to file' under Insert on the widget in Manage form display)."
+    },
+    {
+      "id": "insert-enable-image",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, the Article content type has an image field field_insert_pic using the standard Image (image_image) widget. Using the Insert module, configure the default form display so this field offers the 'Original image' (image) insert style. Keep the image_image widget and apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/insert-enable-image-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/insert-enable-image-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/insert-enable-image-cleanup.sh",
+      "expected_output": "In core.entity_form_display.node.article.default the field_insert_pic image_image component gets third_party_settings.insert.styles containing 'image' (Original image). The component already exists (reset created it via a two-save so image_image sticks), so a single setComponent with the styles set and save is enough; or tick 'Original image' under Insert on the widget in Manage form display."
+    }
+  ]
+}

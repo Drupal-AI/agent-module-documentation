@@ -1,0 +1,98 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "migrate_source_ui",
+  "version": "1.4.x",
+  "note": "Migrate Source UI adds an admin form (/admin/content/migrate_source_ui, perm 'access migrate source ui') to upload a CSV/XML/JSON file and run an existing file-based migration against it, plus a settings form (/admin/config/content/migrate_source_ui, perm 'administer migrate source ui') with a single config key file_temp_directory in migrate_source_ui.settings. It defines NO migrations of its own and adds no Drush; it lists migrations whose source is CSV (migrate_source_csv), Url/JSON+XML (migrate_plus) or Spreadsheet (migrate_spreadsheet), allowed extensions csv/json/xml. Actually running a migration mutates content and needs an authored migration + uploaded file, so the eval cases are grounded in the module's inspectable/config surface instead: medium reads the configured file_temp_directory / which role can access the UI; hard sets file_temp_directory and grants a role the access permission - all verified via drush cget / Role::hasPermission, no migration executed. Baseline: migrate_source_ui.settings.file_temp_directory unset; cleanup clears it and deletes any role created.",
+  "evals": [
+    {
+      "id": "migrate_source_ui-what",
+      "mode": "recipe",
+      "prompt": "What does the Migrate Source UI module let a site builder do, and at what admin path do you upload a file and run a migration with it?",
+      "must_contain_any": [
+        "/admin/content/migrate_source_ui",
+        "upload",
+        "migration",
+        "source file"
+      ],
+      "must_not_contain": [],
+      "expected_output": "It provides an admin form at /admin/content/migrate_source_ui to upload a CSV/XML/JSON source file, pick an existing file-based migration, and run it - no drush or code needed. It defines no migrations itself; it only supplies the source file at run time.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "migrate_source_ui-filetypes",
+      "mode": "recipe",
+      "prompt": "Which source file types / migration source plugins does Migrate Source UI support, and what file extensions does it accept?",
+      "must_contain_any": [
+        "CSV",
+        "JSON",
+        "XML",
+        "csv"
+      ],
+      "must_not_contain": [],
+      "expected_output": "It supports migrations whose source reads an uploaded file: CSV (migrate_source_csv), Url for JSON/XML (migrate_plus), and Spreadsheet (migrate_spreadsheet). The accepted extensions are csv, json, and xml.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "migrate_source_ui-permissions",
+      "mode": "recipe",
+      "prompt": "Which permissions does Migrate Source UI define, and which one is needed to actually upload a file and run a migration from its UI?",
+      "must_contain_any": [
+        "access migrate source ui",
+        "administer migrate source ui"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Two permissions: 'access migrate source ui' (run the upload/run form at /admin/content/migrate_source_ui) and 'administer migrate source ui' (edit the settings). Running a migration needs 'access migrate source ui'.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "migrate_source_ui-tempdir",
+      "mode": "introspection",
+      "prompt": "On this Drupal site, where does Migrate Source UI save uploaded source files? Inspect the live configuration to answer.",
+      "must_contain_any": [
+        "private://migrate_source_ui_eval",
+        "migrate_source_ui_eval"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Uploaded files are saved to private://migrate_source_ui_eval - migrate_source_ui.settings:file_temp_directory is set to that stream URI.",
+      "setup": "agent-module-documentation/evaluation/verify/migrate_source_ui-tempdir-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/migrate_source_ui-tempdir-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "migrate_source_ui-role",
+      "mode": "introspection",
+      "prompt": "On this site, which user role has been granted permission to use the Migrate Source UI upload/run form? Inspect the live roles/permissions to answer.",
+      "must_contain_any": [
+        "migsui_operator"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The migsui_operator role has the 'access migrate source ui' permission (check user roles / Role::hasPermission).",
+      "setup": "agent-module-documentation/evaluation/verify/migrate_source_ui-role-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/migrate_source_ui-role-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "migrate_source_ui-set-tempdir",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "Configure Migrate Source UI so that files uploaded through its form are stored in the directory 'private://migrate_source_ui_uploads' instead of the default temporary scheme. Apply the change to the live configuration.",
+      "reset": "agent-module-documentation/evaluation/verify/migrate_source_ui-set-tempdir-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/migrate_source_ui-set-tempdir-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/migrate_source_ui-set-tempdir-cleanup.sh",
+      "expected_output": "Set migrate_source_ui.settings file_temp_directory = 'private://migrate_source_ui_uploads' (via the settings form /admin/config/content/migrate_source_ui or drush config): ->set('file_temp_directory','private://migrate_source_ui_uploads')->save();"
+    },
+    {
+      "id": "migrate_source_ui-grant-role",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this site there is a role 'migsui_task' that should be allowed to upload files and run migrations through the Migrate Source UI. Grant that role the appropriate Migrate Source UI permission. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/migrate_source_ui-grant-role-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/migrate_source_ui-grant-role-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/migrate_source_ui-grant-role-cleanup.sh",
+      "expected_output": "Grant the migsui_task role the 'access migrate source ui' permission (which gates the upload/run form): drush role:perm:add migsui_task 'access migrate source ui' (or via the permissions UI / user.role config)."
+    }
+  ]
+}

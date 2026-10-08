@@ -1,0 +1,128 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "ai_dashboard",
+  "version": "1.0.x",
+  "note": "ai_dashboard has no route/permission/config-form of its own: a RouteSubscriber overrides AI Core's ai.settings.menu route (/admin/config/ai, permission 'administer ai') to render the 'ai_dashboard' Dashboard config entity (config dashboard.dashboard.ai_dashboard). Real, drush-manageable state used by the cases: (a) that dashboard config entity and its component block settings (Extensions block 'module_list_packages' -> packages; Documentation block 'ai_documentation' -> soft_limit/hard_limit); (b) the 'ai_dashboard_recommended' Project Browser source installed by hook_install into project_browser.admin_settings.enabled_sources (uri + ttl). Introspection cases read those back; execution cases rebuild them and verify live. Components are keyed by uuid, so scripts target them by block id, not array index. No fabrication: every fact is from src/, config/install, and the .info/.services yml.",
+  "evals": [
+    {
+      "id": "ai_dashboard-what-it-shows",
+      "mode": "recipe",
+      "prompt": "On a Drupal 11 site, what does the ai_dashboard module do, and what does its dashboard page show? Name at least three of the blocks/sections it presents.",
+      "must_contain_any": [
+        "Setup",
+        "provider",
+        "Extensions",
+        "Documentation",
+        "Status",
+        "Features",
+        "recommended"
+      ],
+      "must_not_contain": [],
+      "expected_output": "It turns the AI configuration page into a single dashboard for the drupal/ai ecosystem. The 'ai_dashboard' Dashboard config entity lays out six blocks: Setup (add an AI provider + API key), Features (recommended AI recipes via Project Browser), Status (provider/operation capability status), Extensions (AI module packages list), Configuration (AI admin menu links), and Documentation (AI doc links).",
+      "difficulty": "easy"
+    },
+    {
+      "id": "ai_dashboard-route-permission",
+      "mode": "recipe",
+      "prompt": "The ai_dashboard module ships no *.routing.yml. At what URL do you reach the AI Dashboard, which permission gates it, and how is that page wired up?",
+      "must_contain_any": [
+        "/admin/config/ai",
+        "admin/config/ai",
+        "administer ai",
+        "ai.settings.menu",
+        "RouteSubscriber"
+      ],
+      "must_not_contain": [],
+      "expected_output": "It has no route of its own. A RouteSubscriber overrides AI Core's ai.settings.menu route (path /admin/config/ai, permission 'administer ai') and swaps its controller to AiDashboard::index, which renders the ai_dashboard Dashboard config entity. So the dashboard appears at /admin/config/ai, gated by 'administer ai'.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "ai_dashboard-doc-plugin-type",
+      "mode": "recipe",
+      "prompt": "How can a module add a link to the AI Dashboard's Documentation block without writing PHP? What file and which required keys?",
+      "must_contain_any": [
+        "ai_documentation.yml",
+        "ai_documentation",
+        "label",
+        "url"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Ship a {module}.ai_documentation.yml file in the module root. It defines ai_documentation YAML plugins discovered by AiDocumentationManager (plugin.manager.ai_documentation); each entry requires a 'label' and a 'url' (a 'description' is optional). Missing label/url throws a PluginException.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "ai_dashboard-extensions-packages",
+      "mode": "introspection",
+      "prompt": "On this Drupal site, the AI Dashboard's 'Extensions' block (block plugin module_list_packages, on the ai_dashboard dashboard) filters the module list to a specific set of packages. Inspect the live dashboard configuration and tell me exactly which package names are currently configured for that block.",
+      "must_contain_any": [
+        "AI Utilities",
+        "AI Providers"
+      ],
+      "must_not_contain": [],
+      "expected_output": "In dashboard.dashboard.ai_dashboard the module_list_packages component's 'packages' setting has been set to: AI, AI Providers, AI Utilities (newline-separated). The distinctive one is 'AI Utilities'.",
+      "setup": "agent-module-documentation/evaluation/verify/ai_dashboard-extensions-packages-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/ai_dashboard-extensions-packages-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "ai_dashboard-recommended-source-ttl",
+      "mode": "introspection",
+      "prompt": "The ai_dashboard module registers a Project Browser source named 'ai_dashboard_recommended' (used by the dashboard's Features block). Inspect the live site and tell me the cache TTL currently configured for that source, and the URI it fetches its recommended recipes from.",
+      "must_contain_any": [
+        "4242",
+        "git.drupalcode.org",
+        "ai_dashboard_recommended_recipes.yml"
+      ],
+      "must_not_contain": [],
+      "expected_output": "In project_browser.admin_settings the enabled_sources.ai_dashboard_recommended entry has ttl = 4242 and uri = https://git.drupalcode.org/api/v4/projects/196945/repository/files/ai_dashboard_recommended_recipes.yml/raw?ref=HEAD.",
+      "setup": "agent-module-documentation/evaluation/verify/ai_dashboard-recommended-source-ttl-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/ai_dashboard-recommended-source-ttl-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "ai_dashboard-doc-limit",
+      "mode": "introspection",
+      "prompt": "On this site, the AI Dashboard's Documentation block (block plugin ai_documentation) has been customised to change how many links show before the 'show more' toggle. Inspect the live dashboard config and tell me the current soft_limit value for that block.",
+      "must_contain_any": [
+        "7",
+        "seven"
+      ],
+      "must_not_contain": [],
+      "expected_output": "In dashboard.dashboard.ai_dashboard the ai_documentation component's soft_limit has been set to 7 (default is 4).",
+      "setup": "agent-module-documentation/evaluation/verify/ai_dashboard-doc-limit-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/ai_dashboard-doc-limit-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "ai_dashboard-add-package",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site the AI Dashboard is installed. Configure the dashboard's 'Extensions' block (the module_list_packages block on the ai_dashboard Dashboard config entity, config dashboard.dashboard.ai_dashboard) so that its package filter ALSO includes the package 'AI Tools' in addition to whatever it already lists. Apply the change to the live config.",
+      "reset": "agent-module-documentation/evaluation/verify/ai_dashboard-add-package-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/ai_dashboard-add-package-verify.sh",
+      "expected_output": "The module_list_packages component in dashboard.dashboard.ai_dashboard has 'AI Tools' present in its 'packages' setting (the reset removes it, leaving only AI / AI (Experimental) / AI Providers; the agent must add it back)."
+    },
+    {
+      "id": "ai_dashboard-register-source",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site the AI Dashboard's recommended-recipes Project Browser source has been removed from configuration. Re-register the 'ai_dashboard_recommended' source in project_browser.admin_settings (enabled_sources) exactly as ai_dashboard's hook_install does: uri https://git.drupalcode.org/api/v4/projects/196945/repository/files/ai_dashboard_recommended_recipes.yml/raw?ref=HEAD and ttl 1. Apply it to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/ai_dashboard-register-source-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/ai_dashboard-register-source-verify.sh",
+      "expected_output": "project_browser.admin_settings.enabled_sources.ai_dashboard_recommended exists with uri = the git.drupalcode.org raw ai_dashboard_recommended_recipes.yml URL and ttl = 1 (an integer >= 1)."
+    },
+    {
+      "id": "ai_dashboard-set-doc-limit",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, configure the AI Dashboard's Documentation block (the ai_documentation block on the ai_dashboard Dashboard config entity, config dashboard.dashboard.ai_dashboard) so that it shows 6 links before the 'show more' toggle — i.e. set that block's soft_limit to 6. Apply the change to the live config.",
+      "reset": "agent-module-documentation/evaluation/verify/ai_dashboard-set-doc-limit-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/ai_dashboard-set-doc-limit-verify.sh",
+      "expected_output": "The ai_documentation component in dashboard.dashboard.ai_dashboard has soft_limit = 6 (the reset restores it to the default 4; the agent must change it to 6)."
+    }
+  ]
+}

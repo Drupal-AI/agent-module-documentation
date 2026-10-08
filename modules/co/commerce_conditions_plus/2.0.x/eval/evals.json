@@ -1,0 +1,80 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "commerce_conditions_plus",
+  "version": "2.0.x",
+  "note": "Commerce Conditions Plus adds nested AND/OR logic to Drupal Commerce conditions. It defines two commerce_condition plugins that act as grouping nodes: commerce_conditions_plus_and_operator and commerce_conditions_plus_or_operator (category 'Conditions Plus', entity_type commerce_order). hook_config_schema_info_alter extends commerce_condition_configuration with parent/depth/weight/negate_condition. Service commerce_conditions_plus.conditions_evaluator (ConditionsEvaluator::execute) runs the nested structure. hook_entity_type_alter swaps entity classes: commerce_shipping_method -> Drupal\\commerce_conditions_plus\\Entity\\ShippingMethod, commerce_payment_gateway -> Drupal\\commerce_conditions_plus\\Entity\\PaymentGateway. The base operator (condition_operator on a shipping method) is relabelled 'Conditions table base logic' (AND/OR). No config UI, no permissions, no Drush. Medium/hard cases use the live entity-class swap and a throwaway ccp_eval_store + ccp_eval_ship shipping method (flat_rate) to introspect/build condition_operator and CCP operator conditions.",
+  "evals": [
+    {
+      "id": "ccp-operators",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "What condition plugins does the commerce_conditions_plus module add to Drupal Commerce, and what are they for?",
+      "must_contain_any": ["commerce_conditions_plus_and_operator", "commerce_conditions_plus_or_operator", "And Operator", "Or Operator"],
+      "must_not_contain": [],
+      "expected_output": "Two commerce_condition plugins in the 'Conditions Plus' category: commerce_conditions_plus_and_operator (And Operator) and commerce_conditions_plus_or_operator (Or Operator). They are grouping nodes: conditions nested under one are evaluated with that operator's AND/OR logic, enabling nested boolean condition trees."
+    },
+    {
+      "id": "ccp-nesting-storage",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "How does commerce_conditions_plus store the nesting of conditions, i.e. which extra keys does it add to each Commerce condition's configuration?",
+      "must_contain_any": ["parent", "depth", "weight", "negate_condition"],
+      "must_not_contain": [],
+      "expected_output": "hook_config_schema_info_alter extends commerce_condition_configuration with parent (the operator plugin id it nests under), depth, weight, and negate_condition (a negate flag named to avoid clashing with a plugin's own negate)."
+    },
+    {
+      "id": "ccp-evaluator-swap",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "Which service evaluates the nested conditions in commerce_conditions_plus, and which Commerce entity types does the module swap the class of so their conditions use that evaluator?",
+      "must_contain_any": ["conditions_evaluator", "ConditionsEvaluator", "commerce_shipping_method", "commerce_payment_gateway"],
+      "must_not_contain": [],
+      "expected_output": "The commerce_conditions_plus.conditions_evaluator service (ConditionsEvaluator::execute) evaluates the nested structure. hook_entity_type_alter swaps commerce_shipping_method and commerce_payment_gateway to CCP's ShippingMethod / PaymentGateway classes so their applies() runs the evaluator."
+    },
+    {
+      "id": "ccp-payment-gateway-class",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "commerce_conditions_plus overrides the entity class of certain Commerce entity types so their conditions gain nested logic. Inspect the live commerce_payment_gateway entity-type definition on this site and report the fully-qualified PHP class it now uses.",
+      "must_contain_any": ["commerce_conditions_plus"],
+      "must_not_contain": [],
+      "expected_output": "commerce_payment_gateway uses Drupal\\commerce_conditions_plus\\Entity\\PaymentGateway (from `drush php:eval 'echo \\Drupal::entityTypeManager()->getDefinition(\"commerce_payment_gateway\")->getClass();'`).",
+      "setup": "agent-module-documentation/evaluation/verify/ccp-payment-gateway-class-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/ccp-payment-gateway-class-cleanup.sh"
+    },
+    {
+      "id": "ccp-shipping-operator-known",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "On this Drupal Commerce site there is a shipping method named 'ccp_eval_ship'. Inspect it and report its base condition logic operator (the 'Conditions table base logic' set via commerce_conditions_plus).",
+      "must_contain_any": ["OR"],
+      "must_not_contain": [],
+      "expected_output": "The ccp_eval_ship shipping method has condition_operator = OR (its getConditionOperator() returns 'OR').",
+      "setup": "agent-module-documentation/evaluation/verify/ccp-shipping-operator-known-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/ccp-shipping-operator-known-cleanup.sh"
+    },
+    {
+      "id": "ccp-set-operator",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal Commerce site there is a shipping method named 'ccp_eval_ship' whose base condition logic is currently AND. Using commerce_conditions_plus, change its 'Conditions table base logic' (base condition operator) to OR, and apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/ccp-set-operator-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/ccp-set-operator-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/ccp-set-operator-cleanup.sh",
+      "expected_output": "The ccp_eval_ship shipping method's condition_operator is now OR (e.g. $method->setConditionOperator('OR')->save(), or set the 'conditions table base logic' to OR on the shipping method form)."
+    },
+    {
+      "id": "ccp-add-operator-condition",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal Commerce site there is a shipping method named 'ccp_eval_ship' with no conditions. Using commerce_conditions_plus, add an Or Operator grouping condition (the commerce_conditions_plus_or_operator condition) to its conditions, and apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/ccp-add-operator-condition-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/ccp-add-operator-condition-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/ccp-add-operator-condition-cleanup.sh",
+      "expected_output": "The ccp_eval_ship shipping method's conditions field now includes a condition with target_plugin_id commerce_conditions_plus_or_operator (or _and_operator). Set it on the entity's 'conditions' field and save."
+    }
+  ]
+}

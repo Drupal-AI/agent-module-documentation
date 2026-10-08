@@ -1,0 +1,95 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "prevent_homepage_deletion",
+  "version": "3.0.x",
+  "note": "Prevent Homepage Deletion is two access hooks plus a one-field settings form. Real ids used below: permission delete_homepage_node (underscored, not spaced); config object prevent_homepage_deletion.settings with the single STRING key protected_urls (one path per line, each starting with '/', no wildcards, no config/install so it starts unset); route/configure key prevent_homepage_deletion.settings at /admin/config/system/prevent-homepage-deletion requiring 'administer site configuration'. Protection always covers system.site page.front/page.404/page.403 plus the listed paths, resolved via Url::fromUri('internal:'.$uri) and the first route parameter. Both hard cases are verified with LIVE node access checks against a purpose-built user who holds 'delete any article content' but not delete_homepage_node, and the second one additionally asserts the page is still listed as protected so the agent cannot 'fix' it by un-protecting the page.",
+  "evals": [
+    {
+      "id": "prevent_homepage_deletion-permission",
+      "difficulty": "easy",
+      "mode": "recipe",
+      "prompt": "On a Drupal 11 site the contrib module prevent_homepage_deletion is enabled and nobody can delete the front page node any more. Which permission does the module define that allows deleting it again, and what is the exact machine name?",
+      "must_contain_any": [
+        "delete_homepage_node"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The permission is delete_homepage_node (title 'Delete homepage node'). Grant it to a trusted role, e.g. `drush role:perm:add site_owner delete_homepage_node`. Note core's 'bypass node access' permission overrules the module entirely."
+    },
+    {
+      "id": "prevent_homepage_deletion-which-pages",
+      "difficulty": "easy",
+      "mode": "recipe",
+      "prompt": "Besides the front page, which pages does prevent_homepage_deletion protect out of the box, and how do I add extra pages to the protected list? Name the settings path and the config key.",
+      "must_contain_any": [
+        "protected_urls",
+        "404",
+        "403"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Out of the box it protects the nodes referenced by system.site page.front, page.404 and page.403. Extra pages go in the textarea at /admin/config/system/prevent-homepage-deletion (route prevent_homepage_deletion.settings), stored as the string prevent_homepage_deletion.settings:protected_urls - one path per line, each starting with '/', wildcards not supported."
+    },
+    {
+      "id": "prevent_homepage_deletion-unpublish",
+      "difficulty": "easy",
+      "mode": "recipe",
+      "prompt": "Does prevent_homepage_deletion only block deleting a protected node, or does it stop other operations too? Explain which hooks it implements and what an editor without the permission sees on the node edit form.",
+      "must_contain_any": [
+        "unpublish",
+        "status",
+        "hook_entity_field_access"
+      ],
+      "must_not_contain": [],
+      "expected_output": "It implements hook_node_access() (forbidding the 'delete' operation) AND hook_entity_field_access(), which forbids 'edit' access on the `status` field of a published protected node - so the Published checkbox disappears and the node cannot be unpublished either. A messenger message explains the refusal on /delete URLs and on the node_delete_action bulk action."
+    },
+    {
+      "id": "prevent_homepage_deletion-known-protected",
+      "difficulty": "medium",
+      "mode": "introspection",
+      "prompt": "This Drupal site has two Articles, 'PHD Probe Alpha' and 'PHD Probe Beta'. One of them has been added to the prevent_homepage_deletion protected list. Inspect the live configuration and tell me which node is protected.",
+      "must_contain_any": [
+        "PHD Probe Alpha",
+        "Alpha"
+      ],
+      "must_not_contain": [],
+      "expected_output": "PHD Probe Alpha. prevent_homepage_deletion.settings:protected_urls contains only /node/<nid of PHD Probe Alpha>; resolve the path to the node to identify it.",
+      "setup": "agent-module-documentation/evaluation/verify/prevent_homepage_deletion-known-protected-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/prevent_homepage_deletion-known-protected-cleanup.sh"
+    },
+    {
+      "id": "prevent_homepage_deletion-known-role",
+      "difficulty": "medium",
+      "mode": "introspection",
+      "prompt": "On this Drupal site two roles can delete Articles, but only one of them is also allowed to delete pages that prevent_homepage_deletion protects. Inspect the live role configuration and tell me which role that is, and which permission makes the difference.",
+      "must_contain_any": [
+        "phd_owner"
+      ],
+      "must_not_contain": [],
+      "expected_output": "phd_owner. Both phd_owner and phd_editor have 'delete any article content', but only user.role.phd_owner also has the prevent_homepage_deletion permission delete_homepage_node.",
+      "setup": "agent-module-documentation/evaluation/verify/prevent_homepage_deletion-known-role-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/prevent_homepage_deletion-known-role-cleanup.sh"
+    },
+    {
+      "id": "prevent_homepage_deletion-protect-node",
+      "difficulty": "hard",
+      "mode": "execution",
+      "persona": "site-owner",
+      "prompt": "We have an article called 'PHD Task Page' that must never be deleted by our normal editors - the same way our homepage is already protected. There is another article, 'PHD Control Page', that editors must still be able to delete as usual. Please set that up on the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/prevent_homepage_deletion-protect-node-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/prevent_homepage_deletion-protect-node-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/prevent_homepage_deletion-protect-node-cleanup.sh",
+      "expected_output": "Add the task node's path to prevent_homepage_deletion.settings:protected_urls (e.g. \"/node/<nid>\", one per line, leading slash) via /admin/config/system/prevent-homepage-deletion or the config API. Verified live: the user phd_task_user (has 'delete any article content', not delete_homepage_node) is denied delete on 'PHD Task Page' and still allowed delete on 'PHD Control Page'."
+    },
+    {
+      "id": "prevent_homepage_deletion-grant-role",
+      "difficulty": "hard",
+      "mode": "execution",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site the article 'PHD Locked Page' is listed in prevent_homepage_deletion's protected URLs and must STAY protected. However the role phd_lock_admin is supposed to be the one role that can still delete protected pages, and right now its user phd_lock_user is blocked. Fix that on the live site without removing the page from the protected list.",
+      "reset": "agent-module-documentation/evaluation/verify/prevent_homepage_deletion-grant-role-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/prevent_homepage_deletion-grant-role-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/prevent_homepage_deletion-grant-role-cleanup.sh",
+      "expected_output": "Grant the delete_homepage_node permission to the phd_lock_admin role (drush role:perm:add phd_lock_admin delete_homepage_node). Verified live: protected_urls still contains the node path, user.role.phd_lock_admin has delete_homepage_node, and phd_lock_user now passes $node->access('delete')."
+    }
+  ]
+}

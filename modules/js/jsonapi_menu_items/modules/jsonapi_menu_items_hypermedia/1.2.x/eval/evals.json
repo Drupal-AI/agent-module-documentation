@@ -1,0 +1,102 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "jsonapi_menu_items_hypermedia",
+  "version": "1.2.x",
+  "note": "Glue submodule of jsonapi_menu_items. It ships one JSON:API Hypermedia LinkProvider (id jsonapi_menu_items.top_level.menu_items, link_relation_type 'menu_items') with a deriver (MenuItemsLinkProviderDeriver) that, per menu entity, adds a link keyed 'menu_items--<menu>' to the /jsonapi root document pointing at Url('jsonapi_menu_items.menu', ['menu' => <menu>]) i.e. /%jsonapi%/menu_items/<menu>. It hard-depends on jsonapi_hypermedia AND jsonapi_menu_items. IMPORTANT: jsonapi_hypermedia is NOT installed on this test site and cannot be installed without composer, so the submodule itself cannot be enabled here; the live /jsonapi root advertisement is therefore not directly verifiable. The medium/hard cases below are grounded in the submodule's real derivation rules (link_key menu_items--<menu>, target endpoint /jsonapi/menu_items/<menu>) and verified against the TARGET endpoint's content (the menu.link_tree the parent resource serves), which is the concrete effect a client reaches by following the advertised link. All fixtures namespaced jmih_* menus.",
+  "evals": [
+    {
+      "id": "jsonapi_menu_items_hypermedia-purpose",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "What does the jsonapi_menu_items_hypermedia submodule add to a Drupal site's JSON:API, and which document does it modify?",
+      "must_contain_any": [
+        "root document",
+        "/jsonapi",
+        "menu_items",
+        "entrypoint",
+        "discoverable"
+      ],
+      "must_not_contain": [],
+      "expected_output": "It adds a 'menu_items' link for each menu to the JSON:API root document (/jsonapi entrypoint) via JSON:API Hypermedia, making the jsonapi_menu_items per-menu endpoints discoverable instead of hard-coded."
+    },
+    {
+      "id": "jsonapi_menu_items_hypermedia-relation-type",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "In the jsonapi_menu_items_hypermedia submodule, what is the link relation type of the LinkProvider it defines, and what route/URL does each generated link point to?",
+      "must_contain_any": [
+        "menu_items",
+        "jsonapi_menu_items.menu",
+        "/jsonapi/menu_items/"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The LinkProvider (id jsonapi_menu_items.top_level.menu_items) has link_relation_type 'menu_items'; each link uses Url::fromRoute('jsonapi_menu_items.menu', ['menu' => <menu>]) i.e. /%jsonapi%/menu_items/<menu>."
+    },
+    {
+      "id": "jsonapi_menu_items_hypermedia-deriver",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "How does the jsonapi_menu_items_hypermedia submodule end up advertising a separate link for every menu on the site, and what dependency does it require to work?",
+      "must_contain_any": [
+        "deriver",
+        "per menu",
+        "per-menu",
+        "menu_items--",
+        "jsonapi_hypermedia"
+      ],
+      "must_not_contain": [],
+      "expected_output": "A deriver (MenuItemsLinkProviderDeriver) loads every menu entity and creates one derivative per menu with link_key 'menu_items--<menu>'. It requires both jsonapi_menu_items and jsonapi_hypermedia to be enabled."
+    },
+    {
+      "id": "jsonapi_menu_items_hypermedia-endpoint-target",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "This site has a menu with machine name 'jmih_probe'. The jsonapi_menu_items_hypermedia submodule would advertise a 'menu_items' link for it in the /jsonapi root document. What endpoint path does that link reference, and what menu-item title does that endpoint return? Inspect the running site to answer.",
+      "must_contain_any": [
+        "jmih_probe",
+        "JMIH Probe Item"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The link references /jsonapi/menu_items/jmih_probe (Url jsonapi_menu_items.menu with menu=jmih_probe). That endpoint returns one item whose title is 'JMIH Probe Item'.",
+      "setup": "agent-module-documentation/evaluation/verify/jsonapi_menu_items_hypermedia-endpoint-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/jsonapi_menu_items_hypermedia-endpoint-cleanup.sh"
+    },
+    {
+      "id": "jsonapi_menu_items_hypermedia-link-key",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "For the menu 'jmih_two' on this site, what link key does the jsonapi_menu_items_hypermedia deriver assign to its root-document link, and what menu-item title does the endpoint that link points to return? Inspect the running site to answer.",
+      "must_contain_any": [
+        "menu_items--jmih_two",
+        "JMIH Shown"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The deriver assigns link_key 'menu_items--jmih_two' (pattern menu_items--<menu>), pointing to /jsonapi/menu_items/jmih_two, which returns the enabled item titled 'JMIH Shown'.",
+      "setup": "agent-module-documentation/evaluation/verify/jsonapi_menu_items_hypermedia-linkkey-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/jsonapi_menu_items_hypermedia-linkkey-cleanup.sh"
+    },
+    {
+      "id": "jsonapi_menu_items_hypermedia-create-menu",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, create a menu named 'jmih_task' with an enabled link titled 'JMIH Discoverable' pointing to the front page, so that the jsonapi_menu_items_hypermedia submodule would advertise a menu_items--jmih_task link whose endpoint returns that item. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/jsonapi_menu_items_hypermedia-create-menu-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/jsonapi_menu_items_hypermedia-create-menu-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/jsonapi_menu_items_hypermedia-create-menu-cleanup.sh",
+      "expected_output": "Create a menu entity 'jmih_task' and an enabled menu_link_content link 'JMIH Discoverable' (link internal:/). The hypermedia submodule derives a menu_items--jmih_task link -> /jsonapi/menu_items/jmih_task, whose endpoint then returns that item. Verified via the menu.link_tree the endpoint serves."
+    },
+    {
+      "id": "jsonapi_menu_items_hypermedia-enable-link",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "site-owner",
+      "prompt": "On this site, the menu 'jmih_edit' has a menu link 'JMIH Toggle' that is disabled, so the endpoint that this site's JSON:API menu-items hypermedia link points to for that menu returns nothing for it. Make that link appear at the referenced endpoint. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/jsonapi_menu_items_hypermedia-enable-link-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/jsonapi_menu_items_hypermedia-enable-link-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/jsonapi_menu_items_hypermedia-enable-link-cleanup.sh",
+      "expected_output": "Enable the 'JMIH Toggle' menu_link_content link in menu jmih_edit. The endpoint /jsonapi/menu_items/jmih_edit (the target of the derived menu_items--jmih_edit link) returns only enabled links, so once enabled it appears. Verified via menu.link_tree onlyEnabledLinks + access check."
+    }
+  ]
+}

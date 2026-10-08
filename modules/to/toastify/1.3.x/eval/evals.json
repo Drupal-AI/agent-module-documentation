@@ -1,0 +1,80 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "toastify",
+  "version": "1.3.x",
+  "note": "Toastify renders Drupal messages as toastify-js toasts. All state lives in the config object toastify.settings (per-type maps status/warning/error each with duration/gravity/position/offsetX/offsetY/close/color/color2/colorProgressBar/direction, plus enable_for.admin_theme and enable_for.frontend_theme). It is gated by the 'show toastify messages' permission and swaps core's status_messages element for ToastifyStatusMessages while overriding Drupal.theme.message. Medium/hard cases are grounded in real config keys read/written via drush cget/cset.",
+  "evals": [
+    {
+      "id": "toastify-permission",
+      "mode": "recipe",
+      "prompt": "On a Drupal site with the Toastify module enabled, a role's users still see the normal Drupal message boxes instead of toast pop-ups. Which permission must that role be granted so their messages render as Toastify toasts?",
+      "must_contain_any": ["show toastify messages"],
+      "must_not_contain": [],
+      "expected_output": "Grant the 'show toastify messages' permission. toastify_is_active() checks hasPermission('show toastify messages'); without it the module falls back to standard Drupal messages.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "toastify-settings-location",
+      "mode": "recipe",
+      "prompt": "Where are Toastify's settings stored and what is the admin path of its configuration form on a Drupal site?",
+      "must_contain_any": ["toastify.settings", "/admin/config/user-interface/toastify"],
+      "must_not_contain": [],
+      "expected_output": "Settings live in the config object toastify.settings; the form is at /admin/config/user-interface/toastify (route toastify.settings_form, permission 'administer toastify configuration').",
+      "difficulty": "easy"
+    },
+    {
+      "id": "toastify-mechanism",
+      "mode": "recipe",
+      "prompt": "How does the Toastify module make Drupal's status messages appear as toast notifications instead of the default message boxes? Name the core render element it replaces and the client-side theme function it overrides.",
+      "must_contain_any": ["status_messages", "Drupal.theme.message", "ToastifyStatusMessages", "hook_element_plugin_alter"],
+      "must_not_contain": [],
+      "expected_output": "toastify_element_plugin_alter() swaps the core status_messages element class for ToastifyStatusMessages (which passes messages to drupalSettings.toastify.messages), and js/toastify.messages.js overrides Drupal.theme.message so JS-added messages become toasts too.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "toastify-known-duration",
+      "mode": "introspection",
+      "prompt": "On this Drupal site, the Toastify status (success) toast has been given a non-default auto-dismiss duration. Inspect the live configuration and state the duration, in milliseconds, currently configured for status toasts.",
+      "must_contain_any": ["8000"],
+      "must_not_contain": [],
+      "expected_output": "toastify.settings status.duration is 8000 (read with `drush cget toastify.settings status.duration`).",
+      "setup": "agent-module-documentation/evaluation/verify/toastify-known-duration-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/toastify-known-duration-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "toastify-error-position",
+      "mode": "introspection",
+      "prompt": "On this Drupal site the Toastify error toasts have been moved from their default screen position. Inspect the live Toastify configuration and state where error toasts now appear (their position value).",
+      "must_contain_any": ["center"],
+      "must_not_contain": [],
+      "expected_output": "toastify.settings error.position is 'center' (default is 'right'); read with `drush cget toastify.settings error.position`.",
+      "setup": "agent-module-documentation/evaluation/verify/toastify-error-position-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/toastify-error-position-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "toastify-set-duration",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, configure Toastify so that status (success) toasts stay on screen for 10000 milliseconds before auto-dismissing. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/toastify-set-duration-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/toastify-set-duration-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/toastify-set-duration-reset.sh",
+      "expected_output": "Set toastify.settings status.duration to 10000, e.g. `drush cset toastify.settings status.duration 10000 -y` or via ConfigFactory getEditable('toastify.settings')->set('status.duration', 10000)->save()."
+    },
+    {
+      "id": "toastify-disable-frontend",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, keep Toastify toasts in the admin theme but stop them from appearing on the public (frontend) theme, using the module's configuration. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/toastify-disable-frontend-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/toastify-disable-frontend-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/toastify-disable-frontend-reset.sh",
+      "expected_output": "Set toastify.settings enable_for.frontend_theme to false (leave enable_for.admin_theme true), e.g. `drush cset toastify.settings enable_for.frontend_theme false -y`."
+    }
+  ]
+}

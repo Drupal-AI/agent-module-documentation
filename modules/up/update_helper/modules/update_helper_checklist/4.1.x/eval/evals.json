@@ -1,0 +1,100 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "update_helper_checklist",
+  "version": "4.1.x",
+  "note": "update_helper_checklist is a submodule of update_helper that integrates with checklistapi. It registers a checklist 'update_helper_checklist' at /admin/config/development/update-helper (state storage) whose items come from scanning every enabled module dir for a file named updates_checklist.yml. Per-hook status is stored in the content entity update_helper_checklist_update. The service update_helper_checklist.update_checklist (Drupal\\update_helper_checklist\\UpdateChecklist) exposes markAllUpdates/markUpdatesSuccessful/markUpdatesFailed/getUpdateVersions. It auto-marks items via the update_helper.configuration.update event and extends 'drush generate configuration-update' via COMMAND_GCU_* events; a 'Pending updates' toolbar item shows while the checklist is <100% (permission: view update_helper_checklist checklistapi checklist). It has NO config of its own, so medium cases introspect the live container (service class + entity type), verified with drush php:eval. Hard cases have the agent write correct code/YAML into deletable scratch files under web/sites/default/ (update_helper_checklist_file.eval.yml, update_helper_checklist_mark.eval.php) which verify greps and reset deletes -- no cache rebuild (this shared site's 'drush cr' fatals in an unrelated canvas/ui_patterns collision). Facts grounded in update_helper_checklist.module, .install, src/UpdateChecklist.php, src/Entity/Update.php and update_helper_checklist.services.yml.",
+  "evals": [
+    {
+      "id": "update_helper_checklist-where",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "With the Drupal update_helper_checklist module, where do the checklist items come from, and at what admin path is the checklist shown?",
+      "must_contain_any": [
+        "updates_checklist.yml",
+        "/admin/config/development/update-helper",
+        "update-helper"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Items are gathered by scanning every enabled module's directory for a file named updates_checklist.yml. The checklist is shown at /admin/config/development/update-helper (checklist id update_helper_checklist, state storage)."
+    },
+    {
+      "id": "update_helper_checklist-mark-service",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "In code, how do I mark a module's configuration updates as complete using update_helper_checklist? Which service and method?",
+      "must_contain_any": [
+        "update_helper_checklist.update_checklist",
+        "markUpdatesSuccessful",
+        "markAllUpdates",
+        "UpdateChecklist"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Use the update_helper_checklist.update_checklist service (Drupal\\update_helper_checklist\\UpdateChecklist). Call markUpdatesSuccessful(['mymodule' => ['mymodule_update_9001']]) (or markUpdatesFailed(), or markAllUpdates() to mark everything)."
+    },
+    {
+      "id": "update_helper_checklist-yaml-format",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "What does an updates_checklist.yml file for the Drupal update_helper_checklist module look like? How are versions and individual update hooks represented?",
+      "must_contain_any": [
+        "#title",
+        "#description",
+        "updates_checklist.yml",
+        "update_8001",
+        "version"
+      ],
+      "must_not_contain": [],
+      "expected_output": "It is YAML grouped by version key (e.g. v2.1.0) with a '#title' and '#description', and under each version one entry per update-hook name (e.g. mymodule_update_9001) with '#title', '#description', and optional '#description_successful' / '#description_failed'."
+    },
+    {
+      "id": "update_helper_checklist-service-class",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "On this running Drupal site, update_helper_checklist is enabled. Which service marks configuration updates complete for its checklist, and what class does it resolve to? Inspect the live container.",
+      "must_contain_any": [
+        "update_helper_checklist.update_checklist",
+        "UpdateChecklist"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Service id update_helper_checklist.update_checklist, class Drupal\\update_helper_checklist\\UpdateChecklist. Discoverable with: drush php:eval \"echo get_class(\\Drupal::service('update_helper_checklist.update_checklist'));\".",
+      "setup": "agent-module-documentation/evaluation/verify/update_helper_checklist-service-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/update_helper_checklist-service-cleanup.sh"
+    },
+    {
+      "id": "update_helper_checklist-entity-type",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "update_helper_checklist tracks whether each update hook ran successfully. On this live site, inspect the entity-type definitions and tell me the machine id of the entity type it uses to store that per-hook status.",
+      "must_contain_any": [
+        "update_helper_checklist_update"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The content entity type update_helper_checklist_update (Drupal\\update_helper_checklist\\Entity\\Update). Discoverable with: drush php:eval \"var_export(array_key_exists('update_helper_checklist_update', \\Drupal::entityTypeManager()->getDefinitions()));\".",
+      "setup": "agent-module-documentation/evaluation/verify/update_helper_checklist-entity-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/update_helper_checklist-entity-cleanup.sh"
+    },
+    {
+      "id": "update_helper_checklist-write-yaml",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "Author an updates_checklist.yml for a module release using the update_helper_checklist format. Without touching real module code on this shared site, write it into the scratch file web/sites/default/update_helper_checklist_file.eval.yml (create it). It must have a version group with a '#title' and at least one update-hook entry (a key like mymodule_update_9001) that also has a '#title'.",
+      "reset": "agent-module-documentation/evaluation/verify/update_helper_checklist-yaml-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/update_helper_checklist-yaml-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/update_helper_checklist-yaml-cleanup.sh",
+      "expected_output": "YAML with a version key (e.g. v2.1.0) holding '#title' and, nested under it, an update-hook key (e.g. mymodule_update_9001) with its own '#title'."
+    },
+    {
+      "id": "update_helper_checklist-write-mark",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "Write PHP that marks a module's update hooks as successfully completed in the update_helper_checklist checklist. Without touching real module code, write it into the scratch file web/sites/default/update_helper_checklist_mark.eval.php (create it). It must call the update_helper_checklist.update_checklist service's markUpdatesSuccessful() method with a module => [update hooks] map.",
+      "reset": "agent-module-documentation/evaluation/verify/update_helper_checklist-mark-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/update_helper_checklist-mark-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/update_helper_checklist-mark-cleanup.sh",
+      "expected_output": "PHP that gets \\Drupal::service('update_helper_checklist.update_checklist') and calls ->markUpdatesSuccessful(['mymodule' => ['mymodule_update_9001']])."
+    }
+  ]
+}

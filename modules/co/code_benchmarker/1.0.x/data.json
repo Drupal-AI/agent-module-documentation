@@ -1,0 +1,55 @@
+{
+  "name": "Code benchmarker",
+  "data_name": "code_benchmarker",
+  "description": "A dev-only dashboard comparing the runtime cost of alternative implementations, contributed as tagged services.",
+  "version": "1.0.x",
+  "package": "Development",
+  "composer_namespace": "drupal/code_benchmarker",
+  "composer_requirements": {},
+  "dependent_modules": [
+    "drupal:help",
+    "drupal:user"
+  ],
+  "configure": "code_benchmarker.dashboard",
+  "core_version_requirement": "^10.3 || ^11",
+  "active_installs": null,
+  "list_position": null,
+  "project_url": "https://www.drupal.org/project/code_benchmarker",
+  "license": "GPL-2.0-or-later",
+  "php_requirement": null,
+  "library_dependencies": [],
+  "suggests": {},
+  "submodules": [],
+  "provides_permissions": false,
+  "provides_drush_commands": false,
+  "provides_config_schema": false,
+  "provides_plugin_types": [],
+  "categories": [
+    "Developer tools"
+  ],
+  "subcategories": [
+    "Debugging & inspection"
+  ],
+  "keywords": [
+    "benchmark",
+    "performance",
+    "profiling",
+    "developer",
+    "dashboard"
+  ],
+  "project_description": "Code benchmarker is a dev-only dashboard for comparing the runtime cost of two (or more) implementations of the same operation — legacy vs optimized, version A vs version B, before/after a refactor. Other modules contribute scenarios by registering tagged services; the dashboard discovers and runs them all.\n\n Not for production. The module exposes an admin route that runs the work hundreds of times against the live database.\n\n Requirements \n This module requires no contributed modules outside Drupal core. It runs on Drupal 10.3+ or Drupal 11 and uses the core User module (for the bundled example scenario).\n\n Installation \n Install as you would any contributed Drupal module. With DDEV and Drush: ddev drush en code_benchmarker -y .\n\n Configuration \n \n Grant the Administer site configuration permission to the roles that should reach the dashboard. \n \n Open the benchmarker dashboard \n\n (Administration » Configuration » Development » Code benchmarker). The page lists every registered scenario; nothing runs yet.\n \n Click a scenario title to run its iterations and see the timing table. \n \n URL options \n \n The index page lists scenarios and runs nothing — cheap to load. \n The per-scenario page runs one scenario and shows per-implementation timings plus the speedup summary. \n Add ?iter=N to either URL to override the iteration count (clamped to 10..1000, default 10). On the index page this propagates to the scenario links. \n Quick-pick iter=10/100/500/1000 links appear next to each scenario and on the result page so you can re-run without typing. \n \n Adding a scenario \n A scenario implements \\Drupal\\code_benchmarker\\Benchmark\\BenchmarkScenarioInterface and is registered as a service tagged code_benchmarker.scenario — no plugin manager, no config, no UI registration.\n\n \n Write the scenario class under your_module/src/Benchmark/ . Implement id() , label() , description() , prepare() (throw BenchmarkSkipException to skip), reset() , and implementations() (label → callable, baseline first). \n {# The \"[{ name: ... }]\" in the next line is literal text, not a Twig tag. #}\n\n Register it as a tagged service: tags: [{ name: code_benchmarker.scenario }] . \n Rebuild caches: ddev drush cr , then reload the dashboard. \n \n See the bundled example and the README for a full, copy-pasteable scenario class.\n\n How the runner works \n For each scenario, prepare() runs once (or throws BenchmarkSkipException to skip). Then for each implementation, in declaration order:\n\n \n Warm-up: reset() then one untimed call, priming OPcache, class loading, and the lazy DI graph. \n Pre-iter-1 reset: reset() runs once more so iteration 1 starts cold (the real cache-miss path). \n Timed loop (N iterations, no reset between them): each call is timed with hrtime(TRUE) , the monotonic nanosecond clock. \n \n No reset runs between iterations 2..N on purpose: if an optimized implementation adds a caching layer, those later iterations hit the cache and show the cumulative speedup, while a cacheless implementation pays full cost every time. The avg/median/total gap is the point.\n\n What goes in reset() \n Iteration 1 must look like a real cold-cache request, so reset everything the work touches:\n\n \n Every entity storage the implementation reads or writes ( ->resetCache() ). \n Drupal statics the implementation populates — reset by named key (avoid the bare, expensive drupal_static_reset() ). \n Specific cache-backend entries it reads/writes (delete the exact cids; avoid deleteAll() ). \n Internal memos on injected services. \n \n Reading the results \n \n Avg vs median: a large gap means noisy samples — re-run with ?iter=500 for tighter numbers. \n Max vs min on a caching impl: the max is usually iteration 1 (cold); min/median come from warm iterations. A large ratio is expected when caching is in play. \n Std-dev: small relative to mean on a cacheless impl; looks high on a caching impl because iteration 1 is much slower — that is the cache filling, not noise. \n Last result: should match across …",
+  "maintenance_status": "Actively maintained",
+  "development_status": "Under active development",
+  "security_advisory_coverage": "not-covered",
+  "project_created": "2026-06-18",
+  "project_changed": "2026-07-21",
+  "core_semver_minimum": 10003000,
+  "core_semver_maximum": 12000000,
+  "tooling": {
+    "provides_tool_plugins": false,
+    "tool_plugins": [],
+    "provides_agent_skills": false,
+    "agent_skills": []
+  },
+  "contributor_count": 2
+}

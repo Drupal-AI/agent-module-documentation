@@ -1,0 +1,96 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "entity_type_clone",
+  "version": "4.0.x",
+  "note": "Entity Type Clone is two forms and a batch worker: entity_type_clone.type (/admin/config/entity-type-clone, the module's configure route) clones a bundle plus its FieldConfigs and its enabled form/view displays, and entity_type_clone.role (/admin/config/role-clone) creates a new user_role and calls user_role_grant_permissions() with the source role's permissions. Both routes require the single permission 'access entity type clone', which also gates the 'Clone X' entity operation added to node/paragraph/taxonomy_term/profile bundle listings. Clonable entity types are block_content, node and taxonomy_term always, plus paragraph/profile/storage when those modules exist. The module has no config, no schema, no services, no Drush commands and no plugin types. Medium cases read live role permissions and live bundle/field configuration; hard cases require actually producing the cloned bundle (type + field + both displays) and the cloned role (identical permission set) on the running site.",
+  "evals": [
+    {
+      "id": "entity_type_clone-where-and-permission",
+      "mode": "recipe",
+      "prompt": "The entity_type_clone module is installed on a Drupal 11 site. What are the two admin paths it adds, and which permission does a user need to use them?",
+      "must_contain_any": [
+        "access entity type clone",
+        "/admin/config/entity-type-clone",
+        "admin/config/entity-type-clone"
+      ],
+      "must_not_contain": [],
+      "expected_output": "It adds /admin/config/entity-type-clone (route entity_type_clone.type, the module's configure route, for cloning bundles) and /admin/config/role-clone (route entity_type_clone.role, for cloning user roles). Both require the permission 'access entity type clone', which also controls the 'Clone <label>' operation link added to the content type, vocabulary, paragraph type and profile type listings.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "entity_type_clone-what-is-clonable",
+      "mode": "recipe",
+      "prompt": "Which entity types can Drupal's entity_type_clone module clone bundles for, and what does the clone actually copy across besides the bundle itself?",
+      "must_contain_any": [
+        "node",
+        "taxonomy_term",
+        "block_content"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Always block_content, node and taxonomy_term; plus paragraph, profile and storage when the paragraphs, profile or storage modules are enabled. The batch copies the bundle entity itself, every bundle-level FieldConfig (base fields and taxonomy's 'parent' are skipped, and fields already present on the target are skipped), every enabled form-mode and view-mode display, third-party view-display settings such as field_group, and the source's extra-field visibility. Field storage is shared, not duplicated, and no content is cloned.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "entity_type_clone-role-clone",
+      "mode": "recipe",
+      "prompt": "How does the role cloning feature of Drupal's entity_type_clone module work - what exactly ends up on the new role, and what is not copied?",
+      "must_contain_any": [
+        "user_role_grant_permissions",
+        "permissions",
+        "role-clone"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The CloneRole form at /admin/config/role-clone creates a new user_role entity from the label and machine name you type, then calls user_role_grant_permissions($new_id, $source_role->getPermissions()), so the clone gets exactly the source role's permission list. Nothing else is copied - not the weight, not is_admin, and no users are assigned to the new role.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "entity_type_clone-role-perm",
+      "mode": "introspection",
+      "prompt": "On this Drupal site there are two roles whose machine names start with etc_probe_. Inspect the running site and tell me which one of them is allowed to use the Entity Type Clone admin forms, and name the permission that decides it.",
+      "must_contain_any": [
+        "etc_probe_beta"
+      ],
+      "must_not_contain": [],
+      "expected_output": "etc_probe_beta. It holds the permission 'access entity type clone' (the requirement on both entity_type_clone.type and entity_type_clone.role); etc_probe_alpha only has 'access content'.",
+      "setup": "agent-module-documentation/evaluation/verify/entity_type_clone-clone-role-perm-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/entity_type_clone-clone-role-perm-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "entity_type_clone-which-clone",
+      "mode": "introspection",
+      "prompt": "This Drupal site has a content type etc_known_src plus two candidates, etc_known_a and etc_known_b. Only one of them is a complete Entity Type Clone of etc_known_src - that is, it carries every field that etc_known_src has. Inspect the live field configuration and tell me which one, and which field the other one is missing.",
+      "must_contain_any": [
+        "etc_known_b"
+      ],
+      "must_not_contain": [],
+      "expected_output": "etc_known_b is the complete clone: like etc_known_src it has both field_etc_known and field_etc_extra. etc_known_a only has field_etc_known and is missing field_etc_extra.",
+      "setup": "agent-module-documentation/evaluation/verify/entity_type_clone-which-clone-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/entity_type_clone-which-clone-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "entity_type_clone-clone-content-type",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "This Drupal site has the entity_type_clone module installed. The content type etc_task_src ('ETC Task Source') has a field field_etc_task that is configured on its default form display and its default view display. Produce a clone of that content type with the machine name etc_task_dst and the label 'ETC Task Destination', including the field and both displays, and apply it to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/entity_type_clone-clone-content-type-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/entity_type_clone-clone-content-type-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/entity_type_clone-clone-content-type-cleanup.sh",
+      "expected_output": "A node_type etc_task_dst must exist, a FieldConfig node.etc_task_dst.field_etc_task must exist, and field_etc_task must be a component of both core.entity_form_display.node.etc_task_dst.default and core.entity_view_display.node.etc_task_dst.default - the end state produced by the Entity Type Clone batch (CloneEntityType::cloneEntityTypeData plus cloneEntityTypeField)."
+    },
+    {
+      "id": "entity_type_clone-clone-role",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "site-owner-layman",
+      "prompt": "On this Drupal site there is a user role called 'ETC Role Source' (machine name etc_role_src). I need a second role that can do exactly the same things, called 'ETC Role Destination' with the machine name etc_role_dst. Please set that up on the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/entity_type_clone-clone-role-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/entity_type_clone-clone-role-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/entity_type_clone-clone-role-cleanup.sh",
+      "expected_output": "A user_role etc_role_dst must exist whose permission list is identical to etc_role_src's ('access content', 'access user profiles', 'view own unpublished content') - the result of entity_type_clone's CloneRole form, i.e. Role::create() followed by user_role_grant_permissions() with the source role's permissions."
+    }
+  ]
+}

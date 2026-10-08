@@ -1,0 +1,58 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "memory_limit_policy_ai_agents",
+  "version": "2.0.x",
+  "note": "Submodule integrating memory_limit_policy with drupal/ai_agents. It registers 15 AiFunctionCall plugins (ids ai_agent:*) and ships an ai_agent config entity memory_limit_policy_agent (triage agent, max_loops 5) plus a ConstraintSchemaDiscovery service. Cases are grounded in the real function-call ids, the real ai_agent config entity, and the real end-state that create_memory_limit_policy produces (a memory_limit_policy entity). The hard case builds the same memory_limit_policy entity the create tool would, verified via the config entity, because the eval harness cannot drive a live LLM.",
+  "evals": [
+    {
+      "id": "mlp_ai-tools",
+      "mode": "recipe",
+      "prompt": "The memory_limit_policy_ai_agents submodule exposes AI function-call tools for managing memory limit policies. Name the tool an AI agent would call to create a new policy and one it would call to add a constraint to a policy.",
+      "must_contain_any": ["create_memory_limit_policy", "add_policy_constraint"],
+      "must_not_contain": [],
+      "expected_output": "It registers AiFunctionCall tools with ids like ai_agent:create_memory_limit_policy (creates a policy) and ai_agent:add_policy_constraint (appends a constraint). Other tools include list_memory_limit_policies, get_constraint_schema, edit/delete/enable/disable/set_policy_weight, remove_policy_constraint and set_module_settings.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "mlp_ai-permission",
+      "mode": "recipe",
+      "prompt": "What permission do the modification tools in memory_limit_policy_ai_agents require, and what Drupal contrib module must be installed for this submodule to work?",
+      "must_contain_any": ["administer memory limit policies", "ai_agents"],
+      "must_not_contain": [],
+      "expected_output": "The modification function calls check the 'administer memory limit policies' permission before acting, and the submodule depends on the ai_agents module (drupal/ai_agents).",
+      "difficulty": "easy"
+    },
+    {
+      "id": "mlp_ai-agent-entity",
+      "mode": "recipe",
+      "prompt": "Does memory_limit_policy_ai_agents ship a ready-made AI agent, and what kind of agent is it?",
+      "must_contain_any": ["memory_limit_policy_agent", "ai_agent", "triage"],
+      "must_not_contain": [],
+      "expected_output": "Yes: it installs an ai_agent config entity with id memory_limit_policy_agent (config ai_agents.ai_agent.memory_limit_policy_agent), a triage agent (triage_agent: true) with max_loops 5, wired to all the memory-limit-policy function-call tools.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "memory_limit_policy_ai_agents-agent-config",
+      "mode": "introspection",
+      "prompt": "This site has the memory_limit_policy_ai_agents submodule enabled, which installs an ai_agent named 'memory_limit_policy_agent'. Inspect the live configuration and report the value of its max_loops setting.",
+      "must_contain_any": ["9"],
+      "must_not_contain": [],
+      "expected_output": "max_loops is 9 on this site (config ai_agents.ai_agent.memory_limit_policy_agent, key max_loops). The shipped default is 5.",
+      "setup": "agent-module-documentation/evaluation/verify/memory_limit_policy_ai_agents-agent-config-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/memory_limit_policy_ai_agents-agent-config-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "memory_limit_policy_ai_agents-build",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "The memory_limit_policy_ai_agents 'create_memory_limit_policy' tool creates a memory_limit_policy entity. Produce the same end state directly: create an enabled memory limit policy with machine id 'mlp_ai_exec', label 'AI created', memory 640M and weight 0 (no constraints). Apply it to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/memory_limit_policy_ai_agents-build-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/memory_limit_policy_ai_agents-build-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/memory_limit_policy_ai_agents-build-cleanup.sh",
+      "expected_output": "Create the memory_limit_policy config entity mlp_ai_exec with memory '640M', status TRUE, weight 0 and empty policy_constraints — exactly what ai_agent:create_memory_limit_policy's execute() does (storage->create([...])->save())."
+    }
+  ]
+}

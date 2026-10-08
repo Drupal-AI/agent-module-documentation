@@ -1,0 +1,82 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "edit_media_modal",
+  "version": "2.1.x",
+  "note": "Edit Media Entity in Modal adds an 'edit' button (editMediaButton) to the CKEditor 5 drupalMedia toolbar to edit an embedded Media entity in a modal, and overrides the media 'edit' form class with Drupal\\edit_media_modal\\Form\\MediaForm. It has NO configure route and no config object of its own; the CKEditor 5 plugin media_edit_media_modal stores its settings inside each text format's editor.editor.<format> config at settings.plugins.media_edit_media_modal.editMediaModal (dialogSettings.height percent string default '75'; extras.skipAccessCheck bool default false; editMediaModalForms media-bundle->form-mode map). Routes: /edit-media-modal/edit-url/{uuid} and /edit-media-modal/check-access/{uuid}. Depends only on core media. Because the module's settings live inside a CKEditor 5 editor config, the medium/hard cases use a dedicated namespaced text-format editor config object (editor.editor.emm_probe) carrying the plugin settings; baseline = that object absent. Medium cases read a distinctive plugin setting; hard cases change one plugin setting (dialog height; skipAccessCheck) verified against the live editor config. reset/cleanup create/delete editor.editor.emm_probe.",
+  "evals": [
+    {
+      "id": "edit_media_modal-ckeditor-button",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "How does the edit_media_modal Drupal module let editors edit an embedded media item from within CKEditor 5, and what is the CKEditor 5 plugin id / button it adds?",
+      "must_contain_any": ["media_edit_media_modal", "editMediaButton", "drupalMedia", "modal"],
+      "must_not_contain": [],
+      "expected_output": "It ships a CKEditor 5 plugin (media_edit_media_modal) that adds an editMediaButton to the drupalMedia media toolbar; clicking it opens the media entity's edit form in a modal dialog. It only activates when the core Drupal Media (media_media/drupalMedia) plugin is enabled on that text format."
+    },
+    {
+      "id": "edit_media_modal-settings-location",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "The edit_media_modal module has no dedicated settings page. Where are its options (dialog height, skip access check, per-bundle form mode) actually configured and stored?",
+      "must_contain_any": ["text format", "CKEditor 5 plugin", "editor.editor", "settings.plugins.media_edit_media_modal"],
+      "must_not_contain": [],
+      "expected_output": "They are configured per text format in the CKEditor 5 plugin settings (Text formats and editors > edit a CKEditor 5 format), and stored in that format's editor.editor.<format> config under settings.plugins.media_edit_media_modal.editMediaModal (dialogSettings.height, extras.skipAccessCheck, editMediaModalForms)."
+    },
+    {
+      "id": "edit_media_modal-form-override",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "What does the edit_media_modal module change about the Media entity's edit form, and which two helper routes does it register?",
+      "must_contain_any": ["MediaForm", "edit-media-modal/edit-url", "edit-media-modal/check-access", "form class"],
+      "must_not_contain": [],
+      "expected_output": "It overrides the media entity's 'edit' form class with Drupal\\edit_media_modal\\Form\\MediaForm (hook_entity_type_alter) and registers /edit-media-modal/edit-url/{uuid} (resolve a media UUID to its edit URL) and /edit-media-modal/check-access/{uuid} (edit-access check)."
+    },
+    {
+      "id": "edit_media_modal-read-height",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "On this Drupal site, a CKEditor 5 text-format editor named 'emm_probe' has the Edit Media Modal plugin configured. Inspect its configuration and state the modal dialog height (percent) it is set to.",
+      "must_contain_any": ["60"],
+      "must_not_contain": [],
+      "expected_output": "The Edit Media Modal dialog height for emm_probe is 60. Read via `drush cget editor.editor.emm_probe settings.plugins.media_edit_media_modal.editMediaModal.dialogSettings.height`.",
+      "setup": "agent-module-documentation/evaluation/verify/edit_media_modal-height-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/edit_media_modal-height-cleanup.sh"
+    },
+    {
+      "id": "edit_media_modal-read-skip",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "On this Drupal site, the CKEditor 5 text-format editor 'emm_probe' has the Edit Media Modal plugin configured. Inspect its configuration and state whether the 'Skip access check' option is enabled.",
+      "must_contain_any": ["skipAccessCheck", "true", "enabled", "yes", "skip"],
+      "must_not_contain": [],
+      "expected_output": "Yes — extras.skipAccessCheck is true for emm_probe. Read via `drush cget editor.editor.emm_probe settings.plugins.media_edit_media_modal.editMediaModal.extras.skipAccessCheck`.",
+      "setup": "agent-module-documentation/evaluation/verify/edit_media_modal-skip-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/edit_media_modal-skip-cleanup.sh"
+    },
+    {
+      "id": "edit_media_modal-set-height",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site there is a CKEditor 5 text-format editor named 'emm_probe' with the Edit Media Modal plugin enabled. Configure that plugin so its media edit modal opens at 90% height. Apply the change to the live site's configuration.",
+      "must_not_contain": [],
+      "expected_output": "Set the Edit Media Modal dialog height to 90 for emm_probe, i.e. editor.editor.emm_probe settings.plugins.media_edit_media_modal.editMediaModal.dialogSettings.height = '90' (via the CKEditor 5 plugin settings on the text format, or `drush cset editor.editor.emm_probe settings.plugins.media_edit_media_modal.editMediaModal.dialogSettings.height 90 -y`). Verified: height === 90.",
+      "reset": "agent-module-documentation/evaluation/verify/edit_media_modal-set-height-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/edit_media_modal-set-height-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/edit_media_modal-set-height-cleanup.sh"
+    },
+    {
+      "id": "edit_media_modal-set-skip",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site there is a CKEditor 5 text-format editor named 'emm_probe' with the Edit Media Modal plugin enabled. Turn on the plugin's 'Skip access check' option for that editor. Apply the change to the live site's configuration.",
+      "must_not_contain": [],
+      "expected_output": "Enable extras.skipAccessCheck for emm_probe, i.e. editor.editor.emm_probe settings.plugins.media_edit_media_modal.editMediaModal.extras.skipAccessCheck = true (via the CKEditor 5 plugin settings, or `drush cset editor.editor.emm_probe settings.plugins.media_edit_media_modal.editMediaModal.extras.skipAccessCheck 1 -y`). Verified: skipAccessCheck is truthy.",
+      "reset": "agent-module-documentation/evaluation/verify/edit_media_modal-set-skip-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/edit_media_modal-set-skip-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/edit_media_modal-set-skip-cleanup.sh"
+    }
+  ]
+}

@@ -1,0 +1,103 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "gin_lb",
+  "version": "3.0.x",
+  "note": "Gin Layout Builder re-skins Layout Builder's editing UI (and its off-canvas dialogs / Media Library) with the Gin admin theme while the site is still in its front-end theme. It has NO plugins, NO permissions file (the settings form is gated by core 'administer site configuration'), NO Drush commands and NO config entities. Its only persistent configuration is the config_object gin_lb.settings (keys: toastify_loading cdn|composer|custom, enable_preview_regions bool, hide_discard_button bool, hide_revert_button bool, save_behavior stay|default), edited at route gin_lb.gin_lb_settings_form -> /admin/config/gin_lb/settings. The re-skin is gated by the gin_lb.context_validator service (ContextValidator): isValidTheme() returns FALSE when the active theme IS gin/a gin subtheme (so the module self-disables under Gin), isLayoutBuilderRoute() matches /^(layout_builder\\.([^.]+\\.)?)/ then fires hook_gin_lb_is_layout_builder_route_alter(), and isLayoutBuilderFormId() gates form styling. Bundled CSS is prefixed glb- and the Twig function glb_classes() rewrites element classes to their glb- equivalents. Two documented alter hooks (gin_lb.api.php): hook_gin_lb_show_toolbar_alter and hook_gin_lb_is_layout_builder_route_alter. All medium/hard cases are grounded in that real config and that real hook: introspection reads back known gin_lb.settings values written by setup; execution writes gin_lb.settings (buttons/save_behavior) and codes a module implementing hook_gin_lb_show_toolbar_alter, each verified against live state.",
+  "evals": [
+    {
+      "id": "gin_lb-config-object",
+      "mode": "recipe",
+      "prompt": "On a Drupal 11 site using the gin_lb (Gin Layout Builder) module, which configuration object stores its settings, at which admin path is its settings form, and which setting hides Layout Builder's 'Discard changes' button?",
+      "must_contain_any": [
+        "gin_lb.settings",
+        "hide_discard_button",
+        "/admin/config/gin_lb/settings"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Settings live in the config object gin_lb.settings, edited at /admin/config/gin_lb/settings (route gin_lb.gin_lb_settings_form, permission 'administer site configuration'). The boolean key hide_discard_button, when TRUE, removes Layout Builder's 'Discard changes' button on the styled forms. Other keys: toastify_loading, enable_preview_regions, hide_revert_button, save_behavior.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "gin_lb-glb-prefix",
+      "mode": "recipe",
+      "prompt": "gin_lb styles Layout Builder without clashing with the site's front-end theme. What CSS class prefix does it add to all of its bundled styles to avoid those conflicts, and what Twig function does it provide to rewrite an element's classes to the prefixed versions?",
+      "must_contain_any": [
+        "glb-",
+        "glb_classes"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Every bundled style is prefixed glb- so it cannot collide with the front-end theme. The module registers a Twig function glb_classes(attributes) (service gin_lb.twig, class GinLbExtension) that, for each class on an Attribute object, swaps in glb-<class> where such a prefixed style exists in the generated src/classes.json (keeping form-autocomplete unprefixed as well because JS targets it).",
+      "difficulty": "easy"
+    },
+    {
+      "id": "gin_lb-context-validator",
+      "mode": "recipe",
+      "prompt": "In the gin_lb module, which service decides whether the current request is a Layout Builder screen that should be re-skinned? And why does gin_lb do nothing when the site's active theme is Gin itself?",
+      "must_contain_any": [
+        "gin_lb.context_validator",
+        "ContextValidator",
+        "isValidTheme",
+        "isLayoutBuilderRoute"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The gin_lb.context_validator service (Drupal\\gin_lb\\Service\\ContextValidator) gates everything: isLayoutBuilderRoute() matches route names against /^(layout_builder\\.([^.]+\\.)?)/, and isValidTheme() returns FALSE when the active theme is gin or has gin as a base theme. Because isValidTheme() is FALSE under Gin, the module self-disables there - Gin already styles Layout Builder, so there is nothing to fix.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "gin_lb-known-settings",
+      "mode": "introspection",
+      "prompt": "This Drupal site's gin_lb (Gin Layout Builder) has been configured with non-default settings. Inspect the live gin_lb.settings configuration and report: which of Layout Builder's two action buttons ('Discard changes' vs 'Revert to defaults') is currently hidden, and how is Toastify configured to load?",
+      "must_contain_any": [
+        "composer",
+        "hide_revert_button",
+        "Revert"
+      ],
+      "must_not_contain": [],
+      "expected_output": "In gin_lb.settings: hide_discard_button is FALSE and hide_revert_button is TRUE, so the 'Revert to defaults' button is hidden while 'Discard changes' is shown. toastify_loading is 'composer', so Toastify is loaded from the Composer-installed copy (gin_lb/toastify_composer) rather than the CDN. (Read it with `drush cget gin_lb.settings`.)",
+      "setup": "agent-module-documentation/evaluation/verify/gin_lb-known-settings-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/gin_lb-known-settings-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "gin_lb-toastify-off",
+      "mode": "introspection",
+      "prompt": "On this Drupal site, will gin_lb load the Toastify JavaScript library on Layout Builder screens? Inspect the live gin_lb configuration and explain what the current value means.",
+      "must_contain_any": [
+        "custom",
+        "will not load",
+        "won't load",
+        "does not load",
+        "not be loaded",
+        "not attach"
+      ],
+      "must_not_contain": [],
+      "expected_output": "No. gin_lb.settings toastify_loading is set to 'custom' ('Do not load'), so PageAttachments does not attach the gin_lb/gin_lb_toastify library and hook_library_info_alter() adds no toastify dependency. Toastify is therefore not loaded on Layout Builder routes. (Read it with `drush cget gin_lb.settings toastify_loading`.)",
+      "setup": "agent-module-documentation/evaluation/verify/gin_lb-toastify-off-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/gin_lb-toastify-off-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "gin_lb-buttons",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, configure the gin_lb (Gin Layout Builder) module so that Layout Builder's 'Discard changes' button is shown again, the 'Revert to defaults' button stays hidden, and saving a layout uses Layout Builder's default post-save redirect instead of staying on the edit page. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/gin_lb-buttons-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/gin_lb-buttons-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/gin_lb-buttons-cleanup.sh",
+      "expected_output": "Set gin_lb.settings hide_discard_button = FALSE, hide_revert_button = TRUE and save_behavior = 'default' (e.g. `drush cset gin_lb.settings hide_discard_button 0`, `... hide_revert_button 1`, `... save_behavior default`, or via the form at /admin/config/gin_lb/settings)."
+    },
+    {
+      "id": "gin_lb-hide-toolbar",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "Using gin_lb's own alter hook, create and enable a small custom module on this Drupal site that unconditionally suppresses the Gin Layout Builder toolbar site-wide. It must implement hook_gin_lb_show_toolbar_alter() so that the toolbar flag is forced to FALSE for every request.",
+      "reset": "agent-module-documentation/evaluation/verify/gin_lb-hide-toolbar-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/gin_lb-hide-toolbar-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/gin_lb-hide-toolbar-cleanup.sh",
+      "expected_output": "Create a custom module (e.g. web/modules/custom/ginlb_no_toolbar with ginlb_no_toolbar.info.yml + ginlb_no_toolbar.module) implementing function ginlb_no_toolbar_gin_lb_show_toolbar_alter(&$gin_lb_show_toolbar) { $gin_lb_show_toolbar = FALSE; }, then `drush en ginlb_no_toolbar -y`. gin_lb.api.php documents this hook (invoked where gin_lb decides whether to render its toolbar)."
+    }
+  ]
+}

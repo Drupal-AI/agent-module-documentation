@@ -1,0 +1,101 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "salesforce_push",
+  "version": "5.1.x",
+  "note": "Salesforce Push sends Drupal entity changes to Salesforce, driven by each salesforce_mapping's push sync-triggers (push_create/push_update/push_delete) and per-mapping limits (push_limit, push_retries, push_frequency), through the queue.salesforce_push queue and salesforce_push_queue_processor plugins (Rest). Actual delivery needs a Salesforce connection, so all medium/hard cases are grounded in the LOCAL salesforce_mapping config (push triggers + push_limit), created/read/modified with no connection and verified by pure entity reads. Namespaced sfp_* mappings are removed on cleanup.",
+  "evals": [
+    {
+      "id": "salesforce_push-triggers",
+      "mode": "recipe",
+      "prompt": "How does Salesforce Push decide when to send a Drupal entity change to Salesforce - what determines whether create/update/delete are pushed?",
+      "must_contain_any": [
+        "sync_triggers",
+        "push_create",
+        "push_update",
+        "push_delete"
+      ],
+      "must_not_contain": [],
+      "expected_output": "It is driven by the salesforce_mapping's sync_triggers: push_create, push_update and push_delete. Entity insert/update/delete hooks push (or enqueue) to Salesforce for each mapping whose matching push trigger is enabled.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "salesforce_push-queue",
+      "mode": "recipe",
+      "prompt": "In Salesforce Push, how are asynchronous pushes processed, and what plugin type handles processing the push queue?",
+      "must_contain_any": [
+        "queue.salesforce_push",
+        "salesforce_push_queue_processor",
+        "cron",
+        "standalone",
+        "queue"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Async pushes go into the queue.salesforce_push queue and are processed by salesforce_push_queue_processor plugins (the shipped Rest processor). Processing happens on cron (salesforce_push_cron) or via the standalone push endpoint when salesforce.settings.standalone is enabled.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "salesforce_push-limits",
+      "mode": "recipe",
+      "prompt": "Which settings limit how many records Salesforce Push processes - globally and per mapping?",
+      "must_contain_any": [
+        "global_push_limit",
+        "push_limit",
+        "push_retries"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Globally, salesforce.settings.global_push_limit caps records per queue run. Per mapping, the salesforce_mapping has push_limit, push_retries and push_frequency.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "salesforce_push-known-trigger",
+      "mode": "introspection",
+      "prompt": "On this Drupal site there is a Salesforce mapping sfp_med. Inspect its live configuration and say whether it pushes to Salesforce when the Drupal entity is updated.",
+      "must_contain_any": [
+        "push_update",
+        "yes",
+        "update"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Yes: sfp_med has sync_triggers.push_update = true, so it pushes on Drupal entity update.",
+      "setup": "agent-module-documentation/evaluation/verify/salesforce_push-known-trigger-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/salesforce_push-known-trigger-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "salesforce_push-known-limit",
+      "mode": "introspection",
+      "prompt": "On this Drupal site there is a Salesforce mapping sfp_lim with a custom per-mapping push limit. Inspect its live configuration and give the push_limit value.",
+      "must_contain_any": [
+        "42"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The push_limit is 42: salesforce_mapping sfp_lim has push_limit = 42.",
+      "setup": "agent-module-documentation/evaluation/verify/salesforce_push-known-limit-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/salesforce_push-known-limit-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "salesforce_push-enable-delete",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site there is a Salesforce mapping sfp_task that does not push deletions. Configure it so that deleting the Drupal entity also deletes the mapped Salesforce record (enable the push-on-delete trigger). Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/salesforce_push-enable-delete-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/salesforce_push-enable-delete-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/salesforce_push-enable-delete-cleanup.sh",
+      "expected_output": "salesforce_mapping sfp_task has sync_triggers.push_delete = true."
+    },
+    {
+      "id": "salesforce_push-set-limit",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site there is a Salesforce mapping sfp_ltask. Set its per-mapping push limit to 25 records. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/salesforce_push-set-limit-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/salesforce_push-set-limit-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/salesforce_push-set-limit-cleanup.sh",
+      "expected_output": "salesforce_mapping sfp_ltask has push_limit = 25."
+    }
+  ]
+}

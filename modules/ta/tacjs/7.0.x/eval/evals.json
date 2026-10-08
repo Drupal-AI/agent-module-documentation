@@ -1,0 +1,71 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "tacjs",
+  "version": "7.0.x",
+  "note": "TacJS integrates the tarteaucitron.js cookie-consent library. All state is the tacjs.settings config object: enabled (bool), dialog (mapping of banner options e.g. privacyUrl/orientation/highPrivacy/DenyAllCta), services (sequence keyed by tarteaucitron service name, each with a status bool - only status:true services are sent to the browser), texts (mapping), active.generate/active.suffix, expire, user. Three admin forms under /admin/config/system/tacjs (manage_dialog=default configure route, add_services, edit_texts) all gated by the restricted 'administer tacjs' permission. The tarteaucitron JS library is NOT bundled and must be installed at web/libraries/tarteaucitronjs (hook_requirements checks it). tacjs_page_attachments only runs on non-admin routes and only when enabled is TRUE. Extension surface: hook_tacjs_services_alter() and hook_tacjs_content_alter(). Medium/hard cases are grounded in real tacjs.settings keys.",
+  "evals": [
+    {
+      "id": "tacjs-config-and-library",
+      "mode": "recipe",
+      "prompt": "On a Drupal 11 site using the TacJS module for cookie consent, which configuration object stores the consent-dialog options, and where must the tarteaucitron JavaScript library be installed for the module to work?",
+      "must_contain_any": ["tacjs.settings", "libraries/tarteaucitronjs", "tarteaucitronjs"],
+      "must_not_contain": [],
+      "expected_output": "Configuration is stored in the tacjs.settings config object (dialog options under the 'dialog' key). The tarteaucitron.js library is not bundled and must be installed in web/libraries/tarteaucitronjs (e.g. composer require npm-asset/tarteaucitronjs); hook_requirements reports an error until it is present.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "tacjs-permission",
+      "mode": "recipe",
+      "prompt": "Which Drupal permission controls access to the TacJS configuration forms (manage dialog, add services, edit texts), and why is it flagged as restricted?",
+      "must_contain_any": ["administer tacjs"],
+      "must_not_contain": [],
+      "expected_output": "The 'administer tacjs' permission gates all three config routes. It is restrict access: TRUE because service and text definitions accept unfiltered text/JavaScript, so a holder can inject arbitrary front-end script; grant only to trusted users.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "tacjs-known-privacyurl",
+      "mode": "introspection",
+      "prompt": "On this Drupal site, the TacJS consent dialog has been configured with a privacy-policy URL. Inspect the live tacjs configuration and report the exact privacy URL value.",
+      "must_contain_any": ["/tacjs-probe-privacy"],
+      "must_not_contain": [],
+      "expected_output": "tacjs.settings dialog.privacyUrl is /tacjs-probe-privacy (drush cget tacjs.settings dialog.privacyUrl).",
+      "setup": "agent-module-documentation/evaluation/verify/tacjs-privacyurl-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/tacjs-privacyurl-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "tacjs-known-service",
+      "mode": "introspection",
+      "prompt": "On this Drupal site exactly one TacJS service is currently enabled. Inspect the live tacjs configuration and give the name (key) of the enabled service.",
+      "must_contain_any": ["tacjs_probe_service"],
+      "must_not_contain": [],
+      "expected_output": "The enabled service is tacjs_probe_service: tacjs.settings services.tacjs_probe_service.status is true (drush cget tacjs.settings services).",
+      "setup": "agent-module-documentation/evaluation/verify/tacjs-service-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/tacjs-service-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "tacjs-disable-banner",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, temporarily switch off the TacJS cookie-consent banner site-wide using the module's configuration (do not uninstall the module). Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/tacjs-disable-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/tacjs-disable-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/tacjs-disable-reset.sh",
+      "expected_output": "Set tacjs.settings enabled to boolean FALSE, e.g. drush php:eval '\\Drupal::configFactory()->getEditable(\"tacjs.settings\")->set(\"enabled\",FALSE)->save();' or untick 'Enable TacJS' on the Manage dialog form. tacjs_page_attachments then returns early and attaches nothing."
+    },
+    {
+      "id": "tacjs-enable-youtube",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, use TacJS to enable the 'youtube' service so YouTube embeds are gated behind consent. Apply the change to the live tacjs configuration so the youtube service is active.",
+      "reset": "agent-module-documentation/evaluation/verify/tacjs-enable-service-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/tacjs-enable-service-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/tacjs-enable-service-reset.sh",
+      "expected_output": "In tacjs.settings set services.youtube.status = TRUE (each service is a mapping with a status boolean; only status:true services are sent to the browser)."
+    }
+  ]
+}

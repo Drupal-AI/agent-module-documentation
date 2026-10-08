@@ -1,0 +1,97 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "commerce_stock_ui",
+  "version": "3.0.x",
+  "note": "Commerce Stock UI provides the human-facing UI for Commerce Stock: a two-step 'Create stock transaction' admin form (StockTransactions1 at /admin/commerce/config/stock/transactions1 -> StockTransactions2 at .../transactions2), a 'Stock transactions' admin menu item, a field widget commerce_stock_level_transaction_form_link, and the permission 'use commerce stock transaction form' that gates the forms. It ships no config objects/entities. Because its only persistent, verifiable surface is that permission, medium/hard cases are grounded in real user.role config (which role holds the permission / granting it), verified by pure reads. All roles are namespaced csu_* and removed on cleanup.",
+  "evals": [
+    {
+      "id": "commerce_stock_ui-permission",
+      "mode": "recipe",
+      "prompt": "In Commerce Stock, which permission lets a non-admin user use the stock transaction entry form provided by the Commerce Stock UI module, and where is that form?",
+      "must_contain_any": [
+        "use commerce stock transaction form",
+        "transactions1",
+        "Stock transactions"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The permission is 'use commerce stock transaction form'. It gates the two-step transaction form at /admin/commerce/config/stock/transactions1 (select variation) and /transactions2 (enter the transaction), reachable from the 'Stock transactions' admin menu item. It is separate from 'administer commerce stock'.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "commerce_stock_ui-two-step",
+      "mode": "recipe",
+      "prompt": "How does the Commerce Stock UI stock transaction form work - is it one page or a flow? What are the two routes involved?",
+      "must_contain_any": [
+        "commerce_stock_ui.stock_transactions1",
+        "commerce_stock_ui.stock_transactions2",
+        "transactions1",
+        "transactions2",
+        "two"
+      ],
+      "must_not_contain": [],
+      "expected_output": "It is a two-step flow: StockTransactions1 (route commerce_stock_ui.stock_transactions1) selects the product variation, then StockTransactions2 (route commerce_stock_ui.stock_transactions2) enters and submits the actual stock transaction for that variation.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "commerce_stock_ui-link-widget",
+      "mode": "recipe",
+      "prompt": "The Commerce Stock UI module adds a field widget that, instead of an inline stock editor, links to the stock transaction form. What is its widget id and which field type is it for?",
+      "must_contain_any": [
+        "commerce_stock_level_transaction_form_link",
+        "commerce_stock_level"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The widget id is commerce_stock_level_transaction_form_link ('Link to stock transaction form'), for commerce_stock_level fields; it renders a link to the transaction form rather than an inline editor.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "commerce_stock_ui-known-role",
+      "mode": "introspection",
+      "prompt": "On this Drupal site, one role has been granted access to the Commerce Stock transaction entry form. Inspect the roles and name the role that can use the stock transaction form.",
+      "must_contain_any": [
+        "csu_known"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The role is csu_known: user.role.csu_known includes the 'use commerce stock transaction form' permission.",
+      "setup": "agent-module-documentation/evaluation/verify/commerce_stock_ui-known-role-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/commerce_stock_ui-known-role-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "commerce_stock_ui-known-role-perm",
+      "mode": "introspection",
+      "prompt": "On this Drupal site the role csu_known has been given exactly one Commerce Stock related permission. Inspect its configuration and state which permission that is.",
+      "must_contain_any": [
+        "use commerce stock transaction form"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The permission is 'use commerce stock transaction form': user.role.csu_known grants it (the Commerce Stock UI transaction-form permission).",
+      "setup": "agent-module-documentation/evaluation/verify/commerce_stock_ui-known-role-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/commerce_stock_ui-known-role-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "commerce_stock_ui-grant-perm",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site there is a role csu_task that cannot use the Commerce Stock transaction form. Grant that role permission to use the Commerce Stock UI stock transaction form. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/commerce_stock_ui-grant-perm-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/commerce_stock_ui-grant-perm-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/commerce_stock_ui-grant-perm-cleanup.sh",
+      "expected_output": "The role csu_task is granted 'use commerce stock transaction form' (user.role.csu_task permissions include it), e.g. via the permissions page or drush role:perm:add csu_task 'use commerce stock transaction form'."
+    },
+    {
+      "id": "commerce_stock_ui-create-role",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-layman",
+      "prompt": "On this Drupal store, warehouse staff need to be able to enter stock changes but not touch other settings. Create a role called csu_clerk and give it just the ability to use the Commerce Stock transaction form. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/commerce_stock_ui-create-role-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/commerce_stock_ui-create-role-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/commerce_stock_ui-create-role-cleanup.sh",
+      "expected_output": "A role csu_clerk exists and holds the 'use commerce stock transaction form' permission (and not full stock administration)."
+    }
+  ]
+}

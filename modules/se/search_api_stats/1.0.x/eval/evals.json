@@ -1,0 +1,80 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "search_api_stats",
+  "version": "1.0.x",
+  "note": "Search API Stats logs every non-empty-keyword Search API query into its own `search_api_stats` DB table via hook_search_api_results_alter(), and registers that table as a Views base table (hook_views_data) with a relationship to users. It has no settings form, no configure route, no Drush, no plugin types. Its only alter hook is hook_search_api_stats_record_alter() (the ->alter('search_api_stats_record', $fields) call before insert). The shipped default view is Drupal-7-era code that does NOT load on D11, so reporting means building your own View on the search_api_stats base table. All medium/hard cases are grounded in that real table/columns and the Views base table: introspection reads back seeded rows (a known result count / the top keyword by count); execution builds a View whose base_table is search_api_stats, and clears the log table.",
+  "evals": [
+    {
+      "id": "search_api_stats-how-recorded",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "On a Drupal 11 site with the search_api_stats module, how does a visitor's keyword search end up recorded, and where is it stored? Name the hook that triggers the recording and the database table rows are inserted into.",
+      "must_contain_any": ["hook_search_api_results_alter", "search_api_results_alter", "search_api_stats"],
+      "must_not_contain": [],
+      "expected_output": "search_api_stats implements hook_search_api_results_alter(); after a Search API query with non-empty keywords, it inserts one row (server, index, keywords, numfound, uid, timestamp, language, ...) into the search_api_stats table."
+    },
+    {
+      "id": "search_api_stats-view-reports",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "I enabled search_api_stats on Drupal 11 but I do not see any search report page. How am I supposed to view the recorded statistics, and why is there no ready-made report out of the box?",
+      "must_contain_any": ["Views", "base table", "views_data", "search_api_stats"],
+      "must_not_contain": [],
+      "expected_output": "The module exposes the search_api_stats table as a Views base table (hook_views_data) so you build your own View on it (e.g. group by keywords for top terms). The bundled default view uses the Drupal 7 hook_views_default_views() API and does not load on Drupal 11, so there is no working out-of-the-box report."
+    },
+    {
+      "id": "search_api_stats-record-alter",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "With search_api_stats, which hook lets another module modify the fields of a search-statistics row before it is written to the database (for example to hash the session id or drop a keyword)?",
+      "must_contain_any": ["hook_search_api_stats_record_alter", "search_api_stats_record"],
+      "must_not_contain": [],
+      "expected_output": "hook_search_api_stats_record_alter(array &$fields): the module calls \\Drupal::moduleHandler()->alter('search_api_stats_record', $fields) just before the insert, so implementers can rewrite the s_name/i_name/keywords/uid/sid/etc. array."
+    },
+    {
+      "id": "search_api_stats-known-search",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "This site's search_api_stats log contains a recorded search for the exact keyword 'sasneedle_zorp'. Inspect the live database and tell me how many results (numfound) that recorded search returned.",
+      "must_contain_any": ["77"],
+      "must_not_contain": [],
+      "expected_output": "77 - the row in the search_api_stats table with keywords='sasneedle_zorp' has numfound=77.",
+      "setup": "agent-module-documentation/evaluation/verify/search_api_stats-known-search-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/search_api_stats-known-search-cleanup.sh"
+    },
+    {
+      "id": "search_api_stats-top-term",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "Using the search_api_stats log on this site, for the Search API index whose i_name is 'sas_topidx', which keyword has been searched the most times? Inspect the live search_api_stats table and give that keyword.",
+      "must_contain_any": ["sasterm_alpha"],
+      "must_not_contain": [],
+      "expected_output": "sasterm_alpha - grouping the search_api_stats rows where i_name='sas_topidx' by keywords and counting, sasterm_alpha appears 3 times vs sasterm_beta once.",
+      "setup": "agent-module-documentation/evaluation/verify/search_api_stats-top-term-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/search_api_stats-top-term-cleanup.sh"
+    },
+    {
+      "id": "search_api_stats-build-view",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal 11 site, search_api_stats records searches but ships no working report. Create a View with the machine id 'sas_report' whose base table is the module's search_api_stats table (so it can report on recorded searches). Apply it to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/search_api_stats-build-view-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/search_api_stats-build-view-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/search_api_stats-build-view-cleanup.sh",
+      "expected_output": "A views.view.sas_report config entity exists with base_table: search_api_stats (created via the Views UI choosing the 'Search API stats' base table, or by importing the config)."
+    },
+    {
+      "id": "search_api_stats-clear-log",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "site-owner",
+      "prompt": "For a data-retention cleanup, I need the recorded search statistics for the search server named 'sasclear' removed from this site. Delete those search_api_stats log entries from the live database.",
+      "reset": "agent-module-documentation/evaluation/verify/search_api_stats-clear-log-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/search_api_stats-clear-log-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/search_api_stats-clear-log-cleanup.sh",
+      "expected_output": "No rows remain in the search_api_stats table with s_name='sasclear' (the module has no purge UI; delete directly, e.g. DELETE FROM search_api_stats WHERE s_name='sasclear')."
+    }
+  ]
+}

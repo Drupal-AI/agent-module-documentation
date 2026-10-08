@@ -1,0 +1,78 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "link_class",
+  "version": "2.2.x",
+  "note": "link_class ships a single field widget (plugin id `link_class_field_widget`, label \"Link with class\") that subclasses core LinkWidget and applies only to `link` fields. It has no global settings form (configure is null), no permissions, no Drush commands, no services. All configuration lives on each field's entity_form_display component under schema field.widget.settings.link_class_field_widget: link_class_mode (manual | select_class | force_class), link_class_force (force mode class string), link_class_select (select mode key|label list). The chosen class is stored in the link value's options.attributes.class and rendered by core's link formatter. Recipe cases are response-graded documented facts. Medium cases install a known Link field whose form display uses the widget and require live drush introspection. Hard cases build live config: switch a Link field's form-display widget to link_class_field_widget with a specific mode/setting, verified against real entity_form_display state (config-level, no rendered-output check — a thin, honest bound for a widget-only module).",
+  "evals": [
+    {
+      "id": "link-class-widget-id",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "On a Drupal 11 site I want editors to be able to add a CSS class (e.g. to style a link as a button) to values of a core Link field. Which contrib module provides this, what is the exact field-widget plugin id I select on Manage form display, and which field type(s) can it be applied to?",
+      "must_contain_any": ["link_class_field_widget", "Link with class"],
+      "must_not_contain": [],
+      "expected_output": "The Link Class module. Its widget plugin id is `link_class_field_widget` (label \"Link with class\"), it subclasses core's LinkWidget, and it applies only to `link` field types. Select it on Structure > Manage form display for the Link field."
+    },
+    {
+      "id": "link-class-modes",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "The Drupal link_class 'Link with class' widget offers a 'Method for adding class' option. What are its three modes, what does each mode present to the editor, and which setting key stores the mode plus its default value?",
+      "must_contain_any": ["link_class_mode", "manual", "force_class", "select_class"],
+      "must_not_contain": [],
+      "expected_output": "The mode is stored in link_class_mode (default 'manual'). manual = a free-text textfield where the editor types classes; select_class = a dropdown of predefined styles; force_class = a fixed class applied automatically to every link with no editor input."
+    },
+    {
+      "id": "link-class-settings-storage",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "For the link_class widget, which setting holds the fixed class used in force mode and which holds the option list for select mode (and in what format)? Where is all of this stored, and does the module add any admin settings page, permissions, or Drush commands?",
+      "must_contain_any": ["link_class_force", "link_class_select", "key|label", "entity_form_display", "options.attributes.class"],
+      "must_not_contain": [],
+      "expected_output": "link_class_force holds the forced class string (e.g. 'btn btn-default'); link_class_select holds the select options as one 'key|label' per line (key = the class(es), label optional). All of it is stored on the field's entity_form_display component (schema field.widget.settings.link_class_field_widget); the chosen class ends up in the link value's options.attributes.class. There is no global settings page (configure is null), no permissions, and no Drush commands."
+    },
+    {
+      "id": "link-class-known-force-widget",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "A Link field has been added to the Article content type on this site and its edit-form widget was customized. Inspect the Article node default form-display configuration and tell me: which field widget is configured for that link field, which class-adding mode it uses, and what class string (if any) it forces onto links.",
+      "setup": "agent-module-documentation/evaluation/verify/link_class-force-mode-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/link_class-force-mode-cleanup.sh",
+      "must_contain_any": ["link_class_field_widget", "Link with class"],
+      "must_not_contain": [],
+      "expected_output": "The field node.article.field_lc_intro uses the `link_class_field_widget` (Link with class) widget on the default form display, in force mode (link_class_mode = force_class), forcing the class 'btn btn-primary' (link_class_force) onto every link."
+    },
+    {
+      "id": "link-class-known-select-options",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "This site has an Article Link field whose node-form widget is the 'Link with class' widget configured to let editors pick a style. Inspect the live form-display configuration and tell me which mode it is in and exactly which class options (keys and labels) editors can choose from.",
+      "setup": "agent-module-documentation/evaluation/verify/link_class-select-mode-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/link_class-select-mode-cleanup.sh",
+      "must_contain_any": ["select_class", "btn btn-primary", "Primary button", "btn btn-default"],
+      "must_not_contain": [],
+      "expected_output": "The field node.article.field_lc_pick uses link_class_field_widget in select mode (link_class_mode = select_class). Its link_class_select list offers two options: 'btn btn-default|Default button' and 'btn btn-primary|Primary button' (key = class string, label = editor-facing name)."
+    },
+    {
+      "id": "link-class-configure-force",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, configure the Article content type's default node edit form so the Link field field_lc_force uses the link_class module's 'Link with class' widget (plugin id link_class_field_widget) instead of its current core link widget, in FORCE mode (link_class_mode = force_class), forcing the class `btn btn-cta` onto every link. Apply it live so the entity_form_display reflects the change.",
+      "reset": "agent-module-documentation/evaluation/verify/link_class-force-widget-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/link_class-force-widget-verify.sh",
+      "expected_output": "The node.article.default entity_form_display component for field_lc_force has type = link_class_field_widget with settings.link_class_mode = force_class and settings.link_class_force = 'btn btn-cta'."
+    },
+    {
+      "id": "link-class-configure-select",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, set the Article node edit form's widget for the Link field field_lc_style to the link_class 'Link with class' widget (plugin id link_class_field_widget) in SELECT mode (link_class_mode = select_class), and define two style options editors can pick from: `btn btn-default|Default button` and `btn btn-primary|Primary button` (one key|label per line in link_class_select). Save it to the live entity_form_display.",
+      "reset": "agent-module-documentation/evaluation/verify/link_class-select-widget-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/link_class-select-widget-verify.sh",
+      "expected_output": "The node.article.default entity_form_display component for field_lc_style has type = link_class_field_widget with settings.link_class_mode = select_class and a settings.link_class_select list containing key|label option lines (e.g. 'btn btn-primary|Primary button')."
+    }
+  ]
+}

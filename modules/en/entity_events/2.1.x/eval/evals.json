@@ -1,0 +1,80 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "entity_events",
+  "version": "2.1.x",
+  "note": "Entity Events is a pure developer API: it re-dispatches the five core entity lifecycle hooks as Symfony events (EntityEventType::INSERT='event.insert', UPDATE='event.update', PRESAVE='event.presave', DELETE='event.delete', PREDELETE='event.predelete'), each carrying a Drupal\\entity_events\\Event\\EntityEvent with getEntity()/getEventType(). You consume it by extending an abstract subscriber base class (EntityEventInsertSubscriber, ...UpdateSubscriber, etc.) and registering it as an event_subscriber service. It has NO config, permissions, routes, plugins or UI. Because there is no per-site config, the medium (introspection) cases are grounded in the enabled module on the live site: the agent must read the actual EntityEventType constants from the running container (the setup guarantees the module is enabled; cleanup leaves it enabled as site baseline). The hard (execution) cases require the agent to build a small custom module with a real event subscriber; verify creates/deletes a probe user_role config entity (entity_events fires hook_entity_insert/delete for config entities too) and checks the subscriber wrote the expected value to Drupal State. Reset/cleanup uninstall the custom module BEFORE deleting its directory to avoid an orphaned enabled module.",
+  "evals": [
+    {
+      "id": "entity_events-event-names",
+      "mode": "recipe",
+      "prompt": "The Drupal contrib module entity_events dispatches an event for each core entity lifecycle hook. What are the five event name strings it dispatches (as defined by its EntityEventType constants)?",
+      "must_contain_any": ["event.insert", "event.update", "event.presave", "event.delete", "event.predelete"],
+      "must_not_contain": [],
+      "expected_output": "EntityEventType defines INSERT='event.insert', UPDATE='event.update', PRESAVE='event.presave', DELETE='event.delete', PREDELETE='event.predelete'.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "entity_events-event-object",
+      "mode": "recipe",
+      "prompt": "When entity_events dispatches an event, what object does a subscriber receive and which methods give access to the affected entity and the event type?",
+      "must_contain_any": ["getEntity", "getEventType", "EntityEvent"],
+      "must_not_contain": [],
+      "expected_output": "Subscribers receive a Drupal\\entity_events\\Event\\EntityEvent; call getEntity() for the affected EntityInterface and getEventType() for the event type string.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "entity_events-how-to-subscribe",
+      "mode": "recipe",
+      "prompt": "Using entity_events, how do I run code whenever any entity is inserted? Which class should my subscriber extend and how is it wired up?",
+      "must_contain_any": ["EntityEventInsertSubscriber", "event_subscriber", "onEntityInsert"],
+      "must_not_contain": [],
+      "expected_output": "Extend Drupal\\entity_events\\EventSubscriber\\EntityEventInsertSubscriber, implement onEntityInsert(EntityEvent $event), and register the class as a service tagged event_subscriber in your module's services.yml.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "entity_events-live-update-eventname",
+      "mode": "introspection",
+      "prompt": "By inspecting this running Drupal site's entity_events module, give the exact machine event name that is dispatched after an existing entity is saved (an update).",
+      "must_contain_any": ["event.update"],
+      "must_not_contain": [],
+      "expected_output": "It is 'event.update' (the value of Drupal\\entity_events\\EntityEventType::UPDATE), discoverable from the installed module on this site.",
+      "setup": "agent-module-documentation/evaluation/verify/entity_events-live-update-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/entity_events-live-update-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "entity_events-live-predelete-eventname",
+      "mode": "introspection",
+      "prompt": "On this Drupal site, entity_events is enabled. By inspecting the running site, give the exact machine event name it dispatches just before an entity is deleted.",
+      "must_contain_any": ["event.predelete"],
+      "must_not_contain": [],
+      "expected_output": "It is 'event.predelete' (Drupal\\entity_events\\EntityEventType::PREDELETE), readable from the installed module/container on this site.",
+      "setup": "agent-module-documentation/evaluation/verify/entity_events-live-predelete-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/entity_events-live-predelete-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "entity_events-insert-subscriber",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "Using the entity_events module's API, create and enable a custom Drupal module named 'entity_events_ins' (under web/modules/custom/entity_events_ins) that contains an event subscriber extending Drupal\\entity_events\\EventSubscriber\\EntityEventInsertSubscriber. When a user ROLE (entity type id 'user_role') is inserted, its onEntityInsert() must store the string \"user_role/<id>\" (the entity type id, a slash, and the role id) into Drupal State under the key 'entity_events_ins.last'. Ignore other entity types. Enable the module so the subscriber is active on the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/entity_events-insert-subscriber-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/entity_events-insert-subscriber-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/entity_events-insert-subscriber-cleanup.sh",
+      "expected_output": "A module entity_events_ins with entity_events_ins.info.yml (depends on entity_events), a services.yml registering the subscriber (tag event_subscriber), and a subscriber class extending EntityEventInsertSubscriber whose onEntityInsert() does: if $event->getEntity()->getEntityTypeId()==='user_role' then \\Drupal::state()->set('entity_events_ins.last', 'user_role/'.$event->getEntity()->id()). Enabled via drush en entity_events_ins -y."
+    },
+    {
+      "id": "entity_events-delete-subscriber",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "Using the entity_events module's API, create and enable a custom Drupal module named 'entity_events_del' (under web/modules/custom/entity_events_del) with an event subscriber extending Drupal\\entity_events\\EventSubscriber\\EntityEventDeleteSubscriber. When a user ROLE (entity type id 'user_role') is deleted, its onEntityDelete() must store the string \"user_role/<id>\" into Drupal State under the key 'entity_events_del.last'. Ignore other entity types. Enable the module on the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/entity_events-delete-subscriber-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/entity_events-delete-subscriber-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/entity_events-delete-subscriber-cleanup.sh",
+      "expected_output": "A module entity_events_del (depends on entity_events) with a services.yml registering an event_subscriber, and a subscriber extending EntityEventDeleteSubscriber whose onEntityDelete() does: if entity type id === 'user_role' then \\Drupal::state()->set('entity_events_del.last', 'user_role/'.$event->getEntity()->id()). Enabled via drush en entity_events_del -y."
+    }
+  ]
+}

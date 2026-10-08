@@ -1,0 +1,58 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "acquia_perz",
+  "version": "4.1.x",
+  "note": "Acquia Personalization (Perz) integrates Drupal with Acquia's Content Index Engine. It has one permission (administer acquia perz), a settings form at acquia_perz.admin_settings writing config object acquia_perz.settings, and a second config object acquia_perz.entity_config holding the per-bundle/view-mode personalization opt-in map (view_modes.<entity_type>.<bundle>.<view_mode> -> {render_role, preview_image, personalization_label, only_export_specific_entities}). The main module defines no plugins and no Drush; actual content export lives in the acquia_perz_push submodule. Medium reads back a known api.site_id from acquia_perz.settings; hard opts node.article.default into personalization in acquia_perz.entity_config and is verified against the live config.",
+  "evals": [
+    {
+      "id": "acquia_perz-config-objects",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "On a Drupal site using the acquia_perz (Acquia Personalization) module, which configuration object holds the global settings (API region, identity, mappings), and what is the route/path of its settings form?",
+      "must_contain_any": ["acquia_perz.settings", "acquia_perz.admin_settings", "admin/config/services/acquia-perz/settings"],
+      "must_not_contain": [],
+      "expected_output": "Global settings live in the config object acquia_perz.settings, edited on the form route acquia_perz.admin_settings at /admin/config/services/acquia-perz/settings (permission: administer acquia perz)."
+    },
+    {
+      "id": "acquia_perz-view-mode-optin",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "In acquia_perz, there is no dedicated form to choose which content is personalized. How do you opt a content type's view mode into Acquia Personalization, and in which config object is that opt-in stored?",
+      "must_contain_any": ["acquia_perz.entity_config", "Manage display", "view_modes", "entity_view_display"],
+      "must_not_contain": [],
+      "expected_output": "The module alters the entity Manage display form and adds an 'Acquia Personalization' section; ticking 'Make <bundle> available' stores the opt-in in config object acquia_perz.entity_config under view_modes.<entity_type>.<bundle>.<view_mode> (with render_role, and optionally preview_image, personalization_label, only_export_specific_entities). Only entities implementing EntityPublishedInterface are eligible."
+    },
+    {
+      "id": "acquia_perz-push-required",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "I installed acquia_perz but content is not being sent to Acquia Personalization and the status report complains. Which bundled submodule actually exports content to the service, and how does the main module report that it is missing?",
+      "must_contain_any": ["acquia_perz_push", "hook_requirements", "status report", "Push module"],
+      "must_not_contain": [],
+      "expected_output": "The acquia_perz_push submodule performs the real content export (queue + tracking + Drush). The main module's hook_requirements (runtime) surfaces PerzHelper::getConfigErrorMessages(), which reports 'The Acquia Personalization Push module is uninstalled. Please install this module.' plus missing Site ID / invalid credentials on the status report."
+    },
+    {
+      "id": "acquia_perz-known-site-id",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "This Drupal site already has Acquia Personalization (acquia_perz) configured. Inspect the live configuration and tell me the Site ID currently set for the Personalization API.",
+      "must_contain_any": ["perzintro_known_site"],
+      "must_not_contain": [],
+      "expected_output": "The Site ID is perzintro_known_site, stored at acquia_perz.settings -> api.site_id (read with: drush cget acquia_perz.settings api.site_id).",
+      "setup": "agent-module-documentation/evaluation/verify/acquia_perz-known-site-id-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/acquia_perz-known-site-id-cleanup.sh"
+    },
+    {
+      "id": "acquia_perz-enable-article-personalization",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, use the acquia_perz module to make the Article content type's default view mode available to Acquia Personalization, rendered as the anonymous user. Apply the change to the live configuration.",
+      "reset": "agent-module-documentation/evaluation/verify/acquia_perz-enable-article-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/acquia_perz-enable-article-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/acquia_perz-enable-article-reset.sh",
+      "expected_output": "In config object acquia_perz.entity_config, view_modes.node.article.default exists with render_role = anonymous (e.g. drush php:eval loading acquia_perz.entity_config, setting view_modes[node][article][default] = ['render_role' => 'anonymous'], and saving)."
+    }
+  ]
+}

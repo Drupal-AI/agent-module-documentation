@@ -1,0 +1,80 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "config_inspector",
+  "version": "2.1.x",
+  "note": "Config Inspector is a read-only developer tool over core's config-schema/typed-data system. UI report at /admin/reports/config-inspector (route config_inspector.overview, permission 'inspect configuration'), tabs List/Tree/Form/Raw/Download. Drush command config:inspect (alias inspect_config) with --only-error/--detail/--filter-keys/--strict-validation/--list-constraints/--generate-baseline/--baseline/--todo/--statistics; exits non-zero on schema errors. Service config_inspector.manager exposes hasSchema/checkValues/validateValues/checkValidatabilityValues. No config of its own, no schema, no plugin types. Medium cases create a custom simple config object config_inspector_test.settings (no schema, marker CI_MED_SENTINEL) and inspect it. Hard cases run config:inspect to produce verifiable artifacts (baseline JSON, statistics JSON) in /var/www/html.",
+  "evals": [
+    {
+      "id": "config_inspector-drush-command",
+      "mode": "recipe",
+      "prompt": "On a Drupal 11 site with the config_inspector module enabled, what Drush command inspects configuration for schema errors, and how would you run it so it shows only problems and can fail a CI build?",
+      "must_contain_any": ["config:inspect", "inspect_config"],
+      "must_not_contain": [],
+      "expected_output": "drush config:inspect (alias inspect_config). Use `drush config:inspect --only-error` to show only config with schema problems; the command returns a non-zero exit code when schema errors are found, so it works as a CI gate.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "config_inspector-report-location",
+      "mode": "recipe",
+      "prompt": "Where does the Configuration Inspector module put its report in the Drupal admin, and which permission controls access to it?",
+      "must_contain_any": ["/admin/reports/config-inspector", "config_inspector.overview", "inspect configuration"],
+      "must_not_contain": [],
+      "expected_output": "Administration » Reports » Configuration inspector at /admin/reports/config-inspector (route config_inspector.overview). Access is gated by the 'inspect configuration' permission (restrict access: TRUE).",
+      "difficulty": "easy"
+    },
+    {
+      "id": "config_inspector-validatability",
+      "mode": "recipe",
+      "prompt": "In config_inspector, what does the 'validatability' percentage mean, and does a config property that only has a PrimitiveType constraint count as validatable?",
+      "must_contain_any": ["validatab", "constraint", "PrimitiveType"],
+      "must_not_contain": [],
+      "expected_output": "Validatability is the share of a config object's property paths that carry real validation constraints. A property whose only constraint is PrimitiveType (or PrimitiveType + NotNull) does NOT count as validatable, unless its value type is boolean, URI, datetime, or duration; an arbitrary string/int/float is treated as under-validated. Use --todo to find the objects/types closest to full validatability.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "config_inspector-noschema-status",
+      "mode": "introspection",
+      "prompt": "A simple configuration object named config_inspector_test.settings exists on this site. Using Configuration Inspector, what schema status does it report for that object?",
+      "must_contain_any": ["No schema", "no schema"],
+      "must_not_contain": [],
+      "expected_output": "config_inspector_test.settings has no config schema, so `drush config:inspect config_inspector_test.settings` (or the report UI) reports its status as 'No schema'.",
+      "setup": "agent-module-documentation/evaluation/verify/config_inspector-med-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/config_inspector-med-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "config_inspector-read-marker",
+      "mode": "introspection",
+      "prompt": "The configuration object config_inspector_test.settings on this site has a key named 'marker'. Inspect the live configuration and report the value stored in that key.",
+      "must_contain_any": ["CI_MED_SENTINEL"],
+      "must_not_contain": [],
+      "expected_output": "The marker key holds 'CI_MED_SENTINEL' (visible via config_inspector's List/Raw view of the object, or `drush config:get config_inspector_test.settings`).",
+      "setup": "agent-module-documentation/evaluation/verify/config_inspector-med-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/config_inspector-med-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "config_inspector-generate-baseline",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "Using the config_inspector Drush command, generate a baseline file capturing the `system.*` configuration objects that currently have schema errors on this site.",
+      "reset": "agent-module-documentation/evaluation/verify/config_inspector-baseline-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/config_inspector-baseline-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/config_inspector-baseline-reset.sh",
+      "expected_output": "Run `drush config:inspect --filter-keys='system.*' --only-error --generate-baseline`; it writes config_inspector-baseline.json (a JSON array of config keys) to drush's working directory (the docroot web/)."
+    },
+    {
+      "id": "config_inspector-statistics-export",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "Use config_inspector to produce its JSON statistics assessment for the `system.site` configuration object's schema validatability, and save the JSON to /var/www/html/config_inspector_stats.json.",
+      "reset": "agent-module-documentation/evaluation/verify/config_inspector-stats-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/config_inspector-stats-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/config_inspector-stats-reset.sh",
+      "expected_output": "Run `drush config:inspect --filter-keys='system.site' --statistics > /var/www/html/config_inspector_stats.json`; the file is valid JSON containing an 'assessment' section (plus types/typesInUse/objects). Filtering to a schema-correct object keeps stdout pure JSON (objects with schema errors emit banner text)."
+    }
+  ]
+}

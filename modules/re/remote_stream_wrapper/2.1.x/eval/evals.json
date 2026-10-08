@@ -1,0 +1,97 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "remote_stream_wrapper",
+  "version": "2.1.x",
+  "note": "Remote Stream Wrapper has NO settings form, no configure route (configure: null), no permissions, no config schema, no plugin types and no Drush commands. Its entire surface is three services (stream_wrapper.http and stream_wrapper.https, both HttpStreamWrapper tagged stream_wrapper; and file.mime_type.guesser.http, HttpMimeTypeGuesser tagged mime_type_guesser priority 10), three global functions (file_is_scheme_remote / file_is_uri_remote / file_is_wrapper_remote, all testing RemoteStreamWrapperInterface), a read-only stream implementation (ReadOnlyPhpStreamWrapperTrait; realpath() returns FALSE), an image_style entity-class override whose buildUri() reroutes remote originals to public://styles/<style>/<scheme>/<host/path>, and a route callback registering image.style_<scheme> per remote scheme. Medium/hard cases are grounded in that: introspection reads back real managed file entities and a real image style from the live site; execution creates a permanent managed file whose URI is a remote URL (proving nothing was downloaded) and wires an image style over it. Eval scripts use the container-internal URL http://web/core/misc/druplicon.png so they never depend on outbound internet access.",
+  "evals": [
+    {
+      "id": "remote_stream_wrapper-schemes-and-services",
+      "mode": "recipe",
+      "prompt": "Which URI schemes does the Drupal contrib module remote_stream_wrapper register as stream wrappers, what service ids and class implement them, and which service tag makes Drupal pick them up?",
+      "must_contain_any": [
+        "stream_wrapper.http",
+        "stream_wrapper.https",
+        "HttpStreamWrapper"
+      ],
+      "must_not_contain": [],
+      "expected_output": "It registers http and https. Services stream_wrapper.http and stream_wrapper.https both use Drupal\\remote_stream_wrapper\\StreamWrapper\\HttpStreamWrapper and carry the tag `stream_wrapper` with `scheme: http` / `scheme: https`. It also registers file.mime_type.guesser.http (HttpMimeTypeGuesser) with the mime_type_guesser tag at priority 10. getType() is READ & HIDDEN, so the schemes are not offered as upload destinations.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "remote_stream_wrapper-create-remote-file",
+      "mode": "recipe",
+      "prompt": "With the remote_stream_wrapper module enabled on Drupal 11, how do I create a managed file entity for an image hosted on another server without downloading a copy to my site's file system? Show the code, and tell me how I can later test whether a given file URI is remote.",
+      "must_contain_any": [
+        "File::create",
+        "file_is_uri_remote",
+        "'uri' =>"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Create the file entity with the remote URL as the URI: File::create(['uri' => 'https://example.com/assets/photo.png', 'status' => 1])->save(). No bytes are copied; getFileUri() and createFileUrl() both return the URL, and the MIME type is guessed by file.mime_type.guesser.http on save. Test remoteness with the module's global helpers file_is_uri_remote($uri), file_is_scheme_remote($scheme) or file_is_wrapper_remote($wrapper), all of which check RemoteStreamWrapperInterface.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "remote_stream_wrapper-read-only-limits",
+      "mode": "recipe",
+      "prompt": "I am writing code against files whose URIs are http:// URLs provided by the remote_stream_wrapper module. Which filesystem operations will fail, and what does realpath() return for such a URI?",
+      "must_contain_any": [
+        "read-only",
+        "read only",
+        "ReadOnlyPhpStreamWrapperTrait",
+        "realpath"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The wrapper is read-only. stream_open() only accepts the r, rb and rt modes, and ReadOnlyPhpStreamWrapperTrait makes writes plus unlink(), rename(), mkdir(), rmdir(), touch(), chmod() and stream_cast() raise an E_USER_WARNING and return FALSE. realpath() returns FALSE, so any code that calls it must be guarded. Reading (file_exists, file_get_contents, fopen in read mode) works, backed by Guzzle. Deleting the file entity itself is fine - only the remote bytes are untouchable.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "remote_stream_wrapper-known-files",
+      "mode": "introspection",
+      "prompt": "This Drupal site has two managed files whose filenames start with rsw_eval. Exactly one of them is a remote file handled by the remote_stream_wrapper module rather than stored on local disk. Inspect the running site and tell me which filename is the remote one and what its URI is.",
+      "must_contain_any": [
+        "rsw_eval_remote.png"
+      ],
+      "must_not_contain": [],
+      "expected_output": "rsw_eval_remote.png is the remote one: its URI is http://web/core/misc/druplicon.png, which file_is_uri_remote() reports as TRUE because the http scheme is served by remote_stream_wrapper's HttpStreamWrapper. rsw_eval_local.png has the ordinary local URI public://rsw_eval/rsw_eval_local.png. Discoverable by loading the file storage and checking getFileUri(), or via `drush sqlq \"SELECT filename, uri FROM file_managed WHERE filename LIKE 'rsw_eval%'\"`.",
+      "setup": "agent-module-documentation/evaluation/verify/remote_stream_wrapper-known-files-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/remote_stream_wrapper-known-files-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "remote_stream_wrapper-known-style-derivative",
+      "mode": "introspection",
+      "prompt": "This Drupal site has an image style whose machine name is rsw_eval_style. Because remote_stream_wrapper is installed, image styles handle remote originals specially. Inspect the running site and tell me the exact derivative URI that this image style produces for the original image https://example.com/pics/photo.jpg.",
+      "must_contain_any": [
+        "public://styles/rsw_eval_style/https/example.com/pics/photo.jpg"
+      ],
+      "must_not_contain": [],
+      "expected_output": "public://styles/rsw_eval_style/https/example.com/pics/photo.jpg — remote_stream_wrapper swaps the image_style entity class for Drupal\\remote_stream_wrapper\\Entity\\ImageStyle, whose buildUri() reroutes remote originals to <default_scheme>://styles/<style>/<original_scheme>/<host><path>. Discoverable by calling ImageStyle::load('rsw_eval_style')->buildUri('https://example.com/pics/photo.jpg') via drush php:eval.",
+      "setup": "agent-module-documentation/evaluation/verify/remote_stream_wrapper-known-style-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/remote_stream_wrapper-known-style-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "remote_stream_wrapper-remote-file",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, use the remote_stream_wrapper module to register the image at http://web/core/misc/druplicon.png as a permanent managed file entity named rsw_task_remote.png, keeping the file's URI as that remote URL so that no copy of the image is downloaded into the site's file system. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/remote_stream_wrapper-remote-file-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/remote_stream_wrapper-remote-file-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/remote_stream_wrapper-remote-file-cleanup.sh",
+      "expected_output": "File::create(['uri' => 'http://web/core/misc/druplicon.png', 'filename' => 'rsw_task_remote.png', 'status' => 1])->save(). The saved entity keeps the http:// URI (file_is_uri_remote() is TRUE), status is permanent, the MIME type is guessed as image/png by file.mime_type.guesser.http, and nothing is written to local disk."
+    },
+    {
+      "id": "remote_stream_wrapper-remote-thumbnail",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, set up thumbnailing for an externally hosted image using remote_stream_wrapper. Create an image style with the machine name rsw_task_thumb containing a Scale effect with a width of 240 pixels, and register the externally hosted image http://web/core/misc/druplicon.png as a permanent managed file named rsw_task_thumb_source.png whose URI stays that remote URL. Apply both changes to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/remote_stream_wrapper-remote-thumbnail-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/remote_stream_wrapper-remote-thumbnail-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/remote_stream_wrapper-remote-thumbnail-cleanup.sh",
+      "expected_output": "Create ImageStyle 'rsw_task_thumb' and addImageEffect(['id' => 'image_scale', 'data' => ['width' => 240, 'height' => NULL, 'upscale' => FALSE]]), then File::create(['uri' => 'http://web/core/misc/druplicon.png', 'filename' => 'rsw_task_thumb_source.png', 'status' => 1])->save(). Because remote_stream_wrapper re-classes image_style, buildUri() for that file returns public://styles/rsw_task_thumb/http/web/core/misc/druplicon.png rather than failing on the remote original."
+    }
+  ]
+}

@@ -1,0 +1,101 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "user_expire",
+  "version": "2.1.x",
+  "note": "User Expire blocks accounts either per-user on a set date (stored in the user_expire DB table) or per-role after N seconds of inactivity (config user_expire.settings:user_expire_roles). Warning emails are governed by send_expiration_warnings, offset (secs before expiry), and frequency (secs between sends). Blocking runs on hook_cron. Live-state cases are config-based (role rules + warning settings) because saving user entities on this shared site currently fatals in an unrelated module (salesforce_example); the per-user table workflow is documented and covered by recipe cases. Configure route user_expire.admin; permissions set user expiration / view expiring users report / administer user expire settings.",
+  "evals": [
+    {
+      "id": "user_expire-per-user-how",
+      "mode": "recipe",
+      "prompt": "Using the user_expire module, how do I make a single Drupal user account automatically get blocked on a specific date, and what permission is needed to set that?",
+      "must_contain_any": [
+        "set user expiration",
+        "user edit form",
+        "user_expire",
+        "expiration date"
+      ],
+      "must_not_contain": [],
+      "expected_output": "With the 'set user expiration' permission, edit that user's account; a 'User expiration' section lets you tick a box and choose an expiration date. The date is stored (as a Unix timestamp) in the user_expire database table keyed by uid, and hook_cron blocks the account once the date passes.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "user_expire-role-inactivity",
+      "mode": "recipe",
+      "prompt": "In the user_expire module, which configuration controls blocking accounts after a period of inactivity per role, and what does a value of 0 mean?",
+      "must_contain_any": [
+        "user_expire_roles",
+        "inactivity",
+        "0"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The user_expire.settings:user_expire_roles map holds, per role machine name, the number of seconds of inactivity before accounts with that role are blocked. A value of 0 (or an absent role) means that role never expires. Inactivity is measured from last access (or account creation if never logged in).",
+      "difficulty": "easy"
+    },
+    {
+      "id": "user_expire-report",
+      "mode": "recipe",
+      "prompt": "Where can an administrator see which user accounts are about to expire on a site running the user_expire module, and what permission gates that page?",
+      "must_contain_any": [
+        "/admin/reports/expiring-users",
+        "view expiring users report",
+        "Expiring users"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The Expiring users report at /admin/reports/expiring-users (route expiring_users.admin), gated by the 'view expiring users report' permission, lists accounts that have a pending expiration date.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "user_expire-live-role",
+      "mode": "introspection",
+      "prompt": "On this Drupal site, user_expire has been configured to expire one role's accounts after a period of inactivity. Inspect the live configuration and state which role machine name has an inactivity expiration set.",
+      "must_contain_any": [
+        "content_editor"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The content_editor role has an inactivity expiration of 7776000 seconds (90 days) in user_expire.settings:user_expire_roles. Check with `drush config:get user_expire.settings user_expire_roles`.",
+      "setup": "agent-module-documentation/evaluation/verify/user_expire-live-role-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/user_expire-live-role-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "user_expire-live-warnings",
+      "mode": "introspection",
+      "prompt": "Is this site's user_expire module currently sending account-expiration warning emails to users? Inspect the live configuration and state the value of the relevant setting.",
+      "must_contain_any": [
+        "false",
+        "disabled",
+        "off",
+        "not sending",
+        "no"
+      ],
+      "must_not_contain": [],
+      "expected_output": "No: user_expire.settings:send_expiration_warnings is false on the live site, so no expiration warning emails are sent (drush config:get user_expire.settings send_expiration_warnings).",
+      "setup": "agent-module-documentation/evaluation/verify/user_expire-live-warnings-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/user_expire-live-warnings-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "user_expire-role-rule",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, configure the user_expire module so that authenticated users are automatically blocked after 90 days of inactivity. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/user_expire-role-rule-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/user_expire-role-rule-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/user_expire-role-rule-cleanup.sh",
+      "expected_output": "Set user_expire.settings:user_expire_roles['authenticated'] to 7776000 (90 days in seconds) — via the per-role field on /admin/config/people/user-expire or by editing the config. Verified when the authenticated key equals 7776000."
+    },
+    {
+      "id": "user_expire-warning-timing",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, configure user_expire's expiration-warning emails to begin 14 days before an account expires and to be re-sent no more often than once per day. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/user_expire-warning-timing-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/user_expire-warning-timing-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/user_expire-warning-timing-cleanup.sh",
+      "expected_output": "Set user_expire.settings:offset = 1209600 (14 days) and frequency = 86400 (1 day), both in seconds. Verified when offset is 1209600 and frequency is 86400."
+    }
+  ]
+}

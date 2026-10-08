@@ -1,0 +1,96 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "ui_patterns",
+  "version": "2.0.x",
+  "note": "UI Patterns 2.x re-exposes core SDC components as configurable Drupal plugins. The main module has no admin UI (configure: null) and no permissions; site builders use it through submodules (ui_patterns_field_formatters, ui_patterns_blocks, ui_patterns_layouts, ...). Easy cases are response-graded on the architecture (SDC integration, Source plugins). Medium cases introspect a known live config (a component block and a component field formatter). Hard cases execute a real build: place a component block and configure a component field formatter, verified against live config. Component/plugin ids confirmed against source: block/layout id 'ui_patterns:<component>' (e.g. ui_patterns:olivero:teaser); formatters ui_patterns_component and ui_patterns_component_per_item; source plugin manager plugin.manager.ui_patterns_source.",
+  "evals": [
+    {
+      "id": "ui_patterns-what-it-does",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "What does the Drupal UI Patterns 2.x (ui_patterns) module do, and what Drupal core feature does it build on to expose reusable components across field formatters, blocks, layouts and views?",
+      "must_contain_any": [
+        "SDC",
+        "Single Directory Component",
+        "single directory component"
+      ],
+      "must_not_contain": [],
+      "expected_output": "UI Patterns 2.x takes Drupal core's Single Directory Components (SDC) and re-exposes each component (defined in a *.component.yml with props and slots) as a configurable Drupal plugin, so site builders can use them as field formatters, blocks, layouts, and Views rows/styles without writing render code. It decorates core's plugin.manager.sdc."
+    },
+    {
+      "id": "ui_patterns-source-plugins",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "In UI Patterns 2.x, when you configure a component you have to fill its props and slots. What is the pluggable system that supplies a value for each prop/slot called, what is its plugin manager service id, and give three example source ids.",
+      "must_contain_any": [
+        "ui_patterns_source",
+        "plugin.manager.ui_patterns_source",
+        "Source plugin"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Source plugins (plugin type ui_patterns_source, manager plugin.manager.ui_patterns_source, discovered in Plugin/UiPatterns/Source, using the #[Source] attribute). Examples: textfield, token, entity_field, menu, breadcrumb, component (nest a component), select, number, attributes."
+    },
+    {
+      "id": "ui_patterns-formatter-ids",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "Which submodule of UI Patterns 2.x lets you render a field through an SDC component, and what are the machine ids of the two field formatters it provides (one for the whole field, one per item)?",
+      "must_contain_any": [
+        "ui_patterns_component_per_item",
+        "ui_patterns_component"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The ui_patterns_field_formatters submodule. It provides ui_patterns_component (renders the whole field as one component) and ui_patterns_component_per_item (renders each field item as its own component). A hook_field_formatter_info_alter widens them to apply to every field type."
+    },
+    {
+      "id": "ui_patterns-known-block",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "A block has been placed in this site's Olivero theme that renders an SDC component through UI Patterns. Inspect the live configuration and tell me the block's config id, which SDC component it renders, and the static text set on one of the component's slots.",
+      "must_contain_any": [
+        "olivero:teaser",
+        "UI Patterns Eval Title",
+        "uipeval_known_teaser"
+      ],
+      "must_not_contain": [],
+      "setup": "agent-module-documentation/evaluation/verify/ui_patterns-known-block-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/ui_patterns-known-block-cleanup.sh",
+      "expected_output": "Block config block.block.uipeval_known_teaser uses plugin ui_patterns:olivero:teaser (component olivero:teaser); its settings.ui_patterns.slots.title source is a textfield with value 'UI Patterns Eval Title'."
+    },
+    {
+      "id": "ui_patterns-known-formatter",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "On this site, the Article content type's default view display renders its body field through a UI Patterns field formatter. Inspect the live configuration and tell me which formatter type is used and which SDC component it renders.",
+      "must_contain_any": [
+        "ui_patterns_component_per_item",
+        "olivero:teaser"
+      ],
+      "must_not_contain": [],
+      "setup": "agent-module-documentation/evaluation/verify/ui_patterns-known-formatter-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/ui_patterns-known-formatter-cleanup.sh",
+      "expected_output": "In core.entity_view_display.node.article.default the body field uses formatter type ui_patterns_component_per_item with settings.ui_patterns.component_id = olivero:teaser."
+    },
+    {
+      "id": "ui_patterns-place-block",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, use UI Patterns Blocks to place the Olivero 'teaser' SDC component as a block in the Olivero theme's content region. Fill at least one of the component's slots (e.g. the title) with static text and enable the block, applying it to the live site so the block placement exists.",
+      "reset": "agent-module-documentation/evaluation/verify/ui_patterns-place-block-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/ui_patterns-place-block-verify.sh",
+      "expected_output": "An enabled block config entity exists whose plugin id is ui_patterns:olivero:teaser (a ui_patterns:<component> block) with settings.ui_patterns.component_id set, i.e. a UI Patterns component block is placed live."
+    },
+    {
+      "id": "ui_patterns-field-formatter",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, configure the Article content type's default display so that the body field is rendered through a UI Patterns component formatter (ui_patterns_component or ui_patterns_component_per_item) rendering the Olivero 'teaser' SDC component, mapping the field into one of the component's slots. Apply it to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/ui_patterns-field-formatter-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/ui_patterns-field-formatter-verify.sh",
+      "expected_output": "core.entity_view_display.node.article.default has a field (body) using formatter type ui_patterns_component or ui_patterns_component_per_item with settings.ui_patterns.component_id set (e.g. olivero:teaser)."
+    }
+  ]
+}

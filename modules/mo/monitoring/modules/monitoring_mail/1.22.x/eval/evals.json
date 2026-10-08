@@ -1,0 +1,94 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "monitoring_mail",
+  "version": "1.22.x",
+  "note": "Sends escalation email on sensor status transition. Config monitoring_mail.settings: mail (recipient), severities (list, default [CRITICAL]). Fields injected into the base settings form; mail sent from hook_monitoring_run_sensors. Baseline: submodule not enabled. Medium cases enable it, seed known settings, read them back; hard cases configure the recipient / add a severity, verified against live config (reset enables + clears the key). Grounded in real config keys.",
+  "evals": [
+    {
+      "id": "mmail-what",
+      "mode": "recipe",
+      "prompt": "What does the monitoring_mail submodule do, and when does it actually send an email?",
+      "must_contain_any": [
+        "transition",
+        "escalation",
+        "status",
+        "hook_monitoring_run_sensors"
+      ],
+      "must_not_contain": [],
+      "expected_output": "It sends escalation email when a sensor's result transitions into a configured bad status (severity). It hooks hook_monitoring_run_sensors after each run and mails on status change into a configured severity.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "mmail-settings",
+      "mode": "recipe",
+      "prompt": "In which config object does monitoring_mail store the recipient address and the severities that trigger email, and where do you edit them in the UI?",
+      "must_contain_any": [
+        "monitoring_mail.settings",
+        "/admin/config/system/monitoring/settings"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Stored in monitoring_mail.settings (keys: mail, severities). Edited on the base Monitoring settings form at /admin/config/system/monitoring/settings (fields injected via hook_form_monitoring_settings_alter).",
+      "difficulty": "easy"
+    },
+    {
+      "id": "mmail-default-severity",
+      "mode": "recipe",
+      "prompt": "By default, which sensor status severity triggers a monitoring_mail escalation email?",
+      "must_contain_any": [
+        "CRITICAL"
+      ],
+      "must_not_contain": [],
+      "expected_output": "By default severities is [CRITICAL], so mail is sent on transition to CRITICAL. You can add WARNING to also mail on warnings.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "mmail-live-recipient",
+      "mode": "introspection",
+      "prompt": "monitoring_mail is configured on this site. Inspect the live monitoring_mail.settings and report the recipient email address that escalation mail is sent to.",
+      "must_contain_any": [
+        "alerts@probe.test"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The recipient is alerts@probe.test (monitoring_mail.settings:mail).",
+      "setup": "agent-module-documentation/evaluation/verify/mmail-settings-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/mmail-settings-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "mmail-live-severities",
+      "mode": "introspection",
+      "prompt": "Inspect the live monitoring_mail configuration on this site and list which sensor severities currently trigger an escalation email.",
+      "must_contain_any": [
+        "WARNING"
+      ],
+      "must_not_contain": [],
+      "expected_output": "severities is [CRITICAL, WARNING] on this site, so both trigger mail (monitoring_mail.settings:severities).",
+      "setup": "agent-module-documentation/evaluation/verify/mmail-settings-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/mmail-settings-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "mmail-set-recipient",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "Configure monitoring_mail so that escalation email is sent to ops@task.test. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/mmail-recipient-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/mmail-recipient-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/mmail-recipient-cleanup.sh",
+      "expected_output": "monitoring_mail.settings:mail is set to a non-empty recipient address (e.g. ops@task.test), via the Monitoring settings form or drush cset monitoring_mail.settings mail ops@task.test."
+    },
+    {
+      "id": "mmail-add-warning",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "layman",
+      "prompt": "Right now I only get emailed about critical site problems. I also want to be emailed about warnings. Please make warnings trigger the alert emails too.",
+      "reset": "agent-module-documentation/evaluation/verify/mmail-warning-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/mmail-warning-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/mmail-warning-cleanup.sh",
+      "expected_output": "monitoring_mail.settings:severities now includes WARNING (in addition to CRITICAL), so warning transitions also trigger mail."
+    }
+  ]
+}

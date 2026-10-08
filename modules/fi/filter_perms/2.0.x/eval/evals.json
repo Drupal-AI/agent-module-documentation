@@ -1,0 +1,82 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "filter_perms",
+  "version": "2.0.x",
+  "note": "filter_perms overrides the form on user.admin_permissions (and entity.user_role.edit_permissions_form) via a RouteSubscriber, replacing it with PermissionsForm which adds Roles/Modules filters to the permissions grid. The only persistent state the module owns is the per-user filter selection, stored in the expirable key/value collection 'filter_perms_list' (key = user id, TTL 3600) as ['roles'=>[...],'modules'=>[...]]; ALL_OPTIONS='-1' means all. It defines no permissions of its own (reuses core 'administer permissions'), no settings form/configure route/config schema/Drush. Introspection and execution cases are grounded in that real key/value collection; execution also creates/removes a namespaced role. No node operations (safe on this shared site).",
+  "evals": [
+    {
+      "id": "filter_perms-what",
+      "mode": "recipe",
+      "prompt": "What does the Drupal filter_perms (Filter Permissions) module add to the user permissions page, and why is it useful on large sites?",
+      "must_contain_any": ["filter"],
+      "must_not_contain": [],
+      "expected_output": "It adds 'Roles to display' and 'Modules to display' filters to the permissions page so you can narrow the grid to selected roles and modules. This is especially useful on sites with many permissions because it helps stay under PHP's max_input_vars limit when saving.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "filter_perms-how-override",
+      "mode": "recipe",
+      "prompt": "How does filter_perms add its filtering to Drupal's existing permissions page — what mechanism and which route does it change?",
+      "must_contain_any": ["RouteSubscriber", "user.admin_permissions", "PermissionsForm"],
+      "must_not_contain": [],
+      "expected_output": "A RouteSubscriber (alterRoutes) swaps the _form on the user.admin_permissions route to Drupal\\filter_perms\\Form\\PermissionsForm (and entity.user_role.edit_permissions_form to PermissionsRoleSpecificForm). PermissionsForm extends core UserPermissionsForm and adds the role/module filters.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "filter_perms-storage",
+      "mode": "recipe",
+      "prompt": "Where does filter_perms remember which roles and modules an admin has chosen to display on the permissions page, and for how long?",
+      "must_contain_any": ["filter_perms_list", "keyvalue", "key value", "expirable"],
+      "must_not_contain": [],
+      "expected_output": "In an expirable key/value store: collection 'filter_perms_list', keyed by the user id, storing ['roles'=>[...],'modules'=>[...]] with a 1-hour (3600s) expiry. ALL_OPTIONS ('-1') means all roles / all modules.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "filter_perms-known-filter",
+      "mode": "introspection",
+      "prompt": "On this Drupal site, user 1 has an active filter_perms selection on the permissions page. Inspect the live site and state which module's permissions are currently included by that filter.",
+      "must_contain_any": ["node"],
+      "must_not_contain": [],
+      "expected_output": "The filter_perms_list expirable key/value entry for user id 1 is ['roles'=>['fperm_editor'],'modules'=>['node']], so the filter includes the 'node' module.",
+      "setup": "agent-module-documentation/evaluation/verify/filter_perms-known-filter-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/filter_perms-known-filter-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "filter_perms-known-modules",
+      "mode": "introspection",
+      "prompt": "On this Drupal site, user 1's saved filter_perms selection includes two modules. Inspect the live filter_perms storage and name one of the modules (other than 'user') that is included.",
+      "must_contain_any": ["filter_perms"],
+      "must_not_contain": [],
+      "expected_output": "The filter_perms_list entry for user 1 is ['roles'=>['-1'],'modules'=>['user','filter_perms']]; besides 'user' it includes the 'filter_perms' module.",
+      "setup": "agent-module-documentation/evaluation/verify/filter_perms-known-modules-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/filter_perms-known-modules-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "filter_perms-set-filter",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, use filter_perms to set user 1's permissions-page filter so it shows only the 'user' module and only the 'fperm_reviewer' role. Persist it to the live site as filter_perms stores it.",
+      "reset": "agent-module-documentation/evaluation/verify/filter_perms-set-filter-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/filter_perms-set-filter-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/filter_perms-set-filter-cleanup.sh",
+      "expected_output": "Store the selection in the expirable key/value collection filter_perms_list for key '1': \\Drupal::keyValueExpirable('filter_perms_list')->setWithExpire('1', ['roles'=>['fperm_reviewer'],'modules'=>['user']], 3600).",
+      "must_not_contain": []
+    },
+    {
+      "id": "filter_perms-all-filter",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-layman",
+      "prompt": "On this Drupal site I want the permissions page (for my account, user 1) to stop hiding anything and show every role and every module again. Make filter_perms remember that choice.",
+      "reset": "agent-module-documentation/evaluation/verify/filter_perms-all-filter-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/filter_perms-all-filter-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/filter_perms-all-filter-cleanup.sh",
+      "expected_output": "Use filter_perms' ALL_OPTIONS value '-1' for both: \\Drupal::keyValueExpirable('filter_perms_list')->setWithExpire('1', ['roles'=>['-1'],'modules'=>['-1']], 3600), which means all roles and all modules.",
+      "must_not_contain": []
+    }
+  ]
+}

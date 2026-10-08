@@ -1,0 +1,94 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "prepopulate",
+  "version": "2.5.x",
+  "note": "Prepopulate has no settings form, no configure route (configure: null), no permissions, no Drush commands, no config schema and no plugins. Its entire surface is (1) the edit[...] query-string syntax mirroring the render array, (2) the prepopulate.populator service (Drupal\\prepopulate\\Populate::populateForm()) with its 18-type whitelist that deliberately excludes radios/checkboxes, and (3) hook_prepopulate_whitelist_alter(). Medium cases therefore install real fields on Article and ask the agent to derive the URL / spot the non-whitelisted widget from the live form display; hard cases are verified against live state (the runtime whitelist read back by reflection, and a menu_link_content carrying a real prepopulate URL).",
+  "evals": [
+    {
+      "id": "prepopulate-title-url",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "On a Drupal 11 site with the contrib module prepopulate enabled, I want a link that opens the Article creation form with the title already filled in with 'Weekly update'. What exact URL should the link point at?",
+      "must_contain_any": [
+        "edit[title][widget][0][value]",
+        "edit%5Btitle%5D%5Bwidget%5D%5B0%5D%5Bvalue%5D"
+      ],
+      "must_not_contain": [],
+      "expected_output": "/node/add/article?edit[title][widget][0][value]=Weekly%20update — the query string mirrors the render array path under an 'edit' root, and Field API fields need the [widget][0][value] segment."
+    },
+    {
+      "id": "prepopulate-radios-excluded",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "Using the Drupal prepopulate module I can prefill textfields and select lists from the URL, but a field whose widget renders radio buttons is never filled. Is that a bug, and which element types does prepopulate allow by default?",
+      "must_contain_any": [
+        "radios",
+        "whitelist",
+        "checkboxes"
+      ],
+      "must_not_contain": [],
+      "expected_output": "It is deliberate. Drupal\\prepopulate\\Populate::$whitelistedTypes contains 18 types (container, date, datelist, datetime, entity_autocomplete, email, fieldset, inline_entity_form, language_select, machine_name, number, path, select, tel, textarea, text_format, textfield, url) and intentionally omits radios and checkboxes so a crafted link cannot silently tick options on an admin form."
+    },
+    {
+      "id": "prepopulate-whitelist-hook",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "Which hook does the Drupal prepopulate module document in its .api.php file, what is its signature, and when does it run?",
+      "must_contain_any": [
+        "hook_prepopulate_whitelist_alter"
+      ],
+      "must_not_contain": [],
+      "expected_output": "hook_prepopulate_whitelist_alter(array &$whitelisted_types) — the only hook prepopulate invites. It is invoked from the Populate service constructor ($this->moduleHandler->alter('prepopulate_whitelist', $this->whitelistedTypes)), so implementations add (or remove) render-element #type strings for the whole request."
+    },
+    {
+      "id": "prepopulate-known-ref-field",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "This Drupal site has the prepopulate module enabled and the Article content type has an entity reference field that uses an autocomplete widget. Inspect the live site, then give the exact query-string parameter that prepopulate needs in order to prefill that field with the node whose id is 1.",
+      "must_contain_any": [
+        "edit[field_prepop_ref][widget][0][target_id]",
+        "edit%5Bfield_prepop_ref%5D%5Bwidget%5D%5B0%5D%5Btarget_id%5D"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The field is field_prepop_ref (widget entity_reference_autocomplete on core.entity_form_display.node.article.default), so the URL is /node/add/article?edit[field_prepop_ref][widget][0][target_id]=1 . Because the element is an entity_autocomplete, prepopulate rewrites the raw id into the 'Label (1)' string when the entity exists and the user has 'view label' access.",
+      "setup": "agent-module-documentation/evaluation/verify/prepopulate-ref-field-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/prepopulate-ref-field-cleanup.sh"
+    },
+    {
+      "id": "prepopulate-non-whitelisted-widget",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "The Article content type on this Drupal site has three fields whose machine names start with field_prepop_ . Exactly one of them cannot be prefilled from the URL by the prepopulate module because of the render-element type its widget produces. Inspect the live form display and name that field.",
+      "must_contain_any": [
+        "field_prepop_b"
+      ],
+      "must_not_contain": [],
+      "expected_output": "field_prepop_b — its widget on core.entity_form_display.node.article.default is options_buttons, which renders a 'radios' element, and radios is not in prepopulate's whitelist. field_prepop_a (string_textfield -> textfield) and field_prepop_c (options_select -> select) are both whitelisted.",
+      "setup": "agent-module-documentation/evaluation/verify/prepopulate-widget-types-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/prepopulate-widget-types-cleanup.sh"
+    },
+    {
+      "id": "prepopulate-whitelist-radios",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, prepopulate refuses to prefill radio buttons because 'radios' is not in its whitelist. Create a small custom module at web/modules/custom/prepopulate_eval (machine name prepopulate_eval), implement the hook prepopulate provides for altering the whitelist so that 'radios' is allowed, and enable the module so the change is live.",
+      "reset": "agent-module-documentation/evaluation/verify/prepopulate-whitelist-radios-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/prepopulate-whitelist-radios-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/prepopulate-whitelist-radios-reset.sh",
+      "expected_output": "A prepopulate_eval module implementing hook_prepopulate_whitelist_alter(array &$whitelisted_types) { $whitelisted_types[] = 'radios'; }, enabled with drush en prepopulate_eval -y. Verified by reading Drupal\\prepopulate\\Populate::$whitelistedTypes off the live prepopulate.populator service: it must contain 'radios'."
+    },
+    {
+      "id": "prepopulate-menu-link",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "site-builder",
+      "prompt": "This Drupal site uses the prepopulate module. Add a link to the Main navigation menu titled exactly 'Prepopulate Eval Link' that opens the Article creation form (/node/add/article) with the title box already containing 'Campaign Update' and the body already containing 'Draft copy'. Apply it to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/prepopulate-menu-link-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/prepopulate-menu-link-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/prepopulate-menu-link-reset.sh",
+      "expected_output": "A menu_link_content in the 'main' menu titled 'Prepopulate Eval Link' whose uri is internal:/node/add/article?edit[title][widget][0][value]=Campaign%20Update&edit[body][widget][0][value]=Draft%20copy (bracket/percent encoding may vary)."
+    }
+  ]
+}

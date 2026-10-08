@@ -1,0 +1,80 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "next",
+  "version": "2.1.x",
+  "note": "next integrates Drupal with Next.js. The Next.js app, JSON:API/GraphQL traffic and real preview/revalidation are external, so all medium/hard eval state is grounded in LOCAL Drupal config: the next_site config entity (next.next_site.<id>: base_url, preview_url, preview_secret, revalidate_url, revalidate_secret) and the next_entity_type_config config entity (id = <entity_type>.<bundle>: site_resolver, configuration, draft_enabled, revalidator, revalidator_configuration), plus the global next.settings (site_previewer=iframe, preview_url_generator=simple_oauth, debug). Introspection reads a preset next_site / next_entity_type_config; execution creates a next_site and maps a content type via next_entity_type_config, verified against the live config entities. Namespaced ids: nextzz_* (sites) and node.article / node.page (entity type configs).",
+  "evals": [
+    {
+      "id": "next-config-entities",
+      "mode": "recipe",
+      "prompt": "In the Drupal 'next' (Next.js) module, what are the two config entity types used to configure the integration, and what does the next_site entity store?",
+      "must_contain_any": ["next_site", "next_entity_type_config"],
+      "must_not_contain": [],
+      "expected_output": "next_site (one per Next.js front end: id, label, base_url, preview_url, preview_secret, revalidate_url, revalidate_secret) and next_entity_type_config (maps an entity_type.bundle to sites via a site_resolver, plus draft_enabled and a revalidator). The next_entity_type_config id is '<entity_type>.<bundle>', e.g. node.article.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "next-plugin-types",
+      "mode": "recipe",
+      "prompt": "The next module is built around pluggable behaviors. What plugin types does it define, and give a built-in plugin for one of them.",
+      "must_contain_any": ["site_resolver", "site_previewer", "preview_url_generator", "revalidator"],
+      "must_not_contain": [],
+      "expected_output": "Four plugin types: site_resolver (site_selector, entity_reference_field), site_previewer (iframe), preview_url_generator (simple_oauth; jwt in next_jwt), and revalidator (path, cache_tag).",
+      "difficulty": "easy"
+    },
+    {
+      "id": "next-default-settings",
+      "mode": "recipe",
+      "prompt": "Out of the box, which site previewer and which preview URL generator does the next module use (the defaults in next.settings)?",
+      "must_contain_any": ["simple_oauth", "iframe"],
+      "must_not_contain": [],
+      "expected_output": "Default site_previewer is 'iframe' and default preview_url_generator is 'simple_oauth' (with secret_expiration 30 minutes); debug is false. These live in the next.settings config object.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "next-known-site-base-url",
+      "mode": "introspection",
+      "prompt": "This Drupal site has a Next.js site (next_site config entity) with id nextzz_known configured. Inspect the live configuration and report its base URL.",
+      "must_contain_any": ["https://known.example.com"],
+      "must_not_contain": [],
+      "expected_output": "The next_site nextzz_known has base_url = https://known.example.com (config next.next_site.nextzz_known). Read via drush cget next.next_site.nextzz_known or the next_site entity's getBaseUrl().",
+      "setup": "agent-module-documentation/evaluation/verify/next-known-site-base-url-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/next-known-site-base-url-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "next-article-mapping",
+      "mode": "introspection",
+      "prompt": "On this site the Article content type is already configured for Next.js (a next_entity_type_config with id node.article). Inspect the live configuration and state which site_resolver plugin and which revalidator plugin are configured for it.",
+      "must_contain_any": ["site_selector", "path"],
+      "must_not_contain": [],
+      "expected_output": "The next_entity_type_config node.article uses site_resolver = site_selector (configuration.sites includes nextzz_m2) and revalidator = path. Read via drush cget next.next_entity_type_config.node.article.",
+      "setup": "agent-module-documentation/evaluation/verify/next-article-mapping-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/next-article-mapping-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "next-create-site",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "Register a new Next.js front end with the next module by creating a next_site config entity with id nextzz_task, label 'Task Site', base_url https://task.example.com, preview_url https://task.example.com/api/preview, preview_secret 'tasksecret', revalidate_url https://task.example.com/api/revalidate and revalidate_secret 'tasksecret'. Save it to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/next-create-site-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/next-create-site-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/next-create-site-cleanup.sh",
+      "expected_output": "A next_site config entity nextzz_task exists (config next.next_site.nextzz_task) with base_url = https://task.example.com and preview_url/revalidate_url set. Create via \\Drupal\\next\\Entity\\NextSite::create([...])->save()."
+    },
+    {
+      "id": "next-map-entity-type",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "site-owner",
+      "prompt": "I have a Next.js site already registered in Drupal called nextzz_map. Make the Basic page content type (machine name 'page') use that Next.js site and rebuild its pages when a page changes. Concretely, configure the next module so the 'page' content type resolves to the nextzz_map site (manual site selection) and uses path-based on-demand revalidation. Save it to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/next-map-entity-type-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/next-map-entity-type-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/next-map-entity-type-cleanup.sh",
+      "expected_output": "A next_entity_type_config with id node.page exists with site_resolver = site_selector, configuration.sites containing 'nextzz_map', and revalidator = path. Create via \\Drupal\\next\\Entity\\NextEntityTypeConfig::create(['id' => 'node.page', 'site_resolver' => 'site_selector', 'configuration' => ['sites' => ['nextzz_map']], 'revalidator' => 'path', 'revalidator_configuration' => ['revalidate_page' => 1]])->save()."
+    }
+  ]
+}

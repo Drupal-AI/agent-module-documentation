@@ -1,0 +1,94 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "email_attachment",
+  "version": "1.6.x",
+  "note": "email_attachment is a stateless developer helper: hook_mail_alter() rewrites a mail into multipart/mixed when $message['params']['attachment'] or ['attachments'] is set. An attachment is an array with required 'filename', optional 'filecontent' (raw bytes; else the file at filename is read) and optional 'filemime'. It runs its mail_alter last so other modules can add attachments first. No config/routes/permissions. The module has no persistent site state, so medium cases seed a State fixture describing an attachment spec (email_attachment_eval.spec / .spec2) for introspection, and hard cases have the agent build a message array, run it through the module's mailAlter, and store the resulting message in State (email_attachment_eval.result / .result2) which the verify inspects for a multipart/mixed body carrying the expected base64 attachment(s).",
+  "evals": [
+    {
+      "id": "email_attachment-how",
+      "mode": "recipe",
+      "prompt": "Using the Drupal email_attachment module, how do I attach a file to an email I send through the mail manager? What do I put in the message params?",
+      "must_contain_any": [
+        "params",
+        "attachment",
+        "filename"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Set $params['attachment'] (or $params['attachments'] for several) when calling MailManager::mail(). Each attachment is an array with a required 'filename', optional 'filecontent' (raw bytes; if omitted the file at filename is read), and optional 'filemime' (guessed if omitted). The module's hook_mail_alter then converts the message to multipart/mixed.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "email_attachment-multipart",
+      "mode": "recipe",
+      "prompt": "What does the email_attachment module change about an outgoing email's structure when an attachment is present, and how is the attachment encoded?",
+      "must_contain_any": [
+        "multipart/mixed",
+        "multipart",
+        "base64"
+      ],
+      "must_not_contain": [],
+      "expected_output": "It rewrites the message into a multipart/mixed body (setting headers Content-Type to multipart/mixed with a boundary). The original body becomes the first MIME part; each attachment is appended with Content-Transfer-Encoding: base64 and a Content-Disposition: attachment header, base64-encoded.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "email_attachment-fields",
+      "mode": "recipe",
+      "prompt": "In email_attachment, which field of an attachment array is mandatory, and what happens if I omit filecontent or filemime?",
+      "must_contain_any": [
+        "filename"
+      ],
+      "must_not_contain": [],
+      "expected_output": "filename is mandatory (omitting it throws InvalidArgumentException). If filecontent is omitted, the module reads the file at filename from disk (throwing FileNotExistsException if it is not a real file). If filemime is omitted, it is guessed via the file mime-type guesser services.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "email_attachment-known-spec",
+      "mode": "introspection",
+      "prompt": "On this Drupal site, an email attachment specification has been stored in State under the key email_attachment_eval.spec. Inspect the live site and report the attachment's filename and its MIME type.",
+      "must_contain_any": [
+        "quarterly-report.pdf"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The State value email_attachment_eval.spec is ['filename' => 'quarterly-report.pdf', 'filemime' => 'application/pdf'].",
+      "setup": "agent-module-documentation/evaluation/verify/email_attachment-spec-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/email_attachment-spec-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "email_attachment-known-spec2",
+      "mode": "introspection",
+      "prompt": "This site has a multi-attachment email spec stored in State under email_attachment_eval.spec2. Inspect the running site and list the filenames of all attachments in that spec.",
+      "must_contain_any": [
+        "summary.csv"
+      ],
+      "must_not_contain": [],
+      "expected_output": "email_attachment_eval.spec2 has attachments with filenames summary.csv and details.csv (['attachments' => [['filename' => 'summary.csv'], ['filename' => 'details.csv']]]).",
+      "setup": "agent-module-documentation/evaluation/verify/email_attachment-spec2-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/email_attachment-spec2-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "email_attachment-build-multipart",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, use the email_attachment module to build an email message that carries a single text attachment named report.txt whose content is the text 'hello'. Run the message through email_attachment's mail-alter processing and store the resulting message array in Drupal State under the key email_attachment_eval.result so it can be verified.",
+      "reset": "agent-module-documentation/evaluation/verify/email_attachment-multipart-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/email_attachment-multipart-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/email_attachment-multipart-cleanup.sh",
+      "expected_output": "Build $message = ['headers' => ['Content-Type' => 'text/plain'], 'body' => ['...'], 'params' => ['attachment' => ['filename' => 'report.txt', 'filecontent' => 'hello']]]; call \\Drupal::service(\\Drupal\\email_attachment\\Hook\\EmailAttachmentHooks::class)->mailAlter($message); then \\Drupal::state()->set('email_attachment_eval.result', $message). The result must be multipart/mixed with a Content-Disposition: attachment part named report.txt containing base64 aGVsbG8=."
+    },
+    {
+      "id": "email_attachment-build-multi",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "Using the email_attachment module on this site, build one email that carries TWO text attachments: a.txt containing 'AAA' and b.txt containing 'BBB'. Run it through email_attachment's mail-alter processing and store the resulting message array in Drupal State under the key email_attachment_eval.result2.",
+      "reset": "agent-module-documentation/evaluation/verify/email_attachment-multi-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/email_attachment-multi-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/email_attachment-multi-cleanup.sh",
+      "expected_output": "Build $message with params['attachments'] => [['filename' => 'a.txt', 'filecontent' => 'AAA'], ['filename' => 'b.txt', 'filecontent' => 'BBB']] plus headers Content-Type text/plain and a body; run EmailAttachmentHooks::mailAlter($message); store in State email_attachment_eval.result2. Result must be multipart/mixed carrying a.txt (base64 QUFB) and b.txt (base64 QkJC)."
+    }
+  ]
+}

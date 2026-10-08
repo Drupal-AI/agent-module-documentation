@@ -1,0 +1,65 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "contact_storage",
+  "version": "1.5.x",
+  "note": "Contact Storage makes core Contact's throwaway contact_message into a stored, fieldable entity, adds an admin message list, per-form third-party settings, and a global send_html flag. Cases are `recipe` (response-graded) since they probe documented facts an agent would otherwise read source to answer; no site mutation.",
+  "evals": [
+    {
+      "id": "contact-storage-persists-messages",
+      "mode": "recipe",
+      "prompt": "On a Drupal 11 site, core's Contact module emails a submission and then discards the message. What does the Contact Storage module change so submissions are kept, and what entity type holds them?",
+      "must_contain_any": ["contact_message", "hook_entity_type_alter", "base_table"],
+      "must_not_contain": [],
+      "expected_output": "It makes the core contact_message entity storable via hook_entity_type_alter (SQL storage, base_table contact_message, an id key and created/uid/ip_address base fields), so each submission is saved as a fieldable content entity instead of being discarded."
+    },
+    {
+      "id": "contact-storage-message-list",
+      "mode": "recipe",
+      "prompt": "Where can an administrator see the list of stored contact messages provided by Contact Storage, and what is the route/permission?",
+      "must_contain_any": ["/admin/structure/contact/messages", "entity.contact_message.collection", "contact_messages"],
+      "must_not_contain": [],
+      "expected_output": "At Admin > Structure > Contact > List, path /admin/structure/contact/messages (route entity.contact_message.collection, a Views page named contact_messages), gated by 'administer contact forms'."
+    },
+    {
+      "id": "contact-storage-add-fields",
+      "mode": "recipe",
+      "prompt": "I want to add a custom field (e.g. a phone number) to a specific core contact form so its value is stored with each submission. Why is this possible with Contact Storage?",
+      "must_contain_any": ["bundle", "fieldable", "contact_message"],
+      "must_not_contain": [],
+      "expected_output": "Contact forms are bundles of the now-fieldable contact_message entity, so ordinary Drupal fields added to a contact form are stored on each message."
+    },
+    {
+      "id": "contact-storage-per-form-settings",
+      "mode": "recipe",
+      "prompt": "In Contact Storage, how is a custom submit-button label or a per-user maximum submission limit stored on an individual contact form in code?",
+      "must_contain_any": ["setThirdPartySetting", "third_party", "submit_text", "maximum_submissions_user"],
+      "must_not_contain": [],
+      "expected_output": "As contact_storage third-party settings on the core contact form entity, e.g. $form->setThirdPartySetting('contact_storage', 'submit_text', ...) or 'maximum_submissions_user', then save()."
+    },
+    {
+      "id": "contact-storage-send-html",
+      "mode": "recipe",
+      "prompt": "Which config object and key control whether Contact Storage sends contact emails as HTML, and what is the default?",
+      "must_contain_any": ["send_html", "contact_storage.settings"],
+      "must_not_contain": [],
+      "expected_output": "The send_html key (default false) on the contact_storage.settings config object; enabling it needs the Swiftmailer module. e.g. drush cset contact_storage.settings send_html true."
+    },
+    {
+      "id": "contact-storage-dependency-contact",
+      "mode": "recipe",
+      "prompt": "What core module must be enabled for Contact Storage to work, and what other modules does it depend on?",
+      "must_contain_any": ["contact", "views", "token"],
+      "must_not_contain": [],
+      "expected_output": "It depends on core contact (the module it extends), plus core views, options, filter, and the contrib token module."
+    },
+    {
+      "id": "contact-storage-query-messages",
+      "mode": "recipe",
+      "prompt": "In PHP on a Drupal 11 site with Contact Storage, how do I load all stored contact messages submitted through a particular contact form?",
+      "must_contain_any": ["entityQuery('contact_message'", "getStorage('contact_message')", "contact_form"],
+      "must_not_contain": [],
+      "expected_output": "Use \\Drupal::entityQuery('contact_message') with a condition on 'contact_form' (the bundle = form id), then loadMultiple() via the contact_message storage."
+    }
+  ]
+}

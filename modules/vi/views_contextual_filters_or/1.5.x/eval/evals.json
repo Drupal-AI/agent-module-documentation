@@ -1,0 +1,82 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "views_contextual_filters_or",
+  "version": "1.5.x",
+  "note": "The module's entire feature surface is one per-display boolean, `contextual_filters_or`, stored at display.<id>.display_options.query.options.contextual_filters_or, which flips a Views display's default WHERE group (group 0 — where contextual filters/arguments add conditions) from AND to OR. It works by class-overriding the views_query (ExtendedSql) and search_api_query (ExtendedSearchApiQuery) plugins and registering the boolean via hook_config_schema_info_alter(). Cases span three tiers: `recipe` (easy — response-graded facts about the setting, config path, and swapped plugins); `introspection` (medium — a known view with OR configured is installed on the live site and the agent must read it back via drush); and `execution` (hard — the agent must build/enable the OR behaviour on a view, verified against live config).",
+  "evals": [
+    {
+      "id": "vcfo-setting-name",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "In Drupal Views I have a display with several contextual filters (arguments) and I want the view to match rows satisfying ANY of them instead of ALL of them. The Views Contextual Filters OR module adds one setting for this. What is the setting called, where in the view-edit UI does it appear, and what is its config key on the display?",
+      "must_contain_any": ["Contextual filters OR", "contextual_filters_or"],
+      "must_not_contain": [],
+      "expected_output": "It adds a checkbox 'Contextual filters OR' under the display's Query settings; enabling it stores contextual_filters_or: true at display.<id>.display_options.query.options.contextual_filters_or, turning the arguments' default WHERE group from AND into OR."
+    },
+    {
+      "id": "vcfo-how-it-works",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "How does the Views Contextual Filters OR module actually change a view's SQL — which Views query plugin class does it swap in, and what does that class change about the WHERE conditions when the option is on?",
+      "must_contain_any": ["ExtendedSql", "views_query", "OR group", "setWhereGroup"],
+      "must_not_contain": [],
+      "expected_output": "Via hook_views_plugins_query_alter() it overrides the views_query plugin class with ExtendedSql (extends core Sql). Its addWhere()/addWhereExpression()/addHavingExpression() create the default group (group 0, where contextual filters add conditions) as an OR group instead of AND when contextual_filters_or is enabled ($op = 'OR' : 'AND'; setWhereGroup($op, $group))."
+    },
+    {
+      "id": "vcfo-search-api",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "Does Views Contextual Filters OR work with Search API views, and if so how is it wired for them?",
+      "must_contain_any": ["ExtendedSearchApiQuery", "search_api_query", "search_api"],
+      "must_not_contain": [],
+      "expected_output": "Yes. When search_api is installed it overrides the search_api_query plugin class with ExtendedSearchApiQuery and registers contextual_filters_or on the views.query.search_api_query config schema; in build() it merges type => OR into the default group (group 0) so Search API contextual filters OR together."
+    },
+    {
+      "id": "vcfo-inspect-flag",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "persona": "drupal-expert",
+      "prompt": "This Drupal site (drush available) has a view with machine name `vcfo_eval_known` that uses the Views Contextual Filters OR module. Inspect the live site and tell me: are that view's contextual filters combined with OR or with AND, and what is the exact config key that stores this?",
+      "setup": "agent-module-documentation/evaluation/verify/views_contextual_filters_or-inspect-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/views_contextual_filters_or-inspect-cleanup.sh",
+      "must_contain_any": ["contextual_filters_or", "OR"],
+      "must_not_contain": [],
+      "expected_output": "The vcfo_eval_known default display has query.options.contextual_filters_or = true (config key display.default.display_options.query.options.contextual_filters_or), so its contextual filters are OR'd, not AND'd."
+    },
+    {
+      "id": "vcfo-inspect-arguments",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "persona": "drupal-expert",
+      "prompt": "This Drupal site (drush available) has a view `vcfo_eval_known` whose contextual filters are set to OR. Inspect the live site and list which contextual filters (arguments) are defined on its default display.",
+      "setup": "agent-module-documentation/evaluation/verify/views_contextual_filters_or-inspect-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/views_contextual_filters_or-inspect-cleanup.sh",
+      "must_contain_any": ["nid", "uid"],
+      "must_not_contain": [],
+      "expected_output": "The default display defines two contextual filters (arguments): nid (node_nid) and uid (numeric), read from display.default.display_options.arguments."
+    },
+    {
+      "id": "vcfo-enable-or-existing",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site (drush available) there is a view with machine name `vcfo_eval_toggle` that already has two contextual filters, but they currently combine with AND. Using the Views Contextual Filters OR module, make that view's contextual filters combine with OR instead. Apply it to the live site config; don't just describe it. One-line summary.",
+      "reset": "agent-module-documentation/evaluation/verify/views_contextual_filters_or-enable-or-existing-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/views_contextual_filters_or-enable-or-existing-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/views_contextual_filters_or-cleanup.sh",
+      "expected_output": "The vcfo_eval_toggle default display's query.options.contextual_filters_or is set to true (its two contextual filters retained), so the module now OR's its contextual filters. Verified against live config."
+    },
+    {
+      "id": "vcfo-build-or-view",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site (drush available) build a new View with machine name `vcfo_eval_build` on the content (node_field_data) base table. Give its default display at least two contextual filters (for example node ID and author uid) and, using the Views Contextual Filters OR module, configure the display so those contextual filters combine with OR rather than AND. Apply it to the live site config; don't just describe it. One-line summary.",
+      "reset": "agent-module-documentation/evaluation/verify/views_contextual_filters_or-build-or-view-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/views_contextual_filters_or-build-or-view-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/views_contextual_filters_or-cleanup.sh",
+      "expected_output": "A view vcfo_eval_build exists whose default display has >=2 contextual filters (arguments) and query.options.contextual_filters_or = true, so the module OR's its contextual filters. Verified against live config."
+    }
+  ]
+}

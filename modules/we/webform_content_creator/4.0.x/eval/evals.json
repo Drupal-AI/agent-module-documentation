@@ -1,0 +1,110 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "webform_content_creator",
+  "version": "4.0.x",
+  "note": "Webform Content Creator defines the config entity type webform_content_creator (class Entity\\WebformContentCreatorEntity), config prefix webform_content_creator.webform_content_creator.<id>. Key fields: webform (source webform id), target_entity_type (default node), target_bundle, elements (per-field mapping map keyed by target field + a special 'title' entry, each {type, webform_field, custom_check, custom_value, mapping}), plus sync_content (edit sync), sync_content_delete, sync_unique, sync_content_field, use_encrypt/encryption_profile, redirect_to_entity(+messages). Admin UI at admin/config/webform_content_creator (route webform_content_creator.collection); Manage fields at admin/config/webform_content_creator/manage/{id}/fields; permission 'access webform content creator configuration'. Driven by hook_webform_submission_insert/update/delete -> entity createContent()/updateContent(). Field values applied via @WebformContentCreatorFieldMapping plugins (manager plugin.manager.webform_content_creator.field_mapping, default_mapping + type-specific). Medium/hard cases are grounded in the local config entities: setup/reset write known mappings, verify/introspection read them back (no webform submission is actually run).",
+  "evals": [
+    {
+      "id": "webform_content_creator-what",
+      "mode": "recipe",
+      "prompt": "How do I make Drupal create a node automatically every time a particular webform is submitted, using the webform_content_creator module? What config does it use?",
+      "must_contain_any": [
+        "webform_content_creator",
+        "config entity",
+        "admin/config/webform_content_creator",
+        "createContent",
+        "hook_webform_submission",
+        "target_bundle",
+        "mapping"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Create a Webform Content Creator config entity (admin/config/webform_content_creator > Add configuration) binding the webform to a target entity type/bundle (e.g. node/article), then use Manage fields to map webform values to content fields and set the title. On each non-draft submission the webform submission hooks call the entity's createContent() to build and save the content.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "webform_content_creator-mapping-storage",
+      "mode": "recipe",
+      "prompt": "In a webform_content_creator configuration, where is the field mapping stored and what does each mapping entry contain? How do I set the created content's title from a webform value?",
+      "must_contain_any": [
+        "elements",
+        "webform_field",
+        "custom_value",
+        "custom_check",
+        "title",
+        "Manage fields"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The mapping is stored in the config entity's 'elements' map, keyed by target field machine name plus a special 'title' entry. Each entry has type, webform_field (source element key), custom_check (use custom_value token instead), custom_value (a token string), and mapping (the field mapping plugin id). Set the title via the 'title' entry's custom_value, e.g. [webform_submission:values:subject], on the Manage fields form.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "webform_content_creator-mapping-plugin-type",
+      "mode": "recipe",
+      "prompt": "webform_content_creator uses pluggable field mappings. What is the plugin type / annotation and the default mapping plugin, and how would I add support for a custom field type?",
+      "must_contain_any": [
+        "WebformContentCreatorFieldMapping",
+        "default_mapping",
+        "field_types",
+        "plugin.manager.webform_content_creator.field_mapping",
+        "FieldMappingBase"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Field mappings are @WebformContentCreatorFieldMapping plugins (manager plugin.manager.webform_content_creator.field_mapping, base FieldMappingBase, interface FieldMappingInterface) in src/Plugin/WebformContentCreator/FieldMapping. The default is default_mapping (field_types empty = any). Add one by creating a plugin class with an id, label, weight, and field_types, implementing mapEntityField().",
+      "difficulty": "easy"
+    },
+    {
+      "id": "webform_content_creator-inspect-mapping",
+      "mode": "introspection",
+      "prompt": "This site has a Webform Content Creator configuration. Inspect the live configuration and tell me which webform it listens to and what content (entity type and bundle) it creates.",
+      "must_contain_any": [
+        "contact",
+        "article"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The wcc_known configuration listens to the 'contact' webform and creates node/article content: webform_content_creator.webform_content_creator.wcc_known has webform=contact, target_entity_type=node, target_bundle=article.",
+      "setup": "agent-module-documentation/evaluation/verify/webform_content_creator-known-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/webform_content_creator-known-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "webform_content_creator-inspect-sync",
+      "mode": "introspection",
+      "prompt": "For that Webform Content Creator configuration, inspect the live config: when someone edits an existing webform submission, is the previously created content updated to match?",
+      "must_contain_any": [
+        "sync_content",
+        "yes",
+        "update",
+        "edit synchronization",
+        "true"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Yes — edit synchronization is enabled: wcc_known has sync_content = true, so editing a submission updates the previously created content (via updateContent()).",
+      "setup": "agent-module-documentation/evaluation/verify/webform_content_creator-known-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/webform_content_creator-known-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "webform_content_creator-create-config",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "Using webform_content_creator, set this site up so that submissions of the 'contact' webform create Article nodes. Create a Webform Content Creator configuration that maps the 'contact' webform to the node entity type and the 'article' bundle, and apply it to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/webform_content_creator-create-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/webform_content_creator-create-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/webform_content_creator-create-cleanup.sh",
+      "expected_output": "A webform_content_creator config entity exists with webform = 'contact', target_entity_type = 'node', target_bundle = 'article' (created via the entity storage/API or the admin form at admin/config/webform_content_creator/add)."
+    },
+    {
+      "id": "webform_content_creator-enable-sync",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "site-owner",
+      "prompt": "There is an existing Webform Content Creator configuration named 'wcc_edit'. Right now, editing a submission does not update the content it created. Change the configuration so that editing a submission also updates the created content, and apply it to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/webform_content_creator-sync-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/webform_content_creator-sync-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/webform_content_creator-sync-cleanup.sh",
+      "expected_output": "The webform_content_creator.webform_content_creator.wcc_edit config entity has sync_content = true (edit synchronization enabled)."
+    }
+  ]
+}

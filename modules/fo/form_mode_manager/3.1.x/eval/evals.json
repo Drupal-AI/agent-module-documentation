@@ -1,0 +1,80 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "form_mode_manager",
+  "version": "3.1.x",
+  "note": "Form Mode Manager makes Drupal form modes usable by generating add/edit routes, tabs, local actions and per-mode permissions. A form mode is ACTIVE for an entity type when a core.entity_form_display.<entity>.<bundle>.<mode> config exists (mode != default) — FormModeManager::getActiveDisplays() reads exactly that. Configure route form_mode_manager.admin_settings (/admin/config/content/form_mode_manager) -> config form_mode_manager.settings (form_modes.<entity>.to_exclude; user.register + commerce_order_item.add_to_cart excluded by default). Second form .../links-task -> config form_mode_manager.links. Plugin type entity_routing_map (manager plugin.manager.entity_routing_map; @EntityRoutingMap; built-ins node/user/taxonomy_term/block_content + generic fallback). Dynamic permissions: 'use <entity>.<mode> form mode' and 'use <entity>.default form mode'. Medium cases read an active form mode and an excluded mode; hard cases activate a form mode on Article (create the entity_form_display) and exclude a mode via config. NOTE: the site also has an active 'contributor' node form mode from the form_mode_manager_examples submodule, so grading targets the case-specific fmm_* names.",
+  "evals": [
+    {
+      "id": "form_mode_manager-activate-howto",
+      "mode": "recipe",
+      "prompt": "I created a form mode for the Article content type but nothing changed on the site. Using form_mode_manager, how do I actually make that form mode usable for adding/editing articles, and what URL then lets me add an article with it?",
+      "must_contain_any": ["form display", "form-display", "Custom Display", "node/add"],
+      "must_not_contain": [],
+      "expected_output": "Enable the form mode on the bundle's Manage form display via the 'Custom Display settings' fieldset (this creates a core.entity_form_display.node.article.<mode>). Form Mode Manager then exposes it at node/add/article/<mode> and as an edit tab.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "form_mode_manager-permission",
+      "mode": "recipe",
+      "prompt": "How does form_mode_manager let me restrict a specific form mode to a particular role? What do the generated permissions look like?",
+      "must_contain_any": ["form mode", "use ", "restrict"],
+      "must_not_contain": [],
+      "expected_output": "It generates dynamic permissions per form mode: 'use <entity_type>.<form_mode> form mode' (e.g. 'use node.contributor form mode') and 'use <entity_type>.default form mode'. Grant the per-mode permission to a role, and optionally revoke the default one to force that role to use only the mode.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "form_mode_manager-plugin-type",
+      "mode": "recipe",
+      "prompt": "I have a custom content entity and want form_mode_manager to build form-mode add/edit routes for it. What plugin type does form_mode_manager provide for this, and what fallback exists for standard entities?",
+      "must_contain_any": ["EntityRoutingMap", "entity_routing_map", "generic"],
+      "must_not_contain": [],
+      "expected_output": "It defines the entity_routing_map plugin type (@EntityRoutingMap, manager plugin.manager.entity_routing_map). Add a plugin in src/Plugin/EntityRoutingMap mapping your entity's add_form/edit_form/add_page route names; a 'generic' fallback plugin handles standard entities automatically.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "form_mode_manager-active-mode",
+      "mode": "introspection",
+      "prompt": "On this site, a non-default form mode has been activated (via form_mode_manager) on the Article content type. Inspect the live form displays and give the machine name of a form mode that is active on node.article besides 'default'.",
+      "must_contain_any": ["fmm_known"],
+      "must_not_contain": [],
+      "expected_output": "fmm_known is active: there is a core.entity_form_display.node.article.fmm_known config entity (mode fmm_known).",
+      "setup": "agent-module-documentation/evaluation/verify/form_mode_manager-active-mode-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/form_mode_manager-active-mode-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "form_mode_manager-excluded",
+      "mode": "introspection",
+      "prompt": "This site has been configured to exclude a specific node form mode from form_mode_manager. Inspect the live configuration and name the excluded node form mode.",
+      "must_contain_any": ["fmm_hidden"],
+      "must_not_contain": [],
+      "expected_output": "fmm_hidden is excluded: form_mode_manager.settings form_modes.node.to_exclude contains fmm_hidden.",
+      "setup": "agent-module-documentation/evaluation/verify/form_mode_manager-excluded-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/form_mode_manager-excluded-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "form_mode_manager-activate",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "A form mode with machine name 'fmm_task' already exists for the node entity type on this site, but it is not usable yet. Using form_mode_manager, activate that form mode for the Article content type so it becomes usable, and apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/form_mode_manager-activate-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/form_mode_manager-activate-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/form_mode_manager-activate-cleanup.sh",
+      "expected_output": "A core.entity_form_display.node.article.fmm_task config entity exists (mode fmm_task), e.g. by enabling the form mode in the Article Manage form display 'Custom Display settings', so form_mode.manager getActiveDisplays('node') includes 'fmm_task'."
+    },
+    {
+      "id": "form_mode_manager-exclude",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "Using form_mode_manager's settings, exclude the node form mode 'fmm_exclude' so that Form Mode Manager does not generate routes or links for it. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/form_mode_manager-exclude-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/form_mode_manager-exclude-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/form_mode_manager-exclude-cleanup.sh",
+      "expected_output": "form_mode_manager.settings form_modes.node.to_exclude contains 'fmm_exclude' (set via /admin/config/content/form_mode_manager or by editing the config)."
+    }
+  ]
+}

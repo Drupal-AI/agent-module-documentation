@@ -1,0 +1,102 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "require_login",
+  "version": "3.0.x",
+  "note": "Require Login forces authentication for anonymous users via LoginEventSubscriber (KernelEvents::REQUEST priority 31 + EXCEPTION) calling the require_login.requirements_manager service. Default config require_login.settings requires login on ALL pages (single request_path condition with empty pages, which evaluates TRUE everywhere). Config keys: login_path (blank => /user/login), login_message, login_destination, requirements (AND-combined condition plugin configs), extra.include_403 / extra.include_404. Settings UI /admin/config/people/login-requirements (route require_login.settings, permission 'administer require login'). PROTECTED_ROUTES (login/register/pass/reset + css/js/image-style asset routes) are always reachable. Hook: hook_require_login_evaluation_alter(&$eval). No Drush, no plugin types. Medium/hard cases are grounded in the real require_login.settings config; reset/cleanup restore the shipped defaults explicitly.",
+  "evals": [
+    {
+      "id": "require_login-default-behavior",
+      "mode": "recipe",
+      "prompt": "I just installed and enabled the Drupal require_login module with its default settings. What happens to an anonymous visitor who tries to view a page, and are there any pages they can still reach?",
+      "must_contain_any": [
+        "redirect",
+        "login",
+        "all pages",
+        "authenticated",
+        "/user/login"
+      ],
+      "must_not_contain": [],
+      "expected_output": "By default every page requires login: anonymous users are redirected to the login page (login_path, default /user/login) with a destination back to the requested URL. The login, register and password-reset routes plus CSS/JS/image-style asset routes (PROTECTED_ROUTES) stay reachable so users can actually log in.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "require_login-where-config",
+      "mode": "recipe",
+      "prompt": "Where do I configure the require_login module, what config object stores its settings, and what permission controls access to that settings page?",
+      "must_contain_any": [
+        "/admin/config/people/login-requirements",
+        "require_login.settings",
+        "administer require login"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Configure at /admin/config/people/login-requirements (route require_login.settings). Settings are stored in the require_login.settings config object. Access is gated by the 'administer require login' permission (restricted).",
+      "difficulty": "easy"
+    },
+    {
+      "id": "require_login-limit-pages",
+      "mode": "recipe",
+      "prompt": "With require_login, how do I require login only on certain paths (e.g. everything under /members) instead of the whole site, and how do I also force login on the access-denied and not-found pages?",
+      "must_contain_any": [
+        "request_path",
+        "Request Path",
+        "pages",
+        "include_403",
+        "include_404",
+        "condition"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Use the Request Path condition under Requirements: set its pages to a newline list like /members and /members/* with negate off, so login is only required there (all conditions are AND-combined). Enable Extra options 'Include 403' (extra.include_403) and 'Include 404' (extra.include_404) to also gate the access-denied and not-found pages.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "require_login-known-message",
+      "mode": "introspection",
+      "prompt": "On this Drupal site require_login has been configured with a custom login redirect message and a fixed login destination. Inspect the live configuration and tell me the exact login redirect message text and the login destination path.",
+      "must_contain_any": [
+        "Please sign in to view members content",
+        "/dashboard"
+      ],
+      "must_not_contain": [],
+      "expected_output": "require_login.settings has login_message: 'Please sign in to view members content' and login_destination: /dashboard.",
+      "setup": "agent-module-documentation/evaluation/verify/require_login-known-message-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/require_login-known-message-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "require_login-known-pages",
+      "mode": "introspection",
+      "prompt": "The require_login module on this site has been limited so login is only required on a subset of paths. Inspect the live configuration and state which path pattern(s) currently trigger the login requirement.",
+      "must_contain_any": [
+        "/reports"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The request_path requirement in require_login.settings has pages set to '/reports' and '/reports/*' with negate false, so login is required only on those paths.",
+      "setup": "agent-module-documentation/evaluation/verify/require_login-known-pages-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/require_login-known-pages-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "require_login-message-403",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, configure the require_login module so that anonymous users redirected to login see the message exactly: Members only. Please log in. Also enable the option that also requires login on the 403 access-denied page. Apply the changes to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/require_login-message-403-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/require_login-message-403-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/require_login-message-403-cleanup.sh",
+      "expected_output": "In require_login.settings, login_message is 'Members only. Please log in.' and extra.include_403 is true (set via the settings form at /admin/config/people/login-requirements or by editing the config object)."
+    },
+    {
+      "id": "require_login-private-paths",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "This site currently requires login on every page (require_login default). Reconfigure require_login so that login is required ONLY on paths under /private (that is, the path /private itself and everything beneath it, /private/*), using the Request Path condition without negation. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/require_login-private-paths-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/require_login-private-paths-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/require_login-private-paths-cleanup.sh",
+      "expected_output": "In require_login.settings the requirements.request_path condition has negate false and pages containing '/private' and '/private/*' (e.g. pages: \"/private\\n/private/*\"), so login is enforced only on those paths."
+    }
+  ]
+}

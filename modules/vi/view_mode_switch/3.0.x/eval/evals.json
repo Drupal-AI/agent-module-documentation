@@ -1,0 +1,95 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "view_mode_switch",
+  "version": "3.0.x",
+  "note": "view_mode_switch provides a field type. Its config is the field storage setting origin_view_modes (field.storage.node.<field>.settings.origin_view_modes = the view modes the field takes over) and the field instance setting allowed_view_modes (field.field.node.<bundle>.<field>.settings.allowed_view_modes = what an editor may switch to). Node ships the 'full' and 'teaser' view modes. Medium cases create field_vms with a known origin/allowed set and the agent reads it back with drush cget; hard cases require building/altering the field, verified against the live field config. All artifacts are namespaced field_vms* and removed on cleanup.",
+  "evals": [
+    {
+      "id": "vms-field-type",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "On a Drupal site with the View Mode Switch Field module, what field type does it provide and what are the two key settings that control which view modes it takes over versus which an editor may choose?",
+      "must_contain_any": [
+        "view_mode_switch",
+        "origin_view_modes",
+        "allowed_view_modes"
+      ],
+      "must_not_contain": [],
+      "expected_output": "It provides the 'view_mode_switch' field type. Storage setting origin_view_modes = the view mode(s) the field takes over; field (instance) setting allowed_view_modes = the view modes an editor is allowed to switch to."
+    },
+    {
+      "id": "vms-switch-mechanism",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "How does the View Mode Switch Field module actually change which view mode an entity renders in at display time?",
+      "must_contain_any": [
+        "entity_view_mode_alter",
+        "getViewModeToSwitchTo",
+        "ViewModeSwitch"
+      ],
+      "must_not_contain": [],
+      "expected_output": "It implements hook_entity_view_mode_alter(); the view_mode_switch service's getViewModeToSwitchTo() checks the entity's switch field and, if the entity is viewed in one of the field's origin view modes, replaces the active view mode with the editor's chosen one."
+    },
+    {
+      "id": "vms-origin-vs-allowed",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "In the View Mode Switch Field module, what is the difference between 'origin_view_modes' and 'allowed_view_modes', and at which config level does each live?",
+      "must_contain_any": [
+        "origin_view_modes",
+        "allowed_view_modes"
+      ],
+      "must_not_contain": [],
+      "expected_output": "origin_view_modes is a field STORAGE setting listing the view modes the field hijacks/overrides; allowed_view_modes is a field INSTANCE setting listing which view modes an editor may switch to. Origin = what it takes over, allowed = what can be chosen."
+    },
+    {
+      "id": "vms-known-origin",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "On this Drupal site, the Article content type has a View Mode Switch field named field_vms. Inspect the live field configuration and tell me which origin view mode the field is configured to take over.",
+      "must_contain_any": [
+        "teaser"
+      ],
+      "must_not_contain": [],
+      "expected_output": "field.storage.node.field_vms settings.origin_view_modes = ['teaser'] (read with: drush cget field.storage.node.field_vms settings.origin_view_modes).",
+      "setup": "agent-module-documentation/evaluation/verify/view_mode_switch-known-origin-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/view_mode_switch-known-origin-cleanup.sh"
+    },
+    {
+      "id": "vms-known-allowed",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "On this Drupal site, the Article content type has a View Mode Switch field field_vms. Inspect the live field instance configuration and tell me which view modes an editor is allowed to switch to.",
+      "must_contain_any": [
+        "full"
+      ],
+      "must_not_contain": [],
+      "expected_output": "field.field.node.article.field_vms settings.allowed_view_modes includes 'full' (and 'teaser'); read with: drush cget field.field.node.article.field_vms settings.allowed_view_modes.",
+      "setup": "agent-module-documentation/evaluation/verify/view_mode_switch-known-allowed-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/view_mode_switch-known-allowed-cleanup.sh"
+    },
+    {
+      "id": "vms-create-field",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, add a View Mode Switch field named field_vms to the Article content type. It must take over the 'full' view mode (origin) and let editors switch to either 'teaser' or 'full'. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/view_mode_switch-create-field-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/view_mode_switch-create-field-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/view_mode_switch-create-field-cleanup.sh",
+      "expected_output": "Create a field_vms field storage of type view_mode_switch with settings.origin_view_modes = ['full'] and an Article instance with settings.allowed_view_modes including 'teaser' and 'full'."
+    },
+    {
+      "id": "vms-add-allowed",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, the Article content type already has a View Mode Switch field field_vms that currently only lets editors switch to the 'teaser' view mode. Update it so editors can ALSO switch to the 'full' view mode. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/view_mode_switch-add-allowed-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/view_mode_switch-add-allowed-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/view_mode_switch-add-allowed-cleanup.sh",
+      "expected_output": "In field.field.node.article.field_vms add 'full' to settings.allowed_view_modes (keeping 'teaser')."
+    }
+  ]
+}

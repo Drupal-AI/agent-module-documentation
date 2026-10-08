@@ -1,0 +1,102 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "config_log",
+  "version": "4.0.x",
+  "note": "Config Log subscribes to core config CRUD events and writes each change to up to three destinations: the custom DB table config_log (destination key 'custom'), watchdog/dblog via the default PSR logger (key 'default'), and email (key 'mail'). All behaviour is driven by the single config object config_log.settings (destinations, ignore list + negate, logs_to_keep retention, redact_sensitive_config_values, context lines). There is no plugin type and no Drush command; extension is by adding another EventSubscriber. Medium/hard cases are grounded in that real config object: introspection reads back retention/ignore values, execution flips real settings keys (enable the 'default' destination, add a user.* ignore pattern) verified against the live config.",
+  "evals": [
+    {
+      "id": "config_log-destinations",
+      "mode": "recipe",
+      "prompt": "Using the config_log (Configuration Log) Drupal module, where can it send configuration changes? Name its destinations and where the changes are stored by default.",
+      "must_contain_any": [
+        "config_log",
+        "custom table",
+        "watchdog",
+        "dblog",
+        "default logging",
+        "mail",
+        "email"
+      ],
+      "must_not_contain": [],
+      "expected_output": "It has three destinations selectable on its settings form: the custom database table config_log (key 'custom', the default), the default logging system / watchdog-dblog via the PSR logger (key 'default'), and email/mail notification (key 'mail'). They are stored under config_log.settings:log_destination.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "config_log-redaction",
+      "mode": "recipe",
+      "prompt": "Does the config_log module store secrets like passwords and API keys when it logs configuration, and how is that controlled?",
+      "must_contain_any": [
+        "redact",
+        "[redacted]",
+        "redact_sensitive_config_values",
+        "sensitive"
+      ],
+      "must_not_contain": [],
+      "expected_output": "By default it redacts likely-sensitive leaf values (passwords, secrets, tokens, API keys, client secrets, SMTP passwords) to [redacted] before storing/logging, redacting only the matching leaf. It is controlled by the boolean setting config_log.settings:redact_sensitive_config_values (default true).",
+      "difficulty": "easy"
+    },
+    {
+      "id": "config_log-retention-cron",
+      "mode": "recipe",
+      "prompt": "With config_log, how do I stop the config_log database table from growing forever, and what setting controls how many entries are kept?",
+      "must_contain_any": [
+        "logs_to_keep",
+        "cron",
+        "retention",
+        "row limit"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Set config_log.settings:logs_to_keep to a positive number (0 = keep all; the UI offers 100/1k/10k/100k/1M). config_log_cron() then prunes the config_log table down to that many most-recent rows in batches on each cron run.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "config_log-retention-value",
+      "mode": "introspection",
+      "prompt": "On this Drupal site config_log is already configured. Inspect the live config_log settings and state how many log entries it is set to retain in the custom config_log table.",
+      "must_contain_any": [
+        "1000"
+      ],
+      "must_not_contain": [],
+      "expected_output": "config_log.settings:logs_to_keep is 1000 (destinations custom + default are active).",
+      "setup": "agent-module-documentation/evaluation/verify/config_log-retention-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/config_log-retention-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "config_log-ignored-pattern",
+      "mode": "introspection",
+      "prompt": "config_log on this site is set to skip logging changes to some configuration. Inspect the live config_log settings and state which configuration name pattern is being ignored.",
+      "must_contain_any": [
+        "system.*"
+      ],
+      "must_not_contain": [],
+      "expected_output": "config_log.settings:log_ignored_config contains the pattern system.* (with log_ignored_config_negate false, so matches are skipped rather than the only thing logged).",
+      "setup": "agent-module-documentation/evaluation/verify/config_log-ignore-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/config_log-ignore-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "config_log-enable-default-destination",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site config_log currently logs only to its custom database table. Configure config_log so that configuration changes are ALSO written to Drupal's default logging system (watchdog/dblog). Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/config_log-enable-default-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/config_log-enable-default-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/config_log-enable-default-cleanup.sh",
+      "expected_output": "In config_log.settings:log_destination the 'default' key is present and truthy (e.g. {custom: custom, default: default}), so the ConfigLogPsrSubscriber logs to logger.channel.default."
+    },
+    {
+      "id": "config_log-ignore-user-config",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "Configure the config_log module on this site so that it does NOT log any changes to configuration objects whose name starts with 'user.' (for example user.settings, user.role.*). Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/config_log-ignore-user-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/config_log-ignore-user-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/config_log-ignore-user-cleanup.sh",
+      "expected_output": "config_log.settings:log_ignored_config contains the pattern user.* and log_ignored_config_negate is false, so any config name matching user.* is skipped by isIgnored()."
+    }
+  ]
+}

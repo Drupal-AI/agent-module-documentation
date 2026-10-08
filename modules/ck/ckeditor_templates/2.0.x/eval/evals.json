@@ -1,0 +1,98 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "ckeditor_templates",
+  "version": "2.0.x",
+  "note": "CKEditor Templates has two distinct pieces of state. (1) `ckeditor_templates` config entities (config prefix ckeditor_templates.ckeditor_templates.<id>) with keys id, label, status, description, thumb, thumb_alternative, code{value,format}, formats, weight - managed at /admin/config/content/ckeditor-templates; the module has no `configure` key in its info.yml. (2) Per text format wiring in editor.editor.<format>: the toolbar item `ckeditorTemplates` plus settings.plugins.ckeditor_templates_plugin.replace_content (bool). It also defines its own plugin type: @CkeditorTemplate / plugin.manager.ckeditor_template / Plugin/CkeditorTemplate, and the bundled config_template plugin uses ConfigTemplateDeriver to expose one derivative (config_template:<id>) per *enabled* config entity - which is why the enabled-vs-disabled introspection case is meaningful and why the create-template verify asserts the derivative exists, not just the config. Two permissions: administer ckeditor templates / insert ckeditor templates. All eval artifacts are prefixed ckeditor_templates_ so they cannot collide with other modules.",
+  "evals": [
+    {
+      "id": "ckeditor_templates-where-stored",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "On a Drupal 11 site with the ckeditor_templates contrib module, where do I create the predefined content templates that editors pick from, and what kind of object is each template stored as?",
+      "must_contain_any": [
+        "/admin/config/content/ckeditor-templates",
+        "admin/config/content/ckeditor-templates",
+        "config entity",
+        "ckeditor_templates.ckeditor_templates"
+      ],
+      "must_not_contain": [],
+      "expected_output": "At Configuration > Content authoring > CKEditor Templates (/admin/config/content/ckeditor-templates). Each template is a `ckeditor_templates` config entity stored as ckeditor_templates.ckeditor_templates.<id>, with label, status, description, thumb/thumb_alternative, code (value + text format), formats (the text formats it is offered on) and weight."
+    },
+    {
+      "id": "ckeditor_templates-toolbar-item",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "I created some templates with the Drupal ckeditor_templates module but no Templates button shows up in my CKEditor 5 editor. What is the name of the toolbar item I need to add to the text format, and what is the one setting that CKEditor 5 plugin exposes?",
+      "must_contain_any": [
+        "ckeditorTemplates",
+        "replace_content",
+        "Replace actual contents"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Add the `ckeditorTemplates` toolbar item to the format's active toolbar (editor.editor.<format> settings.toolbar.items). The CKEditor 5 plugin id is ckeditor_templates_plugin and it has a single setting, replace_content (boolean), which decides whether the dialog's 'Replace actual contents' checkbox is ticked by default. Also make sure the template lists that text format in its `formats` key."
+    },
+    {
+      "id": "ckeditor_templates-plugin-type",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "The Drupal module ckeditor_templates lets you supply templates from code as well as from the admin UI. Which plugin type do I implement, which annotation and directory does it use, and which methods must my class provide?",
+      "must_contain_any": [
+        "CkeditorTemplate",
+        "Plugin/CkeditorTemplate",
+        "plugin.manager.ckeditor_template",
+        "CkeditorTemplatePluginBase"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Implement a @CkeditorTemplate plugin in src/Plugin/CkeditorTemplate/ of your module, ideally extending Drupal\\ckeditor_templates\\CkeditorTemplatePluginBase and implementing CkeditorTemplateInterface: label(), getDescription(), getThumb(), allowedFormats() and getHtml(). The manager service is plugin.manager.ckeditor_template and definitions can be changed with hook_ckeditor_template_info_alter(). The bundled config_template plugin uses ConfigTemplateDeriver to derive one plugin per enabled config entity."
+    },
+    {
+      "id": "ckeditor_templates-known-template",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "This Drupal site has a CKEditor Templates template configured. Inspect the live configuration and tell me the machine name (id) of that template and which text format it is offered on.",
+      "must_contain_any": [
+        "ckeditor_templates_promo"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The template id is ckeditor_templates_promo ('Quarterly Promo Banner'), stored as ckeditor_templates.ckeditor_templates.ckeditor_templates_promo, and its `formats` key lists only full_html.",
+      "setup": "agent-module-documentation/evaluation/verify/ckeditor_templates-known-template-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/ckeditor_templates-known-template-cleanup.sh"
+    },
+    {
+      "id": "ckeditor_templates-enabled-vs-disabled",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "This Drupal site has two CKEditor Templates entries, ckeditor_templates_live and ckeditor_templates_draft, both attached to the same text format. Only one of them can actually be picked from the Templates dialog. Inspect the running site and tell me which one, and what makes the other one unavailable.",
+      "must_contain_any": [
+        "ckeditor_templates_live"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Only ckeditor_templates_live is available. ckeditor_templates_draft has status: false, and ConfigTemplateDeriver only derives plugins for entities matching status = 1 - so plugin.manager.ckeditor_template exposes just config_template:ckeditor_templates_live.",
+      "setup": "agent-module-documentation/evaluation/verify/ckeditor_templates-enabled-vs-disabled-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/ckeditor_templates-enabled-vs-disabled-cleanup.sh"
+    },
+    {
+      "id": "ckeditor_templates-create-template",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, use the ckeditor_templates module to create an enabled CKEditor template with the machine name ckeditor_templates_task and the label 'Two Column Layout'. It must be offered on the full_html text format and its HTML code must be <div class=\"two-col\"><div class=\"col\"></div><div class=\"col\"></div></div>. Apply it to the live site so it really shows up as an available template.",
+      "reset": "agent-module-documentation/evaluation/verify/ckeditor_templates-create-template-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/ckeditor_templates-create-template-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/ckeditor_templates-create-template-reset.sh",
+      "expected_output": "A ckeditor_templates config entity ckeditor_templates.ckeditor_templates.ckeditor_templates_task with status: true, formats containing full_html and code.value containing the two-col markup. Because the entity is enabled, plugin.manager.ckeditor_template then exposes the derivative config_template:ckeditor_templates_task."
+    },
+    {
+      "id": "ckeditor_templates-toolbar-button",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "site-owner",
+      "prompt": "On this Drupal site there is a text format called 'CKEditor Templates Eval Format' (machine name ckeditor_templates_eval) that uses CKEditor 5. Editors need the Templates button in that editor's toolbar, and when they pick a template it should wipe whatever is already in the field by default rather than adding to it. Please set that up on the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/ckeditor_templates-toolbar-button-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/ckeditor_templates-toolbar-button-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/ckeditor_templates-toolbar-button-cleanup.sh",
+      "expected_output": "editor.editor.ckeditor_templates_eval must have 'ckeditorTemplates' in settings.toolbar.items and settings.plugins.ckeditor_templates_plugin.replace_content set to true (that is the 'Replace content default value' checkbox in the Templates vertical tab of the text format form)."
+    }
+  ]
+}

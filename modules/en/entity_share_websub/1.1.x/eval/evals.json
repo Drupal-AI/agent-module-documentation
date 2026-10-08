@@ -1,0 +1,58 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "entity_share_websub",
+  "version": "1.1.x",
+  "note": "entity_share_websub is the base/shim module of a three-module project. It has no config, no routes, no permissions, no Drush; its only code is SignatureTrait (sha256 X-Hub-Signature helper). Real behaviour lives in submodules entity_share_websub_hub (publisher: /subscribe endpoint, subscription DB table, queued notifications) and entity_share_websub_subscriber (subscriber: Subscribe/Unsubscribe buttons, callback routes, settings form). Medium/hard cases are grounded in the fact that the base module's whole role is to be enabled alongside its submodules, which is inspectable via drush pm:list.",
+  "evals": [
+    {
+      "id": "entity_share_websub-what-protocol",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "The Drupal contrib project entity_share_websub adds automatic content updates on top of another module. Which existing module does it extend, and which web protocol does its subscription/notification flow imitate?",
+      "must_contain_any": ["Entity Share", "entity_share", "WebSub", "websub", "PubSubHubbub", "pubsubhubbub"],
+      "must_not_contain": [],
+      "expected_output": "It extends the Entity Share module (which already pulls content over JSON:API) and adds a push layer inspired by the WebSub / PubSubHubbub protocol, so a subscriber site is notified when subscribed content changes instead of polling."
+    },
+    {
+      "id": "entity_share_websub-submodules",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "The entity_share_websub project ships two functional submodules for the two ends of the sync. Name them and say which one makes a site the publisher and which makes it the subscriber.",
+      "must_contain_any": ["entity_share_websub_hub", "entity_share_websub_subscriber", "hub", "subscriber"],
+      "must_not_contain": [],
+      "expected_output": "entity_share_websub_hub turns a site into the publishing hub (exposes /subscribe, tracks subscriptions, pushes notifications); entity_share_websub_subscriber turns a site into the subscriber (Subscribe/Unsubscribe buttons on the Entity Share pull form, callback routes, automatic import). The top-level entity_share_websub is only a shared base both depend on."
+    },
+    {
+      "id": "entity_share_websub-signature",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "In the entity_share_websub base module, what is the single reusable piece of code it provides, and what HTTP header / hashing does it produce to authenticate hub-to-subscriber calls?",
+      "must_contain_any": ["SignatureTrait", "getSignature", "X-Hub-Signature", "sha256"],
+      "must_not_contain": [],
+      "expected_output": "It provides SignatureTrait with getSignature($data, $secret), which returns 'sha256=' . hash('sha256', $secret . serialize($data)). Both submodules use it to set and validate the X-Hub-Signature header on every callback."
+    },
+    {
+      "id": "entity_share_websub-submodules-enabled",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "On this Drupal site the entity_share_websub project is installed. Inspect the running site and list which of the two functional submodules provided by the entity_share_websub project (the hub end and the subscriber end) are currently enabled.",
+      "must_contain_any": ["entity_share_websub_hub", "entity_share_websub_subscriber"],
+      "must_not_contain": [],
+      "expected_output": "Both entity_share_websub_hub and entity_share_websub_subscriber are enabled (drush pm:list --status=enabled shows them alongside the entity_share_websub base module).",
+      "setup": "agent-module-documentation/evaluation/verify/entity_share_websub-submodules-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/entity_share_websub-submodules-cleanup.sh"
+    },
+    {
+      "id": "entity_share_websub-enable-hub",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site the entity_share_websub base module is enabled but its publisher submodule is not. Enable the entity_share_websub_hub submodule so this site can act as a WebSub publishing hub.",
+      "reset": "agent-module-documentation/evaluation/verify/entity_share_websub-enable-hub-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/entity_share_websub-enable-hub-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/entity_share_websub-enable-hub-cleanup.sh",
+      "expected_output": "entity_share_websub_hub is installed/enabled (e.g. `drush en entity_share_websub_hub -y`), which also pulls in entity_share_server. drush pm:list shows it as Enabled and its /subscribe route becomes available."
+    }
+  ]
+}

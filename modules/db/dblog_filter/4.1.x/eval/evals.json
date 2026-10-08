@@ -1,0 +1,96 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "dblog_filter",
+  "version": "4.1.x",
+  "note": "DB Log Filter replaces the core logger.dblog and logger.syslog services with filtering subclasses that consult one config object, dblog_filter.settings, before writing. Keys (dblog group): severity_levels (8 RFC levels -> bool), log_values (sequence of 'channel|level,level'), log_values_regex, method (include|exclude); the syslog group mirrors them with a syslog_ prefix. method=exclude drops matches, include keeps only matches; severity match short-circuits before channel rules. Defaults (all false, empty lists, exclude) log everything. Config route dblog_filter.settings at /admin/reports/dblog-filter, access via core 'access site reports'. Medium/hard cases are grounded in dblog_filter.settings; the baseline scripts restore the shipped 'log everything' config.",
+  "evals": [
+    {
+      "id": "dblog_filter-only-errors",
+      "mode": "recipe",
+      "prompt": "Using the Drupal contrib module dblog_filter, how do I make the site log ONLY error-and-above messages to the database log? Name the config keys involved.",
+      "must_contain_any": [
+        "severity_levels",
+        "method",
+        "include",
+        "dblog_filter.settings"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Set dblog_filter.settings method to 'include' and check the high severities in severity_levels (emergency, alert, critical, error) leaving warning/notice/info/debug unchecked, so only those levels are logged.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "dblog_filter-include-vs-exclude",
+      "mode": "recipe",
+      "prompt": "In dblog_filter, what is the difference between the 'include' and 'exclude' method settings when a message matches a configured rule?",
+      "must_contain_any": [
+        "include",
+        "exclude"
+      ],
+      "must_not_contain": [],
+      "expected_output": "With method=exclude (default) a message that matches a severity/channel rule is dropped and everything else is logged; with method=include only matching messages are logged and everything else is dropped.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "dblog_filter-log-values-format",
+      "mode": "recipe",
+      "prompt": "In dblog_filter, what is the format of a row in the log_values setting used to filter a specific channel and severity levels? Give an example.",
+      "must_contain_any": [
+        "channel",
+        "log_values",
+        "|"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Each log_values row is 'channel|level1,level2,...', e.g. php|notice,error,alert or mymodule|notice,warning. The channel is the logger channel and the levels are lowercase RFC names.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "dblog_filter-known-method",
+      "mode": "introspection",
+      "prompt": "On this Drupal site, dblog_filter has been configured to restrict what goes into the database log. Inspect the live dblog_filter configuration and state whether its method is 'include' or 'exclude' for the database log.",
+      "must_contain_any": [
+        "include"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The database-log method is 'include' (dblog_filter.settings:method = include), with error/critical/alert/emergency checked in severity_levels, so only those levels are logged.",
+      "setup": "agent-module-documentation/evaluation/verify/dblog_filter-known-method-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/dblog_filter-known-method-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "dblog_filter-known-channel",
+      "mode": "introspection",
+      "prompt": "On this site dblog_filter is set to exclude one specific logger channel's low-severity messages from the database log. Inspect the live configuration and name the channel that is being filtered out.",
+      "must_contain_any": [
+        "cron"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The 'cron' channel is being excluded: dblog_filter.settings:log_values contains 'cron|info,notice,debug' with method exclude.",
+      "setup": "agent-module-documentation/evaluation/verify/dblog_filter-known-channel-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/dblog_filter-known-channel-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "dblog_filter-errors-only",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, configure the dblog_filter module so that ONLY error-and-above messages (error, critical, alert, emergency) are written to the database log, and warning/notice/info/debug are dropped. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/dblog_filter-errors-only-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/dblog_filter-errors-only-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/dblog_filter-errors-only-cleanup.sh",
+      "expected_output": "dblog_filter.settings has method=include and severity_levels with emergency/alert/critical/error=true and warning/notice/info/debug=false."
+    },
+    {
+      "id": "dblog_filter-exclude-php",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "The 'php' logger channel is flooding this site's database log with low-level messages. Using dblog_filter, exclude the php channel's debug-level (and other low) messages from the database log while leaving all other logging intact. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/dblog_filter-exclude-php-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/dblog_filter-exclude-php-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/dblog_filter-exclude-php-cleanup.sh",
+      "expected_output": "dblog_filter.settings has method=exclude and a log_values row for the php channel whose level list includes debug, e.g. 'php|debug' or 'php|notice,info,debug'."
+    }
+  ]
+}

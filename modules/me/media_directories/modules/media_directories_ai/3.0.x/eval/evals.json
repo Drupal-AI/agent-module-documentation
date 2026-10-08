@@ -1,0 +1,96 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "media_directories_ai",
+  "version": "3.0.x",
+  "note": "Real surface: config object media_directories_ai.settings (enable_ai_alt_text, alt_text_prompt, ai_translation_types, translation_prompt, ai_fillable_fields, ai_translatable_fields), settings form at /admin/config/media/media_directories/ai (route media_directories_ai.config_form, local task 'AI' weight 20, permission administer site configuration — .info.yml has no `configure` key), three POST routes under /api/media-directories-browser/ai/{alt-text,alt-text-from-file,translate} gated by the browser's `access media directories browser` permission, and two services media_directories_ai.alt_text (AiAltTextService: MAX_IMAGE_DIMENSION 1280, DEFAULT_PROMPT, isAvailable() requiring enable_ai_alt_text plus a default ai.provider for the chat_with_image_vision operation type) and media_directories_ai.translation (AiTranslationService: DEFAULT_PROMPT, translateFields()). Both take @?ai.provider so they degrade instead of fataling. One hook, page_attachments_alter, flips drupalSettings.mediaDirectoriesBrowser.enableAiAltText and the per-type enableAiTranslations flags that media_directories_browser publishes as FALSE. No permissions, plugin types or Drush commands of its own. Medium cases read the live config and the live isAvailable() result; hard cases write real config and one asserts the flag actually reaches drupalSettings. No case calls a real AI provider.",
+  "evals": [
+    {
+      "id": "media_directories_ai-availability-rule",
+      "mode": "recipe",
+      "prompt": "I enabled media_directories_ai on a Drupal 11 site and ticked 'Enable AI alt text generation', but no AI buttons appear in the Media Directories browser. What exactly does AiAltTextService::isAvailable() require, and which AI operation type must have a default provider?",
+      "must_contain_any": [
+        "chat_with_image_vision"
+      ],
+      "must_not_contain": [],
+      "expected_output": "isAvailable() returns TRUE only when media_directories_ai.settings:enable_ai_alt_text is truthy AND the ai module's provider plugin manager returns a default provider for the 'chat_with_image_vision' operation type with both a non-empty provider_id and model_id. Otherwise hook_page_attachments_alter() leaves drupalSettings.mediaDirectoriesBrowser.enableAiAltText as FALSE (media_directories_browser deliberately publishes FALSE), so the Vue app hides the AI controls. Configure the provider, key and default model on the ai module's own admin pages.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "media_directories_ai-settings-keys",
+      "mode": "recipe",
+      "prompt": "Which configuration object does media_directories_ai use, and what do its ai_fillable_fields and ai_translatable_fields keys hold? Where is the settings form?",
+      "must_contain_any": [
+        "media_directories_ai.settings",
+        "ai_fillable_fields"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The config object is media_directories_ai.settings with keys enable_ai_alt_text, alt_text_prompt, ai_translation_types, translation_prompt, ai_fillable_fields and ai_translatable_fields. The last two are maps of media bundle id → list of field names in the browser's field:property notation (e.g. image => ['field_media_image:alt']): ai_fillable_fields is which fields show an AI fill button in the upload/edit/bulk forms, ai_translatable_fields is which fields are sent for AI translation. The form is at /admin/config/media/media_directories/ai (route media_directories_ai.config_form), an 'AI' local task under the parent module's settings page requiring 'administer site configuration'.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "media_directories_ai-routes",
+      "mode": "recipe",
+      "prompt": "What HTTP endpoints does media_directories_ai add to a Drupal site, what permission protects them, and why is there a separate endpoint for generating alt text during upload?",
+      "must_contain_any": [
+        "alt-text-from-file",
+        "access media directories browser"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Three POST routes under the browser's API prefix: /api/media-directories-browser/ai/alt-text (by media UUID), /api/media-directories-browser/ai/alt-text-from-file and /api/media-directories-browser/ai/translate. All three require the media_directories_browser permission `access media directories browser` and allow _auth: [basic_auth, cookie]. alt-text-from-file exists because during upload the media entity does not exist yet, so the raw binary plus MIME type is posted and handled by AiAltTextService::generateAltTextFromBinary().",
+      "difficulty": "easy"
+    },
+    {
+      "id": "media_directories_ai-known-settings",
+      "mode": "introspection",
+      "prompt": "This Drupal site has media_directories_ai configured. Inspect the live configuration and tell me the custom alt-text prompt that is in force, and for which media types AI translation has been switched on.",
+      "must_contain_any": [
+        "Describe this product photo for an online shop"
+      ],
+      "must_not_contain": [],
+      "expected_output": "media_directories_ai.settings has enable_ai_alt_text: true, alt_text_prompt: 'Describe this product photo for an online shop in one short sentence.' and ai_translation_types: [image] — so AI translation is enabled only for the Image media type. It also lists ai_fillable_fields image => ['field_media_image:alt'] and ai_translatable_fields image => ['name', 'field_media_image:alt']. Read it with `drush cget media_directories_ai.settings`.",
+      "setup": "agent-module-documentation/evaluation/verify/media_directories_ai-known-settings-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/media_directories_ai-known-settings-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "media_directories_ai-availability",
+      "mode": "introspection",
+      "prompt": "On this Drupal site the media_directories_ai 'Enable AI alt text generation' setting is switched on. Inspect the running site and tell me whether AI alt-text generation is actually available to editors right now, and what the deciding factor is.",
+      "must_contain_any": [
+        "not available",
+        "NOT-AVAILABLE",
+        "false",
+        "FALSE",
+        "is not"
+      ],
+      "must_not_contain": [],
+      "expected_output": "It is NOT available. \\Drupal::service('media_directories_ai.alt_text')->isAvailable() returns FALSE because, although enable_ai_alt_text is TRUE, the ai module's provider plugin manager has no default provider for the chat_with_image_vision operation type with both a provider_id and a model_id. Consequently hook_page_attachments_alter() leaves drupalSettings.mediaDirectoriesBrowser.enableAiAltText as FALSE and the browser hides the AI buttons.",
+      "setup": "agent-module-documentation/evaluation/verify/media_directories_ai-availability-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/media_directories_ai-availability-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "media_directories_ai-enable-alt-text",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, configure media_directories_ai so AI alt-text generation is switched on, uses your own house prompt instead of the module's built-in default, and offers an AI fill button on the alt property of the Image media type's source field (field_media_image). Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/media_directories_ai-enable-alt-text-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/media_directories_ai-enable-alt-text-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/media_directories_ai-enable-alt-text-cleanup.sh",
+      "expected_output": "In media_directories_ai.settings set enable_ai_alt_text: true, alt_text_prompt to a non-empty custom string (anything other than AiAltTextService::DEFAULT_PROMPT), and ai_fillable_fields: { image: ['field_media_image:alt'] }. Either use /admin/config/media/media_directories/ai or write the config directly; the field name uses the browser's field:property notation."
+    },
+    {
+      "id": "media_directories_ai-translation",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "Configure this Drupal site so editors get an AI translation action for Image media in the Media Directories browser: enable AI translation for the Image media type, give it a custom translation prompt of your own, include at least the media name field in what gets translated, and make sure the media browser's front end actually receives the AI-translation flag for that type. Apply it to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/media_directories_ai-translation-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/media_directories_ai-translation-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/media_directories_ai-translation-cleanup.sh",
+      "expected_output": "In media_directories_ai.settings set ai_translation_types: ['image'], a non-empty custom translation_prompt (not AiTranslationService::DEFAULT_PROMPT) and ai_translatable_fields: { image: ['name', …] }. Also add 'image' to media_directories_browser.settings:translation_types, because hook_page_attachments() only emits a mediaTypeTranslationSettings entry that MediaDirectoriesAiHooks::pageAttachmentsAlter() can flip; the result is mediaTypeTranslationSettings.image.enableAiTranslations === TRUE in drupalSettings."
+    }
+  ]
+}

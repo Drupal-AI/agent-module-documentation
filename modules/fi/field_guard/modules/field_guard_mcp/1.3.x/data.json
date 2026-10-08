@@ -1,0 +1,53 @@
+{
+  "name": "Field Guard MCP",
+  "data_name": "field_guard_mcp",
+  "description": "Optional read-only Tool API plugins that list guarded fields and report the guard verdict for the acting account, governed by MCP Sentinel.",
+  "version": "1.3.x",
+  "package": "Security",
+  "composer_namespace": "drupal/field_guard",
+  "composer_requirements": {},
+  "dependent_modules": [
+    "field_guard:field_guard",
+    "mcp_sentinel:mcp_sentinel (>=2.22.0)",
+    "tool:tool (>=1.0.0-beta8)"
+  ],
+  "configure": null,
+  "core_version_requirement": "^10.6 || ^11.3",
+  "active_installs": null,
+  "list_position": null,
+  "project_url": "https://www.drupal.org/project/field_guard",
+  "license": "GPL-2.0-or-later",
+  "php_requirement": ">=8.1",
+  "library_dependencies": [],
+  "suggests": {},
+  "submodules": [],
+  "provides_permissions": true,
+  "provides_drush_commands": false,
+  "provides_config_schema": false,
+  "provides_plugin_types": [],
+  "categories": [
+    "Artificial Intelligence (AI)",
+    "Access control"
+  ],
+  "subcategories": [
+    "AI tooling / function calling",
+    "Field-level access control"
+  ],
+  "keywords": [
+    "field guard",
+    "mcp",
+    "tool api",
+    "mcp sentinel",
+    "access control",
+    "ai tooling",
+    "field-level"
+  ],
+  "project_description": "Field Guard denies a named field to anyone who has not been explicitly granted the permission you nominate — including administrators and user 1. It is driven entirely from configuration, defines no permissions of its own, and only ever denies. It never grants.\n\n It ships with an empty map, so installing it changes nothing until you configure it.\n\n Two problems motivate it, both easy to get wrong by hand.\n\n Definition-level checks fail open \n JSON:API and Views ask a different question from \"may this user read this value?\" They ask \"may this field be filtered or sorted on at all?\" — and they ask it with no entity in scope.\n\n \n Drupal\\views\\Plugin\\views\\field\\EntityField::access() calls fieldAccess('view', $definition, $account) . $items is omitted, so it is NULL. \n Drupal\\jsonapi\\Context\\FieldResolver::getFieldAccess() calls fieldAccess('view', $definition, NULL, NULL, TRUE) , with $items explicitly NULL. \n \n An implementation that returns neutral() for that case leaves the Views handler in place and permits the JSON:API filter. The value is never rendered, but it can be probed — an exposed date filter binary-searches it, and a sort orders by it.\n\n Field Guard denies. If a caller will not say which entity it means, it does not get the field.\n\n Note the consequence: guarded fields become unfilterable and unsortable for everyone , including permission holders. With no entity in scope there is no way to distinguish a legitimate filter from a probe. That is usually what you want for a field you deliberately guarded, but it is a behaviour change, and it is pinned by a test rather than left to chance.\n\n Checking hasPermission() silently exempts your administrators \n This is the subtle one.\n\n hook_entity_field_access() returning AccessResult::forbidden() genuinely cannot be overridden. EntityAccessControlHandler::fieldAccess() contains no admin check at all, folds hook results with orIf() , and forbidden is contagious — so the verdict holds against administer users , an is_admin role, and user 1.\n\n But that only matters once you have decided to forbid. If your deny condition tests hasPermission() on the account, administrators and user 1 pass it every time, because SuperUserAccessPolicy and is_admin roles grant every permission by definition . You never reach the forbidden branch, and the contagion never fires.\n\n Field Guard therefore walks the account's roles, skips is_admin roles , and asks each remaining role directly. Access must be named in a role's own configuration.\n\n The practical effect is separation of duty: granting access is a visible line in a configuration diff, reviewed like any other change, rather than something inherited by being an administrator.",
+  "maintenance_status": "Actively maintained",
+  "development_status": "Under active development",
+  "security_advisory_coverage": "not-covered",
+  "project_created": "2026-07-29",
+  "project_changed": "2026-08-27",
+  "core_semver_minimum": 10006000,
+  "core_semver_maximum": 13000000
+}

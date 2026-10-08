@@ -1,0 +1,100 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "acquia_dam",
+  "version": "1.1.x",
+  "note": "Acquia DAM integrates the Acquia DAM (Widen) SaaS. Runtime asset operations require live OAuth credentials the eval environment does NOT have, so EVERY case here is grounded strictly in local Drupal config and never triggers a DAM API call: the acquia_dam.settings config object (domain, key_id, allowed_image_styles, asset_file_directory_path), the eight installed media types (acquia_dam_image_asset ... source acquia_dam_asset:<type>, source field acquia_dam_asset_id), and their per-type source_configuration (download_assets/uri_scheme). Config UI /admin/config/acquia-dam (permission 'administer acquia_dam'); two permissions total. On this site the module is enabled but NOT connected (domain=''), which is the correct baseline for these cases. Medium cases set a known domain / toggle a media type's download_assets and read it back; hard cases flip download_assets on the Image media type and restrict allowed_image_styles - all pure local-config state verified with drush cget, no external calls.",
+  "evals": [
+    {
+      "id": "acquia_dam-media-types",
+      "mode": "recipe",
+      "prompt": "How does the Acquia DAM module represent remote DAM (Widen) assets inside Drupal, and what media types does it provide out of the box for different asset kinds?",
+      "must_contain_any": [
+        "media type",
+        "media source",
+        "acquia_dam_asset",
+        "acquia_dam_image_asset"
+      ],
+      "must_not_contain": [],
+      "expected_output": "It ships a media source plugin acquia_dam_asset with a derivative per asset kind and installs eight media types: acquia_dam_image_asset, _video_, _audio_, _pdf_, _documents_, _archive_, _spinset_, and _generic_asset. Each has source acquia_dam_asset:<type> and source field acquia_dam_asset_id; DAM assets thus appear as regular Drupal media entities.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "acquia_dam-connection",
+      "mode": "recipe",
+      "prompt": "What does it take to connect a Drupal site to Acquia DAM, and in which configuration object are the DAM domain and credentials stored? How is the client secret best stored?",
+      "must_contain_any": [
+        "acquia_dam.settings",
+        "domain",
+        "key",
+        "OAuth",
+        "client"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The connection is OAuth to a DAM domain. acquia_dam.settings holds domain, auth_type, client_id, client_secret and key_id; the secret is best stored in a Key entity referenced by key_id rather than inline. Site auth happens at /acquia-dam/auth and each editor authorizes at /user/{user}/acquia-dam. Config UI: /admin/config/acquia-dam.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "acquia_dam-permissions",
+      "mode": "recipe",
+      "prompt": "Which permissions does the Acquia DAM module define, and which one lets a regular editor authorize their own DAM account (as opposed to configuring the site connection)?",
+      "must_contain_any": [
+        "authorize with acquia dam",
+        "administer acquia_dam"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Two permissions: 'administer acquia_dam' (restricted; configure the connection and admin forms) and 'authorize with acquia dam' (a user connecting their own DAM account at /user/{user}/acquia-dam). Editors need 'authorize with acquia dam'.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "acquia_dam-domain",
+      "mode": "introspection",
+      "prompt": "Inspect this Drupal site's Acquia DAM configuration and tell me which Acquia DAM (Widen) domain the site is configured to connect to. Do not attempt to contact the DAM; just read the local configuration.",
+      "must_contain_any": [
+        "eval-demo.widencollective.com"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The configured domain is eval-demo.widencollective.com (acquia_dam.settings:domain).",
+      "setup": "agent-module-documentation/evaluation/verify/acquia_dam-domain-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/acquia_dam-domain-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "acquia_dam-image-download",
+      "mode": "introspection",
+      "prompt": "On this site, is the Acquia DAM 'Image' media type configured to download and store its asset files locally in Drupal, or to reference them remotely? Inspect the media type's source configuration to answer.",
+      "must_contain_any": [
+        "true",
+        "locally",
+        "download"
+      ],
+      "must_not_contain": [],
+      "expected_output": "It downloads locally: media type acquia_dam_image_asset has source_configuration.download_assets = true, so the module downloads and syncs the asset files rather than only referencing them remotely.",
+      "setup": "agent-module-documentation/evaluation/verify/acquia_dam-image-download-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/acquia_dam-image-download-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "acquia_dam-enable-image-download",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, configure the Acquia DAM 'Image' media type (acquia_dam_image_asset) so that its assets are downloaded and synced locally into Drupal instead of only being referenced remotely. Apply the change to the live configuration.",
+      "reset": "agent-module-documentation/evaluation/verify/acquia_dam-enable-image-download-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/acquia_dam-enable-image-download-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/acquia_dam-enable-image-download-cleanup.sh",
+      "expected_output": "Set source_configuration.download_assets = true on the acquia_dam_image_asset media type (via the media type's source settings or config): $t=media_type::load('acquia_dam_image_asset'); $c=$t->get('source_configuration'); $c['download_assets']=TRUE; $t->set('source_configuration',$c)->save();"
+    },
+    {
+      "id": "acquia_dam-image-styles",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this site, restrict the image styles that Acquia DAM offers for rendering DAM image assets to exactly two core styles: 'thumbnail' and 'large'. Apply the change to the Acquia DAM configuration.",
+      "reset": "agent-module-documentation/evaluation/verify/acquia_dam-image-styles-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/acquia_dam-image-styles-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/acquia_dam-image-styles-cleanup.sh",
+      "expected_output": "Set acquia_dam.settings allowed_image_styles to ['thumbnail','large'] (the Acquia DAM image styles form /admin/config/acquia-dam/image-styles, or drush config): \\Drupal::configFactory()->getEditable('acquia_dam.settings')->set('allowed_image_styles',['thumbnail','large'])->save();"
+    }
+  ]
+}

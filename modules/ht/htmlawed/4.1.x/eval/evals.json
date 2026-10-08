@@ -1,0 +1,82 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "htmlawed",
+  "version": "4.1.x",
+  "note": "htmLawed exposes one filter plugin, filter_htmlawed (TYPE_HTML_RESTRICTOR), configured per text format at admin/config/content/formats; no configure route (configure=null), no permissions/Drush/plugin types of its own. Settings live at filter.format.<format>.filters.filter_htmlawed.settings with four string keys: config (htmLawed $config array body, e.g. \"'safe' => 1, 'elements' => 'a, em, strong', 'deny_attribute' => 'id, style'\"), spec, help, helplong. The config string is turned into a PHP array with eval(). Medium cases install a known filter config on a namespaced text format and read it back; hard cases enable/configure the filter on a namespaced format and verify the stored config string.",
+  "evals": [
+    {
+      "id": "htmlawed-plugin-and-defaults",
+      "mode": "recipe",
+      "prompt": "In the Drupal contrib module htmlawed, what is the machine id of the filter plugin it provides, and what HTML tags does its default configuration allow out of the box?",
+      "must_contain_any": ["filter_htmlawed", "elements", "safe"],
+      "must_not_contain": [],
+      "expected_output": "The filter plugin id is filter_htmlawed (a TYPE_HTML_RESTRICTOR filter). Its default Config. is \"'safe' => 1, 'elements' => 'a, em, strong, cite, code, ol, ul, li, dl, dt, dd, br, p', 'deny_attribute' => 'id, style'\", i.e. it allows a, em, strong, cite, code, ol, ul, li, dl, dt, dd, br, p and denies id/style with safe=1.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "htmlawed-where-configured",
+      "mode": "recipe",
+      "prompt": "The htmlawed module has no settings page of its own. On a Drupal 11 site, where and how do I turn the htmLawed filter on, and where are its settings stored?",
+      "must_contain_any": ["text format", "text formats", "admin/config/content/formats", "filter.format", "administer filters"],
+      "must_not_contain": [],
+      "expected_output": "There is no configure route (configure=null). You enable/configure the htmLawed filter per text format at Configuration -> Content authoring -> Text formats and editors (admin/config/content/formats), which needs the 'administer filters' permission. Settings are stored on the format at filter.format.<format>.filters.filter_htmlawed.settings (config, spec, help, helplong).",
+      "difficulty": "easy"
+    },
+    {
+      "id": "htmlawed-teaser-and-php",
+      "mode": "recipe",
+      "prompt": "With the htmlawed filter, how do I keep Drupal's teaser-break comment marker (<!--break-->) from being stripped, and how do I stop it mangling <?php ... ?> blocks in content? Name the Config. parameters.",
+      "must_contain_any": ["comment", "save_php"],
+      "must_not_contain": [],
+      "expected_output": "Add 'comment' => 2 to the Config. to preserve HTML comments such as <!--break-->, and add 'save_php' => 1 to protect <?php ... ?> blocks from alteration (save_php is a module pseudo-parameter, not a native htmLawed one).",
+      "difficulty": "easy"
+    },
+    {
+      "id": "htmlawed-read-denied-attrs",
+      "mode": "introspection",
+      "prompt": "This site has a text format with machine name 'htmlawed_med1' that uses the htmLawed filter. Inspect the live filter configuration and state which HTML attributes that format's htmLawed filter denies.",
+      "must_contain_any": ["data-hlx", "deny_attribute"],
+      "must_not_contain": [],
+      "expected_output": "In filter.format.htmlawed_med1 the filter_htmlawed settings.config includes deny_attribute => 'id, style, data-hlx', so it denies id, style and data-hlx (the distinctive one is data-hlx).",
+      "setup": "agent-module-documentation/evaluation/verify/htmlawed-read-denied-attrs-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/htmlawed-read-denied-attrs-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "htmlawed-which-format-active",
+      "mode": "introspection",
+      "prompt": "This site has two text formats, 'htmlawed_on' and 'htmlawed_off'. Exactly one of them has the htmLawed filter (filter_htmlawed) enabled. Inspect the live configuration and state which format has htmLawed active.",
+      "must_contain_any": ["htmlawed_on"],
+      "must_not_contain": [],
+      "expected_output": "htmlawed_on has filter_htmlawed status: true, while on htmlawed_off the filter is present but status: false (disabled).",
+      "setup": "agent-module-documentation/evaluation/verify/htmlawed-which-format-active-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/htmlawed-which-format-active-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "htmlawed-enable-restricted",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "This site has a text format with machine name 'htmlawed_task' where the htmLawed filter (filter_htmlawed) is currently disabled. Using the htmlawed module, enable that filter on this format and configure it so that it only allows the a, p and strong HTML tags. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/htmlawed-enable-restricted-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/htmlawed-enable-restricted-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/htmlawed-enable-restricted-cleanup.sh",
+      "expected_output": "On filter.format.htmlawed_task set filters.filter_htmlawed.status to true and settings.config to an elements list containing a, p and strong (e.g. \"'safe' => 1, 'elements' => 'a, p, strong'\"), then save.",
+      "difficulty_note": "verify requires status true AND the config elements to include a, p and strong."
+    },
+    {
+      "id": "htmlawed-restrict-schemes",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this site the text format 'htmlawed_schemes' already uses the htmLawed filter (filter_htmlawed is enabled) but places no restriction on link URL protocols. Configure the htmLawed filter's Config. so that link and image URLs are limited to the http, https and mailto schemes, and apply the change to the live format.",
+      "reset": "agent-module-documentation/evaluation/verify/htmlawed-restrict-schemes-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/htmlawed-restrict-schemes-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/htmlawed-restrict-schemes-cleanup.sh",
+      "expected_output": "Add a schemes rule to filters.filter_htmlawed.settings.config on filter.format.htmlawed_schemes, e.g. \"'safe' => 1, 'schemes' => 'href: http, https, mailto; src: http, https'\" (the config string must contain 'schemes' and 'mailto'), then save.",
+      "difficulty_note": "verify requires the config string to contain both 'schemes' and 'mailto'."
+    }
+  ]
+}

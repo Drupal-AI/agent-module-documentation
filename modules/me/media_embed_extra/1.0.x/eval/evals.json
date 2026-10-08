@@ -1,0 +1,80 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "media_embed_extra",
+  "version": "1.0.x",
+  "note": "Media Embed Extra adds Width/Height fields to the core media embed dialog (hook_form_editor_media_dialog_alter, image media only) storing them as data-width/data-height on <drupal-media>, and swaps the core media_embed filter class (hook_filter_info_alter) for a subclass that resizes the image at render time (applyPerEmbedMediaOverrides). It has no config entity, settings form, configure route, permission, Drush, or config schema of its own. Medium/hard cases are therefore grounded in the one thing that is real and inspectable on a live site: a text format (filter.format.*) whose media_embed filter is enabled and whose filter_html allowed_html permits <drupal-media> with data-width/data-height. Scripts create/inspect namespaced mee_* formats only.",
+  "evals": [
+    {
+      "id": "media-embed-extra-how-resize",
+      "mode": "recipe",
+      "prompt": "Using the Drupal contrib module Media Embed Extra, an editor sets a custom width on an embedded image in the WYSIWYG editor. Which two HTML data-attributes does the module put on the <drupal-media> tag to carry those dimensions, and what happens if only one of them is provided?",
+      "must_contain_any": ["data-width", "data-height"],
+      "must_not_contain": [],
+      "expected_output": "It stores data-width and data-height on the <drupal-media> tag. If only one is supplied, the render-time override (applyPerEmbedMediaOverrides) scales the other proportionally from the source image's aspect ratio.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "media-embed-extra-which-filter",
+      "mode": "recipe",
+      "prompt": "How does Media Embed Extra make its per-embed image dimensions take effect at render time? Which core text filter does it hook into, and via which alter hook does it do so?",
+      "must_contain_any": ["media_embed", "hook_filter_info_alter", "filter_info_alter"],
+      "must_not_contain": [],
+      "expected_output": "It implements hook_filter_info_alter() to replace the core media_embed (Embed media) filter class with Drupal\\media_embed_extra\\Plugin\\Filter\\MediaEmbed, whose applyPerEmbedMediaOverrides() reads data-width/data-height and overrides the embedded image's dimensions.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "media-embed-extra-enable-requirements",
+      "mode": "recipe",
+      "prompt": "I enabled Media Embed Extra but the Width/Height fields do not appear (or the dimensions are ignored) when embedding media in a text format. What must be configured on the text format for it to work, including any allowed-HTML requirement?",
+      "must_contain_any": ["media_embed", "Embed media", "drupal-media", "allowed", "filter_html"],
+      "must_not_contain": [],
+      "expected_output": "The format must have the Embed media (media_embed) filter enabled, and if Limit allowed HTML tags (filter_html) is on, the <drupal-media> tag must be allowed together with the data-width and data-height attributes; otherwise Drupal strips them. Also the dimension fields only appear for image media.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "media-embed-extra-known-format",
+      "mode": "introspection",
+      "prompt": "On this Drupal site a text format has been set up so editors can override embedded media dimensions with Media Embed Extra. Inspect the live text-format configuration and give the machine name (format id) of that format.",
+      "must_contain_any": ["mee_known"],
+      "must_not_contain": [],
+      "expected_output": "The format is mee_known: filter.format.mee_known has filters.media_embed.status: true and its filter_html allowed_html permits <drupal-media ... data-width data-height>.",
+      "setup": "agent-module-documentation/evaluation/verify/media_embed_extra-known-format-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/media_embed_extra-known-format-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "media-embed-extra-allowed-attrs",
+      "mode": "introspection",
+      "prompt": "This site has a text format with machine name mee_attrs. Determine, from the live filter configuration, whether that format allows the data-width and data-height attributes on the <drupal-media> tag (i.e. whether Media Embed Extra's dimension overrides would survive filtering there).",
+      "must_contain_any": ["data-width", "data-height", "yes", "allowed"],
+      "must_not_contain": [],
+      "expected_output": "Yes. filter.format.mee_attrs has filter_html enabled and its allowed_html string includes <drupal-media ... data-width data-height>, so the dimension attributes are permitted.",
+      "setup": "agent-module-documentation/evaluation/verify/media_embed_extra-allowed-attrs-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/media_embed_extra-allowed-attrs-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "media-embed-extra-build-format",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, create a text format with machine name mee_embed (label may be anything) that is ready for Media Embed Extra: enable the Embed media (media_embed) filter, and enable Limit allowed HTML tags (filter_html) with an allowed-HTML list that permits the <drupal-media> tag including the data-width and data-height attributes. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/media_embed_extra-build-format-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/media_embed_extra-build-format-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/media_embed_extra-build-format-reset.sh",
+      "expected_output": "filter.format.mee_embed exists with filters.media_embed.status: true and filters.filter_html.status: true whose allowed_html contains <drupal-media ...> with both data-width and data-height attributes."
+    },
+    {
+      "id": "media-embed-extra-enable-on-format",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "site-builder",
+      "prompt": "The text format mee_ready already exists on this site with the Limit allowed HTML tags filter on, but embedded media dimensions are not working. Turn on the Embed media filter for that format and make sure the allowed HTML permits <drupal-media> with data-width and data-height, then save it to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/media_embed_extra-enable-on-format-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/media_embed_extra-enable-on-format-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/media_embed_extra-enable-on-format-cleanup.sh",
+      "expected_output": "filter.format.mee_ready has filters.media_embed.status: true and its filter_html allowed_html now includes <drupal-media ... data-width data-height>."
+    }
+  ]
+}

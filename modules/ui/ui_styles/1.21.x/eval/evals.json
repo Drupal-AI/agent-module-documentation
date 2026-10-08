@@ -1,0 +1,95 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "ui_styles",
+  "version": "1.21.x",
+  "note": "UI Styles is a style-plugin manager. Styles are defined in *.ui_styles.yml files (Drupal YamlDiscovery on the 'ui_styles' key) shipped by an enabled module or theme; a definition's 'options' map keys are the actual CSS classes. Service plugin.manager.ui_styles (StylePluginManager) discovers them; StylePluginManager::addClasses() injects classes into a render array; render/form element type 'ui_styles_styles' renders the grouped selector; selections are stored as the ui_styles.selected_mapping config type {selected, extra}. StylesheetGenerator (route /ui_styles/stylesheet) emits preview CSS. The base module has configure=null and no admin UI. Medium/hard cases are grounded in real plugin discovery: a fixture module ships a *.ui_styles.yml and the agent reads/creates the definition against the live plugin manager.",
+  "evals": [
+    {
+      "id": "ui_styles-define-file",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "In Drupal's UI Styles module, how do I declare a reusable style (a named set of CSS classes) so it shows up in the UI Styles selector? Name the file and the key that holds the CSS classes.",
+      "must_contain_any": [
+        "ui_styles.yml",
+        ".ui_styles.yml",
+        "options"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Add a <provider>.ui_styles.yml file to an enabled module or theme. Each top-level key is a style plugin id; under it, the 'options' map lists entries where the KEY is the CSS class added and the VALUE is the option label (plus optional label/category/description/weight). Run drush cr; discovery is Drupal\\Core\\Plugin\\Discovery\\YamlDiscovery on the 'ui_styles' key."
+    },
+    {
+      "id": "ui_styles-apply-classes",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "Using Drupal UI Styles, which render/form element or plugin-manager method do I use to (a) let a user choose styles in a form and (b) actually add the chosen CSS classes onto a render array?",
+      "must_contain_any": [
+        "ui_styles_styles",
+        "addClasses",
+        "plugin.manager.ui_styles"
+      ],
+      "must_not_contain": [],
+      "expected_output": "(a) Use the form element '#type' => 'ui_styles_styles' (Drupal\\ui_styles\\Element\\Styles); its value is {selected, extra}. (b) Call \\Drupal::service('plugin.manager.ui_styles')->addClasses($build, $selected, $extra) which injects the classes onto the first render element that accepts #attributes."
+    },
+    {
+      "id": "ui_styles-stylesheet-route",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "UI Styles can generate a CSS file that only contains the rules for its declared style-option classes (used for previews and the CKEditor iframe). What route/path or service provides that generated stylesheet?",
+      "must_contain_any": [
+        "/ui_styles/stylesheet",
+        "ui_styles.stylesheet",
+        "StylesheetGenerator",
+        "ui_styles.stylesheet_generator"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Route ui_styles.stylesheet at path /ui_styles/stylesheet (StylesheetController::generateStylesheet, permission 'access content'), backed by the service ui_styles.stylesheet_generator (Drupal\\ui_styles\\Service\\StylesheetGenerator::generateStylesheet())."
+    },
+    {
+      "id": "ui_styles-known-plugin-id",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "An enabled module on this Drupal site defines a UI Styles style plugin. Inspect the live style plugin manager (plugin.manager.ui_styles) and give the plugin id and the CSS class(es) listed in its options.",
+      "must_contain_any": [
+        "ui_styles_eval_shadow"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Plugin id ui_styles_eval_shadow (category 'Eval Effects'), options ui-styles-eval-shadow ('Shadow') and ui-styles-eval-border ('Border'). Found via \\Drupal::service('plugin.manager.ui_styles')->getDefinition('ui_styles_eval_shadow')->getOptions().",
+      "setup": "agent-module-documentation/evaluation/verify/ui_styles-defined-style-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/ui_styles-defined-style-cleanup.sh"
+    },
+    {
+      "id": "ui_styles-known-plugin-category",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "This site has a UI Styles style plugin with id ui_styles_eval_shadow provided by an enabled module. Under which UI Styles category is it grouped, and how many options does it offer?",
+      "must_contain_any": [
+        "Eval Effects"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Category 'Eval Effects' with 2 options (ui-styles-eval-shadow, ui-styles-eval-border). getCategory() returns 'Eval Effects'; getOptions() has two entries.",
+      "setup": "agent-module-documentation/evaluation/verify/ui_styles-defined-style-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/ui_styles-defined-style-cleanup.sh"
+    },
+    {
+      "id": "ui_styles-define-plugin",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, define a new UI Styles style plugin with id 'ui_styles_eval_bg' (label 'Eval Background', category 'Eval') that offers a single option whose CSS class is 'ui-styles-eval-bg' (label 'Eval BG'), so that plugin.manager.ui_styles discovers it. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/ui_styles-define-style-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/ui_styles-define-style-verify.sh",
+      "expected_output": "Create a small enabled module (e.g. web/modules/custom/ui_styles_eval_bg) shipping ui_styles_eval_bg.ui_styles.yml with:\n  ui_styles_eval_bg:\n    label: 'Eval Background'\n    category: 'Eval'\n    options:\n      ui-styles-eval-bg: 'Eval BG'\nEnable the module and run drush cr. \\Drupal::service('plugin.manager.ui_styles')->hasDefinition('ui_styles_eval_bg') is TRUE and its options include ui-styles-eval-bg."
+    },
+    {
+      "id": "ui_styles-define-plugin-multi",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, define a UI Styles style plugin with id 'ui_styles_eval_spacing' in category 'Eval Spacing' that offers two options: CSS class 'ui-styles-eval-p-1' (label 'Padding 1') and 'ui-styles-eval-p-3' (label 'Padding 3'). Make it discoverable by plugin.manager.ui_styles on the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/ui_styles-define-spacing-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/ui_styles-define-spacing-verify.sh",
+      "expected_output": "Ship a <provider>.ui_styles.yml in an enabled module/theme with:\n  ui_styles_eval_spacing:\n    label: 'Eval Spacing'\n    category: 'Eval Spacing'\n    options:\n      ui-styles-eval-p-1: 'Padding 1'\n      ui-styles-eval-p-3: 'Padding 3'\nAfter drush cr, getDefinition('ui_styles_eval_spacing') has category 'Eval Spacing' and both option classes."
+    }
+  ]
+}

@@ -1,0 +1,97 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "printable_pdf",
+  "version": "3.1.x",
+  "note": "Printable PDF is a submodule of Printable providing the 'pdf' PrintableFormat plugin (PdfFormat), which renders content entities as PDF via pdf_api. It depends on printable + pdf_api and has NO config object of its own; it reads the parent's printable.settings. Adds /{entity}/printable/pdf. Key settings it consumes: pdf_tool (pdf_api generator: wkhtmltopdf/tcpdf/mpdf/dompdf; empty => 404), printable_pdf_link_locations (where PDF links show), save_pdf (true=download/attachment, false=inline), paper_size, page_orientation. Medium/hard cases are grounded in the pdf-specific printable.settings keys (printable_pdf_link_locations and save_pdf), distinct from the parent module's cases. Baselines restored explicitly: printable_pdf_link_locations=[''], save_pdf=false.",
+  "evals": [
+    {
+      "id": "printable_pdf-what-it-adds",
+      "mode": "recipe",
+      "prompt": "What does the printable_pdf submodule add on top of the printable module, and what other module does it require to actually produce a PDF?",
+      "must_contain_any": [
+        "pdf",
+        "pdf_api",
+        "PrintableFormat",
+        "PdfFormat"
+      ],
+      "must_not_contain": [],
+      "expected_output": "It adds the 'pdf' PrintableFormat plugin (PdfFormat), giving each printable entity a /{entity}/printable/pdf URL. It requires the pdf_api module (and a toolkit) to generate the PDF; the toolkit is chosen in printable.settings.pdf_tool.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "printable_pdf-download-setting",
+      "mode": "recipe",
+      "prompt": "With printable_pdf, which setting decides whether the generated PDF is downloaded as a file attachment or shown inline in the browser?",
+      "must_contain_any": [
+        "save_pdf"
+      ],
+      "must_not_contain": [],
+      "expected_output": "printable.settings.save_pdf: when TRUE the PDF is returned as an attachment (download), when FALSE it is shown inline. (printable_pdf reads the parent printable.settings; it has no config of its own.)",
+      "difficulty": "easy"
+    },
+    {
+      "id": "printable_pdf-link-locations-key",
+      "mode": "recipe",
+      "prompt": "In printable_pdf, which configuration key controls on which entity types the PDF link is displayed, and where is it edited?",
+      "must_contain_any": [
+        "printable_pdf_link_locations",
+        "links/pdf",
+        "printable.pdf_ui"
+      ],
+      "must_not_contain": [],
+      "expected_output": "printable.settings.printable_pdf_link_locations lists the entity types that show a PDF link. It is edited on the parent form at /admin/config/user-interface/printable/links/pdf (route printable.pdf_ui).",
+      "difficulty": "easy"
+    },
+    {
+      "id": "printable_pdf-where-links",
+      "mode": "introspection",
+      "prompt": "On this site, on which entity type(s) is the printable PDF link currently configured to appear? Inspect the live configuration and answer.",
+      "must_contain_any": [
+        "node"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Node: printable.settings.printable_pdf_link_locations is ['node'], so the PDF link shows on node entities.",
+      "setup": "agent-module-documentation/evaluation/verify/printable_pdf-link-loc-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/printable_pdf-link-loc-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "printable_pdf-inline-or-download",
+      "mode": "introspection",
+      "prompt": "Right now, does the printable_pdf module serve generated PDFs as a download (attachment) or inline in the browser on this site? Inspect the live configuration to decide.",
+      "must_contain_any": [
+        "download",
+        "attachment",
+        "save_pdf"
+      ],
+      "must_not_contain": [],
+      "expected_output": "As a download (attachment): printable.settings.save_pdf is TRUE, so PdfFormat returns the PDF with a Content-Disposition of attachment rather than inline.",
+      "setup": "agent-module-documentation/evaluation/verify/printable_pdf-save-mode-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/printable_pdf-save-mode-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "printable_pdf-enable-node-link",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "Configure the printable_pdf module so that a PDF download link appears on node pages, and apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/printable_pdf-enable-node-link-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/printable_pdf-enable-node-link-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/printable_pdf-enable-node-link-cleanup.sh",
+      "expected_output": "Add 'node' to printable.settings.printable_pdf_link_locations (e.g. set it to ['node'] via the config API, or tick node on /admin/config/user-interface/printable/links/pdf). in_array('node', printable_pdf_link_locations) is then TRUE."
+    },
+    {
+      "id": "printable_pdf-download-mode",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "Change the printable_pdf configuration so that generated PDFs are downloaded as a file (attachment) instead of being shown inline in the browser. Apply it to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/printable_pdf-download-mode-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/printable_pdf-download-mode-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/printable_pdf-download-mode-cleanup.sh",
+      "expected_output": "Set printable.settings.save_pdf to TRUE (e.g. drush cset printable.settings save_pdf 1 -y, or the config API, or the PDF config form). \\Drupal::config('printable.settings')->get('save_pdf') is then TRUE, so PdfFormat sends the PDF as an attachment."
+    }
+  ]
+}

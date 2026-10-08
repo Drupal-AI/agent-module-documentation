@@ -1,0 +1,95 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "visitors",
+  "version": "2.33.x",
+  "note": "Visitors is native self-hosted web analytics. JS tracker posts visits to /visitors/_track (route visitors.track, open access), recorded to the 'visitors' DB table by the visitors.tracker service; visitors.visibility decides what is tracked. Reports at /visitors (permission 'access visitors') use Views + Chart.js (dep charts_chartjs). All behaviour is in the config object visitors.config (NOTE: config name is visitors.config, while the settings FORM route is visitors.settings at /admin/config/system/visitors). Keys include items_per_page, theme, disable_tracking, track.userid, counter.{enabled,entity_types,display_max_age}, visibility.*, script_type, flush_log_timer, bot_retention_log. Permissions: access visitors, opt-out of visitors tracking, view visitors counter. Drush rebuild commands: visitors:rebuild:route / :ip-address / :device (recompute derived data from the log). Submodule visitors_geoip adds geolocation. Medium/hard cases are grounded in the local visitors.config object (items_per_page sentinel 47; counter.entity_types adding 'user'); no external tracking needed.",
+  "evals": [
+    {
+      "id": "visitors-settings-location",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "Where do I configure the Visitors analytics module, and what is the machine name of the config object that stores its settings?",
+      "must_contain_any": [
+        "visitors.config",
+        "/admin/config/system/visitors"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The settings form is at /admin/config/system/visitors (route visitors.settings, permission 'administer site configuration'), and the settings are stored in the config object visitors.config (note: the config object is visitors.config, not visitors.settings)."
+    },
+    {
+      "id": "visitors-rebuild-drush",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "The Visitors module can reprocess its existing log. Which Drush commands does it provide to rebuild derived data such as device and route info?",
+      "must_contain_any": [
+        "visitors:rebuild:route",
+        "visitors:rebuild:device",
+        "visitors:rebuild:ip-address"
+      ],
+      "must_not_contain": [],
+      "expected_output": "visitors:rebuild:route, visitors:rebuild:ip-address, and visitors:rebuild:device (aliases visitors-rebuild-route/-ip-address/-device) recompute route, IP-address, and device/browser data from the existing visitors log. They mirror the /admin/config/system/visitors/rebuild-* forms."
+    },
+    {
+      "id": "visitors-permissions",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "What permission lets a user view the Visitors analytics reports, and what other permissions does the module define?",
+      "must_contain_any": [
+        "access visitors",
+        "view visitors counter",
+        "opt-out of visitors tracking"
+      ],
+      "must_not_contain": [],
+      "expected_output": "'access visitors' grants access to the reports under /visitors. The module also defines 'opt-out of visitors tracking' (let users opt in/out of tracking) and 'view visitors counter' (see the per-content hit counter)."
+    },
+    {
+      "id": "visitors-items-introspect",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "On this site, the number of rows shown per page in the Visitors reports has been customised. Inspect the live Visitors configuration and tell me the configured items-per-page value.",
+      "must_contain_any": [
+        "47"
+      ],
+      "must_not_contain": [],
+      "expected_output": "items_per_page is 47 (visitors.config:items_per_page).",
+      "setup": "agent-module-documentation/evaluation/verify/visitors-items-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/visitors-items-cleanup.sh"
+    },
+    {
+      "id": "visitors-counter-introspect",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "On this site the Visitors content hit-counter is configured for more than one entity type. Inspect the live Visitors configuration and list which entity types get a hit counter.",
+      "must_contain_any": [
+        "user"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The counter is configured for node and user (visitors.config:counter.entity_types = [node, user]).",
+      "setup": "agent-module-documentation/evaluation/verify/visitors-counter-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/visitors-counter-cleanup.sh"
+    },
+    {
+      "id": "visitors-set-items",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "Configure the Visitors module so its analytics report pages show 25 rows per page. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/visitors-items-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/visitors-items-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/visitors-items-hard-cleanup.sh",
+      "expected_output": "visitors.config:items_per_page == 25 (set on the Visitor Settings form at /admin/config/system/visitors, or `drush config:set visitors.config items_per_page 25`)."
+    },
+    {
+      "id": "visitors-enable-user-counter",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "The Visitors content hit-counter currently only counts node views. Configure Visitors so that the 'user' entity type also gets a hit counter, keeping node counted too. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/visitors-counter-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/visitors-counter-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/visitors-counter-hard-cleanup.sh",
+      "expected_output": "visitors.config:counter.entity_types includes 'user' (e.g. [node, user]). Read the current array, append 'user', and save it back on visitors.config."
+    }
+  ]
+}

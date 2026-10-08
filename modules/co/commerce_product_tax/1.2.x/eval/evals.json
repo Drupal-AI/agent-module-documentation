@@ -1,0 +1,80 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "commerce_product_tax",
+  "version": "1.2.x",
+  "note": "Commerce Product Tax lets a store pick the tax rate per product variation. It adds a commerce_tax_rate field type (default widget commerce_tax_rate_default, default formatter string, plus commerce_tax_rate_percentage) with settings tax_type (a Local tax type id) and allowed_zones (that tax type's zone ids). You attach it to a product variation type; the stored value is '<zone_id>|<rate_id>'. A TaxRateResolver tagged commerce_tax.tax_rate_resolver (priority 100) reads the field at order time and returns the chosen rate. No settings page (configure=null), no permissions, no Drush. Medium/hard cases are grounded in a real commerce_tax_rate field on the 'default' product variation type bound to a Local tax type (a european_union_vat tax type 'cpt_eu_vat' the scripts create); they inspect/set the field's tax_type and allowed_zones. Fixtures (field_cpt_*, tax type cpt_eu_vat) are namespaced and removed on cleanup.",
+  "evals": [
+    {
+      "id": "commerce_product_tax-how-to-pick-rate",
+      "mode": "recipe",
+      "prompt": "In Drupal Commerce I want store staff to choose the applicable tax rate on each product variation instead of it being fully automatic. Which module and which field type do I use, and where do I add it?",
+      "must_contain_any": ["commerce_product_tax", "commerce_tax_rate", "Tax rate", "product variation type"],
+      "must_not_contain": [],
+      "expected_output": "Use the Commerce Product Tax module, which provides a 'Tax rate' field type (commerce_tax_rate). Add that field to your product variation type (Manage fields); its widget then lets staff pick the applicable rate on each variation.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "commerce_product_tax-field-settings",
+      "mode": "recipe",
+      "prompt": "The commerce_tax_rate 'Tax rate' field has field settings that control which rates a user can choose. What are the two key settings and what do they do?",
+      "must_contain_any": ["tax_type", "allowed_zones"],
+      "must_not_contain": [],
+      "expected_output": "tax_type: the Local tax type (e.g. a European Union VAT tax type) whose rates the field offers; and allowed_zones: which of that tax type's zones the editor may choose rates from.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "commerce_product_tax-resolver",
+      "mode": "recipe",
+      "prompt": "How does Commerce Product Tax make sure the rate chosen on a product variation is the one used when tax is calculated on an order? What service does it register and how is the value stored?",
+      "must_contain_any": ["commerce_tax.tax_rate_resolver", "TaxRateResolver", "priority", "zone_id|rate_id", "|"],
+      "must_not_contain": [],
+      "expected_output": "It registers a TaxRateResolver tagged commerce_tax.tax_rate_resolver at priority 100 (so it runs before the default resolver). It reads the variation's commerce_tax_rate field value, stored as '<zone_id>|<rate_id>', and returns the matching rate for the current tax zone (or 'no tax').",
+      "difficulty": "easy"
+    },
+    {
+      "id": "commerce_product_tax-known-type",
+      "mode": "introspection",
+      "prompt": "On this Drupal Commerce site, the default product variation type has a 'Tax rate' (commerce_tax_rate) field. Inspect the live field configuration and state which tax type it is bound to.",
+      "must_contain_any": ["cpt_eu_vat"],
+      "must_not_contain": [],
+      "expected_output": "The cpt_eu_vat tax type (a European Union VAT Local tax type). The field field_cpt_type on commerce_product_variation.default has settings.tax_type = cpt_eu_vat.",
+      "setup": "agent-module-documentation/evaluation/verify/commerce_product_tax-known-type-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/commerce_product_tax-known-type-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "commerce_product_tax-known-zones",
+      "mode": "introspection",
+      "prompt": "The Tax rate field on the default product variation type on this site restricts which tax zones a user may choose rates from. Inspect the live field settings and list the allowed zone ids.",
+      "must_contain_any": ["de", "fr"],
+      "must_not_contain": [],
+      "expected_output": "The allowed zones are de (Germany) and fr (France): field field_cpt_zone on commerce_product_variation.default has settings.allowed_zones = [de, fr].",
+      "setup": "agent-module-documentation/evaluation/verify/commerce_product_tax-known-zones-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/commerce_product_tax-known-zones-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "commerce_product_tax-add-field",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal Commerce site there is already a Local tax type with id cpt_eu_vat. Using the Commerce Product Tax module, add a Tax rate field named field_cpt_task to the 'default' product variation type, bound to the cpt_eu_vat tax type. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/commerce_product_tax-add-field-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/commerce_product_tax-add-field-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/commerce_product_tax-add-field-cleanup.sh",
+      "expected_output": "Create a commerce_tax_rate field storage field_cpt_task on commerce_product_variation and a field instance on the 'default' bundle whose settings.tax_type is cpt_eu_vat (Manage fields -> Add field -> Tax rate, then set the Tax type; or create the FieldStorageConfig/FieldConfig via code)."
+    },
+    {
+      "id": "commerce_product_tax-set-zones",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "site-owner",
+      "prompt": "On my Drupal Commerce store, the default product variation type has a Tax rate field (field_cpt_zones) but staff can currently pick rates from any zone. Restrict that field so rates can only be chosen from the Germany (zone id 'de') tax zone, and apply it to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/commerce_product_tax-set-zones-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/commerce_product_tax-set-zones-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/commerce_product_tax-set-zones-cleanup.sh",
+      "expected_output": "Set the field_cpt_zones field's allowed_zones setting to include 'de' (in the field settings on the variation type, or fc->setSetting('allowed_zones', ['de'])->save()). Then only the Germany zone's rates are offered on the variation."
+    }
+  ]
+}

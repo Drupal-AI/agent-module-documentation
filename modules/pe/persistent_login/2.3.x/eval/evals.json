@@ -1,0 +1,96 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "persistent_login",
+  "version": "2.3.x",
+  "note": "Persistent Login stores all settings in persistent_login.settings (lifetime in days with 0 = never expires, extend_lifetime, max_tokens with 0 = unlimited, login_form.field_label, cookie_prefix), edited at /admin/config/system/persistent_login (permission administer site configuration). It owns a database table 'persistent_login' (uid, series, instance, created, refreshed, expires) whose series/instance are hashed with Crypt::hashBase64. Services: persistent_login.token_manager (createNewTokenForUser, validateToken, updateToken, deleteToken, getTokensForUser, clearUsersTokens, cleanupExpiredTokens), persistent_login.token_handler (a global authentication_provider at priority 1, above cookie auth, plus a KernelEvents::RESPONSE subscriber) and persistent_login.cookie_helper. hook_requirements() errors unless services.yml sets session.storage.options.cookie_lifetime to 0. No permissions, no plugin types, no Drush commands. Medium/hard cases read and write that real config and real rows in the persistent_login table.",
+  "evals": [
+    {
+      "id": "persistent_login-config-keys",
+      "mode": "recipe",
+      "prompt": "On a Drupal site with the persistent_login module, which configuration object and key control how long a 'Remember me' login stays valid, and what value means it never expires? Which key changes the text of the checkbox?",
+      "must_contain_any": [
+        "persistent_login.settings",
+        "lifetime",
+        "field_label"
+      ],
+      "must_not_contain": [],
+      "expected_output": "persistent_login.settings:lifetime, expressed in days; 0 means no expiration. login_form.field_label holds the checkbox text (default 'Remember me'). Other keys: extend_lifetime (renew from last use), max_tokens (0 = unlimited) and cookie_prefix. The form is at /admin/config/system/persistent_login.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "persistent_login-session-requirement",
+      "mode": "recipe",
+      "prompt": "The status report on my Drupal site complains about 'Session cookie lifetime' after installing persistent_login. What exactly does the module require me to change, and in which file?",
+      "must_contain_any": [
+        "cookie_lifetime",
+        "services.yml",
+        "session.storage.options"
+      ],
+      "must_not_contain": [],
+      "expected_output": "persistent_login_requirements() raises an error unless the PHP session cookie ends with the browser session. Set it in services.yml: parameters: session.storage.options: cookie_lifetime: 0 - then rebuild the cache. The module deliberately handles long-lived logins itself instead of lengthening the PHP session.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "persistent_login-token-scheme",
+      "mode": "recipe",
+      "prompt": "How does the Drupal persistent_login module store remembered logins, and what is the name of the service you would call to issue or clear tokens for a user from code?",
+      "must_contain_any": [
+        "persistent_login.token_manager",
+        "series",
+        "instance"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Tokens live in the module's own 'persistent_login' database table with uid, series, instance, created, refreshed and expires; series and instance are hashed with Crypt::hashBase64 and the single-use instance is rotated on every use (series/instance theft-detection scheme). The service is persistent_login.token_manager (TokenManager) with createNewTokenForUser(), getTokensForUser(), clearUsersTokens(), cleanupExpiredTokens(); persistent_login.token_handler adds setNewSessionToken()/clearSessionToken().",
+      "difficulty": "easy"
+    },
+    {
+      "id": "persistent_login-known-settings",
+      "mode": "introspection",
+      "prompt": "This Drupal site has persistent_login configured. Inspect the live configuration and tell me how many days a remembered login lasts, how many remembered logins one user may have, and the exact wording of the checkbox on the login form.",
+      "must_contain_any": [
+        "Keep me signed in on this device"
+      ],
+      "must_not_contain": [],
+      "expected_output": "persistent_login.settings has lifetime 14 (days), extend_lifetime true, max_tokens 3 and login_form.field_label 'Keep me signed in on this device'. Read it with: drush cget persistent_login.settings",
+      "setup": "agent-module-documentation/evaluation/verify/persistent_login-known-settings-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/persistent_login-known-settings-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "persistent_login-active-tokens",
+      "mode": "introspection",
+      "prompt": "Exactly one account on this Drupal site currently has active 'Remember me' (persistent login) tokens. Inspect the running site and tell me the username of that account and how many tokens it holds.",
+      "must_contain_any": [
+        "pl_known_user"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The account is pl_known_user and it has 2 active tokens. The rows live in the module's persistent_login table keyed by uid; find them with a query on that table, or with \\Drupal::service('persistent_login.token_manager')->getTokensForUser($user) (the per-user list is also at /user/{uid}/persistent-logins).",
+      "setup": "agent-module-documentation/evaluation/verify/persistent_login-active-tokens-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/persistent_login-active-tokens-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "persistent_login-configure",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "site-owner",
+      "prompt": "On this Drupal site people can tick a box on the login form to stay logged in. Change it so that (a) the box says exactly 'Stay signed in', (b) a remembered login stays valid for 90 days counted from the last time it was used rather than from when they logged in, and (c) one person can only have five remembered devices at a time. Apply the changes to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/persistent_login-configure-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/persistent_login-configure-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/persistent_login-configure-cleanup.sh",
+      "expected_output": "In persistent_login.settings set lifetime: 90, extend_lifetime: true, max_tokens: 5 and login_form.field_label: 'Stay signed in' -- e.g. drush cset persistent_login.settings lifetime 90 -y; drush cset persistent_login.settings extend_lifetime 1 -y; drush cset persistent_login.settings max_tokens 5 -y; drush cset persistent_login.settings login_form.field_label 'Stay signed in' -y (or via /admin/config/system/persistent_login)."
+    },
+    {
+      "id": "persistent_login-issue-token",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "This Drupal site has persistent_login enabled and a user account named pl_task_user that currently has no remembered logins. Without going through the login form, use the module's own API to issue exactly one persistent login token for that account on the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/persistent_login-issue-token-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/persistent_login-issue-token-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/persistent_login-issue-token-cleanup.sh",
+      "expected_output": "Call the token manager once: drush php:eval '$u = user_load_by_name(\"pl_task_user\"); \\Drupal::service(\"persistent_login.token_manager\")->createNewTokenForUser($u->id());' which inserts exactly one row in the persistent_login table. The verify script counts both getTokensForUser() and the table rows and requires exactly 1."
+    }
+  ]
+}

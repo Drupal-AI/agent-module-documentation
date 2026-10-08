@@ -1,0 +1,93 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "jquery_ui_dialog",
+  "version": "2.1.x",
+  "note": "jquery_ui_dialog 2.1.0 ships only jquery_ui_dialog.info.yml, composer.json and LICENSE.txt - no PHP, no *.libraries.yml, no config, no routes, no permissions, no plugins. Its single deliverable is the asset library id jquery_ui_dialog/dialog, which is actually DECLARED BY the jquery_ui module: jquery_ui_library_info_alter() reads jquery_ui/jquery_ui.libraries.data.json and merges the definition (jQuery UI 1.13.2, ui/widgets/dialog-min.js + themes/base/dialog.css, both vendored under the jquery_ui module) into this extension. Because the module has no config surface, the medium and hard tiers are grounded in the one thing that IS live state here: the site's asset-library registry. The shared medium setup installs a small fixture module (jqd_probe) that both depends on the library and alters its version, so the answers can only come from library.discovery on the running site. The hard cases require building real library definitions - one declaring a dependency, one implementing hook_library_info_alter() with the module weight ordering that jquery_ui's own alter forces - and are verified against the live library registry. All fixture/build modules are uninstalled with `drush pmu` BEFORE their directory is deleted.",
+  "evals": [
+    {
+      "id": "jquery_ui_dialog-library-id",
+      "difficulty": "easy",
+      "mode": "recipe",
+      "prompt": "I upgraded a Drupal site to 11 and my custom module's *.libraries.yml still lists `core/jquery.ui.dialog`, which no longer exists. The contrib module jquery_ui_dialog is installed. What exactly do I replace that dependency with?",
+      "must_contain_any": [
+        "jquery_ui_dialog/dialog"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Replace `core/jquery.ui.dialog` with `jquery_ui_dialog/dialog` in the library's `dependencies:` list (or in #attached['library']). jQuery UI was deprecated and removed from core; this contrib module re-provides the dialog library."
+    },
+    {
+      "id": "jquery_ui_dialog-who-declares-it",
+      "difficulty": "easy",
+      "mode": "recipe",
+      "prompt": "The jquery_ui_dialog module directory contains no *.libraries.yml file and no PHP at all, yet the library `jquery_ui_dialog/dialog` exists on the site. How is that library actually registered, and where do the JS/CSS assets physically live?",
+      "must_contain_any": [
+        "jquery_ui",
+        "hook_library_info_alter",
+        "jquery_ui.libraries.data.json"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The base jquery_ui module declares it on this module's behalf: jquery_ui_library_info_alter() loads jquery_ui/jquery_ui.libraries.data.json and merges the per-extension definitions in, prefixing asset paths with the jquery_ui module path. The assets are jQuery UI 1.13.2 vendored in the jquery_ui module: assets/vendor/jquery.ui/ui/widgets/dialog-min.js and assets/vendor/jquery.ui/themes/base/dialog.css."
+    },
+    {
+      "id": "jquery_ui_dialog-dependencies",
+      "difficulty": "easy",
+      "mode": "recipe",
+      "prompt": "Which other Drupal modules does jquery_ui_dialog require, and if I attach jquery_ui_dialog/dialog do I also have to attach the button, draggable and resizable libraries myself?",
+      "must_contain_any": [
+        "jquery_ui_button",
+        "jquery_ui_draggable",
+        "jquery_ui_resizable"
+      ],
+      "must_not_contain": [],
+      "expected_output": "It depends on jquery_ui (>=8.x-1.7), jquery_ui_button, jquery_ui_draggable and jquery_ui_resizable (all >=2.1). You do NOT attach them yourself - the dialog library declares jquery_ui_button/button, jquery_ui_draggable/draggable, jquery_ui_resizable/resizable, jquery_ui/widget, jquery_ui/position, jquery_ui/mouse and the internal helpers as dependencies, and Drupal resolves them transitively."
+    },
+    {
+      "id": "jquery_ui_dialog-probe-dependent",
+      "difficulty": "medium",
+      "mode": "introspection",
+      "prompt": "On this Drupal site exactly one extension registers an asset library that lists `jquery_ui_dialog/dialog` among its dependencies. Inspect the running site's library registry and tell me the full library id (extension/library-name) of that library.",
+      "must_contain_any": [
+        "jqd_probe/probe_dialog",
+        "probe_dialog"
+      ],
+      "must_not_contain": [],
+      "expected_output": "jqd_probe/probe_dialog. Found by walking the installed extensions and asking \\Drupal::service('library.discovery')->getLibrariesByExtension($name) for definitions whose 'dependencies' contain 'jquery_ui_dialog/dialog'.",
+      "setup": "agent-module-documentation/evaluation/verify/jquery_ui_dialog-probe-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/jquery_ui_dialog-probe-cleanup.sh"
+    },
+    {
+      "id": "jquery_ui_dialog-probe-version",
+      "difficulty": "medium",
+      "mode": "introspection",
+      "prompt": "What version string does the asset library `jquery_ui_dialog/dialog` report on THIS running Drupal site? Read it from the live library registry rather than from the module's shipped jQuery UI version, and say whether anything on the site is altering it.",
+      "must_contain_any": [
+        "1.13.2-probe9"
+      ],
+      "must_not_contain": [],
+      "expected_output": "1.13.2-probe9. The stock definition (declared by jquery_ui from jquery_ui.libraries.data.json) is 1.13.2, but the jqd_probe module implements hook_library_info_alter() and overrides the version. Read with drush php:eval 'print \\Drupal::service(\"library.discovery\")->getLibraryByName(\"jquery_ui_dialog\", \"dialog\")[\"version\"];'.",
+      "setup": "agent-module-documentation/evaluation/verify/jquery_ui_dialog-probe-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/jquery_ui_dialog-probe-cleanup.sh"
+    },
+    {
+      "id": "jquery_ui_dialog-custom-library",
+      "difficulty": "hard",
+      "mode": "execution",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, create and enable a custom module named `jqd_task` in web/modules/custom that registers its own asset library which pulls in the jQuery UI Dialog widget provided by the contrib jquery_ui_dialog module. The library must declare `jquery_ui_dialog/dialog` as a dependency (do not copy the jQuery UI files yourself). Apply it to the live site so the library is discoverable.",
+      "reset": "agent-module-documentation/evaluation/verify/jquery_ui_dialog-custom-library-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/jquery_ui_dialog-custom-library-verify.sh",
+      "expected_output": "web/modules/custom/jqd_task/jqd_task.info.yml plus jqd_task.libraries.yml declaring e.g. `task_dialog:` with `dependencies: [- jquery_ui_dialog/dialog]`, then `drush en jqd_task -y`. Verified by library.discovery: some jqd_task library lists jquery_ui_dialog/dialog in its dependencies."
+    },
+    {
+      "id": "jquery_ui_dialog-library-alter",
+      "difficulty": "hard",
+      "mode": "execution",
+      "persona": "drupal-expert",
+      "prompt": "This site needs the asset library `jquery_ui_dialog/dialog` to report the version string `1.13.2-sitepatch` instead of its stock version, so cache-busting URLs change after a local patch. Create and enable a custom module `jqd_alter` in web/modules/custom that implements hook_library_info_alter() to do this, and make sure the change is actually in effect on the live site (remember which extension really declares that library and what that means for hook ordering).",
+      "reset": "agent-module-documentation/evaluation/verify/jquery_ui_dialog-library-alter-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/jquery_ui_dialog-library-alter-verify.sh",
+      "expected_output": "jqd_alter_library_info_alter() setting $libraries['dialog']['version'] = '1.13.2-sitepatch' when $extension === 'jquery_ui_dialog'. Because jquery_ui_library_info_alter() array_merge()s the whole 'dialog' definition in, jqd_alter must run AFTER jquery_ui - e.g. module_set_weight('jqd_alter', 50) - and the caches must be rebuilt. Verified live via library.discovery getLibraryByName('jquery_ui_dialog', 'dialog')['version']."
+    }
+  ]
+}

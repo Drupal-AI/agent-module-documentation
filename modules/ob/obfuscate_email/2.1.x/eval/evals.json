@@ -1,0 +1,80 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "obfuscate_email",
+  "version": "2.1.x",
+  "note": "Obfuscate Email hides emails via ROT13 (with @->/at/, .->/dot/) plus a shared vanilla-JS reveal (library obfuscate_email/default). Two entry points: a text-format filter plugin obfuscate_email (TYPE_TRANSFORM_REVERSIBLE, settings click + click_label; config filter.format.<id>.filters.obfuscate_email) and a field template field__email / field--email.html.twig for fields named field_email (with a rot13 Twig filter). No configure route, no permissions, no Drush. Medium cases create text format oe_test_format with the filter enabled (click_label OE_CLICK_SENTINEL) and inspect it. Hard cases enable the filter on an existing format (hard-1) and build a new click-to-reveal format (hard-2), verified against filter.format config.",
+  "evals": [
+    {
+      "id": "obfuscate_email-how",
+      "mode": "recipe",
+      "prompt": "How does the obfuscate_email module hide an email address from spam bots, and how does the real address get shown to a normal visitor?",
+      "must_contain_any": ["rot13", "/at/", "/dot/", "data-mail-to", "JavaScript"],
+      "must_not_contain": [],
+      "expected_output": "The address is scrambled server-side with str_rot13() after replacing '.' with /dot/ and '@' with /at/, and stored in a data-mail-to attribute (the visible text is blanked to @email and the href set to #). A vanilla-JS behaviour (Drupal.behaviors.obfuscateEmailField, library obfuscate_email/default, attached to every page) reverses the ROT13 and the /at//dot/ substitutions in the browser and restores the mailto: link. There is no non-JavaScript fallback.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "obfuscate_email-filter",
+      "mode": "recipe",
+      "prompt": "I want email addresses typed into CKEditor body text to be obfuscated on output. Which obfuscate_email feature do I use, where do I turn it on, and what options does it have?",
+      "must_contain_any": ["filter", "text format", "obfuscate_email", "mailto"],
+      "must_not_contain": [],
+      "expected_output": "Enable the 'Obfuscate Email' filter (id obfuscate_email, a TYPE_TRANSFORM_REVERSIBLE filter) on the relevant text format at Configuration » Content authoring » Text formats and editors. It rewrites mailto: anchors in the processed text. Options: 'click' (require a click to reveal) and 'click_label' (the reveal link text). Stored under filter.format.<id> -> filters.obfuscate_email.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "obfuscate_email-template",
+      "mode": "recipe",
+      "prompt": "Besides the text filter, obfuscate_email ships a field template. Which theme hook / template file is it, and which field does it automatically obfuscate?",
+      "must_contain_any": ["field--email", "field__email", "field_email"],
+      "must_not_contain": [],
+      "expected_output": "hook_theme() registers the field__email theme hook using templates/field--email.html.twig (base hook 'field'), so it renders — and obfuscates — any field whose machine name is field_email. It uses the module's rot13 Twig filter and the same /at//dot/ scheme, emitting data-mail-to markup that the shared JS reassembles.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "obfuscate_email-known-label",
+      "mode": "introspection",
+      "prompt": "This site has a text format named oe_test_format with the Obfuscate Email filter enabled and configured to require a click. Inspect the live configuration and report the exact 'Text to show on link' (click_label) value.",
+      "must_contain_any": ["OE_CLICK_SENTINEL"],
+      "must_not_contain": [],
+      "expected_output": "The click_label is 'OE_CLICK_SENTINEL' (filter.format.oe_test_format -> filters.obfuscate_email.settings.click_label).",
+      "setup": "agent-module-documentation/evaluation/verify/obfuscate_email-known-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/obfuscate_email-known-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "obfuscate_email-which-format",
+      "mode": "introspection",
+      "prompt": "On this site, which text format currently has the obfuscate_email filter enabled? Inspect the live filter format configuration to answer.",
+      "must_contain_any": ["oe_test_format"],
+      "must_not_contain": [],
+      "expected_output": "The oe_test_format text format has filters.obfuscate_email.status = true.",
+      "setup": "agent-module-documentation/evaluation/verify/obfuscate_email-known-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/obfuscate_email-known-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "obfuscate_email-enable-on-format",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "This site has a text format named oe_task_format that does not yet obfuscate emails. Enable the obfuscate_email filter on that text format and apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/obfuscate_email-enable-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/obfuscate_email-enable-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/obfuscate_email-enable-cleanup.sh",
+      "expected_output": "In filter.format.oe_task_format the obfuscate_email filter has status: true (e.g. via FilterFormat::load('oe_task_format')->setFilterConfig('obfuscate_email', ['status' => TRUE])->save())."
+    },
+    {
+      "id": "obfuscate_email-build-click-format",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "layman",
+      "prompt": "Create a new text format called 'oe_secure' (machine name oe_secure) that hides email addresses and forces visitors to click a link reading 'Reveal' before the address is shown. Save it on the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/obfuscate_email-secure-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/obfuscate_email-secure-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/obfuscate_email-secure-reset.sh",
+      "expected_output": "A FilterFormat 'oe_secure' exists with filters.obfuscate_email enabled (status true) and settings click: true, click_label: 'Reveal'."
+    }
+  ]
+}

@@ -1,0 +1,24 @@
+Book Link Weight swaps the core Book module's numeric "weight" select for a drag-and-drop (tabledrag) table so editors can visually order a page among its siblings from the node add/edit form.
+---
+Core's Book module positions a page among its siblings with a plain numeric "Weight" select element, which becomes awkward once a book has many pages and usually forces editors to jump to the separate book outline admin screen to re-sort. Book Link Weight removes that friction: it implements `hook_form_node_form_alter()` and a broader `hook_form_alter()` (to also catch the standalone `node.book_outline_form`), and whenever a `book` element is present it hands the form to the `book_link_weight.form` service (`BookLinkWeightForm`, constructed with the core `book.manager`). The service hides the numeric weight widget, wires an AJAX callback onto the parent (`pid`) select, and renders the chosen parent's children — plus the page being edited — as a draggable, weighted `#type => table`. A small JS behavior keeps the current page's row label in sync with the title field as you type, and re-fires the parent select so siblings load after the book is chosen. On submit, a prepended submit handler saves the current node's weight normally and writes the reordered weights of the sibling links through `book.manager`. The module ships no routes, permissions, config, or database schema of its own; it works entirely inside the existing node forms, so it is a pure editorial UX enhancement.
+---
+- Drag book pages into order on the node edit form instead of typing numeric weights.
+- Reorder a long book outline without leaving the node add/edit screen.
+- Visually place a new page relative to its existing siblings before saving.
+- Reorder pages directly on the standalone book outline form (`node/{node}/outline`).
+- Give editors a familiar tabledrag experience for book management.
+- Avoid manual weight arithmetic when inserting a page into the middle of a book.
+- Rearrange chapters and sections in a documentation or handbook book.
+- Move a page up or down within its parent without editing numbers.
+- Reduce ordering mistakes from duplicate or conflicting numeric weights.
+- Watch the current page's row label update live as you edit the node title.
+- Position a page after switching it to a different parent via the AJAX parent select.
+- Order FAQ, policy, or knowledge-base entries kept as a core Book.
+- Speed up restructuring an imported or migrated book outline.
+- Let non-technical authors manage book order confidently by dragging.
+- Preview where a page will sit among its siblings while editing it.
+- Keep book navigation consistent by dragging rather than guessing weights.
+- Sort sibling pages that were created out of order.
+- Replace the core weight select on every book-enabled node add and edit form.
+- Re-sort pages after moving content between books.
+- Provide a Menu Link Weight-style ordering UI for Book instead of menus.

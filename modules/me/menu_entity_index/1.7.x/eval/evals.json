@@ -1,0 +1,96 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "menu_entity_index",
+  "version": "1.7.x",
+  "note": "Menu Entity Index maintains a menu_entity_index DB table mapping tracked menu_link_content links to the entities they reference. Tracking config lives in the simple config object menu_entity_index.configuration (keys menus, entity_types, all_menus); route menu_entity_index.configure at /admin/config/search/menu_entity_index. Service menu_entity_index.tracker (Tracker::getHostData, setConfiguration, updateEntity). Drush menu-entity-index:rebuild-index (alias mei-r). Medium/hard cases are grounded in real config + the real index table: introspection reads back the tracking config and an actual indexed row; execution configures tracking, and builds a main-menu link so the index gains a row (verified against the live menu_entity_index table).",
+  "evals": [
+    {
+      "id": "menu_entity_index-config-object",
+      "mode": "recipe",
+      "prompt": "In the Drupal contrib module menu_entity_index, which configuration object stores what gets tracked, and what are its keys for choosing menus and entity types?",
+      "must_contain_any": [
+        "menu_entity_index.configuration",
+        "entity_types",
+        "all_menus"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Tracking is stored in the simple config object menu_entity_index.configuration with keys: menus (sequence of menu machine names), entity_types (sequence of entity type machine names) and all_menus (boolean to track every menu). Edited on /admin/config/search/menu_entity_index (route menu_entity_index.configure).",
+      "difficulty": "easy"
+    },
+    {
+      "id": "menu_entity_index-rebuild-drush",
+      "mode": "recipe",
+      "prompt": "Which Drush command does menu_entity_index provide to rebuild its index, and what is its alias? How do you rebuild just one menu?",
+      "must_contain_any": [
+        "menu-entity-index:rebuild-index",
+        "mei-r"
+      ],
+      "must_not_contain": [],
+      "expected_output": "drush menu-entity-index:rebuild-index (alias mei-r) rebuilds all tracked menus. Pass a menu machine name to rebuild one, e.g. drush mei-r main (the menu must be a tracked menu).",
+      "difficulty": "easy"
+    },
+    {
+      "id": "menu_entity_index-reverse-lookup",
+      "mode": "recipe",
+      "prompt": "Using menu_entity_index, how can an editor see which menu links point to a given node on that node's edit form, and where does the underlying data come from?",
+      "must_contain_any": [
+        "Menu Links",
+        "Manage form display",
+        "menu_entity_index",
+        "getHostData"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The module exposes a hidden 'Menu Links' pseudo-field per tracked bundle; enable it on Manage form display. On edit it shows a 'Referenced by N menu links' table built from Tracker::getHostData(), which reads the menu_entity_index database table (target_type/target_id).",
+      "difficulty": "easy"
+    },
+    {
+      "id": "menu_entity_index-which-tracked",
+      "mode": "introspection",
+      "prompt": "On this Drupal site, menu_entity_index has been configured. Inspect the live configuration and tell me which entity type(s) and which menu(s) it is currently tracking.",
+      "must_contain_any": [
+        "node"
+      ],
+      "must_not_contain": [],
+      "expected_output": "It tracks the node entity type and the main menu: config menu_entity_index.configuration has entity_types containing 'node' and menus containing 'main' (all_menus false). Discoverable via drush cget menu_entity_index.configuration.",
+      "setup": "agent-module-documentation/evaluation/verify/menu_entity_index-config-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/menu_entity_index-config-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "menu_entity_index-indexed-row",
+      "mode": "introspection",
+      "prompt": "This site uses menu_entity_index. A node titled 'MEI Introspect Target' is referenced by a menu link that the index has recorded. Inspect the live index and tell me which menu (menu_name) that referencing link is in.",
+      "must_contain_any": [
+        "main"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The referencing link is in the 'main' menu. In the menu_entity_index table the row for that node (target_type=node) has menu_name=main; e.g. drush sql:query \"SELECT menu_name FROM menu_entity_index WHERE target_type='node'\".",
+      "setup": "agent-module-documentation/evaluation/verify/menu_entity_index-indexed-link-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/menu_entity_index-indexed-link-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "menu_entity_index-configure-tracking",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, configure the menu_entity_index module so that it tracks the 'node' entity type and the 'main' menu. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/menu_entity_index-track-config-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/menu_entity_index-track-config-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/menu_entity_index-config-cleanup.sh",
+      "expected_output": "menu_entity_index.configuration ends up with entity_types containing 'node' and menus containing 'main' (or all_menus true). Set via the settings form, the Tracker::setConfiguration() service, or drush config edits."
+    },
+    {
+      "id": "menu_entity_index-build-indexed-link",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "This site already has menu_entity_index tracking the node entity type and the main menu, and an Article node titled 'MEI Hard Target' with no menu links yet. Create a menu link in the 'main' menu that points to that node so the menu_entity_index index records the reference, and apply it to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/menu_entity_index-build-link-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/menu_entity_index-build-link-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/menu_entity_index-build-link-cleanup.sh",
+      "expected_output": "A menu_link_content in the 'main' menu links to /node/<id of MEI Hard Target>. Creating it triggers Tracker::updateEntity(), inserting a menu_entity_index row (target_type=node, target_id=that node, menu_name=main). Running drush menu-entity-index:rebuild-index main also produces the row."
+    }
+  ]
+}

@@ -1,0 +1,2 @@
+<!-- SPDX-License-Identifier: GPL-2.0-or-later -->
+Commerce Sezzle Pay (v2.0.x): offsite BNPL gateway src/Plugin/Commerce/PaymentGateway/SezzlePayCheckout.php. onReturn() re-fetches the Sezzle order via getOrderDetails() with a fresh merchant token and completes only if captured/approved (sound, re-fetch from gateway). onNotify() is effectively a no-op (logs only, no fulfillment). Depends on commerce_payment.

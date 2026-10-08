@@ -1,0 +1,90 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "media_directories_browser",
+  "version": "3.0.x",
+  "note": "media_directories_browser is the Vue.js browser submodule of media_directories. Real surface: page route media_directories_browser.admin at /admin/content/media-browser, settings form at /admin/config/media/media_directories/browser (route media_directories_browser.config_form, a local task under the parent module — .info.yml has no `configure` key), ~25 JSON routes under /api/media-directories-browser/*, one permission `access media directories browser` that gates the page AND every API route, six services (directory_service, media_service, media_type_service, translation_service, focal_point_service, entity_autocomplete_service), a field widget media_directories_browser_widget (entity_reference, multiple_values), three CKEditor 5 plugins (…_media_directories_browser, …_image_options, …_media_file_link) and one filter media_directories_default_view_mode (weight 90, must run before media_embed, setting view_mode_mapping per media bundle). All ~22 settings keys of media_directories_browser.settings are republished to drupalSettings.mediaDirectoriesBrowser by hook_page_attachments(). Medium/hard cases read and write that real config, the real permission and the real plugin ids; site artifacts are namespaced mdb_eval_* / mdb_task_* / field_mdb_* and cleaned up.",
+  "evals": [
+    {
+      "id": "media_directories_browser-permission",
+      "mode": "recipe",
+      "prompt": "Which permission does the media_directories_browser module define, and exactly what does it gate on a Drupal site? Is the JSON API it exposes protected by anything else?",
+      "must_contain_any": [
+        "access media directories browser"
+      ],
+      "must_not_contain": [],
+      "expected_output": "It defines a single permission, `access media directories browser` ('Access Media Directories browser'). It gates the browser page at /admin/content/media-browser (route media_directories_browser.admin) and EVERY route under /api/media-directories-browser/* — listing, upload, create-from-url, media update/delete/move, translation save, and all directory create/rename/delete/move/reorder — plus the three AI routes added by media_directories_ai. Those API routes check only this permission (with _auth: basic_auth, cookie), so it is effectively full media and directory-term write access. The settings form instead needs `administer site configuration`, and the quick-edit route uses _entity_access: media.update.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "media_directories_browser-widget-id",
+      "mode": "recipe",
+      "prompt": "I want a media entity-reference field on my Drupal content type to open the Media Directories Vue browser instead of the plain autocomplete. Which field widget plugin id does media_directories_browser provide, and what field types does it apply to?",
+      "must_contain_any": [
+        "media_directories_browser_widget"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The widget plugin id is media_directories_browser_widget (class MediaDirectoriesBrowserWidget, #[FieldWidget(id: 'media_directories_browser_widget', label: 'Media Directories Browser Widget', field_types: ['entity_reference'], multiple_values: TRUE)]). Select it on the entity's Manage form display for the entity_reference field; it reads the field's handler_settings.target_bundles into a data-allowed-types attribute and opens the browser in an off-canvas dialog.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "media_directories_browser-image-styles",
+      "mode": "recipe",
+      "prompt": "In media_directories_browser, the CKEditor 5 'Media image options' dropdown offers image styles for an embedded media image. Which configuration key controls that list, and what happens if it is left empty?",
+      "must_contain_any": [
+        "embed_image_styles"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The key is media_directories_browser.settings:embed_image_styles, an explicit opt-in sequence of image style ids read by ImageOptions::getDynamicPluginConfig() into mediaDirectoriesEditor.imageStyles. There is deliberately NO 'show all styles' fallback (the comment in the class says sites define many irrelevant styles), so an empty list means no image-style options are offered at all. It was introduced by media_directories_browser_update_11004(), which migrated the deprecated media_directories_editor.settings:embed_dialog.image_styles values.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "media_directories_browser-known-settings",
+      "mode": "introspection",
+      "prompt": "This Drupal site has the Media Directories Browser installed and configured. Inspect the live configuration and tell me how many media items the browser loads per page, and whether its directory tree is sorted alphabetically or by term weight.",
+      "must_contain_any": [
+        "37"
+      ],
+      "must_not_contain": [],
+      "expected_output": "page_size is 37 and directory_sort is 'weight' (sorted by taxonomy term weight, not alphabetically). Both live in media_directories_browser.settings — readable with `drush cget media_directories_browser.settings` — and are republished to the front end as drupalSettings.mediaDirectoriesBrowser.pageSize and .directorySortMode by hook_page_attachments(). The same config currently also has show_directory_counts and enable_bulk_actions turned on.",
+      "setup": "agent-module-documentation/evaluation/verify/media_directories_browser-known-settings-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/media_directories_browser-known-settings-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "media_directories_browser-known-role",
+      "mode": "introspection",
+      "prompt": "On this Drupal site, which role — other than the administrator role — has been granted access to the Media Directories browser and its JSON API? Inspect the live site and give the role's machine name.",
+      "must_contain_any": [
+        "mdb_eval_curator"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The role is mdb_eval_curator ('MDB eval curator'). The permission that grants browser access is `access media directories browser`, defined in media_directories_browser.permissions.yml; iterating Role::loadMultiple() and calling hasPermission('access media directories browser') shows administrator (which has every permission) and mdb_eval_curator.",
+      "setup": "agent-module-documentation/evaluation/verify/media_directories_browser-known-role-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/media_directories_browser-known-role-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "media_directories_browser-widget",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, the Article content type has a multi-value entity reference field `field_mdb_assets` pointing at media, currently using the plain autocomplete widget. Using media_directories_browser, change the default node form so editors pick those media through the Media Directories Vue browser instead. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/media_directories_browser-widget-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/media_directories_browser-widget-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/media_directories_browser-widget-cleanup.sh",
+      "expected_output": "In core.entity_form_display.node.article.default set the field_mdb_assets component's widget type to media_directories_browser_widget, keeping region: content — e.g. $display->setComponent('field_mdb_assets', ['type' => 'media_directories_browser_widget', 'region' => 'content', 'weight' => 60])->save(), or pick 'Media Directories Browser Widget' on /admin/structure/types/manage/article/form-display."
+    },
+    {
+      "id": "media_directories_browser-view-mode-filter",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "This Drupal site has a CKEditor 5 text format with the machine name `mdb_task_format`. Using media_directories_browser, make every embedded Image media item in that format render with the 'embedded' view mode by default when the author did not choose one explicitly. Wire the filter in the right position relative to the media embed filter and apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/media_directories_browser-view-mode-filter-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/media_directories_browser-view-mode-filter-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/media_directories_browser-view-mode-filter-cleanup.sh",
+      "expected_output": "Enable the 'Media default view mode' filter (plugin id media_directories_default_view_mode) on filter.format.mdb_task_format with settings.view_mode_mapping.image = 'embedded', and give it a weight lower than media_embed's so it runs first. MediaDefaultViewMode::process() then adds data-view-mode=\"embedded\" to <drupal-media> tags for image media that do not already carry a data-view-mode."
+    }
+  ]
+}

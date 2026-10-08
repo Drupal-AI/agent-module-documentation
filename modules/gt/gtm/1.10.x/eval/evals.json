@@ -1,0 +1,98 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "gtm",
+  "version": "1.10.x",
+  "note": "GTM is a deliberately minimal module: one settings form (route gtm.settings at /admin/config/system/gtm, permission 'administer gtm') writing a single config object gtm.settings with four keys — enable (master switch), google-tag (the GTM-XXXX container ID), admin-pages (also fire on /admin/*, off by default) and admin-disable (suppress GTM for uid 1). It ships no config schema, no Drush command, no plugins; the snippet is injected by hook_page_attachments() (head gtm.js script) and hook_page_top() (noscript iframe). All medium/hard cases are grounded in that real gtm.settings config: introspection reads the live container ID and insertion conditions, execution writes them and verifies the live config.",
+  "evals": [
+    {
+      "id": "gtm-container-id-key",
+      "mode": "recipe",
+      "prompt": "On a Drupal 11 site using the contrib GTM module (drupal/gtm), which config object stores the settings, and what is the exact config key that holds the Google Tag Manager container ID (the GTM-XXXX value)?",
+      "must_contain_any": [
+        "google-tag",
+        "gtm.settings"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Settings live in the config object gtm.settings. The container ID is stored under the key `google-tag` (shown as 'GTM-ID' on the form). The other keys are enable, admin-pages and admin-disable.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "gtm-insertion-conditions",
+      "mode": "recipe",
+      "prompt": "Using the contrib GTM module on Drupal, what has to be true for the Google Tag Manager snippet to be injected on a page, and how do I keep it off admin pages and stop it tracking the superuser (uid 1)?",
+      "must_contain_any": [
+        "admin-pages",
+        "admin-disable",
+        "admin pages",
+        "uid 1",
+        "enable"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The snippet fires only when `enable` is on AND `google-tag` is non-empty AND (admin-pages is on OR the route is not an admin route). Leaving admin-pages off (default 0) keeps GTM off /admin/* pages; setting admin-disable to 1 suppresses GTM for the superuser (uid 1).",
+      "difficulty": "easy"
+    },
+    {
+      "id": "gtm-configure-route",
+      "mode": "recipe",
+      "prompt": "Where do I configure the contrib GTM module on a Drupal 11 site (the settings form path and its route name), and which permission gates access to it?",
+      "must_contain_any": [
+        "admin/config/system/gtm",
+        "gtm.settings",
+        "administer gtm"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The settings form is at /admin/config/system/gtm (route name gtm.settings, form Drupal\\gtm\\Form\\SettingsForm). Access is gated by the 'administer gtm' permission.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "gtm-current-container-id",
+      "mode": "introspection",
+      "prompt": "This Drupal site has the GTM (Google Tag Manager) module configured. What Google Tag Manager container ID is currently set, and is GTM enabled? Inspect the live gtm.settings configuration to answer.",
+      "must_contain_any": [
+        "GTM-EVAL01"
+      ],
+      "must_not_contain": [],
+      "expected_output": "gtm.settings has google-tag = 'GTM-EVAL01' and enable = 1 (GTM is enabled). It is front-end only (admin-pages = 0) and excludes the superuser (admin-disable = 1).",
+      "setup": "agent-module-documentation/evaluation/verify/gtm-container-id-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/gtm-container-id-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "gtm-fires-on-admin",
+      "mode": "introspection",
+      "prompt": "On this Drupal site the GTM module is enabled. Is the Google Tag Manager container currently configured to fire on administrative (/admin/*) pages as well as the front end, or only on the front end? Inspect the live gtm.settings configuration and explain which key decides it.",
+      "must_contain_any": [
+        "admin-pages",
+        "admin pages",
+        "yes",
+        "also"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Yes — it also fires on admin pages. In gtm.settings the key admin-pages is 1, which makes GTM load on /admin/* routes in addition to the front end (container ID GTM-ADMIN9, enable = 1).",
+      "setup": "agent-module-documentation/evaluation/verify/gtm-admin-pages-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/gtm-admin-pages-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "gtm-enable-container",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site the GTM (drupal/gtm) module is installed but not configured. Configure gtm.settings so that Google Tag Manager is enabled with the container ID GTM-ABCD123. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/gtm-enable-container-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/gtm-enable-container-verify.sh",
+      "expected_output": "gtm.settings has enable = 1 and google-tag set to a valid GTM-XXXX container ID (e.g. GTM-ABCD123), so the container snippet is injected on the front end."
+    },
+    {
+      "id": "gtm-frontend-only",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, configure the GTM module (gtm.settings) so that Google Tag Manager is enabled with container ID GTM-PROD777, fires ONLY on front-end pages (never on /admin/* pages), and does NOT track the superuser (uid 1). Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/gtm-frontend-only-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/gtm-frontend-only-verify.sh",
+      "expected_output": "gtm.settings has enable = 1, google-tag = a valid GTM-XXXX ID (e.g. GTM-PROD777), admin-pages = 0 (front-end only) and admin-disable = 1 (superuser excluded)."
+    }
+  ]
+}

@@ -1,0 +1,80 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "cookiebot",
+  "version": "1.0.x",
+  "note": "Cookiebot integrates the hosted Cookiebot/Usercentrics consent service. All local state is the cookiebot.settings config object (cookiebot_cbid UUID, cookiebot_block_cookies, cookiebot_iab_enabled, exclude_paths, exclude_admin_theme, disabled_for_roles, etc.). The consent UI/scanning/blocking run on Cookiebot's servers, so all medium/hard cases are grounded in the LOCAL config object only, never a live call. Configure route cookiebot.admin_settings_form -> /admin/config/cookiebot; permission 'administer cookiebot settings'. Introspection reads config back; execution writes config and is verified against the live cookiebot.settings.",
+  "evals": [
+    {
+      "id": "cookiebot-cbid-purpose",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "On a Drupal site using the cookiebot module, what single value must I configure for the Cookiebot consent banner to start loading, what is it called, and roughly what format does it take?",
+      "must_contain_any": ["CBID", "Domain Group ID", "cookiebot_cbid"],
+      "must_not_contain": [],
+      "expected_output": "You must set the Cookiebot Domain Group ID (CBID) in cookiebot.settings.cookiebot_cbid at /admin/config/cookiebot. It is a UUID like 00000000-0000-0000-0000-000000000000 (validated by regex). Until it is set the module injects nothing."
+    },
+    {
+      "id": "cookiebot-block-cookies",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "The cookiebot module can automatically block cookies until a visitor consents. Which config setting controls that and what does it change in the injected Cookiebot script tag?",
+      "must_contain_any": ["cookiebot_block_cookies", "data-blockingmode", "blockingmode"],
+      "must_not_contain": [],
+      "expected_output": "cookiebot_block_cookies (default true) adds data-blockingmode=\"auto\" to the https://consent.cookiebot.com/uc.js script tag, enabling Cookiebot's automatic cookie blocking until consent."
+    },
+    {
+      "id": "cookiebot-hide-for-admins",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "With the cookiebot module, how can I stop the consent banner from appearing on admin pages or for specific user roles?",
+      "must_contain_any": ["exclude_admin_theme", "disabled_for_roles", "exclude_paths"],
+      "must_not_contain": [],
+      "expected_output": "Use exclude_admin_theme (skip admin routes), disabled_for_roles (a sequence of role IDs Cookiebot is not loaded for), and/or exclude_paths (newline path patterns with * wildcard). All live in cookiebot.settings."
+    },
+    {
+      "id": "cookiebot-read-cbid",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "This Drupal site already has cookiebot configured. Inspect the live cookiebot.settings and tell me the configured Cookiebot Domain Group ID (CBID) and whether the banner is suppressed on admin pages.",
+      "must_contain_any": ["abcdabcd-1234-5678-9abc-abcdef012345"],
+      "must_not_contain": [],
+      "expected_output": "cookiebot_cbid is abcdabcd-1234-5678-9abc-abcdef012345 and exclude_admin_theme is true (admin pages are excluded). Read via `drush cget cookiebot.settings`.",
+      "setup": "agent-module-documentation/evaluation/verify/cookiebot-cbid-admin-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/cookiebot-restore-defaults.sh"
+    },
+    {
+      "id": "cookiebot-read-disabled-roles",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "On this Drupal site the cookiebot module has been configured to not load for one or more user roles. Inspect the live configuration and state which role(s) have Cookiebot disabled.",
+      "must_contain_any": ["anonymous"],
+      "must_not_contain": [],
+      "expected_output": "disabled_for_roles contains 'anonymous' in cookiebot.settings, so Cookiebot is not loaded for anonymous users. (IAB is also enabled in this setup.)",
+      "setup": "agent-module-documentation/evaluation/verify/cookiebot-roles-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/cookiebot-restore-defaults.sh"
+    },
+    {
+      "id": "cookiebot-set-cbid",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, configure the cookiebot module to use the Cookiebot Domain Group ID (CBID) 11112222-3333-4444-5555-666677778888. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/cookiebot-restore-defaults.sh",
+      "verify": "agent-module-documentation/evaluation/verify/cookiebot-set-cbid-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/cookiebot-restore-defaults.sh",
+      "expected_output": "Set cookiebot.settings.cookiebot_cbid to 11112222-3333-4444-5555-666677778888 (e.g. `drush cset cookiebot.settings cookiebot_cbid '11112222-3333-4444-5555-666677778888' -y` or via the form at /admin/config/cookiebot)."
+    },
+    {
+      "id": "cookiebot-exclude-blog-and-admin",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "site-owner",
+      "prompt": "Using the cookiebot module, make sure the cookie consent banner does NOT appear on the Drupal admin pages, and also does not appear on any page under /blog/. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/cookiebot-restore-defaults.sh",
+      "verify": "agent-module-documentation/evaluation/verify/cookiebot-exclude-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/cookiebot-restore-defaults.sh",
+      "expected_output": "In cookiebot.settings set exclude_admin_theme to true and add /blog/* to exclude_paths (one path per line, * wildcard)."
+    }
+  ]
+}

@@ -1,0 +1,73 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "login_emailusername",
+  "version": "3.0.x",
+  "note": "login_emailusername has no config, no permissions, no plugins — it alters the login form and overrides two REST controllers. Cases are `recipe` (response-graded): they probe documented facts (what it does, how email resolves to a username, that the username field is kept, the REST endpoints) an agent would otherwise read source for. No site mutation.",
+  "evals": [
+    {
+      "id": "login-emailusername-either-identifier",
+      "mode": "recipe",
+      "prompt": "On a Drupal 11 site I want users to be able to log in with EITHER their username OR their email address from the same login box. Which contrib module provides this, and does it need configuration?",
+      "must_contain_any": ["login_emailusername", "Login with Email or Username"],
+      "must_not_contain": [],
+      "expected_output": "The login_emailusername module accepts either a username or an email in the standard login form's name field. It has no configuration — just enable it (drush en login_emailusername -y)."
+    },
+    {
+      "id": "login-emailusername-keeps-username",
+      "mode": "recipe",
+      "prompt": "Does login_emailusername replace or remove the username field like email_registration does, or does it keep usernames?",
+      "must_contain_any": ["keeps", "does not replace", "username field", "still"],
+      "must_not_contain": [],
+      "expected_output": "It keeps the username field and usernames intact; it just also accepts an email in the same input box. Unlike email_registration it does not replace the username field."
+    },
+    {
+      "id": "login-emailusername-resolution",
+      "mode": "recipe",
+      "prompt": "How does login_emailusername turn an email typed into the login form into the account that gets authenticated? Which functions does it call?",
+      "must_contain_any": ["user_load_by_name", "user_load_by_mail", "getAccountName"],
+      "must_not_contain": [],
+      "expected_output": "Its validate handler tries user_load_by_name() first; if no username matches it falls back to user_load_by_mail(), then rewrites the form's name value to that account's username (getAccountName()) so core authenticates normally."
+    },
+    {
+      "id": "login-emailusername-form-alter",
+      "mode": "recipe",
+      "prompt": "Which Drupal form does login_emailusername alter, and what does it change about the name field?",
+      "must_contain_any": ["user_login_form", "hook_form_FORM_ID_alter", "Username or email address"],
+      "must_not_contain": [],
+      "expected_output": "It implements hook_form_FORM_ID_alter() on user_login_form, relabels the name field to 'Username or email address', updates its description, and adds an element-validate handler."
+    },
+    {
+      "id": "login-emailusername-rest-login",
+      "mode": "recipe",
+      "prompt": "Can a decoupled/JSON client authenticate with an email address using login_emailusername, and how is that implemented?",
+      "must_contain_any": ["user.login.http", "RouteSubscriber", "UserAuthenticationController"],
+      "must_not_contain": [],
+      "expected_output": "Yes. A RouteSubscriber overrides the user.login.http route's controller with a subclass of core's UserAuthenticationController that resolves an email to the username before flood control and account lookup."
+    },
+    {
+      "id": "login-emailusername-password-reset",
+      "mode": "recipe",
+      "prompt": "On the REST password-reset endpoint, can login_emailusername accept either a username or an email? Which route does it override?",
+      "must_contain_any": ["user.pass.http", "resetPassword", "mail"],
+      "must_not_contain": [],
+      "expected_output": "Yes. It overrides the user.pass.http route with resetPassword(), which accepts a name or mail credential and looks the account up by either before sending the core password-reset email."
+    },
+    {
+      "id": "login-emailusername-no-config",
+      "mode": "recipe",
+      "prompt": "What configuration and permissions does login_emailusername add on a Drupal site?",
+      "must_contain_any": ["no configuration", "no settings", "no permissions"],
+      "must_not_contain": [],
+      "expected_output": "None. It defines no settings form, no config object, and no permissions; enabling the module is all that is needed. Its only dependency is core user."
+    },
+    {
+      "id": "login-emailusername-dependencies",
+      "mode": "recipe",
+      "prompt": "What are login_emailusername's module dependencies and core version requirement?",
+      "must_contain_any": ["drupal:user", "user", "^10.3 || ^11.0"],
+      "must_not_contain": [],
+      "expected_output": "It depends only on core user (drupal:user) and requires core ^10.3 || ^11.0."
+    }
+  ]
+}

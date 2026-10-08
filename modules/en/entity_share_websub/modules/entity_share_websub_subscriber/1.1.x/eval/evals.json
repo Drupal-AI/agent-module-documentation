@@ -1,0 +1,80 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "entity_share_websub_subscriber",
+  "version": "1.1.x",
+  "note": "Subscriber submodule of entity_share_websub; the only configurable one. Real config object entity_share_websub_subscriber.settings with keys hide_default_button, break_subscription_on_edit, import_config, subscribe_hub_url (default /subscribe), cancel_title/description/text/confirm_text. Settings form at /admin/config/entity-share-websub-subscriber (permission 'administer entity share websub subscriber settings'). Callback routes /subscription/{subscription_key} are _access TRUE, authenticated via X-Hub-Signature. Medium introspection reads back a known config value; hard execution writes config keys, verified against live config. Easy cases cover config route/keys, callback auth, and the pull-form buttons.",
+  "evals": [
+    {
+      "id": "entity_share_websub_subscriber-config-route",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "On a site with entity_share_websub_subscriber, where is its settings form, and which single setting must you choose for the automated background sync to work?",
+      "must_contain_any": ["/admin/config/entity-share-websub-subscriber", "entity_share_websub_subscriber.settings", "import_config", "import config"],
+      "must_not_contain": [],
+      "expected_output": "The form is at /admin/config/entity-share-websub-subscriber (route entity_share_websub_subscriber.settings, config object entity_share_websub_subscriber.settings). You must select an 'Import config' (import_config) — the Entity Share import configuration the automated sync uses."
+    },
+    {
+      "id": "entity_share_websub_subscriber-callback-auth",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "The entity_share_websub_subscriber module exposes /subscription/{subscription_key} callback routes with no permission requirement (_access TRUE). How are incoming hub requests to these routes actually authenticated?",
+      "must_contain_any": ["X-Hub-Signature", "signature", "secret", "SignatureTrait"],
+      "must_not_contain": [],
+      "expected_output": "They are authenticated by recomputing the X-Hub-Signature (HMAC sha256 over the request data with the per-subscription secret, via the base module's SignatureTrait) and comparing it to the incoming header. There is no Drupal permission; a mismatch is rejected (update/delete still return 202 to prevent brute-forcing)."
+    },
+    {
+      "id": "entity_share_websub_subscriber-pull-buttons",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "How does a content editor actually subscribe to remote content with entity_share_websub_subscriber, and what setting hides Entity Share's default manual sync button?",
+      "must_contain_any": ["pull form", "Subscribe", "Unsubscribe", "hide_default_button"],
+      "must_not_contain": [],
+      "expected_output": "The module adds Subscribe/Unsubscribe buttons (and a status column) to the Entity Share client pull form; the editor selects entities and clicks Subscribe. Setting hide_default_button = true removes Entity Share's built-in 'Synchronize' button from that form."
+    },
+    {
+      "id": "entity_share_websub_subscriber-known-hub-url",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "This site's entity_share_websub_subscriber has been configured with a custom hub subscribe endpoint path. Inspect the live configuration and report the value of the subscribe hub URL setting.",
+      "must_contain_any": ["/eswsub-known-hub"],
+      "must_not_contain": [],
+      "expected_output": "config entity_share_websub_subscriber.settings has subscribe_hub_url = /eswsub-known-hub (drush cget entity_share_websub_subscriber.settings subscribe_hub_url).",
+      "setup": "agent-module-documentation/evaluation/verify/entity_share_websub_subscriber-known-hub-url-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/entity_share_websub_subscriber-known-hub-url-cleanup.sh"
+    },
+    {
+      "id": "entity_share_websub_subscriber-configure-settings",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "Configure entity_share_websub_subscriber on this site so that Entity Share's default Synchronize button is hidden and the hub subscribe endpoint path is set to /eswsub-target. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/entity_share_websub_subscriber-configure-settings-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/entity_share_websub_subscriber-configure-settings-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/entity_share_websub_subscriber-configure-settings-cleanup.sh",
+      "expected_output": "In config entity_share_websub_subscriber.settings, hide_default_button === true and subscribe_hub_url === '/eswsub-target' (e.g. via drush cset or the settings form at /admin/config/entity-share-websub-subscriber)."
+    },
+    {
+      "id": "entity_share_websub_subscriber-known-cancel-title",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "This site's entity_share_websub_subscriber has a customized title for the cancel-subscription confirmation form. Inspect the live configuration and report that cancel form title.",
+      "must_contain_any": ["ESW Cancel Now?"],
+      "must_not_contain": [],
+      "expected_output": "config entity_share_websub_subscriber.settings has cancel_title = 'ESW Cancel Now?' (drush cget entity_share_websub_subscriber.settings cancel_title).",
+      "setup": "agent-module-documentation/evaluation/verify/entity_share_websub_subscriber-known-cancel-title-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/entity_share_websub_subscriber-known-cancel-title-cleanup.sh"
+    },
+    {
+      "id": "entity_share_websub_subscriber-enable-break",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "Configure entity_share_websub_subscriber so that editors are asked to cancel the subscription before they edit imported content (the 'break subscription on edit' behavior). Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/entity_share_websub_subscriber-enable-break-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/entity_share_websub_subscriber-enable-break-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/entity_share_websub_subscriber-enable-break-cleanup.sh",
+      "expected_output": "In config entity_share_websub_subscriber.settings, break_subscription_on_edit === true (drush cset entity_share_websub_subscriber.settings break_subscription_on_edit true, or tick 'Ask to cancel subscription' on the settings form)."
+    }
+  ]
+}

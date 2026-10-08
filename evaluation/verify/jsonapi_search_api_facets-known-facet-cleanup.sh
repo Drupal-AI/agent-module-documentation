@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+# Introspection CLEANUP: delete facet jsaf_known. Idempotent. Exit 0.
+set -uo pipefail
+cd /var/www/html
+drush php:eval '
+  use Drupal\facets\Entity\Facet;
+  if ($f = Facet::load("jsaf_known")) { $f->delete(); }
+' >/dev/null 2>&1
+echo "cleanup: facet jsaf_known removed"

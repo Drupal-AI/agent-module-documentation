@@ -1,0 +1,80 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "custom_field_search_api",
+  "version": "5.0.x",
+  "note": "custom_field_search_api is a one-subscriber glue module: SearchApiEventSubscriber listens to SearchApiEvents::MAPPING_FIELD_TYPES (onMappingFieldTypes) and adds $mapping['custom_field_string_long'] = 'text', so a Custom Field string_long column (property data type custom_field_string_long) can be indexed as Search API full-text `text`. It has no config/field/widget of its own. Live cases are grounded in (a) the live field-type mapping via search_api.data_type_helper->getFieldTypeMapping(), and (b) a namespaced Search API index `cfsapi_index` (entity:node datasource, no server needed for config-level checks) that indexes columns of a namespaced Custom Field field_cfsapi_desc (columns body:string_long, title:string) on content type cfsapi_eval. Index field_settings are read/written at the search_api.index.cfsapi_index config level (property_path <field>:<column>, type). This avoids the site's known broken Views handler discovery (search_api index config does not use Views). setup/reset create the type+field+index; cleanup deletes the index entity, the field, and the content type.",
+  "evals": [
+    {
+      "id": "custom_field_search_api-mapping",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "What does the custom_field_search_api submodule do to make a Custom Field's long-text column indexable in Search API? Name the Search API event it uses and the mapping it adds.",
+      "must_contain_any": ["MAPPING_FIELD_TYPES", "onMappingFieldTypes", "custom_field_string_long", "mapping"],
+      "must_not_contain": [],
+      "expected_output": "Its SearchApiEventSubscriber subscribes to SearchApiEvents::MAPPING_FIELD_TYPES (onMappingFieldTypes) and adds the field-type mapping custom_field_string_long => text, so a Custom Field string_long column can be indexed as Search API full-text `text`."
+    },
+    {
+      "id": "custom_field_search_api-string-long-type",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "In Search API, what index field type does the custom_field_search_api module make available for a Custom Field 'string_long' (long text) column, and why is it needed?",
+      "must_contain_any": ["text", "string_long", "fulltext", "full-text"],
+      "must_not_contain": [],
+      "expected_output": "It maps the property data type custom_field_string_long to the Search API `text` (full-text) type. Without it, that property has no mapping and cannot be indexed as full text."
+    },
+    {
+      "id": "custom_field_search_api-property-path",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "How is a single column of a Custom Field addressed when adding it as a field to a Search API index?",
+      "must_contain_any": ["property_path", "property path", ":", "field_name", "column"],
+      "must_not_contain": [],
+      "expected_output": "By its property_path <field_name>:<column> on the entity datasource (e.g. field_desc:body), which points at that column of the custom field; the string_long column then gets the `text` type thanks to custom_field_search_api."
+    },
+    {
+      "id": "custom_field_search_api-live-mapping",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "On this Drupal site, a Custom Field with a long-text (string_long) column exists. Using Search API's data type helper, determine which Search API index field type the property data type 'custom_field_string_long' is mapped to on this site.",
+      "must_contain_any": ["text"],
+      "must_not_contain": [],
+      "expected_output": "search_api.data_type_helper->getFieldTypeMapping()['custom_field_string_long'] is 'text' (added by custom_field_search_api).",
+      "setup": "agent-module-documentation/evaluation/verify/custom_field_search_api-live-mapping-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/custom_field_search_api-shared-cleanup.sh"
+    },
+    {
+      "id": "custom_field_search_api-known-indexed",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "On this Drupal site there is a Search API index 'cfsapi_index' that indexes a column of a Custom Field. Inspect the live search_api.index.cfsapi_index configuration and report the property_path of the indexed Custom Field column and the Search API type assigned to it.",
+      "must_contain_any": ["field_cfsapi_desc:body", "body", "text"],
+      "must_not_contain": [],
+      "expected_output": "search_api.index.cfsapi_index field_settings has a field with property_path field_cfsapi_desc:body and type text.",
+      "setup": "agent-module-documentation/evaluation/verify/custom_field_search_api-known-indexed-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/custom_field_search_api-shared-cleanup.sh"
+    },
+    {
+      "id": "custom_field_search_api-index-body",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site there is a Search API index 'cfsapi_index' (datasource entity:node) and a Custom Field field_cfsapi_desc on content type cfsapi_eval with a long-text column 'body'. Add that Custom Field's 'body' column to the index as a full-text field (Search API type 'text'), and apply it to the live index configuration.",
+      "reset": "agent-module-documentation/evaluation/verify/custom_field_search_api-index-body-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/custom_field_search_api-index-body-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/custom_field_search_api-shared-cleanup.sh",
+      "expected_output": "search_api.index.cfsapi_index field_settings contains a field with property_path field_cfsapi_desc:body and type text."
+    },
+    {
+      "id": "custom_field_search_api-index-title",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, the Search API index 'cfsapi_index' already indexes the 'body' column of the Custom Field field_cfsapi_desc (on cfsapi_eval). Also add that field's plain-string 'title' column to the index as a Search API 'string' field, and apply it to the live index configuration.",
+      "reset": "agent-module-documentation/evaluation/verify/custom_field_search_api-index-title-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/custom_field_search_api-index-title-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/custom_field_search_api-shared-cleanup.sh",
+      "expected_output": "search_api.index.cfsapi_index field_settings contains a field with property_path field_cfsapi_desc:title and type string (in addition to the existing body/text field)."
+    }
+  ]
+}

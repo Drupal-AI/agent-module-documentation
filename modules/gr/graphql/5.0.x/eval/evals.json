@@ -1,0 +1,85 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "graphql",
+  "version": "5.0.x",
+  "note": "GraphQL is a FRAMEWORK for building GraphQL servers on Drupal. The central runtime object is the graphql_server config entity (config_prefix graphql_servers): it names a Schema plugin, holds schema_configuration, and declares an endpoint path; RouteProvider then mints the JSON route graphql.query.<id> at that path. Schemas are code (Schema/@Schema plugins over SdlSchemaPluginBase or ComposableSchema), assembled from SchemaExtension plugins, with fields resolved through DataProducer plugins. A bare install ships the plugin types + the config entity but NO servers and NO usable schema. easy/recipe probes framework facts (the config entity + plugin types) an unfamiliar agent would read src to answer. medium/introspection PLANTS a known graphql_server (schema + endpoint) and asks the agent to read the live config entity back. hard/execution requires the agent to actually CREATE a graphql_server config entity (schema + endpoint) on the running site, verified against the live config entity + the endpoint route. The graphql_composable submodule supplies a working schema (composable_example) so hard cases can produce a resolvable endpoint. All three tiers present.",
+  "evals": [
+    {
+      "id": "graphql-config-entity-easy",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "In the Drupal graphql module, what is the config entity type that represents a running GraphQL server, and which two of its config keys select the schema to run and the HTTP path it is served at? Name the entity type id and the two keys exactly.",
+      "must_contain_any": [
+        "graphql_server"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The config entity type id is graphql_server (config prefix graphql_servers). The `schema` key holds the Schema plugin id to run; the `endpoint` key holds the URL path. Saving one makes RouteProvider register the route graphql.query.<id> at that endpoint."
+    },
+    {
+      "id": "graphql-plugin-types-easy",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "The Drupal graphql module lets you build a schema in code. What are the main plugin types it defines for this, and specifically which plugin type provides the small reusable field-resolution steps (like 'load an entity' or 'read a property') that resolvers chain together?",
+      "must_contain_any": [
+        "DataProducer",
+        "data producer"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The plugin types are Schema (@Schema), SchemaExtension (@SchemaExtension), DataProducer (@DataProducer), and PersistedQuery (@PersistedQuery). DataProducer plugins (Plugin/GraphQL/DataProducer, manager plugin.manager.graphql.data_producer, base DataProducerPluginBase) are the reusable, cacheable field-resolution steps chained by resolvers via the ResolverBuilder."
+    },
+    {
+      "id": "graphql-endpoint-route-easy",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "In the Drupal graphql module, once I save a graphql_server config entity with an endpoint like /graphql, how does an HTTP GraphQL endpoint get created, and what do I have to run for it to become reachable? Name the route and the controller.",
+      "must_contain_any": [
+        "graphql.query",
+        "RouteProvider"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Drupal\\graphql\\RouteProvider::routes() registers, per server, a route named graphql.query.<server_id> at the entity's endpoint path, handled by Drupal\\graphql\\Controller\\RequestController::handleRequest (access check _graphql_query_access, _format json). Saving/deleting a server flags a router rebuild, so you must rebuild caches/routes (drush cr) for the endpoint to become reachable."
+    },
+    {
+      "id": "graphql-known-server-schema-medium",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "persona": "drupal-expert",
+      "prompt": "This Drupal site (drush available) already has a GraphQL server configured. Inspect the live configuration and tell me the exact endpoint path of the graphql_server whose machine name is `eval_probe`, and which Schema plugin id it runs.",
+      "must_contain_any": [
+        "/graphql/eval-probe"
+      ],
+      "must_not_contain": [],
+      "setup": "agent-module-documentation/evaluation/verify/graphql-known-server-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/graphql-known-server-cleanup.sh",
+      "expected_output": "The eval_probe server is served at endpoint /graphql/eval-probe and runs the Schema plugin composable_example. Read from the live config entity, e.g. drush php:eval loading graphql_server 'eval_probe' and reading get('endpoint') and get('schema'), or drush config:get graphql.graphql_servers.eval_probe."
+    },
+    {
+      "id": "graphql-known-server-guardrails-medium",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site a graphql_server named `eval_probe` is configured. Inspect its live configuration and tell me whether query introspection is disabled on it and what its maximum query depth is set to.",
+      "must_contain_any": [
+        "query depth",
+        "query_depth",
+        "depth of 7",
+        "depth is 7"
+      ],
+      "must_not_contain": [],
+      "setup": "agent-module-documentation/evaluation/verify/graphql-known-server-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/graphql-known-server-cleanup.sh",
+      "expected_output": "On the eval_probe server disable_introspection is FALSE (introspection is NOT disabled / is enabled) and query_depth is 7. Read from the live config entity get('disable_introspection') and get('query_depth')."
+    },
+    {
+      "id": "graphql-create-server-hard",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site (drush available) the graphql module is installed and the graphql_composable example submodule is enabled (it provides a working Schema plugin with id `composable_example`). Create and save a graphql_server config entity with machine name `eval_build`, label anything, that runs the `composable_example` schema and is served at the endpoint path `/graphql/eval-build`. Then rebuild routes/caches so the endpoint registers. Do not just describe it — apply it to the running site. Reply with one line naming the endpoint path you registered.",
+      "reset": "agent-module-documentation/evaluation/verify/graphql-create-server-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/graphql-create-server-verify.sh",
+      "expected_output": "A graphql_server config entity named eval_build exists with schema=composable_example and endpoint=/graphql/eval-build, and the live route table contains route graphql.query.eval_build at path /graphql/eval-build. Verified against live config + route state, not the response text."
+    }
+  ]
+}

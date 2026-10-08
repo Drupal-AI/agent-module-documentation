@@ -1,0 +1,84 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "queue_unique",
+  "version": "4.0.x",
+  "note": "queue_unique provides the service queue_unique.database (UniqueQueueDatabaseFactory -> UniqueDatabaseQueue extends DatabaseQueue) which stores items in its own 'queue_unique' table with a unique 'hash' key; createItem() returns FALSE and stores nothing on a duplicate. No config, no schema, no permissions, no admin UI, no module-specific Drush. Medium/hard cases are grounded in real live queue state: setup/reset scripts create/empty unique queues (qu_*) via the service and count rows in the queue_unique table (verify/introspection). Item counts are read from the live queue_unique table keyed by queue name.",
+  "evals": [
+    {
+      "id": "queue_unique-get-queue",
+      "mode": "recipe",
+      "prompt": "In Drupal, how do I get a queue that rejects duplicate items using the queue_unique module, and how do I know when an item was rejected as a duplicate?",
+      "must_contain_any": ["queue_unique.database", "queue_service_", "createItem"],
+      "must_not_contain": [],
+      "expected_output": "Use the service: $queue = \\Drupal::service('queue_unique.database')->get('name'); (or set $settings['queue_service_name'] = 'queue_unique.database' in settings.php and use the normal queue service). createItem() returns FALSE (and stores nothing) when the item is a duplicate.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "queue_unique-duplicate-return",
+      "mode": "recipe",
+      "prompt": "With the queue_unique module, what happens when you try to add an item that is already in the queue?",
+      "must_contain_any": ["FALSE", "false", "ignored", "not added", "no item", "duplicate"],
+      "must_not_contain": [],
+      "expected_output": "The duplicate is not added; createItem() returns FALSE. Uniqueness is enforced by a unique key on a hash column in the 'queue_unique' table (an IntegrityConstraintViolationException is caught and FALSE returned).",
+      "difficulty": "easy"
+    },
+    {
+      "id": "queue_unique-prefix",
+      "mode": "recipe",
+      "prompt": "The queue_unique module mentions a way to make queue workers use unique queues automatically on cron by replacing the core QueueFactory. What queue-name prefix do you use, and what class replaces the core queue service?",
+      "must_contain_any": ["queue_unique/", "QueueFactory", "Drupal\\queue_unique\\QueueFactory"],
+      "must_not_contain": [],
+      "expected_output": "Replace the core 'queue' service with Drupal\\queue_unique\\QueueFactory; then any queue name prefixed 'queue_unique/' (e.g. queue_unique/mymodule_work, or a @QueueWorker plugin id with that prefix) is served by queue_unique.database with the prefix stripped.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "queue_unique-qu-count",
+      "mode": "introspection",
+      "prompt": "On this Drupal site there is a unique queue named qu_known (managed by the queue_unique module). Inspect the live site and state how many items are currently in that queue.",
+      "must_contain_any": ["2"],
+      "must_not_contain": [],
+      "expected_output": "qu_known has 2 items. (Three inserts were attempted but one was an exact duplicate and was rejected by the unique queue.) Read via the queue: \\Drupal::service('queue_unique.database')->get('qu_known')->numberOfItems().",
+      "setup": "agent-module-documentation/evaluation/verify/queue_unique-qu-count-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/queue_unique-qu-count-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "queue_unique-qu-which",
+      "mode": "introspection",
+      "prompt": "This site has two unique queues, qu_alpha and qu_beta, both managed by queue_unique. Inspect the live queues and state which one currently holds more items.",
+      "must_contain_any": ["qu_beta"],
+      "must_not_contain": [],
+      "expected_output": "qu_beta holds more (3 items vs qu_alpha's 1). Compare numberOfItems() of each unique queue, or count rows per name in the queue_unique table.",
+      "setup": "agent-module-documentation/evaluation/verify/queue_unique-qu-which-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/queue_unique-qu-which-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "queue_unique-qu-add",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, add an item to a queue named qu_task using the queue_unique module's unique database queue (NOT the core queue table). Any payload is fine. Apply it to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/queue_unique-qu-add-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/queue_unique-qu-add-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/queue_unique-qu-add-cleanup.sh",
+      "expected_output": "The queue_unique table has at least one row with name=qu_task, e.g. \\Drupal::service('queue_unique.database')->get('qu_task')->createItem($data).",
+      "must_contain_any": [],
+      "must_not_contain": []
+    },
+    {
+      "id": "queue_unique-qu-dedup",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, add the SAME data item to a unique queue named qu_dup (managed by queue_unique) two times. Because the queue only accepts unique items, only one copy should end up stored. Apply it to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/queue_unique-qu-dedup-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/queue_unique-qu-dedup-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/queue_unique-qu-dedup-cleanup.sh",
+      "expected_output": "After inserting an identical payload twice via queue_unique.database->get('qu_dup'), exactly one row exists for name=qu_dup (the second createItem() returned FALSE).",
+      "must_contain_any": [],
+      "must_not_contain": []
+    }
+  ]
+}

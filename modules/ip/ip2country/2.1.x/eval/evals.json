@@ -1,0 +1,95 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "ip2country",
+  "version": "2.1.x",
+  "note": "ip2country maps an IP to an ISO country code from its own {ip2country} table (loaded from RIRs) and stores each user's country in user.data (ip2country/country_iso_code_2) on login. Config object ip2country.settings keys: rir, update_interval, batch_size, md5_checksum, watchdog, debug, test_type, test_country, test_ip_address. Services ip2country.lookup (getCountry) and ip2country.manager (updateDatabase/emptyDatabase/getRowCount). Drush ip2country:update|lookup|status. Configure route ip2country.settings (/admin/config/people/ip2country), permission 'administer ip2country'. On this test site the {ip2country} table is not populated (no live RIR download), so all medium/hard cases are grounded in the ip2country.settings config values, not in real IP lookups. Medium cases seed known settings and read them back; hard cases set settings (registry/interval, debug spoofing), verified against live config.",
+  "evals": [
+    {
+      "id": "ip2country-lookup-service",
+      "mode": "recipe",
+      "prompt": "On a Drupal site with ip2country enabled, which service and method would you call to get the ISO country code for a given IP address, and what does it return when the IP is not found?",
+      "must_contain_any": [
+        "ip2country.lookup",
+        "getCountry"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Call the ip2country.lookup service's getCountry($ip) method (Ip2CountryLookupInterface). It returns the ISO 3166-1 alpha-2 country code, or FALSE when the IP is not found in the {ip2country} table (including when the table has not been loaded yet).",
+      "difficulty": "easy"
+    },
+    {
+      "id": "ip2country-user-storage",
+      "mode": "recipe",
+      "prompt": "Where does the ip2country module store a user's detected country, and when is it written?",
+      "must_contain_any": [
+        "user.data",
+        "country_iso_code_2",
+        "user data"
+      ],
+      "must_not_contain": [],
+      "expected_output": "On hook_user_login it stores the detected ISO country code in the core user.data service under module 'ip2country', key 'country_iso_code_2'. hook_user_load copies it back onto $account->country_iso_code_2. Read it with \\Drupal::service('user.data')->get('ip2country', $uid, 'country_iso_code_2').",
+      "difficulty": "easy"
+    },
+    {
+      "id": "ip2country-update-command",
+      "mode": "recipe",
+      "prompt": "Which Drush command refreshes the ip2country IP-to-country database, and how do you tell it which Regional Internet Registry to use?",
+      "must_contain_any": [
+        "ip2country:update",
+        "ip-update",
+        "--registry"
+      ],
+      "must_not_contain": [],
+      "expected_output": "drush ip2country:update (aliases ip-update / ip2country-update) truncates and reloads the {ip2country} table. Pass --registry=<all|afrinic|apnic|arin|lacnic|ripe> to choose the RIR (default 'all'); also --batch_size and --checksum. drush ip2country:status shows the last update; drush ip2country:lookup <ip> looks one up.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "ip2country-known-rir",
+      "mode": "introspection",
+      "prompt": "On this Drupal site, ip2country has been configured with a non-default source registry and update interval. Inspect the live configuration and report the RIR (registry) and the update interval in seconds.",
+      "must_contain_any": [
+        "ripe"
+      ],
+      "must_not_contain": [],
+      "expected_output": "ip2country.settings has rir = 'ripe' and update_interval = 86400 (one day).",
+      "setup": "agent-module-documentation/evaluation/verify/ip2country-rir-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/ip2country-rir-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "ip2country-known-batch",
+      "mode": "introspection",
+      "prompt": "This site's ip2country database-update settings have been customized. Inspect the running configuration and report the batch size and whether MD5 checksum verification is enabled.",
+      "must_contain_any": [
+        "500"
+      ],
+      "must_not_contain": [],
+      "expected_output": "ip2country.settings has batch_size = 500 and md5_checksum = true.",
+      "setup": "agent-module-documentation/evaluation/verify/ip2country-batch-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/ip2country-batch-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "ip2country-set-registry",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "Configure ip2country on this Drupal site to pull its IP/country data from the APNIC registry and to auto-update every two weeks (1209600 seconds). Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/ip2country-registry-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/ip2country-registry-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/ip2country-registry-cleanup.sh",
+      "expected_output": "Set ip2country.settings rir = 'apnic' and update_interval = 1209600 and save (e.g. \\Drupal::configFactory()->getEditable('ip2country.settings')->set('rir','apnic')->set('update_interval',1209600)->save())."
+    },
+    {
+      "id": "ip2country-enable-spoof",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "For testing, configure ip2country on this site so that an administrator logging in is treated as being located in Germany (country code DE), using the module's debug/spoofing feature in country-spoof mode. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/ip2country-debug-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/ip2country-debug-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/ip2country-debug-cleanup.sh",
+      "expected_output": "In ip2country.settings set debug = true, test_type = 0 (country spoof), and test_country = 'DE', then save. On login an admin with 'administer ip2country' is then treated as being in DE."
+    }
+  ]
+}

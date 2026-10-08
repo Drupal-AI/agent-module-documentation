@@ -1,0 +1,98 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "og_prepopulate",
+  "version": "2.5.x",
+  "part_of": "prepopulate",
+  "note": "REWRITTEN against a live install: drupal/og 2.0.2 is now installed and og_prepopulate is ENABLED on this site, so the medium/hard cases no longer talk about an unmet dependency. Two facts were verified empirically on Drupal 11.4 + OG 2.0.2 and drive these cases: (1) the module's only hook, og_prepopulate_field_widget_og_complex_form_alter(), is an implementation of hook_field_widget_WIDGET_TYPE_form_alter() - a hook REMOVED in Drupal 10 (core now invokes field_widget_single_element_form_alter / field_widget_single_element_<WIDGET>_form_alter) - and there is no field widget plugin with id og_complex in OG 2.x at all (the OG widget is og_autocomplete, and it only supports plain entity_reference fields, so an og_audience field of type og_standard_reference falls back to options_select). The short ?<field>=<id> URL therefore does nothing by itself on this stack. (2) The service og_prepopulate.populator IS functional when called directly: Drupal\\og_prepopulate\\Populate::formatEntityAutocomplete() sets #value to 'Label (id)' and #access = FALSE when Og::isMember() is TRUE for the current user, and returns the raw id otherwise - confirmed on a real group node with a real og_membership. Medium cases introspect those two realities; the hard cases build real OG state (a membership; a menu link whose query key is the REAL audience field machine name and whose value is the LIVE group nid) and are verified by invoking the real service and by parsing the real menu link.",
+  "evals": [
+    {
+      "id": "og_prepopulate-url-syntax",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "The Drupal module og_prepopulate (a submodule of prepopulate) lets you preselect an Organic Groups audience field from a link. What does that URL look like for an audience field called og_audience and group entity 12, and how does it differ from the parent prepopulate module's syntax?",
+      "must_contain_any": [
+        "og_audience=12",
+        "?og_audience="
+      ],
+      "must_not_contain": [],
+      "expected_output": "/node/add/article?og_audience=12 — og_prepopulate uses the short form ?<field machine name>=<entity id>, whereas the parent module needs the nested render-array form ?edit[og_audience][widget][0][target_id]=12."
+    },
+    {
+      "id": "og_prepopulate-membership-rule",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "How does Drupal\\og_prepopulate\\Populate differ from the parent Drupal\\prepopulate\\Populate class it extends? Name the method it overrides and what it does differently.",
+      "must_contain_any": [
+        "formatEntityAutocomplete",
+        "isMember",
+        "Og::isMember"
+      ],
+      "must_not_contain": [],
+      "expected_output": "It overrides formatEntityAutocomplete(): instead of the parent's $entity->access('view label') check it calls Og::isMember($entity, $this->currentUser->getAccount()), and when the user is a member it sets the element's #value to 'Label (id)' AND sets #access = FALSE so the audience autocomplete is hidden. It also takes an extra @current_user constructor argument."
+    },
+    {
+      "id": "og_prepopulate-widget-and-deps",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "Which field widget does the Drupal og_prepopulate module alter, and what must be installed before it can be enabled?",
+      "must_contain_any": [
+        "og_complex",
+        "og:og",
+        "drupal/og",
+        "Organic Groups"
+      ],
+      "must_not_contain": [],
+      "expected_output": "It implements hook_field_widget_WIDGET_TYPE_form_alter() for the Organic Groups og_complex widget (og_prepopulate_field_widget_og_complex_form_alter). Its info.yml declares dependencies prepopulate:prepopulate and og:og, so drupal/og (Organic Groups) must be installed first."
+    },
+    {
+      "id": "og_prepopulate-widget-gap",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "This Drupal 11 site has Organic Groups installed and og_prepopulate enabled, and the node type ogp_content carries an OG audience field. og_prepopulate only alters the field widget whose plugin id is 'og_complex'. Inspect the running site: does a field widget plugin with that id actually exist, which OG-provided widget does exist, and which widget is the ogp_content audience field really using on its default form display?",
+      "must_contain_any": [
+        "og_autocomplete"
+      ],
+      "must_not_contain": [],
+      "expected_output": "There is no field widget plugin with id og_complex on this site (\\Drupal::service('plugin.manager.field.widget')->hasDefinition('og_complex') is FALSE) — og_complex belongs to the older OG branches. The only OG-provided widget is og_autocomplete ('OG context autocomplete'), and it declares field_types: [entity_reference], so it does not even apply to the og_audience field (type og_standard_reference). In core.entity_form_display.node.ogp_content.default the og_audience component uses type: options_select. Consequently og_prepopulate_field_widget_og_complex_form_alter() can never fire here.",
+      "setup": "agent-module-documentation/evaluation/verify/og_prepopulate-widget-gap-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/og_prepopulate-widget-gap-cleanup.sh"
+    },
+    {
+      "id": "og_prepopulate-member-rule",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "og_prepopulate's populator only prefills AND hides an Organic Groups audience autocomplete when Og::isMember() is TRUE for the current user. On this site there are two group nodes, 'OGP Probe Alpha' and 'OGP Probe Beta', and a user named ogp_probe_user. Inspect the live Organic Groups memberships and tell me for which of the two groups a prepopulate link would fill in the group label and hide the widget for that user, and what would happen for the other one.",
+      "must_contain_any": [
+        "OGP Probe Alpha",
+        "Alpha"
+      ],
+      "must_not_contain": [],
+      "expected_output": "OGP Probe Alpha: ogp_probe_user has an active og_membership in it, so formatEntityAutocomplete() returns 'OGP Probe Alpha (<nid>)' and sets #access = FALSE. For OGP Probe Beta there is no membership, so the override returns the raw node id and leaves the widget visible.",
+      "setup": "agent-module-documentation/evaluation/verify/og_prepopulate-member-rule-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/og_prepopulate-member-rule-cleanup.sh"
+    },
+    {
+      "id": "og_prepopulate-member-prefill",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site there is an Organic Groups group node titled 'OGP Task Group' and a user account named ogp_task_user. Right now, when og_prepopulate's populator service is asked to prefill an Organic Groups audience autocomplete with that group for that user, it only writes the bare node id and leaves the widget visible. Change the live Organic Groups state so the populator instead writes the group's label and hides the widget for that user. Do not change any code or configuration of the prepopulate/og_prepopulate modules themselves.",
+      "reset": "agent-module-documentation/evaluation/verify/og_prepopulate-member-prefill-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/og_prepopulate-member-prefill-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/og_prepopulate-member-prefill-cleanup.sh",
+      "expected_output": "Give ogp_task_user an OG membership in 'OGP Task Group' — Og::createMembership($group, $user)->save() (state defaults to active). Drupal\\og_prepopulate\\Populate::formatEntityAutocomplete() then passes its Og::isMember() check, so the element gets #value 'OGP Task Group (<nid>)' and #access = FALSE. Verified by running og_prepopulate.populator as that user against a real entity_autocomplete element."
+    },
+    {
+      "id": "og_prepopulate-real-link",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "site-builder",
+      "prompt": "This Drupal site has an Organic Groups group node titled 'OGP Link Group' and a group-content node type ogp_lcontent that carries an OG audience field. Add a link to the Main navigation menu titled exactly 'OG Prepopulate Eval Link' that opens the creation form for that group-content type with the audience already pointed at that specific group, using og_prepopulate's own short query syntax (not the parent prepopulate module's nested edit[...] syntax). Look up the real field machine name and the real group node id on the site rather than guessing.",
+      "reset": "agent-module-documentation/evaluation/verify/og_prepopulate-real-link-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/og_prepopulate-real-link-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/og_prepopulate-real-link-cleanup.sh",
+      "expected_output": "A menu_link_content in the 'main' menu titled 'OG Prepopulate Eval Link' whose uri is internal:/node/add/ogp_lcontent?og_audience=<nid of 'OGP Link Group'> — the query parameter name must be the audience field's real machine name (og_audience, discoverable via og.group_audience_helper::getAllGroupAudienceFields('node', 'ogp_lcontent')) and the value the live node id."
+    }
+  ]
+}

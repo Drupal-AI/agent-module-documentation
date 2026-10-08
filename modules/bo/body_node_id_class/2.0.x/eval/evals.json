@@ -1,0 +1,78 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "body_node_id_class",
+  "version": "2.0.x",
+  "note": "body_node_id_class is a single-hook theming helper: hook_preprocess_html() adds page-node-<nid> and page-node-type-<bundle> CSS classes to the <body> tag on node pages (only page-node-<nid> when the route param is a bare id, not an upcast Node). It has no config, settings form, configure route, permissions, services, plugins, Drush, or config schema. Evals are grounded in that behavior. Introspection cases create a namespaced content type and ask which page-node-type-* class its pages will carry (the agent must find the content type on the live site). Execution cases verify the module's real hook output by pushing a node onto the route and invoking hook_preprocess_html (a full HTTP render is avoided because unrelated modules can fatally error in the CLI on this shared site). Nodes are unpublished rather than deleted in resets because this shared site has an orphaned node field storage (field_ltgt_url) with a missing table that breaks node deletion.",
+  "evals": [
+    {
+      "id": "body_node_id_class-what-classes",
+      "mode": "recipe",
+      "prompt": "On a Drupal site with the body_node_id_class module enabled, I want to give one specific node page bespoke CSS. What CSS class does the module add to the <body> tag that identifies an individual node, and what does the value look like?",
+      "must_contain_any": ["page-node-"],
+      "must_not_contain": [],
+      "expected_output": "It adds page-node-<nid> to the <body> tag (e.g. page-node-42), so you can target that one node with .page-node-42 { ... } in your theme CSS. On a node whose route param is a full Node object it also adds page-node-type-<bundle>.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "body_node_id_class-which-hook",
+      "mode": "recipe",
+      "prompt": "How does the Drupal contrib module body_node_id_class add its body classes, and on which pages do they appear? Name the hook it implements.",
+      "must_contain_any": ["hook_preprocess_html", "preprocess_html"],
+      "must_not_contain": [],
+      "expected_output": "It implements hook_preprocess_html() (body_node_id_class_preprocess_html) and appends classes to $variables['attributes']['class'] only when the current route has a 'node' parameter — i.e. on canonical node pages. It does nothing on non-node routes.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "body_node_id_class-two-classes",
+      "mode": "recipe",
+      "prompt": "The body_node_id_class module forward-ports the Drupal 7 unique node body class. On a node page it can add two classes to the <body> tag. What are the two class patterns and what does each represent?",
+      "must_contain_any": ["page-node-type-", "page-node-type"],
+      "must_not_contain": [],
+      "expected_output": "page-node-<nid> (the node ID) and page-node-type-<bundle> (the content type machine name), e.g. page-node-42 and page-node-type-article. If the route 'node' parameter is only a bare id (not an upcast Node object) it adds just page-node-<nid>.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "body_node_id_class-known-type",
+      "mode": "introspection",
+      "prompt": "A content type whose machine name starts with 'bnic_' has just been added to this Drupal site. With body_node_id_class enabled, give the exact page-node-type-* CSS class that nodes of that content type will carry on the <body> tag. Inspect the live site to find the content type's machine name.",
+      "must_contain_any": ["page-node-type-bnic_metrics"],
+      "must_not_contain": [],
+      "expected_output": "The added content type is bnic_metrics, so body_node_id_class will add the class page-node-type-bnic_metrics to the <body> tag of its node pages (alongside page-node-<nid>).",
+      "setup": "agent-module-documentation/evaluation/verify/body_node_id_class-known-type-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/body_node_id_class-known-type-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "body_node_id_class-special-type",
+      "mode": "introspection",
+      "prompt": "This Drupal site has a newly added content type whose machine name begins with 'bnic_'. body_node_id_class is enabled. Inspect the site and state the content-type body class (page-node-type-*) its node pages will receive.",
+      "must_contain_any": ["page-node-type-bnic_faq"],
+      "must_not_contain": [],
+      "expected_output": "The content type is bnic_faq, so its node pages get the <body> class page-node-type-bnic_faq.",
+      "setup": "agent-module-documentation/evaluation/verify/body_node_id_class-special-type-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/body_node_id_class-special-type-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "body_node_id_class-build-landing",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site a content type 'bnic_land' exists but has no published nodes. body_node_id_class is enabled. Create a published node of type bnic_land so that its page carries the body classes page-node-<nid> and page-node-type-bnic_land.",
+      "reset": "agent-module-documentation/evaluation/verify/body_node_id_class-landing-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/body_node_id_class-landing-verify.sh",
+      "expected_output": "Create and save a published Node of type bnic_land (e.g. Node::create(['type'=>'bnic_land','title'=>'...','status'=>1])->save()). body_node_id_class then adds page-node-<nid> and page-node-type-bnic_land to the <body> of that node's page."
+    },
+    {
+      "id": "body_node_id_class-ensure-enabled",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-layman",
+      "prompt": "On this Drupal site the node pages are no longer getting a unique CSS class on the <body> tag identifying the node, and I need that back so my theme CSS can target individual nodes. There is a published article titled 'BNIC Home Node'. Make node pages carry a page-node-<nid> body class again.",
+      "reset": "agent-module-documentation/evaluation/verify/body_node_id_class-enabled-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/body_node_id_class-enabled-verify.sh",
+      "expected_output": "The body class is provided by the body_node_id_class module, which has been uninstalled. Re-enable it (drush en body_node_id_class -y). Once enabled, hook_preprocess_html adds page-node-<nid> (and page-node-type-<bundle>) to node pages such as the 'BNIC Home Node' article."
+    }
+  ]
+}

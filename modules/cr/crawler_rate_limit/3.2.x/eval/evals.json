@@ -1,0 +1,80 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "crawler_rate_limit",
+  "version": "3.2.x",
+  "note": "Crawler Rate Limit is configured entirely in settings.php under $settings['crawler_rate_limit.settings'] (no admin UI, config entity, permission, Drush, or config schema). It needs enabled=TRUE plus a supported backend (redis|apcu|memcached) to do anything, then applies up to three independent limits (bot_traffic, regular_traffic, regular_traffic_asn), each interval+requests. An HTTP middleware (priority 240) returns 429 on limit / 403 on asn_blocklist. Effective config is read via \\Drupal\\crawler_rate_limit\\RateLimitManager::getSettings(). Medium/hard cases write a delimited, php -l-guarded block to settings.php: introspection reads back the configured request limits; execution configures a bot limit (150/300s) or a visitor limit (275/900s) with the apcu backend enabled, verified via getSettings().",
+  "evals": [
+    {
+      "id": "crl-http-code",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "When Crawler Rate Limit blocks a bot for exceeding its request limit, what HTTP status code does it return, and via what mechanism does it intercept the request so early?",
+      "must_contain_any": ["429", "middleware"],
+      "must_not_contain": [],
+      "expected_output": "It returns HTTP 429 (Too many requests) with a Retry-After header, from its http_middleware (crawler_rate_limit.middleware, priority 240) that decorates the kernel before routing. A blocked ASN gets 403 'Blocked.' instead."
+    },
+    {
+      "id": "crl-where-config",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "There is no admin page for Crawler Rate Limit. Where do I configure it, and which two keys are required for it to do anything at all?",
+      "must_contain_any": ["settings.php", "crawler_rate_limit.settings", "backend", "enabled"],
+      "must_not_contain": [],
+      "expected_output": "Configure it in settings.php under $settings['crawler_rate_limit.settings']. It requires enabled = TRUE and a supported backend (redis, apcu or memcached); otherwise the limiter is force-disabled (fails open)."
+    },
+    {
+      "id": "crl-three-limits",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "What are the three independent rate limits Crawler Rate Limit can enforce, and what two values does each one need?",
+      "must_contain_any": ["bot_traffic", "regular_traffic", "regular_traffic_asn", "ASN", "interval"],
+      "must_not_contain": [],
+      "expected_output": "bot_traffic (crawlers by User-Agent), regular_traffic (visitor level, keyed by IP + User-Agent), and regular_traffic_asn (per autonomous system, needs geoip2/geoip2 + an ASN database). Each needs an interval (seconds) and a requests count, and is only active when both are > 0."
+    },
+    {
+      "id": "crl-bot-limit-value",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "This Drupal site has Crawler Rate Limit configured in settings.php. Inspect the running site's effective configuration and state how many requests a crawler/bot is allowed within its interval (the bot_traffic requests value).",
+      "must_contain_any": ["137"],
+      "must_not_contain": [],
+      "expected_output": "137. RateLimitManager::getSettings() shows bot_traffic.requests = 137 (interval 600, backend apcu, enabled).",
+      "setup": "agent-module-documentation/evaluation/verify/crawler_rate_limit-intro-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/crawler_rate_limit-remove-block.sh"
+    },
+    {
+      "id": "crl-regular-limit-value",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "This Drupal site has Crawler Rate Limit configured in settings.php, including a visitor-level (regular traffic) limit. Inspect the running site's effective configuration and state how many requests a regular visitor is allowed within the interval (the regular_traffic requests value).",
+      "must_contain_any": ["242"],
+      "must_not_contain": [],
+      "expected_output": "242. RateLimitManager::getSettings() shows regular_traffic.requests = 242 (interval 600).",
+      "setup": "agent-module-documentation/evaluation/verify/crawler_rate_limit-intro-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/crawler_rate_limit-remove-block.sh"
+    },
+    {
+      "id": "crl-configure-bot",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, configure Crawler Rate Limit so it is enabled with the apcu backend and limits bot/crawler traffic to 150 requests per 300 seconds. Apply the change to the live site (its configuration lives in settings.php).",
+      "reset": "agent-module-documentation/evaluation/verify/crawler_rate_limit-remove-block.sh",
+      "verify": "agent-module-documentation/evaluation/verify/crawler_rate_limit-bot-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/crawler_rate_limit-remove-block.sh",
+      "expected_output": "settings.php sets $settings['crawler_rate_limit.settings']['enabled'] = TRUE, ['backend'] = 'apcu', and ['bot_traffic'] = ['interval' => 300, 'requests' => 150]. RateLimitManager::getSettings() then reports enabled, backend apcu, bot_traffic requests 150 / interval 300."
+    },
+    {
+      "id": "crl-configure-regular",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, configure Crawler Rate Limit so it is enabled with the apcu backend and limits regular (visitor-level) traffic to 275 requests per 900 seconds. Apply the change to the live site (its configuration lives in settings.php).",
+      "reset": "agent-module-documentation/evaluation/verify/crawler_rate_limit-remove-block.sh",
+      "verify": "agent-module-documentation/evaluation/verify/crawler_rate_limit-regular-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/crawler_rate_limit-remove-block.sh",
+      "expected_output": "settings.php sets $settings['crawler_rate_limit.settings']['enabled'] = TRUE, ['backend'] = 'apcu', and ['regular_traffic'] = ['interval' => 900, 'requests' => 275]. RateLimitManager::getSettings() then reports enabled, backend apcu, regular_traffic requests 275 / interval 900."
+    }
+  ]
+}

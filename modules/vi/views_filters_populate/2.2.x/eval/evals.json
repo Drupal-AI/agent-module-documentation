@@ -1,0 +1,100 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "views_filters_populate",
+  "version": "2.2.x",
+  "note": "Views Filters Populate ships one Views filter plugin, id `views_filters_populate` (class Populate), that copies its own submitted value onto the `value` of one or more OTHER, non-exposed StringFilter/NumericFilter handlers in the same display (preQuery() does the copy; its own query() is a no-op). Target filters must be non-exposed string/numeric filters; the populate filter itself is typically the exposed one. If the (exposed) populate filter is submitted empty, an internal mock handler removes both it and its targets so the group behaves as an optional filter. The real stored option is `filters` (array of target filter ids) on a filter handler with `plugin_id: views_filters_populate` inside a view's config -- NOT `fields`, despite the module's own shipped config/schema/views_filters_populate.schema.yml being keyed `views.filter.populate` with a `fields` sequence (a known, orphaned schema quirk: it never matches the real plugin_id or option name). Medium/hard cases are grounded in that real config shape: introspection reads back a fixture view's populate-filter wiring; execution builds a minimal, valid views.view.* config (at the config level only -- the view does not need to execute/render) with a populate filter handler carrying a non-empty `filters` list.",
+  "evals": [
+    {
+      "id": "views_filters_populate-what-it-does",
+      "mode": "recipe",
+      "prompt": "The Drupal contrib module views_filters_populate provides a single Views filter plugin. What is its plugin id, and in plain terms what does it do?",
+      "must_contain_any": [
+        "views_filters_populate",
+        "populate other filters",
+        "populate other filter",
+        "populates other filters",
+        "populate the value of other filters",
+        "populate the value of one or more other filters"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The plugin id is `views_filters_populate` (class Populate). When its value is submitted (usually via an exposed input), its preQuery() copies that value onto the `value` of one or more OTHER filters listed in its `filters` option; its own query() adds no condition -- it only relays the value so the target filters do the actual filtering.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "views_filters_populate-target-constraints",
+      "mode": "recipe",
+      "prompt": "For the views_filters_populate Views filter, what kind of filters can be picked as its targets, and can the populate filter itself be exposed while a target is also exposed?",
+      "must_contain_any": [
+        "non-exposed",
+        "non exposed",
+        "not exposed",
+        "unexposed"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Targets must be non-exposed StringFilter or NumericFilter handlers in the same display (isFilterSupported() checks the class, buildOptionsForm() only lists non-exposed candidates, and validate() errors if a listed target is exposed). The populate filter itself is typically the one that IS exposed; a target filter must not be exposed.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "views_filters_populate-config-shape",
+      "mode": "recipe",
+      "prompt": "How does a views_filters_populate filter get represented inside an exported/saved Views config (views.view.*.yml), and what happens if the site visitor submits it empty while it's exposed?",
+      "must_contain_any": [
+        "plugin_id: views_filters_populate",
+        "plugin_id views_filters_populate",
+        "filters:",
+        "removes",
+        "remove"
+      ],
+      "must_not_contain": [],
+      "expected_output": "It's a filter handler entry under display.<id>.display_options.filters with `plugin_id: views_filters_populate` and a `filters` option listing the target filter machine names, e.g. `filters: {title_target: title_target}`. If the populate filter is exposed and submitted empty, a runtime-only PopulateRemoveEmptyFilterMock handler removes it and all its listed targets from the view for that request, so the whole group behaves as an optional exposed filter (no WHERE clause added).",
+      "difficulty": "easy"
+    },
+    {
+      "id": "views_filters_populate-vfp-known-targets",
+      "mode": "introspection",
+      "prompt": "On this Drupal site there is a view called vfp_known. Inspect its live configuration and tell me: which filter in its default display uses the views_filters_populate plugin, and which target filter(s) does its `filters` option list?",
+      "must_contain_any": [
+        "title_target"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The `populate` filter handler (plugin_id: views_filters_populate) lists `title_target` in its `filters` option -- i.e. it populates the non-exposed string filter title_target (node_field_data.title, operator contains).",
+      "setup": "agent-module-documentation/evaluation/verify/views_filters_populate-vfp-known-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/views_filters_populate-vfp-known-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "views_filters_populate-which-view-uses-plugin",
+      "mode": "introspection",
+      "prompt": "Somewhere on this Drupal site, exactly one view has a filter handler using the views_filters_populate plugin. Inspect the site's views configuration and tell me the view's machine name.",
+      "must_contain_any": [
+        "vfp_known"
+      ],
+      "must_not_contain": [],
+      "expected_output": "vfp_known -- its default display's `populate` filter handler has plugin_id: views_filters_populate.",
+      "setup": "agent-module-documentation/evaluation/verify/views_filters_populate-vfp-known-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/views_filters_populate-vfp-known-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "views_filters_populate-build-vfp-task",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "Create a Drupal view with machine name vfp_task (base table node_field_data) whose default display includes: (1) at least one non-exposed String or Numeric filter, and (2) a filter using the views_filters_populate plugin whose `filters` option lists that non-exposed filter as a target. You may build/save this as raw view configuration; the view does not need to render successfully, only exist as valid configuration with that filter wiring.",
+      "reset": "agent-module-documentation/evaluation/verify/views_filters_populate-vfp-task-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/views_filters_populate-vfp-task-verify.sh",
+      "expected_output": "views.view.vfp_task exists with a filter handler (plugin_id: views_filters_populate) whose `filters` option is a non-empty list naming a non-exposed String/Numeric filter handler present in the same display, e.g. filters: {title_target: title_target}."
+    },
+    {
+      "id": "views_filters_populate-build-vfp-two-specific-target",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "Create a Drupal view with machine name vfp_two (base table node_field_data). Its default display must include a non-exposed Numeric filter on the node ID field (node_field_data.nid) with the exact machine name `nid_target`, plus an exposed filter using the views_filters_populate plugin whose `filters` option lists `nid_target` as one of its targets. Config-level is fine; the view does not need to render.",
+      "reset": "agent-module-documentation/evaluation/verify/views_filters_populate-vfp-two-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/views_filters_populate-vfp-two-verify.sh",
+      "expected_output": "views.view.vfp_two exists with a filter handler (plugin_id: views_filters_populate) whose `filters` option includes the specific target id `nid_target` (a non-exposed numeric filter on node_field_data.nid)."
+    }
+  ]
+}

@@ -1,0 +1,90 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "simple_menu_permissions",
+  "version": "3.0.x",
+  "note": "Simple Menu Permissions replaces core's single 'administer menu' with dynamic, per-menu permissions. SimpleMenuPermissionsPermissions::get() generates, for every menu (id <id>), six permissions: 'view <id> menu in menu list', 'edit <id> menu', 'delete <id> menu', 'add new links to <id> menu', 'edit links in <id> menu', 'delete links in <id> menu' — plus one global 'create new menu'. It has no config schema, no settings form, and no Drush commands, so the medium/hard tiers exercise reading and granting these role permissions rather than plugin/config code. Enforcement is wired via hook_entity_type_build (access handlers + list builder on menu / menu_link_content), a RouteSubscriber (create new menu on the add route; MenuRoutesAccessChecker on edit/delete/add-link routes), and a MenuParentFormSelectorDecorator. Cases span three tiers: recipe (easy, response-graded facts about the exact generated permission machine names), introspection (medium — a known per-menu permission is granted to the content_editor role on the live site and the agent reads it back via drush), and execution (hard, persona drupal-expert — the agent actually grants a specific simple_menu_permissions permission to a role, verified against live site state).",
+  "evals": [
+    {
+      "id": "smp-per-menu-perms",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "On a Drupal 11 site using the Simple Menu Permissions (simple_menu_permissions) module, for a single existing menu, what are the exact machine names of the per-menu permissions it dynamically generates? Use the menu with id `main` as the example.",
+      "must_contain_any": ["edit links in main menu", "add new links to main menu", "view main menu in menu list"],
+      "must_not_contain": [],
+      "expected_output": "For each menu (id <id>) the module generates six permissions: `view <id> menu in menu list`, `edit <id> menu`, `delete <id> menu`, `add new links to <id> menu`, `edit links in <id> menu`, and `delete links in <id> menu`. For the `main` menu these are `view main menu in menu list`, `edit main menu`, `delete main menu`, `add new links to main menu`, `edit links in main menu`, `delete links in main menu`."
+    },
+    {
+      "id": "smp-create-new-menu",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "In the simple_menu_permissions module, besides the per-menu permissions, what single global permission does it define, and what does that permission gate?",
+      "must_contain_any": ["create new menu"],
+      "must_not_contain": [],
+      "expected_output": "It defines one global permission, `create new menu` (title 'Create new menu'). The module's RouteSubscriber sets it as the `_permission` requirement on the entity.menu.add_form route, so it gates creating brand-new menus at /admin/structure/menu/add."
+    },
+    {
+      "id": "smp-extra-perms",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "Someone says simple_menu_permissions only lets you edit a menu's links. What are the full set of six operations it exposes per menu, including the ones beyond editing links, and how are they assigned?",
+      "must_contain_any": ["view", "delete", "add new links"],
+      "must_not_contain": [],
+      "expected_output": "Per menu it exposes six operations, each a separate permission: view the menu in the menu list (`view <id> menu in menu list`), edit the menu entity (`edit <id> menu`), delete the menu (`delete <id> menu`), add new links (`add new links to <id> menu`), edit links (`edit links in <id> menu`), and delete links (`delete links in <id> menu`). There is no config UI — assign them on People -> Permissions (/admin/people/permissions)."
+    },
+    {
+      "id": "smp-inspect-edit-main-links",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site (drush available), the content_editor role has been given one specific simple_menu_permissions per-menu permission over the Main navigation menu. Inspect the live site and tell me the exact machine name of that permission and what it lets the role do.",
+      "setup": "agent-module-documentation/evaluation/verify/simple_menu_permissions-intro-edit-main-links-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/simple_menu_permissions-intro-edit-main-links-cleanup.sh",
+      "must_contain_any": ["edit links in main menu"],
+      "must_not_contain": [],
+      "expected_output": "The content_editor role currently holds the `edit links in main menu` permission, which lets members edit existing links in the Main navigation (main) menu without core's administer menu."
+    },
+    {
+      "id": "smp-inspect-create-menu",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site (drush available), does the content_editor role currently hold the simple_menu_permissions global menu-creation permission? Inspect the live site, name the exact permission, and say what it allows.",
+      "setup": "agent-module-documentation/evaluation/verify/simple_menu_permissions-intro-create-menu-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/simple_menu_permissions-intro-create-menu-cleanup.sh",
+      "must_contain_any": ["create new menu"],
+      "must_not_contain": [],
+      "expected_output": "Yes — the content_editor role currently holds the `create new menu` permission, so members can create brand-new menus via /admin/structure/menu/add."
+    },
+    {
+      "id": "smp-grant-edit-main-links",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site (drush available), use the Simple Menu Permissions module to let the `content_editor` role edit the links in the Main navigation menu, without granting core's administer menu. Apply it to the live site so it really takes effect; don't just describe it. One-line summary.",
+      "reset": "agent-module-documentation/evaluation/verify/simple_menu_permissions-grant-edit-main-links-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/simple_menu_permissions-grant-edit-main-links-verify.sh",
+      "expected_output": "The content_editor role is granted the permission `edit links in main menu`, applied to the live site so members can edit links in the Main navigation menu. Verified against live site state."
+    },
+    {
+      "id": "smp-grant-add-footer-links",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site (drush available), give the `content_editor` role the ability to add new links to the Footer menu using the Simple Menu Permissions module. Apply it to the live site; don't just describe it. One-line summary.",
+      "reset": "agent-module-documentation/evaluation/verify/simple_menu_permissions-grant-add-footer-links-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/simple_menu_permissions-grant-add-footer-links-verify.sh",
+      "expected_output": "The content_editor role is granted the permission `add new links to footer menu`, applied to the live site so members can add links to the Footer menu. Verified against live site state."
+    },
+    {
+      "id": "smp-grant-create-menu",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site (drush available), allow the `content_editor` role to create brand-new menus, using the global permission that Simple Menu Permissions provides. Apply it to the live site; don't just describe it. One-line summary.",
+      "reset": "agent-module-documentation/evaluation/verify/simple_menu_permissions-grant-create-menu-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/simple_menu_permissions-grant-create-menu-verify.sh",
+      "expected_output": "The content_editor role is granted the permission `create new menu`, applied to the live site so members can create new menus at /admin/structure/menu/add. Verified against live site state."
+    }
+  ]
+}

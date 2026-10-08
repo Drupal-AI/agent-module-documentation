@@ -1,0 +1,102 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "current_page_crumb",
+  "version": "1.6.x",
+  "note": "Current Page Crumb is a pure-code module: one service, current_page_crumb.breadcrumb = Drupal\\current_page_crumb\\BreadcrumbBuilder, which extends core PathBasedBreadcrumbBuilder, is registered parent: system.breadcrumb.default and tagged breadcrumb_builder with priority 1003 so it outranks the default builder. build() appends the current route's title (resolved via titleResolver) as an UNLINKED crumb via Link::createFromRoute($title, '<none>'), skipping admin routes (_admin_route) and the front page (isFrontPage()), and falling back to the last URL path segment (dashes/underscores -> spaces, ucfirst) when the route has no title. It has NO config, NO configure route (configure=null), NO settings form, NO permissions, NO Drush, NO plugins, NO config schema; the only real prerequisite is that the theme has the core Breadcrumb block (system_breadcrumb_block) placed. Because the module has nothing configurable, the medium/hard cases are grounded in that block-placement dependency and in live block config the agent must read/create: mediums read back the region / enabled-state of placed breadcrumb blocks; the hard persona pair places a Breadcrumb block in the Canvas Stark theme (which ships none), verified against live block config.",
+  "evals": [
+    {
+      "id": "current_page_crumb-mechanism",
+      "mode": "recipe",
+      "prompt": "In the Drupal contrib module current_page_crumb, how does it add the current page's title to the breadcrumb, and what makes that last crumb appear as plain text instead of a clickable link? Name the class it uses and the route it links to.",
+      "must_contain_any": [
+        "<none>",
+        "BreadcrumbBuilder",
+        "PathBasedBreadcrumbBuilder",
+        "Link::createFromRoute",
+        "createFromRoute"
+      ],
+      "must_not_contain": [],
+      "expected_output": "It ships a BreadcrumbBuilder service (Drupal\\current_page_crumb\\BreadcrumbBuilder) that extends core's PathBasedBreadcrumbBuilder, tagged breadcrumb_builder at priority 1003. Its build() resolves the route title and appends it with Link::createFromRoute($title, '<none>') - the '<none>' route makes the last crumb unlinked plain text.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "current_page_crumb-admin-front-excluded",
+      "mode": "recipe",
+      "prompt": "Does current_page_crumb add the current-page title crumb on every page, including admin pages and the front page? On which pages does it deliberately do nothing?",
+      "must_contain_any": [
+        "admin",
+        "_admin_route",
+        "front page",
+        "isFrontPage"
+      ],
+      "must_not_contain": [],
+      "expected_output": "No. Its build() only appends the title crumb when the route is NOT an admin route (it checks the route's _admin_route option) and is NOT the front page (pathMatcher->isFrontPage()). On admin pages and the front page it leaves the breadcrumb as the parent path-based builder produced it.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "current_page_crumb-title-fallback",
+      "mode": "recipe",
+      "prompt": "With current_page_crumb enabled, what text does it use for the last breadcrumb crumb when the current route has no resolvable title (no _title / _title_callback)? How does it derive the label from the URL?",
+      "must_contain_any": [
+        "path",
+        "segment",
+        "str_replace",
+        "ucfirst",
+        "dash",
+        "underscore"
+      ],
+      "must_not_contain": [],
+      "expected_output": "When titleResolver returns an empty title it falls back to the last URL path element, replacing '-' and '_' with spaces and upper-casing the first letter (Unicode::ucfirst). So /annual-report becomes an 'Annual report' crumb.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "current_page_crumb-block-region",
+      "mode": "introspection",
+      "prompt": "current_page_crumb renders its crumbs through the site's Breadcrumb block. On this site a Breadcrumb block with machine id 'cpc_m_breadcrumb' has been placed in the Olivero theme. Inspect the live block configuration and state which theme region that block is in.",
+      "must_contain_any": [
+        "content"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The block cpc_m_breadcrumb (plugin system_breadcrumb_block, theme olivero) is placed in the 'content' region - readable from block.block.cpc_m_breadcrumb (region: content).",
+      "setup": "agent-module-documentation/evaluation/verify/current_page_crumb-block-region-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/current_page_crumb-block-region-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "current_page_crumb-which-block-enabled",
+      "mode": "introspection",
+      "prompt": "This site has two Breadcrumb blocks placed in the Olivero theme: cpc_m_on and cpc_m_off. Exactly one of them is enabled. Inspect the live block configuration and state which block is enabled (the one through which current_page_crumb's crumbs would actually render).",
+      "must_contain_any": [
+        "cpc_m_on"
+      ],
+      "must_not_contain": [],
+      "expected_output": "cpc_m_on is enabled (status: true); cpc_m_off has status: false. Readable via drush config:get block.block.cpc_m_on / block.block.cpc_m_off (or the block entity status()).",
+      "setup": "agent-module-documentation/evaluation/verify/current_page_crumb-enabled-block-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/current_page_crumb-enabled-block-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "current_page_crumb-place-breadcrumb-expert",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "current_page_crumb is enabled, but the Canvas Stark theme (machine name canvas_stark) has no Breadcrumb block, so its pages show no breadcrumb trail at all. Place the core Breadcrumb block (plugin system_breadcrumb_block) in the canvas_stark theme and enable it, so current_page_crumb's page-title crumb can render there. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/current_page_crumb-place-breadcrumb-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/current_page_crumb-place-breadcrumb-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/current_page_crumb-place-breadcrumb-cleanup.sh",
+      "expected_output": "An enabled block with plugin system_breadcrumb_block exists in theme canvas_stark (e.g. create a block.block config entity with theme: canvas_stark, plugin: system_breadcrumb_block, a valid region such as 'breadcrumb', status: true - via drush, the Block Layout UI at /admin/structure/block, or Block::create())."
+    },
+    {
+      "id": "current_page_crumb-place-breadcrumb-layman",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "site-owner-layman",
+      "prompt": "I installed the Current Page Crumb module because I want the name of the page to show up in the little breadcrumb trail near the top of my pages. But on my site (it uses the theme called 'Canvas Stark') there is no breadcrumb trail showing up at all. Can you make the breadcrumbs appear on that theme's pages?",
+      "reset": "agent-module-documentation/evaluation/verify/current_page_crumb-place-breadcrumb-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/current_page_crumb-place-breadcrumb-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/current_page_crumb-place-breadcrumb-cleanup.sh",
+      "expected_output": "The fix is to place and enable a Breadcrumb block in the Canvas Stark theme: an enabled block with plugin system_breadcrumb_block in theme canvas_stark (via /admin/structure/block 'Place block' -> Breadcrumbs, or drush/Block::create()). Once a breadcrumb block renders, current_page_crumb appends the current page title as the final crumb."
+    }
+  ]
+}

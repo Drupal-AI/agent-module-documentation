@@ -1,0 +1,101 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "fullcalendar_library",
+  "version": "3.0.x",
+  "note": "Fullcalendar library is a pure asset-library provider for the legacy FullCalendar v3 JS calendar. It has no routes, config, permissions, plugins or Drush. It declares two libraries in fullcalendar_library.libraries.yml: fullcalendar_library/fullcalendar (core, depends on core/jquery, includes moment.js) and fullcalendar_library/fullcalendar-scheduler (Scheduler add-on, depends on the core lib). Default asset paths are local under the web root (/libraries/fullcalendar/...); fullcalendar_library_library_info_alter() replaces any missing file with a jsDelivr CDN URL (FullCalendar 3.10.2 / Scheduler 1.10.1 / Moment 2.27.0). hook_requirements reports local-vs-CDN on the status page. Medium/hard cases are grounded in that real fallback: introspection reads the resolved library to see whether fullcalendar.min.js is local or CDN; execution requires the agent to install a local copy so the module stops using the CDN, verified via the library.discovery service.",
+  "evals": [
+    {
+      "id": "fullcalendar_library-attach",
+      "mode": "recipe",
+      "prompt": "On a Drupal site with the fullcalendar_library module enabled, I want to use the FullCalendar calendar in a custom render array. What is the machine name of the asset library I attach, and how do I attach it via #attached?",
+      "must_contain_any": [
+        "fullcalendar_library/fullcalendar",
+        "#attached",
+        "library"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Attach the 'fullcalendar_library/fullcalendar' library, e.g. $build['#attached']['library'][] = 'fullcalendar_library/fullcalendar'; (the Scheduler add-on is 'fullcalendar_library/fullcalendar-scheduler', which depends on it). It provides the FullCalendar v3 core, moment.js and CSS, and depends on core/jquery.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "fullcalendar_library-cdn-fallback",
+      "mode": "recipe",
+      "prompt": "The fullcalendar_library module works even though I never downloaded the FullCalendar library files. Where would local copies go, and what does the module do when those files are missing?",
+      "must_contain_any": [
+        "/libraries/fullcalendar",
+        "libraries/fullcalendar",
+        "CDN",
+        "jsdelivr",
+        "hook_library_info_alter"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Local files go under the web root at /libraries/fullcalendar/ (and /libraries/fullcalendar-scheduler/). fullcalendar_library_library_info_alter() checks file_exists for each asset and, for any missing file, swaps the local path for a jsDelivr CDN URL (FullCalendar 3.10.2, Scheduler 1.10.1, Moment 2.27.0). hook_requirements reports which source is in use on /admin/reports/status.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "fullcalendar_library-scheduler-dep",
+      "mode": "recipe",
+      "prompt": "Which two asset libraries does fullcalendar_library define, and what is the dependency relationship between them and jQuery?",
+      "must_contain_any": [
+        "fullcalendar-scheduler",
+        "core/jquery",
+        "depends"
+      ],
+      "must_not_contain": [],
+      "expected_output": "It defines fullcalendar_library/fullcalendar (FullCalendar v3 core + moment.js + CSS, depending on core/jquery) and fullcalendar_library/fullcalendar-scheduler (the Scheduler add-on, which depends on fullcalendar_library/fullcalendar).",
+      "difficulty": "easy"
+    },
+    {
+      "id": "fullcalendar_library-source-in-use",
+      "mode": "introspection",
+      "prompt": "On this Drupal site, is the FullCalendar main script (fullcalendar.min.js) currently being served from a local /libraries copy or from a CDN? Inspect the running site's resolved 'fullcalendar_library/fullcalendar' library definition and answer.",
+      "must_contain_any": [
+        "local",
+        "libraries/fullcalendar"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Local: the resolved fullcalendar_library/fullcalendar library serves libraries/fullcalendar/fullcalendar.min.js (a local path under the web root), because the local library files are present, so the CDN fallback in hook_library_info_alter is not applied.",
+      "setup": "agent-module-documentation/evaluation/verify/fullcalendar_library-local-source-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/fullcalendar_library-local-source-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "fullcalendar_library-scheduler-source",
+      "mode": "introspection",
+      "prompt": "On this site the FullCalendar core library files are present locally, but I am not sure about the Scheduler add-on. Inspect the running site's resolved 'fullcalendar_library/fullcalendar-scheduler' library and tell me whether its scheduler.min.js is served locally or from a CDN.",
+      "must_contain_any": [
+        "CDN",
+        "jsdelivr",
+        "cdn.jsdelivr"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The Scheduler add-on is served from the CDN: the resolved fullcalendar_library/fullcalendar-scheduler library loads https://cdn.jsdelivr.net/npm/fullcalendar-scheduler@1.10.1/dist/scheduler.min.js because the local Scheduler files are absent, even though the FullCalendar core files exist locally (the fallback is applied per file).",
+      "setup": "agent-module-documentation/evaluation/verify/fullcalendar_library-partial-source-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/fullcalendar_library-partial-source-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "fullcalendar_library-serve-local",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "This site currently loads FullCalendar from the jsDelivr CDN because no local library files exist. Install a local copy so that the fullcalendar_library module serves the main FullCalendar script (fullcalendar.min.js) from the site's /libraries directory instead of the CDN, and make the change take effect on the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/fullcalendar_library-serve-local-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/fullcalendar_library-serve-local-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/fullcalendar_library-serve-local-cleanup.sh",
+      "expected_output": "Create the file DRUPAL_ROOT/libraries/fullcalendar/fullcalendar.min.js (i.e. web/libraries/fullcalendar/fullcalendar.min.js) so file_exists() is true, then rebuild caches. The library.discovery service then resolves fullcalendar_library/fullcalendar with the local path libraries/fullcalendar/fullcalendar.min.js instead of the jsdelivr CDN URL."
+    },
+    {
+      "id": "fullcalendar_library-serve-scheduler",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "Make this site serve BOTH FullCalendar and its Scheduler add-on from local /libraries copies instead of the jsDelivr CDN, so that both the core fullcalendar.min.js and the scheduler.min.js resolve to local paths. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/fullcalendar_library-serve-scheduler-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/fullcalendar_library-serve-scheduler-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/fullcalendar_library-serve-scheduler-cleanup.sh",
+      "expected_output": "Create web/libraries/fullcalendar/fullcalendar.min.js AND web/libraries/fullcalendar-scheduler/scheduler.min.js (under DRUPAL_ROOT/libraries) so file_exists() is true for each, then rebuild caches. The library.discovery service then resolves both fullcalendar_library/fullcalendar and fullcalendar_library/fullcalendar-scheduler with local paths rather than jsdelivr CDN URLs."
+    }
+  ]
+}

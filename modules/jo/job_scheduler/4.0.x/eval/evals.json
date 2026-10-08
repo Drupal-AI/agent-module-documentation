@@ -1,0 +1,80 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "job_scheduler",
+  "version": "4.0.x",
+  "note": "Job Scheduler is an API. Jobs are added via the job_scheduler.manager service (JobSchedulerInterface::set/remove/removeAll/perform) and stored as job_schedule content entities (fields name/type/id/period/crontab/periodic/next/last/data). Schedulers are declared with hook_cron_job_scheduler_info (worker callback or queue name). Config job_scheduler.settings has logging/limit(200)/time(30) at /admin/config/system/job-scheduler. Medium/hard cases are grounded in real job_schedule entities created/queried via the manager, namespaced with 'js_' names/types.",
+  "evals": [
+    {
+      "id": "job_scheduler-schedule-a-job",
+      "mode": "recipe",
+      "prompt": "Using the Job Scheduler module's API, how do I schedule a task to run in one hour? Name the service to call and the keys the job array needs.",
+      "must_contain_any": ["job_scheduler.manager", "->set(", "period"],
+      "must_not_contain": [],
+      "expected_output": "Call \\Drupal::service('job_scheduler.manager')->set($job) where $job has 'name', 'type', 'id' and 'period' => 3600 (and optionally 'periodic', 'crontab', 'data'). It stores a job_schedule entity with next = now + period.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "job_scheduler-declare-scheduler",
+      "mode": "recipe",
+      "prompt": "In Job Scheduler, which hook does a module implement to declare a scheduler, and how does it choose between running a worker callback directly versus using a queue?",
+      "must_contain_any": ["hook_cron_job_scheduler_info", "worker callback", "queue name"],
+      "must_not_contain": [],
+      "expected_output": "Implement hook_cron_job_scheduler_info(): each key is a scheduler name whose value has a 'worker callback' (called directly) or a 'queue name' (job is queued; when 'queue name' is set the worker callback is ignored).",
+      "difficulty": "easy"
+    },
+    {
+      "id": "job_scheduler-settings",
+      "mode": "recipe",
+      "prompt": "Where does Job Scheduler configure how many jobs and how much time each cron run may spend on scheduled jobs, and what is the config object?",
+      "must_contain_any": ["job_scheduler.settings", "limit", "/admin/config/system/job-scheduler"],
+      "must_not_contain": [],
+      "expected_output": "The config object job_scheduler.settings holds 'limit' (default 200) and 'time' (default 30 seconds), plus 'logging'; edit them at /admin/config/system/job-scheduler.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "job_scheduler-known-period",
+      "mode": "introspection",
+      "prompt": "On this Drupal site, Job Scheduler already has a scheduled job named 'js_probe'. Inspect the live site and state the period, in seconds, configured for that job.",
+      "must_contain_any": ["3600"],
+      "must_not_contain": [],
+      "expected_output": "The 'js_probe' job_schedule entity has period = 3600 (query the job_schedule entity where name = 'js_probe').",
+      "setup": "agent-module-documentation/evaluation/verify/job_scheduler-known-period-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/job_scheduler-known-period-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "job_scheduler-known-jobid",
+      "mode": "introspection",
+      "prompt": "On this Drupal site there is a scheduled Job Scheduler job named 'js_target'. Inspect the live site and state the numeric job id (the 'id' value) of that scheduled job.",
+      "must_contain_any": ["7777"],
+      "must_not_contain": [],
+      "expected_output": "The 'js_target' job_schedule entity has id = 7777 (read the 'id' base field of the job_schedule entity where name = 'js_target').",
+      "setup": "agent-module-documentation/evaluation/verify/job_scheduler-known-jobid-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/job_scheduler-known-jobid-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "job_scheduler-create-job",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, use the Job Scheduler API to schedule a periodic job named 'js_task' of type 'js_task_type' with job id 55 that should run every 3600 seconds. Apply it to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/job_scheduler-create-job-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/job_scheduler-create-job-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/job_scheduler-create-job-cleanup.sh",
+      "expected_output": "Call \\Drupal::service('job_scheduler.manager')->set(['name'=>'js_task','type'=>'js_task_type','id'=>55,'period'=>3600,'periodic'=>TRUE]); this creates a job_schedule entity with those values."
+    },
+    {
+      "id": "job_scheduler-remove-job",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site there is a scheduled Job Scheduler job named 'js_remove' (type 'js_remove_type'). Use the Job Scheduler API to unschedule/remove it so it will no longer run. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/job_scheduler-remove-job-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/job_scheduler-remove-job-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/job_scheduler-remove-job-cleanup.sh",
+      "expected_output": "Call \\Drupal::service('job_scheduler.manager')->removeAll('js_remove', 'js_remove_type') (or ->remove(['name'=>'js_remove','type'=>'js_remove_type','id'=>9])); no job_schedule entity named 'js_remove' remains."
+    }
+  ]
+}

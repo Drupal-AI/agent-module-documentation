@@ -1,0 +1,96 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "social_api",
+  "version": "4.0.x",
+  "note": "Social API is a framework: it defines the Network plugin type (src/Plugin/Network, manager plugin.network.manager, annotation Drupal\\social_api\\Annotation\\Network with keys id/socialNetwork/type/className/handlers, alter hook social_api_network_info), the base classes NetworkBase / OAuth2Manager / SettingsBase / SocialApiDataHandler / UserAuthenticator / Entity\\SocialApi (AES-256-CBC token encryption keyed on Settings::getHashSalt()) and SocialApiImplementerInstaller. It ships no config object and no config schema; its only site-visible state is 5 permissions and the route social_api.admin_config (/admin/config/social-api). Medium/hard cases therefore exercise the two real surfaces: registered Network plugin definitions (a throwaway module is written by the setup/agent) and the permission/role wiring for the admin route.",
+  "evals": [
+    {
+      "id": "social_api-plugin-type",
+      "mode": "recipe",
+      "prompt": "I am writing a Drupal module that integrates a social network and I want to build it on the social_api module. What plugin type does social_api define, in which directory of my module must the plugin class live, which base class do I extend and which service manages these plugins?",
+      "must_contain_any": [
+        "Plugin/Network",
+        "NetworkBase",
+        "plugin.network.manager"
+      ],
+      "must_not_contain": [],
+      "expected_output": "social_api defines the `Network` plugin type. Classes go in my_module/src/Plugin/Network/, extend Drupal\\social_api\\Plugin\\NetworkBase (which implements NetworkInterface), and are managed by the plugin.network.manager service (Drupal\\social_api\\Plugin\\NetworkManager). You implement the abstract initSdk() and callers use getSdk(), which caches the SDK instance.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "social_api-annotation-keys",
+      "mode": "recipe",
+      "prompt": "Show the annotation keys of a social_api @Network plugin and explain what the `handlers` key is used for by NetworkBase.",
+      "must_contain_any": [
+        "socialNetwork",
+        "className",
+        "handlers"
+      ],
+      "must_not_contain": [],
+      "expected_output": "@Network takes id, socialNetwork (the human network name), type (social_auth / social_post / social_widgets), className (the fully qualified SDK/provider class) and handlers. NetworkBase::init() reads handlers.settings.class and handlers.settings.config_id, loads that config and calls <class>::factory($config) to build a Drupal\\social_api\\Settings\\SettingsInterface object into $this->settings; a missing class or one not implementing SettingsInterface throws SocialApiException.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "social_api-token-encryption",
+      "mode": "recipe",
+      "prompt": "The social_api module stores OAuth access tokens for social accounts. How does its SocialApi entity base class protect those tokens, which key does it use, and what breaks if that key changes?",
+      "must_contain_any": [
+        "aes-256-cbc",
+        "hash salt",
+        "getHashSalt"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Drupal\\social_api\\Entity\\SocialApi encrypts the serialized token with openssl_encrypt() using AES-256-CBC and a fresh random IV, and stores base64(\"<encrypted>::<iv>\"). The key is the site hash salt from settings.php (Settings::getHashSalt(), base64-decoded). create() and setToken() encrypt, getToken() decrypts. Changing hash_salt makes every previously stored token undecryptable. ext-openssl is a Composer requirement.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "social_api-admin-role",
+      "mode": "introspection",
+      "prompt": "This Drupal site has social_api installed and two custom roles that each hold exactly one Social API permission. Inspect the running site and say which role is allowed to open the Social API admin page at /admin/config/social-api.",
+      "must_contain_any": [
+        "social_api_eval_admin"
+      ],
+      "must_not_contain": [],
+      "expected_output": "social_api_eval_admin - it holds 'administer social api configuration', which is the _permission requirement of the social_api.admin_config route. social_api_eval_poster only holds 'administer social api autoposting' and cannot open that page.",
+      "setup": "agent-module-documentation/evaluation/verify/social_api-admin-role-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/social_api-admin-role-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "social_api-registered-network",
+      "mode": "introspection",
+      "prompt": "Inspect this running Drupal site: which social_api Network plugins are currently registered, and what integration type does each declare?",
+      "must_contain_any": [
+        "eval_probe_network"
+      ],
+      "must_not_contain": [],
+      "expected_output": "One Network plugin is registered: eval_probe_network (label 'Eval Probe', type social_auth), provided by the social_api_eval_probe module. Discoverable with \\Drupal::service('plugin.network.manager')->getDefinitions().",
+      "setup": "agent-module-documentation/evaluation/verify/social_api-registered-network-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/social_api-registered-network-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "social_api-network-plugin",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, create a module at web/modules/custom/social_api_eval_net that registers a social_api Network plugin with id `social_api_eval_net`, integration type `social_auth` and the human network name 'Eval Net'. The plugin class must extend social_api's NetworkBase and implement its abstract SDK initialisation method (returning a plain stdClass is fine). Enable the module so the plugin is discoverable on the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/social_api-network-plugin-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/social_api-network-plugin-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/social_api-network-plugin-cleanup.sh",
+      "expected_output": "\\Drupal::service('plugin.network.manager')->hasDefinition('social_api_eval_net') is TRUE, the definition's type is social_auth, and its class is a subclass of Drupal\\social_api\\Plugin\\NetworkBase (the plugin lives in src/Plugin/Network/ with an @Network annotation and an initSdk() implementation)."
+    },
+    {
+      "id": "social_api-manager-role",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "site-owner-layman",
+      "prompt": "On this Drupal site I need a role called social_api_manager (machine name exactly that) whose only job is to let someone open the Social API settings page at /admin/config/social-api. Give it just the one permission needed for that page and no other Social API permissions. Create the role on the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/social_api-manager-role-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/social_api-manager-role-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/social_api-manager-role-cleanup.sh",
+      "expected_output": "user.role.social_api_manager exists with the permission 'administer social api configuration' (the _permission requirement of the social_api.admin_config route) and none of the other four 'administer social api …' permissions."
+    }
+  ]
+}

@@ -1,0 +1,100 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "private_content",
+  "version": "2.2.x",
+  "note": "Private Content marks nodes private and hides them from users lacking permission (the author is never restricted). It adds a revisionable base field 'private' to nodes and a per-content-type third-party setting node.type.<bundle>.third_party.private_content.private with modes 0=PRIVATE_DISABLED (always public), 1=PRIVATE_ALLOWED (public default), 2=PRIVATE_AUTOMATIC (private default), 3=PRIVATE_ALWAYS (always private/locked). Enforcement is split: hook_node_access() removes view/update/delete on the canonical/edit paths, while hook_node_grants()+hook_node_access_records() (realms private_view gid 1 = 'access private content', and private_author gid = author uid) cover node-listing queries. Permissions: 'mark content as private', 'edit private content', 'access private content'. Actions private_content_make_private / _make_public. No configure route. Medium cases set a known content-type mode / node private flag for the agent to read; hard cases require the agent to configure a content type as always-private and to mark a node private, verified against live config/entity state. Introspection cases read config only (no node access rebuild); a final rebuild keeps grants consistent.",
+  "evals": [
+    {
+      "id": "private_content-two-mechanisms",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "How does the Drupal private_content module actually enforce that a private node is hidden both on its own page AND in listings like Views and the front page? Which access mechanisms does it use and why more than one?",
+      "must_contain_any": [
+        "node grant",
+        "node_grants",
+        "hook_node_grants",
+        "hook_node_access",
+        "node access records"
+      ],
+      "must_not_contain": [],
+      "expected_output": "It uses hook_node_access() to remove access for a single node (canonical page, edit, delete), because that hook is not called for node-listing queries; and it uses the Node Access Grants API (hook_node_grants() + hook_node_access_records(), realms private_view and private_author) to cover the bulk listing queries (Views, front page, search). It only ever removes access, never adds it."
+    },
+    {
+      "id": "private_content-permissions",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "What permissions does the private_content module define, and specifically which one lets a user view any node that has been marked private?",
+      "must_contain_any": [
+        "access private content"
+      ],
+      "must_not_contain": [],
+      "expected_output": "It defines 'mark content as private' (may toggle the private checkbox), 'edit private content' (update/delete a private node you don't own) and 'access private content' (view any private node). 'access private content' is the one that grants viewing of private nodes."
+    },
+    {
+      "id": "private_content-always-private-type",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "Using private_content, how do I make an entire content type always private (every node of that type private, with the flag locked on), and where is that per-content-type setting stored?",
+      "must_contain_any": [
+        "third party setting",
+        "third_party_settings",
+        "node.type",
+        "always private",
+        "Hidden"
+      ],
+      "must_not_contain": [],
+      "expected_output": "On the content type's edit form set Privacy to 'Hidden (always private)'. It is stored as a third-party setting node.type.<bundle>.third_party.private_content.private = 3 (PRIVATE_ALWAYS). Changing it flags a node access rebuild."
+    },
+    {
+      "id": "private_content-type-mode",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "This Drupal site has a content type with machine name 'pc_note' whose private_content privacy behaviour has been configured. Inspect the live configuration and tell me which privacy mode it uses (the private_content 'private' setting), naming what that mode means.",
+      "must_contain_any": [
+        "always private",
+        "Hidden",
+        "3"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The pc_note content type has third-party setting private_content.private = 3, i.e. PRIVATE_ALWAYS = 'Hidden (always private)': every node of this type is private and the flag is locked on.",
+      "setup": "agent-module-documentation/evaluation/verify/private_content-type-mode-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/private_content-type-mode-cleanup.sh"
+    },
+    {
+      "id": "private_content-node-flag",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "This site has two Article nodes titled 'PC Alpha' and 'PC Beta'. Exactly one has been marked private with private_content. Inspect the live nodes' private field and state which node is the private one.",
+      "must_contain_any": [
+        "PC Alpha"
+      ],
+      "must_not_contain": [],
+      "expected_output": "'PC Alpha' is the private node: its base field 'private' has stored value 1 (isPrivate() true), whereas 'PC Beta' has private = 0.",
+      "setup": "agent-module-documentation/evaluation/verify/private_content-node-flag-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/private_content-node-flag-cleanup.sh"
+    },
+    {
+      "id": "private_content-configure-type",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site there is a content type with machine name 'pc_task' that is currently public. Using the private_content module, configure this content type so that every node of it is always private (the strongest 'always private / hidden' privacy mode). Apply the change to the live site configuration.",
+      "reset": "agent-module-documentation/evaluation/verify/private_content-configure-type-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/private_content-configure-type-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/private_content-configure-type-cleanup.sh",
+      "expected_output": "The pc_task node type carries third-party setting private_content.private = 3 (PRIVATE_ALWAYS), e.g. set via the node type form's Privacy 'Hidden (always private)' or NodeType::setThirdPartySetting('private_content','private',3)."
+    },
+    {
+      "id": "private_content-mark-node",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site there is a public Article node titled 'PC Task Node'. Using the private_content module, mark that specific node as private so only users with permission (and its author) can view it. Save the change to the live node.",
+      "reset": "agent-module-documentation/evaluation/verify/private_content-mark-node-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/private_content-mark-node-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/private_content-mark-node-cleanup.sh",
+      "expected_output": "The 'PC Task Node' node's base field 'private' is set to 1 (stored), so $node->private->isPrivate() is true — e.g. $node->set('private', 1)->save() or ticking Private on the node form."
+    }
+  ]
+}

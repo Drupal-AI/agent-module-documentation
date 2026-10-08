@@ -1,0 +1,80 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "db_maintenance",
+  "version": "3.0.x",
+  "note": "DB Maintenance runs OPTIMIZE TABLE (MySQL/MariaDB) or VACUUM (PostgreSQL) on selected tables during cron. Everything is stored in the db_maintenance.settings config object (cron_frequency, use_time_interval, time_interval_start/end, all_tables, write_log, table_list keyed by database name); the last-run timestamp is in state db_maintenance.cron_last_run. Admin form at /admin/config/system/db_maintenance (route db_maintenance.admin_settings, permission 'administer db maintenance'); manual run at /db_maintenance (route db_maintenance.optimize_tables_page). Medium cases write known values into db_maintenance.settings and the agent reads them back; hard cases have the agent write config (all_tables + cron_frequency, or a time-interval window) verified against the live config object. Shipped baseline: cron_frequency=86400, use_time_interval=false, time_interval_start='01:30', time_interval_end='02:30', all_tables=false, write_log=false, table_list={}.",
+  "evals": [
+    {
+      "id": "db_maintenance-what-query",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "What database maintenance operation does the Drupal db_maintenance module perform during cron, and how does it differ between MySQL/MariaDB and PostgreSQL?",
+      "must_contain_any": ["OPTIMIZE TABLE", "OPTIMIZE", "VACUUM"],
+      "must_not_contain": [],
+      "expected_output": "It runs OPTIMIZE TABLE on MySQL/MariaDB and VACUUM on PostgreSQL against the configured tables, to defragment and reclaim space; a driver factory picks MySqlHandler or PgSqlHandler based on the active connection."
+    },
+    {
+      "id": "db_maintenance-config-object",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "In the Drupal db_maintenance module, which config object holds its settings and which keys control how often it runs and whether every table is optimized?",
+      "must_contain_any": ["db_maintenance.settings", "cron_frequency", "all_tables"],
+      "must_not_contain": [],
+      "expected_output": "Settings live in db_maintenance.settings. cron_frequency (seconds; 0 = every cron) controls cadence and all_tables (bool) optimizes every base table. Other keys: use_time_interval, time_interval_start/end, write_log, table_list."
+    },
+    {
+      "id": "db_maintenance-admin-and-permission",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "Where is the db_maintenance settings form, what permission protects it, and how can an admin trigger an optimization immediately?",
+      "must_contain_any": ["administer db maintenance", "/admin/config/system/db_maintenance", "db_maintenance.admin_settings", "/db_maintenance"],
+      "must_not_contain": [],
+      "expected_output": "The form is at /admin/config/system/db_maintenance (route db_maintenance.admin_settings), protected by the 'administer db maintenance' permission. The 'Optimize now.' link hits /db_maintenance (route db_maintenance.optimize_tables_page, CSRF-protected) to run immediately."
+    },
+    {
+      "id": "db_maintenance-known-frequency",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "On this Drupal site, db_maintenance has been configured with a specific optimization frequency. Inspect the live db_maintenance.settings config and state the cron_frequency value (in seconds) it is set to.",
+      "must_contain_any": ["604800"],
+      "must_not_contain": [],
+      "expected_output": "cron_frequency is 604800 (weekly). Read it with `drush cget db_maintenance.settings cron_frequency`.",
+      "setup": "agent-module-documentation/evaluation/verify/db_maintenance-known-frequency-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/db_maintenance-known-frequency-cleanup.sh"
+    },
+    {
+      "id": "db_maintenance-known-window",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "This site restricts db_maintenance to a nightly time window. Inspect the live configuration and report the start time of that maintenance window.",
+      "must_contain_any": ["03:15"],
+      "must_not_contain": [],
+      "expected_output": "use_time_interval is true and time_interval_start is '03:15' (end '04:45'). Read db_maintenance.settings.",
+      "setup": "agent-module-documentation/evaluation/verify/db_maintenance-known-window-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/db_maintenance-known-window-cleanup.sh"
+    },
+    {
+      "id": "db_maintenance-optimize-all-every-cron",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "Configure the db_maintenance module on this site so that it optimizes ALL database tables on EVERY cron run. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/db_maintenance-config-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/db_maintenance-optimize-all-every-cron-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/db_maintenance-config-reset.sh",
+      "expected_output": "Set db_maintenance.settings all_tables to true and cron_frequency to 0 (every cron), e.g. `drush cset db_maintenance.settings all_tables true -y` and `drush cset db_maintenance.settings cron_frequency 0 -y`."
+    },
+    {
+      "id": "db_maintenance-nightly-window",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "Configure db_maintenance so it only runs its optimization between 02:00 and 03:00 each day (a maintenance window). Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/db_maintenance-config-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/db_maintenance-nightly-window-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/db_maintenance-config-reset.sh",
+      "expected_output": "Set use_time_interval to true, time_interval_start to '02:00' and time_interval_end to '03:00' in db_maintenance.settings."
+    }
+  ]
+}

@@ -1,0 +1,79 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "flag_anon",
+  "version": "1.x",
+  "note": "Flag Anonymous extends the Flag module: for a flag it is enabled on, anonymous users who lack permission to flag see a configurable '@login or @register to use this flag' CTA (optionally in a modal) instead of the flag link, and are auto-flagged after they authenticate. No configure route, no permissions, no plugins, no drush. Its only state is third-party settings on each Flag config entity (flag.flag.<id>.third_party.flag_anon, key 'enabled' plus message/labels/popup options). It works by decorating the flag.link_builder service with FlagAnonLinkBuilder (via FlagAnonServiceProvider). Medium/hard cases are grounded in a real Flag config entity 'flaganon_eval' created against the Article bundle; setup/reset build it with drush php:eval and cleanup deletes it, so the shared site is left with no such flag.",
+  "evals": [
+    {
+      "id": "flaganon-where-stored",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "In the Drupal flag_anon module, there is no dedicated settings page. Where do you turn on the anonymous 'login/register to use this flag' behavior for a given flag, and where is that setting stored?",
+      "must_contain_any": [
+        "third_party",
+        "third-party",
+        "third party setting",
+        "flag edit form",
+        "Anonymous settings",
+        "flag.flag"
+      ],
+      "must_not_contain": [],
+      "expected_output": "You enable it per flag in the 'Anonymous settings' section of the flag's edit form (there is no configure route). It is stored as third-party settings on the flag config entity: flag.flag.<id>.third_party.flag_anon, with the master switch key 'enabled'."
+    },
+    {
+      "id": "flaganon-placeholders",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "In flag_anon's anonymous message, what do the @login and @register placeholders become, and how would I add my own custom placeholder to that message?",
+      "must_contain_any": [
+        "hook_flag_anon_message_placeholders_alter",
+        "placeholders",
+        "login",
+        "register"
+      ],
+      "must_not_contain": [],
+      "expected_output": "@login and @register are replaced with rendered links to the user login and registration forms. Add custom placeholders by implementing hook_flag_anon_message_placeholders_alter(&$placeholders, $flag, $entity) and adding a key like $placeholders['@help'] = ...->toString()."
+    },
+    {
+      "id": "flaganon-precondition",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "I enabled flag_anon 'Anonymous settings' on a flag, but anonymous visitors still see the normal flag link instead of the login/register message. What permission-related precondition am I missing, and how does flag_anon replace the link technically?",
+      "must_contain_any": [
+        "permission",
+        "anonymous",
+        "actionAccess",
+        "link_builder",
+        "link builder"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The anonymous role must NOT have flag/unflag permission for that flag; the CTA only appears when the anonymous user lacks access (build() checks actionAccess). Technically flag_anon decorates the flag.link_builder service with FlagAnonLinkBuilder, which returns the flag_anon_message render array instead of the link."
+    },
+    {
+      "id": "flaganon-which-flag-message",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "On this Drupal site a flag has Flag Anonymous enabled. Inspect the live flag configuration and tell me which flag it is (machine id) and what message anonymous users are shown.",
+      "must_contain_any": [
+        "flaganon_eval",
+        "favorites"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The flag flaganon_eval has third_party_settings.flag_anon.enabled = 1 and message '@login or @register to save this to your favorites'.",
+      "setup": "agent-module-documentation/evaluation/verify/flag_anon-anon-message-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/flag_anon-anon-message-cleanup.sh"
+    },
+    {
+      "id": "flaganon-enable-on-flag",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "This site has a Flag with machine id 'flaganon_eval' (on Article nodes) but Flag Anonymous is not turned on for it. Use the flag_anon module to enable the anonymous login/register behavior on that flag, applying the change to the live configuration.",
+      "reset": "agent-module-documentation/evaluation/verify/flag_anon-enable-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/flag_anon-enable-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/flag_anon-enable-cleanup.sh",
+      "expected_output": "Set the flaganon_eval flag's third-party setting flag_anon.enabled to a truthy value (e.g. $flag->setThirdPartySetting('flag_anon','enabled',1); $flag->save(); or tick 'Show this flag to anonymous users...' in the flag's Anonymous settings and save)."
+    }
+  ]
+}

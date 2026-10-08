@@ -1,0 +1,80 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "matomo_reports",
+  "version": "1.6.x",
+  "note": "Matomo Reports displays reports from an external Matomo server. Its connection settings live in the simple config object matomo_reports.matomoreportssettings (keys matomo_server_url, matomo_reports_token_auth, matomo_reports_allowed_sites, matomo_server_url_ignore_ssl); the settings form is /admin/config/system/matomo-reports (route matomo_reports.matomo_reports_settings). Reports render at /admin/reports/matomo-reports (controller MatomoReportsController), the page-statistics block is plugin matomo_page_report, permissions are 'access matomo reports' and 'administer matomo reports'. Per the campaign brief, all medium/hard cases are grounded in this LOCAL config object - they never call the live Matomo API - so a passing case only proves the connection config was read/written correctly, not that a Matomo server responded.",
+  "evals": [
+    {
+      "id": "matomo_reports-where-token",
+      "mode": "recipe",
+      "prompt": "I installed matomo_reports on a Drupal 11 site. Where do I enter the Matomo server URL and the token_auth so reports show up, and how can different users use their own token instead of a shared one?",
+      "must_contain_any": ["/admin/config/system/matomo-reports", "matomo_reports.matomoreportssettings", "token_auth", "matomo_server_url"],
+      "must_not_contain": [],
+      "expected_output": "Go to Configuration > System > Matomo Reports (/admin/config/system/matomo-reports, route matomo_reports.matomo_reports_settings) and set the Matomo Server URL and (optionally) a global token_auth; these save to the matomo_reports.matomoreportssettings config object. If you leave the global token blank, each user with 'access matomo reports' can enter their own token_auth on their user-edit form (stored via the user.data service).",
+      "difficulty": "easy"
+    },
+    {
+      "id": "matomo_reports-where-reports",
+      "mode": "recipe",
+      "prompt": "Where do the Matomo analytics reports appear inside a Drupal site once matomo_reports is configured, and what permission does a user need to see them?",
+      "must_contain_any": ["/admin/reports/matomo-reports", "access matomo reports", "Reports"],
+      "must_not_contain": [],
+      "expected_output": "Under Reports at /admin/reports/matomo-reports (route matomo_reports.reports, controller MatomoReportsController), with tabs for visitors, actions, referrers, goals and transitions. A user needs the 'access matomo reports' permission.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "matomo_reports-page-block",
+      "mode": "recipe",
+      "prompt": "Does matomo_reports provide a block to show per-page view counts, and does it need any other module?",
+      "must_contain_any": ["matomo_page_report", "Matomo page statistics", "matomo"],
+      "must_not_contain": [],
+      "expected_output": "Yes - the 'Matomo page statistics' block (plugin id matomo_page_report). It requires the separate matomo (tracking) module because it reads the tracked site_id from matomo.settings; without it the block shows a prompt to install Matomo. Access is gated by 'access matomo reports'.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "matomo_reports-known-server",
+      "mode": "introspection",
+      "prompt": "This Drupal site already has matomo_reports pointed at a Matomo server. Inspect the live configuration and report the Matomo server URL it is configured to use.",
+      "must_contain_any": ["matomo-known.example.com"],
+      "must_not_contain": [],
+      "expected_output": "matomo_reports.matomoreportssettings has matomo_server_url = https://matomo-known.example.com/matomo/ (read with `drush cget matomo_reports.matomoreportssettings`).",
+      "setup": "agent-module-documentation/evaluation/verify/matomo_reports-server-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/matomo_reports-server-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "matomo_reports-known-sites",
+      "mode": "introspection",
+      "prompt": "On this site, matomo_reports restricts which Matomo sites users may view. Inspect the live configuration and state which Matomo site IDs are allowed.",
+      "must_contain_any": ["2,5,9", "2, 5, 9"],
+      "must_not_contain": [],
+      "expected_output": "matomo_reports.matomoreportssettings matomo_reports_allowed_sites = '2,5,9' (the comma-separated whitelist of Matomo site IDs).",
+      "setup": "agent-module-documentation/evaluation/verify/matomo_reports-sites-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/matomo_reports-sites-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "matomo_reports-connect",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "Configure matomo_reports on this site to talk to the Matomo server at https://analytics.mtask.example.com/matomo/ using the shared token_auth value 'anonymous'. Apply the change to the live site configuration.",
+      "reset": "agent-module-documentation/evaluation/verify/matomo_reports-connect-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/matomo_reports-connect-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/matomo_reports-connect-reset.sh",
+      "expected_output": "In matomo_reports.matomoreportssettings set matomo_server_url = 'https://analytics.mtask.example.com/matomo/' and matomo_reports_token_auth = 'anonymous' (via the settings form or the config API)."
+    },
+    {
+      "id": "matomo_reports-allowed-sites",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "Restrict matomo_reports on this site so users may only view Matomo site IDs 3 and 7. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/matomo_reports-allowed-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/matomo_reports-allowed-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/matomo_reports-allowed-reset.sh",
+      "expected_output": "Set matomo_reports.matomoreportssettings matomo_reports_allowed_sites = '3,7'."
+    }
+  ]
+}

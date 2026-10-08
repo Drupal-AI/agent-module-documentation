@@ -1,0 +1,96 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "core_views_facets",
+  "version": "2.1.x",
+  "note": "Core Views Facets is a Facets add-on (requires facets + views). It derives a Facets facet source from any Views PAGE display that has an exposed and/or contextual filter: core_views_exposed_filter:<view>__<display> and core_views_contextual_filter:<view>__<display> (the facets_facet_source config entity id replaces ':' with '__'). The signature mandatory step is switching the facet source's URL processor to core_views_url_processor. A facet's field_identifier is the exposed filter id / contextual argument id. It has no settings form, permission, or Drush; state lives in facets_facet + facets_facet_source config plus the View. Medium/hard cases are grounded in a real fixture View (node_field_data base, page_1 display, exposed 'type' filter) built by the scripts: introspection reads the derived facet source and a fully-built facet+source; execution has the agent add a facet on the core-views source and assign the required core_views_url_processor, verified against live config. All fixtures are namespaced cvf_eval_* and torn down after.",
+  "evals": [
+    {
+      "id": "core_views_facets-url-processor",
+      "mode": "recipe",
+      "prompt": "I enabled Core Views Facets and my Views page shows up as a facet source, but adding a facet does nothing to the view. What is the required setup step on the facet source that people commonly miss?",
+      "must_contain_any": [
+        "core_views_url_processor",
+        "Core views url processor",
+        "url processor"
+      ],
+      "must_not_contain": [],
+      "expected_output": "You must edit the facet source and change its URL processor to 'Core views url processor' (core_views_url_processor). It formats the query URL the way Views' exposed filters expect; without it the facet links don't filter the view.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "core_views_facets-source-ids",
+      "mode": "recipe",
+      "prompt": "With Core Views Facets, what facet source plugin id(s) does a Views page display expose, and how does that differ for an exposed filter versus a contextual filter?",
+      "must_contain_any": [
+        "core_views_exposed_filter",
+        "core_views_contextual_filter"
+      ],
+      "must_not_contain": [],
+      "expected_output": "A page display with an exposed filter yields facet source core_views_exposed_filter:<view>__<display>; one with a contextual filter yields core_views_contextual_filter:<view>__<display>. A display can expose both. (The facets_facet_source config entity id replaces the ':' with '__'.)",
+      "difficulty": "easy"
+    },
+    {
+      "id": "core_views_facets-prerequisites",
+      "mode": "recipe",
+      "prompt": "Before I can create a facet from a plain View using Core Views Facets, what must the View itself have? List the prerequisites.",
+      "must_contain_any": [
+        "page",
+        "exposed filter",
+        "contextual filter"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The View needs at least one page display, and that display must have at least one exposed filter and/or one contextual filter (argument). Only then does core_views_facets derive a facet source for it; then you add the facet on that source (and set the core_views_url_processor).",
+      "difficulty": "easy"
+    },
+    {
+      "id": "core_views_facets-inspect-facet",
+      "mode": "introspection",
+      "prompt": "On this Drupal site there is a facet built from a core View. Inspect the live Facets configuration and tell me: which URL processor is assigned to that view's facet source, and which field (filter) the facet targets.",
+      "must_contain_any": [
+        "core_views_url_processor",
+        "type"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The facet source core_views_exposed_filter__cvf_eval_view__page_1 uses url_processor core_views_url_processor, and the facet cvf_eval_facet has field_identifier 'type' (the view's exposed content-type filter), facet_source_id core_views_exposed_filter:cvf_eval_view__page_1.",
+      "setup": "agent-module-documentation/evaluation/verify/core_views_facets-facet-config-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/core_views_facets-teardown.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "core_views_facets-derived-source",
+      "mode": "introspection",
+      "prompt": "This site has a View called cvf_eval_view with a page display and an exposed filter. Using Core Views Facets, what facet source does the module derive for it? Inspect the running site's facet source plugins to answer.",
+      "must_contain_any": [
+        "core_views_exposed_filter:cvf_eval_view__page_1"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The module derives the facet source plugin core_views_exposed_filter:cvf_eval_view__page_1 (from the page_1 display's exposed filter). Discoverable via the plugin.manager.facets.facet_source definitions on the live site.",
+      "setup": "agent-module-documentation/evaluation/verify/core_views_facets-derived-source-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/core_views_facets-teardown.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "core_views_facets-add-facet",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "This site has a View cvf_eval_view (page display path cvf-eval) with an exposed 'type' filter, and a Core Views Facets facet source core_views_exposed_filter__cvf_eval_view__page_1 already configured with the core_views_url_processor. Create a facet on that facet source that facets the view's exposed 'type' filter. Apply it to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/core_views_facets-add-facet-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/core_views_facets-add-facet-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/core_views_facets-teardown.sh",
+      "expected_output": "Create a facets_facet whose facet_source_id is core_views_exposed_filter:cvf_eval_view__page_1 and whose field_identifier is 'type' (e.g. Facet::create([...])->save(), or via /admin/config/search/facets/add-facet choosing that source and the 'type' field)."
+    },
+    {
+      "id": "core_views_facets-set-url-processor",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this site the Core Views Facets facet source core_views_exposed_filter__cvf_eval_view__page_1 is currently using the wrong URL processor, so facets won't filter the view. Configure this facet source to use the Core Views URL processor. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/core_views_facets-url-processor-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/core_views_facets-url-processor-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/core_views_facets-teardown.sh",
+      "expected_output": "Set the facets_facet_source core_views_exposed_filter__cvf_eval_view__page_1 url_processor to core_views_url_processor (edit the facet source in the Facets UI and choose 'Core views url processor', or set url_processor on the FacetSource config entity and save)."
+    }
+  ]
+}

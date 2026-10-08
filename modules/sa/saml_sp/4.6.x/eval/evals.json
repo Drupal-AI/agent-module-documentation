@@ -1,0 +1,100 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "saml_sp",
+  "version": "4.6.x",
+  "note": "saml_sp is a SAML 2.0 Service Provider toolkit. State is config: the saml_sp.settings config object (contact/organization, security signing flags, entity_id, cert_location/key_location/new_cert_location, strict, valid_until, debug) and idp config entities (saml_sp.idp.<id>, keys entity_id/login_url/logout_url/x509_cert/app_name/nameid_field/authn_context_class_ref). Fixed endpoints: /saml/consume (ACS), /saml/metadata.xml, /saml/logout. Permission 'configure saml sp'; library onelogin/php-saml; no plugins/Drush. Evals are grounded in that: recipe covers endpoints/IdP entity/cert-key/library; introspection reads back a known IdP and a known SP entity_id from live config; execution registers an IdP config entity and configures the SP cert/key file paths, verified against live config. Fixtures use namespaced ids smlsp_* and saml_sp.settings values are restored to shipped defaults on cleanup/reset.",
+  "evals": [
+    {
+      "id": "saml_sp-endpoints",
+      "mode": "recipe",
+      "prompt": "A SAML Identity Provider admin needs the Service Provider URLs for a Drupal site running the saml_sp module. What are the Assertion Consumer Service (ACS), metadata and logout URLs the module exposes?",
+      "must_contain_any": [
+        "/saml/consume",
+        "/saml/metadata",
+        "/saml/logout"
+      ],
+      "must_not_contain": [],
+      "expected_output": "ACS (assertion consumer service) is /saml/consume (route saml_sp.consume), SP metadata is at /saml/metadata.xml (saml_sp.metadata), and the SAML logout callback is /saml/logout (saml_sp.logout).",
+      "difficulty": "easy"
+    },
+    {
+      "id": "saml_sp-register-idp-how",
+      "mode": "recipe",
+      "prompt": "With the saml_sp module, how do I register an external SAML Identity Provider, and what kind of Drupal configuration object represents each IdP? Where in the admin UI is it?",
+      "must_contain_any": [
+        "idp",
+        "Identity Provider",
+        "/admin/config/people/saml_sp",
+        "saml_sp.idp"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Each IdP is an 'idp' config entity (config name saml_sp.idp.<id>) with its entityID, login/logout URLs and X.509 cert. Add one at /admin/config/people/saml_sp (IdP collection at /admin/config/people/saml_sp/idp_collection); you can paste the IdP's XML metadata to auto-fill the form.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "saml_sp-cert-key-library",
+      "mode": "recipe",
+      "prompt": "Where does the saml_sp module get the Service Provider's X.509 certificate and private key used to sign SAML requests, and which third-party PHP library does it rely on?",
+      "must_contain_any": [
+        "cert_location",
+        "key_location",
+        "onelogin",
+        "php-saml"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The SP cert and key are server file paths configured in saml_sp.settings as cert_location and key_location (PHP-readable files); new_cert_location can stage a rotation cert. It uses the onelogin/php-saml toolkit for SAML processing.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "saml_sp-known-idp",
+      "mode": "introspection",
+      "prompt": "This Drupal site has a SAML Identity Provider registered with the saml_sp module. Inspect the live configuration and report the IdP's single sign-on (login) URL.",
+      "must_contain_any": [
+        "https://idp.smlsp-eval.example/sso/login",
+        "idp.smlsp-eval.example",
+        "smlsp_known"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The IdP smlsp_known (config saml_sp.idp.smlsp_known) has login_url = https://idp.smlsp-eval.example/sso/login (logout_url .../sso/logout, entityID .../entity).",
+      "setup": "agent-module-documentation/evaluation/verify/saml_sp-known-idp-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/saml_sp-known-idp-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "saml_sp-known-entityid",
+      "mode": "introspection",
+      "prompt": "On this site the saml_sp module's Service Provider entity ID has been set to a non-default value. Inspect the live saml_sp settings and report the SP entity_id.",
+      "must_contain_any": [
+        "urn:smlsp-eval:sp"
+      ],
+      "must_not_contain": [],
+      "expected_output": "saml_sp.settings:entity_id is 'urn:smlsp-eval:sp' (this is the SP entityID presented to the IdP).",
+      "setup": "agent-module-documentation/evaluation/verify/saml_sp-known-entityid-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/saml_sp-known-entityid-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "saml_sp-register-idp",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, register a new SAML Identity Provider with the saml_sp module: machine id 'smlsp_task', label 'ACME IdP', entityID 'https://idp.acme-eval.example/entity', login (SSO) URL 'https://idp.acme-eval.example/sso' and logout (SLO) URL 'https://idp.acme-eval.example/slo'. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/saml_sp-register-idp-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/saml_sp-register-idp-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/saml_sp-register-idp-cleanup.sh",
+      "expected_output": "An idp config entity 'smlsp_task' exists (saml_sp.idp.smlsp_task) with login_url = https://idp.acme-eval.example/sso and logout_url = https://idp.acme-eval.example/slo (e.g. Idp::create([...])->save(), or via /admin/config/people/saml_sp Add Identity Provider)."
+    },
+    {
+      "id": "saml_sp-sp-cert",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this site, configure the saml_sp Service Provider signing credentials by pointing it at the SP's certificate and private key files on the server: certificate at /etc/saml/sp.crt and private key at /etc/saml/sp.key. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/saml_sp-sp-cert-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/saml_sp-sp-cert-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/saml_sp-sp-cert-cleanup.sh",
+      "expected_output": "saml_sp.settings has cert_location = /etc/saml/sp.crt and key_location = /etc/saml/sp.key (e.g. drush cset saml_sp.settings cert_location /etc/saml/sp.crt and key_location /etc/saml/sp.key, or via the SAML settings form)."
+    }
+  ]
+}

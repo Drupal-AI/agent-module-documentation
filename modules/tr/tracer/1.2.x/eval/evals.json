@@ -1,0 +1,98 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "tracer",
+  "version": "1.2.x",
+  "note": "Tracer is a developer instrumentation module with no config UI, no schema, no permissions, no Drush and no plugin manager. Its only runtime switch is $settings['tracer_plugin'] in settings.php (default unset -> NoopTracer). It decorates core services (event_dispatcher -> TraceableEventDispatcher, HTTP kernel middleware, http_client middleware, controller resolver, Twig profiler). Because the site is shared and settings.php is edited concurrently by other agents, the evals deliberately AVOID mutating settings.php: recipe covers activation/interface/decoration; introspection reads the live service classes (tracer.tracer -> NoopTracer, event_dispatcher -> TraceableEventDispatcher); execution has the agent WRITE a TracerInterface backend class file under web/modules/custom/ (never enabled -> no orphaned module) which verify require()s and reflects/instantiates. Fixtures are namespaced trcr_* module dirs, removed on cleanup/reset.",
+  "evals": [
+    {
+      "id": "tracer-activate-backend",
+      "mode": "recipe",
+      "prompt": "The Tracer module is enabled on my Drupal site but nothing is being traced. How do I activate a real tracer backend, and what does Tracer use by default when none is configured?",
+      "must_contain_any": [
+        "tracer_plugin",
+        "settings.php",
+        "NoopTracer"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Set $settings['tracer_plugin'] in settings.php to the fully-qualified class name of a TracerInterface implementation (e.g. Webprofiler's, or your own). With nothing configured, TracerFactory returns Drupal\\tracer\\NoopTracer, which records nothing.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "tracer-service-interface",
+      "mode": "recipe",
+      "prompt": "In the Tracer module, which service/interface do I use to record trace spans from my own code, and what are its main methods?",
+      "must_contain_any": [
+        "tracer.tracer",
+        "TracerInterface",
+        "getEvents",
+        "start("
+      ],
+      "must_not_contain": [],
+      "expected_output": "Inject the tracer.tracer service (Drupal\\tracer\\TracerInterface). Methods: start(category, name, attributes) returns a span, openSection(span), closeSection(span), stop(span), and getEvents() returns the recorded spans.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "tracer-decorated-services",
+      "mode": "recipe",
+      "prompt": "What core Drupal services does the Tracer module decorate or replace so they can be traced?",
+      "must_contain_any": [
+        "event_dispatcher",
+        "TraceableEventDispatcher",
+        "middleware",
+        "controller resolver"
+      ],
+      "must_not_contain": [],
+      "expected_output": "It decorates event_dispatcher with a TraceableEventDispatcher, wraps the HTTP kernel with TracesMiddleware (http_middleware), adds an HttpClientMiddleware for Guzzle, replaces the controller resolver with TraceableControllerResolver, and adds a Twig profiler extension (via tracer.services.yml + TracerServiceProvider).",
+      "difficulty": "easy"
+    },
+    {
+      "id": "tracer-default-service",
+      "mode": "introspection",
+      "prompt": "Inspect this running Drupal site: what concrete class does the tracer.tracer service currently resolve to, and what does that tell you about whether a real tracer backend is active?",
+      "must_contain_any": [
+        "NoopTracer"
+      ],
+      "must_not_contain": [],
+      "expected_output": "tracer.tracer resolves to Drupal\\tracer\\NoopTracer (get_class(\\Drupal::service('tracer.tracer'))), meaning no tracer_plugin is configured in settings.php and no real backend is active - tracing is a no-op.",
+      "setup": "agent-module-documentation/evaluation/verify/tracer-default-tracer-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/tracer-default-tracer-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "tracer-event-dispatcher-class",
+      "mode": "introspection",
+      "prompt": "On this running site, prove that Tracer has instrumented the event system: what class does the core event_dispatcher service resolve to while Tracer is enabled?",
+      "must_contain_any": [
+        "TraceableEventDispatcher"
+      ],
+      "must_not_contain": [],
+      "expected_output": "event_dispatcher resolves to Drupal\\tracer\\EventDispatcher\\TraceableEventDispatcher (Tracer decorates the event_dispatcher service), verifiable via get_class(\\Drupal::service('event_dispatcher')).",
+      "setup": "agent-module-documentation/evaluation/verify/tracer-event-dispatcher-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/tracer-event-dispatcher-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "tracer-write-backend",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "Create a custom Tracer backend for this site. Write a PHP class file at web/modules/custom/trcr_backend/src/SpanTracer.php defining the class Drupal\\trcr_backend\\SpanTracer that implements Drupal\\tracer\\TracerInterface (all of its methods: start, openSection, closeSection, stop, getEvents). You do not need to enable a module - just create the class file on disk.",
+      "reset": "agent-module-documentation/evaluation/verify/tracer-write-backend-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/tracer-write-backend-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/tracer-write-backend-cleanup.sh",
+      "expected_output": "The file web/modules/custom/trcr_backend/src/SpanTracer.php exists, passes php -l, and defines Drupal\\trcr_backend\\SpanTracer implementing Drupal\\tracer\\TracerInterface (start/openSection/closeSection/stop/getEvents)."
+    },
+    {
+      "id": "tracer-recording-backend",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "Write a WORKING Tracer backend at web/modules/custom/trcr_recorder/src/RecordingTracer.php: class Drupal\\trcr_recorder\\RecordingTracer implementing Drupal\\tracer\\TracerInterface that actually records spans, so that after calling start() and then stop() on a span, getEvents() returns a non-empty array containing the recorded span. Just create the class file (no module enable needed).",
+      "reset": "agent-module-documentation/evaluation/verify/tracer-recording-backend-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/tracer-recording-backend-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/tracer-recording-backend-cleanup.sh",
+      "expected_output": "web/modules/custom/trcr_recorder/src/RecordingTracer.php defines Drupal\\trcr_recorder\\RecordingTracer implementing TracerInterface; instantiating it, calling start() then stop(), and calling getEvents() returns an array with at least one recorded span."
+    }
+  ]
+}

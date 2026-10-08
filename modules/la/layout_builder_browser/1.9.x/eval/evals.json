@@ -1,0 +1,94 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "layout_builder_browser",
+  "version": "1.9.x",
+  "note": "Layout Builder Browser replaces core's layout_builder.choose_block controller (via a RouteSubscriber at RoutingEvents::ALTER priority -110) with BrowserController::browse, which builds a curated block chooser out of two config entity types: layout_builder_browser_blockcat (categories: label, status, weight, opened, image_path, image_alt) and layout_builder_browser_block (block_id -> a block plugin id, category, label, status, weight, image_path, image_alt). Whether the takeover happens at all is decided by layout_builder_browser.settings:enabled_section_storages (ships as ['overrides']); the other two settings keys are use_modal and auto_added_reusable_block_content_bundles. The module defines NO permissions file (everything uses core's 'administer site configuration'), no plugin types, no Drush commands, and its only hook is hook_layout_builder_browser_alter(). Every medium/hard case is grounded in that real config: introspection reads back the live catalog entities and the live settings object; execution builds a real category + browser block and flips the real settings keys, verified against live config.",
+  "evals": [
+    {
+      "id": "layout_builder_browser-takeover-mechanism",
+      "mode": "recipe",
+      "prompt": "On a Drupal 11 site the layout_builder_browser module is enabled but Layout Builder's 'Choose a block' screen still shows the normal core list when I edit the default layout of a content type. Which configuration object and key decides whether the custom browser is used, and what value does the module ship with?",
+      "must_contain_any": [
+        "enabled_section_storages",
+        "layout_builder_browser.settings"
+      ],
+      "must_not_contain": [],
+      "expected_output": "layout_builder_browser.settings:enabled_section_storages lists the section storage plugin ids the browser takes over. It ships as ['overrides'] only, so per-entity layout overrides use the curated browser while the default-layout screen falls back to core's ChooseBlockController. Add 'defaults' to the list (Settings tab at /admin/config/content/layout-builder-browser/settings) to cover both.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "layout_builder_browser-config-entities",
+      "mode": "recipe",
+      "prompt": "I want to restrict which blocks editors can place in Layout Builder using the layout_builder_browser module, grouped into my own categories. Which config entity types does the module define for this, and which property on the block entity points at the actual block plugin?",
+      "must_contain_any": [
+        "layout_builder_browser_block",
+        "layout_builder_browser_blockcat",
+        "block_id"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Two config entity types: layout_builder_browser_blockcat (a category - id, label, status, weight, opened, image_path, image_alt) and layout_builder_browser_block (an allowed block - id, block_id, category, label, status, weight, image_path, image_alt). The block_id property holds the block plugin id (e.g. system_powered_by_block, inline_block:bp_simple, block_content:<uuid>). Config names are layout_builder_browser.layout_builder_browser_blockcat.<id> and layout_builder_browser.layout_builder_browser_block.<id>. Only entities with status TRUE are rendered, and a category with no visible blocks is dropped from the output.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "layout_builder_browser-alter-hook",
+      "mode": "recipe",
+      "prompt": "Using the Drupal contrib module layout_builder_browser, I want a custom module to change the block browser's search placeholder text and collapse some categories. Which hook does layout_builder_browser provide for that, and what arguments does it receive?",
+      "must_contain_any": [
+        "hook_layout_builder_browser_alter",
+        "layout_builder_browser_alter"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Implement hook_layout_builder_browser_alter(array &$build, array $context). $build is the browser render array ($build['filter'] is the search element, $build['block_categories'][<id>] are the details elements with 'links'); $context contains section_storage, delta and region. It is invoked at the end of BrowserController::browse(), so only when the curated browser actually built.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "layout_builder_browser-known-catalog",
+      "mode": "introspection",
+      "prompt": "This Drupal site has a Layout Builder Browser category configured whose machine name starts with lbb_eval. Inspect the live configuration and tell me: the category's human-readable label, and which of the browser blocks assigned to that category is currently DISABLED (give its machine name).",
+      "must_contain_any": [
+        "lbb_eval_help"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The category is lbb_eval_cat, labelled 'LBB Eval Promotions' (weight 7, opened false). It holds two layout_builder_browser_block entities: lbb_eval_powered (block_id system_powered_by_block, status true) and lbb_eval_help (block_id help_block, status FALSE) - so lbb_eval_help is the disabled one. Readable via `drush cget layout_builder_browser.layout_builder_browser_block.lbb_eval_help` or by loading the layout_builder_browser_block storage.",
+      "setup": "agent-module-documentation/evaluation/verify/layout_builder_browser-known-catalog-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/layout_builder_browser-known-catalog-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "layout_builder_browser-known-settings",
+      "mode": "introspection",
+      "prompt": "On this Drupal site, for which Layout Builder section storage(s) is the Layout Builder Browser currently active, and is it configured to open in a modal? Inspect the running site's configuration rather than assuming the module defaults.",
+      "must_contain_any": [
+        "defaults"
+      ],
+      "must_not_contain": [],
+      "expected_output": "layout_builder_browser.settings currently has enabled_section_storages: ['defaults'] (NOT the shipped default of ['overrides']), use_modal: true, and auto_added_reusable_block_content_bundles: ['basic']. So the browser is active only on the default-layout screen and renders in a modal. Discoverable with `drush cget layout_builder_browser.settings`.",
+      "setup": "agent-module-documentation/evaluation/verify/layout_builder_browser-known-settings-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/layout_builder_browser-known-settings-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "layout_builder_browser-curate-category",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, use the layout_builder_browser module to curate the Layout Builder block chooser: create an enabled block category with the machine name lbb_task_hero and the label 'LBB Task Hero', then register the core 'Powered by Drupal' block (block plugin id system_powered_by_block) as an enabled browser block inside that category. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/layout_builder_browser-curate-category-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/layout_builder_browser-curate-category-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/layout_builder_browser-curate-category-cleanup.sh",
+      "expected_output": "Create a layout_builder_browser_blockcat config entity {id: lbb_task_hero, label: 'LBB Task Hero', status: TRUE} and a layout_builder_browser_block config entity with block_id: system_powered_by_block, category: lbb_task_hero, status: TRUE (via the entity storages, exported config, or the forms under /admin/config/content/layout-builder-browser)."
+    },
+    {
+      "id": "layout_builder_browser-enable-defaults",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "site-owner",
+      "prompt": "On this Drupal site the curated Layout Builder block picker only kicks in when someone customises the layout of one individual page - on the screen where we set up the standard layout for a content type we still get the plain, uncurated list. Make the curated picker apply on both of those screens, and make it open in a pop-up window in the middle of the screen instead of the narrow panel that slides in from the side. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/layout_builder_browser-enable-defaults-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/layout_builder_browser-enable-defaults-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/layout_builder_browser-enable-defaults-cleanup.sh",
+      "expected_output": "Set layout_builder_browser.settings:enabled_section_storages to contain both 'defaults' and 'overrides', and use_modal to TRUE (Settings tab at /admin/config/content/layout-builder-browser/settings, or the config factory)."
+    }
+  ]
+}

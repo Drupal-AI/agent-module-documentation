@@ -1,0 +1,94 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "eca_webform",
+  "version": "2.0.x",
+  "note": "ECA Webform provides (1) one derived ECA event plugin, base id 'webform', with 25 derivatives 'webform:<hook>' (e.g. webform:submission_form_alter, webform:submission_access, webform:element_alter, webform:options_alter, webform:access_rules) mirroring Webform's alter/access hooks and exposing args as [webform:*] tokens; and (2) four core #[Action] plugins: eca_webform_submission_get_data and eca_webform_submission_set_data (type webform_submission; keys field_name + token_name/field_value) and eca_webform_get_third_party_setting / eca_webform_set_third_party_setting (type webform; keys provider, setting_name, token_name/setting_value). No configure route, permissions, or Drush. Usage is entirely within ECA models (eca.eca.<id> config entities), so medium cases read back a seeded model's action plugin/config, and hard cases build an ECA model referencing an eca_webform action or event (verified on the live eca config entity). An ECA model with empty events still saves and preserves its actions, which the get-data verify relies on.",
+  "evals": [
+    {
+      "id": "eca_webform-event-id",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "Using the eca_webform module, I want to start an ECA model when a webform submission form is being built (the submission_form_alter hook). What is the ECA event plugin id I select, and what is the base plugin id that all eca_webform events derive from?",
+      "must_contain_any": [
+        "webform:submission_form_alter",
+        "webform:"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The event plugin id is webform:submission_form_alter. All eca_webform events derive from the single base plugin id 'webform' (derivative id = 'webform:' + hook key), one derivative per Webform hook."
+    },
+    {
+      "id": "eca_webform-getdata-action",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "In an ECA model reacting to a webform submission, which eca_webform action reads a submitted element value into an ECA token, and which two configuration keys does it take (one for the element, one for the destination token)?",
+      "must_contain_any": [
+        "eca_webform_submission_get_data",
+        "field_name",
+        "token_name"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The action is eca_webform_submission_get_data (type webform_submission). It takes field_name (the element machine name to read via getElementData()) and token_name (the ECA token the value is written into). Both are token-aware."
+    },
+    {
+      "id": "eca_webform-third-party-actions",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "eca_webform also ships actions to read and write a webform's third-party settings. Name the two action plugin ids and the object type they operate on, and list their configuration keys.",
+      "must_contain_any": [
+        "eca_webform_get_third_party_setting",
+        "eca_webform_set_third_party_setting"
+      ],
+      "must_not_contain": [],
+      "expected_output": "eca_webform_get_third_party_setting and eca_webform_set_third_party_setting, both of type 'webform'. Common keys provider and setting_name; get- adds token_name (destination token), set- adds setting_value (the value to store)."
+    },
+    {
+      "id": "eca_webform-known-action",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "This site has an ECA model with machine name ecawf_known that contains a single eca_webform action. Inspect the live ECA configuration and state the action's plugin id.",
+      "must_contain_any": [
+        "eca_webform_submission_set_data"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The ecawf_known model's action uses plugin eca_webform_submission_set_data (readable from the eca.eca.ecawf_known config entity actions, e.g. $eca->get('actions')['act_set']['plugin']).",
+      "setup": "agent-module-documentation/evaluation/verify/eca_webform-known-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/eca_webform-known-cleanup.sh"
+    },
+    {
+      "id": "eca_webform-field-token",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "An ECA model named ecawf_field on this site uses an eca_webform 'Get submission data' action. Inspect the live configuration and state the token name (token_name) that the action writes the read value into.",
+      "must_contain_any": [
+        "submitted_email"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The get-data action in ecawf_field has token_name = submitted_email (in the action's configuration inside eca.eca.ecawf_field; it reads element field_name=email).",
+      "setup": "agent-module-documentation/evaluation/verify/eca_webform-field-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/eca_webform-field-cleanup.sh"
+    },
+    {
+      "id": "eca_webform-build-getdata",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, create an ECA model with machine name ecawf_task that includes an eca_webform 'Get submission data' action (plugin eca_webform_submission_get_data), configured with a field_name (an element machine name) and a token_name for the result. Save the model to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/eca_webform-build-getdata-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/eca_webform-build-getdata-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/eca_webform-build-getdata-cleanup.sh",
+      "expected_output": "An eca.eca.ecawf_task config entity exists whose actions include one with plugin=eca_webform_submission_get_data (with field_name and token_name in its configuration). Create it via the eca storage, e.g. \\Drupal::entityTypeManager()->getStorage('eca')->create([...])->save()."
+    },
+    {
+      "id": "eca_webform-build-event",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "Create an ECA model with machine name ecawf_task2 that is triggered by the eca_webform submission-form-alter event (event plugin webform:submission_form_alter), and save it to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/eca_webform-build-event-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/eca_webform-build-event-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/eca_webform-build-event-cleanup.sh",
+      "expected_output": "An eca.eca.ecawf_task2 config entity whose events include one with plugin=webform:submission_form_alter (the base plugin is 'webform', derivative 'submission_form_alter')."
+    }
+  ]
+}

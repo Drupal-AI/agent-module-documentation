@@ -1,0 +1,80 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "custom_field_graphql",
+  "version": "5.0.x",
+  "note": "custom_field_graphql exposes Custom Field (`custom`) fields and their subfield columns through GraphQL Compose. It registers GraphQL Compose FieldType/SchemaType plugins and extends graphql_compose.settings field_config.<entity>.<bundle>.<field> with a `subfields` map (custom_field_graphql.subfield.* = {enabled: bool, name_sdl: string}). IMPORTANT GROUNDING CAVEAT: this benchmark site does NOT have the graphql_compose project installed (and `composer require` is out of scope for this campaign), so the submodule itself cannot be enabled here. The easy (recipe) cases are fully valid text questions. The medium/hard cases are grounded in the module's real config contract — the `subfields` structure inside graphql_compose.settings — and their setup/reset/verify scripts round-trip that config object; they were smoke-tested at the config level, but a full end-to-end GraphQL query check requires graphql_compose to be installed. The scripts mutate ONLY the graphql_compose.settings config object under a namespaced field path and restore it, touching no other module.",
+  "evals": [
+    {
+      "id": "custom_field_graphql-purpose",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "What does the Drupal submodule custom_field_graphql do, and which contrib project must be installed for it to work?",
+      "must_contain_any": ["graphql_compose", "GraphQL Compose", "GraphQL"],
+      "must_not_contain": [],
+      "expected_output": "It integrates the Custom Field module with GraphQL Compose, exposing `custom` fields and their subfield columns in a GraphQL schema. It depends on the graphql_compose project."
+    },
+    {
+      "id": "custom_field_graphql-subfields-config",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "In custom_field_graphql, how can each column (subfield) of a Custom Field be individually controlled in the GraphQL schema, and what are the two per-subfield settings?",
+      "must_contain_any": ["subfields", "name_sdl", "enabled"],
+      "must_not_contain": [],
+      "expected_output": "It adds a `subfields` map to the GraphQL Compose field settings (graphql_compose.settings field_config.*), keyed by column machine name, with two settings per column: `enabled` (include in schema) and `name_sdl` (the GraphQL schema field name, used to give underscored machine names a clean SDL name)."
+    },
+    {
+      "id": "custom_field_graphql-name-sdl-why",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "Why does custom_field_graphql provide a `name_sdl` setting for a Custom Field column, and what is its default?",
+      "must_contain_any": ["name_sdl", "schema field name", "underscore", "machine name", "camel"],
+      "must_not_contain": [],
+      "expected_output": "name_sdl sets the GraphQL/SDL field name a column is exposed as; it defaults to the column machine name. It exists because Custom Field column machine names often contain underscores that are not ideal GraphQL identifiers, so you can expose e.g. price_amount as priceAmount."
+    },
+    {
+      "id": "custom_field_graphql-known-subfield",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "On this Drupal site, a Custom Field's GraphQL Compose settings have one column renamed for the schema. Inspect the graphql_compose.settings configuration for field_config.node.cfgql_eval.field_cfgql and report the GraphQL schema field name (name_sdl) configured for the 'price_amount' subfield.",
+      "must_contain_any": ["priceAmount"],
+      "must_not_contain": [],
+      "expected_output": "graphql_compose.settings field_config.node.cfgql_eval.field_cfgql.subfields.price_amount.name_sdl is 'priceAmount'.",
+      "setup": "agent-module-documentation/evaluation/verify/custom_field_graphql-known-subfield-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/custom_field_graphql-known-subfield-cleanup.sh"
+    },
+    {
+      "id": "custom_field_graphql-disabled-subfield",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "On this Drupal site, one subfield of a Custom Field has been excluded from the GraphQL schema. Inspect graphql_compose.settings field_config.node.cfgql_eval.field_cfgql and report which subfield has enabled = false.",
+      "must_contain_any": ["secret_note", "secret"],
+      "must_not_contain": [],
+      "expected_output": "graphql_compose.settings field_config.node.cfgql_eval.field_cfgql.subfields.secret_note.enabled is false.",
+      "setup": "agent-module-documentation/evaluation/verify/custom_field_graphql-disabled-subfield-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/custom_field_graphql-disabled-subfield-cleanup.sh"
+    },
+    {
+      "id": "custom_field_graphql-rename-subfield",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, in the GraphQL Compose settings for the Custom Field at field_config.node.cfgql_eval.field_cfgql, expose the 'price_amount' column in the GraphQL schema under the clean name 'priceAmount' (set its subfield name_sdl). Apply the change to the live configuration.",
+      "reset": "agent-module-documentation/evaluation/verify/custom_field_graphql-rename-subfield-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/custom_field_graphql-rename-subfield-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/custom_field_graphql-rename-subfield-cleanup.sh",
+      "expected_output": "graphql_compose.settings field_config.node.cfgql_eval.field_cfgql.subfields.price_amount.name_sdl == 'priceAmount'."
+    },
+    {
+      "id": "custom_field_graphql-disable-subfield",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, in the GraphQL Compose settings for the Custom Field at field_config.node.cfgql_eval.field_cfgql, exclude the 'secret_note' column from the GraphQL schema (disable that subfield). Apply the change to the live configuration.",
+      "reset": "agent-module-documentation/evaluation/verify/custom_field_graphql-disable-subfield-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/custom_field_graphql-disable-subfield-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/custom_field_graphql-disable-subfield-cleanup.sh",
+      "expected_output": "graphql_compose.settings field_config.node.cfgql_eval.field_cfgql.subfields.secret_note.enabled === false."
+    }
+  ]
+}

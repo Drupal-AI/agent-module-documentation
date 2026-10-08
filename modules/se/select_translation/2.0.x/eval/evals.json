@@ -1,0 +1,105 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "select_translation",
+  "version": "2.0.x",
+  "note": "Select Translation has one real configuration surface: a single Views filter, plugin id `select_translation_filter`, registered by hook_views_data_alter() on the node_field_data table. It has no settings form, no configure route, no permissions and no config schema of its own — the filter's options (value/priorities/default_language_only/include_content_with_unpublished_translation) are stored inline inside the host view config entity (views.view.*). Medium and hard cases are therefore grounded in a throwaway node view whose select_translation filter config is written (setup/reset) and read back (introspection) or built by the agent and verified (execution). Installed release is 2.0.0-alpha5 (alpha). The same selection algorithm is also exposed via select_translation_of_node() and the drush select_translation:translation command, covered by the recipe cases.",
+  "evals": [
+    {
+      "id": "select_translation-plugin-id",
+      "mode": "recipe",
+      "prompt": "The Drupal contrib module select_translation adds one Views filter for picking which translation of a node a listing shows. What is the machine plugin id of that Views filter, and which base table / views_data hook registers it?",
+      "must_contain_any": [
+        "select_translation_filter"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The filter plugin id is `select_translation_filter` (handler Drupal\\select_translation\\Plugin\\views\\filter\\SelectTranslation). It is registered on the `node_field_data` table via hook_views_data_alter() (select_translation_views_data_alter), exposed in the Views UI as 'Content: Select translation'.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "select_translation-modes",
+      "mode": "recipe",
+      "prompt": "In select_translation's Views filter, name the selection modes it offers for choosing which translation of a node to display, and describe the fallback order of the current-language-then-original mode.",
+      "must_contain_any": [
+        "original",
+        "default",
+        "fallback",
+        "list"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Four modes (the filter's `value` option): `original` (current interface language, else the node's original language), `default` (current interface language, else site default language, else original), `fallback` (core's language fallback candidate chain), and `list` (custom comma-separated language priorities). The original mode falls back current -> original node language.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "select_translation-priority-tokens",
+      "mode": "recipe",
+      "prompt": "When you set select_translation's Views filter (or its select_translation_of_node() API) to a custom comma-separated language priority list, which three special tokens are recognised in that list and what does each resolve to? Also: what happens if none of the listed languages is available?",
+      "must_contain_any": [
+        "current",
+        "default",
+        "original"
+      ],
+      "must_not_contain": [],
+      "expected_output": "current = the current interface language, default = the site default language, original = the node's original (untranslated) language. `original` is always appended as the final fallback, so if none of the listed languages is available the node's original translation is returned (a node is never dropped). Example list: en,fr,current,default,original.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "select_translation-filter-mode",
+      "mode": "introspection",
+      "prompt": "On this Drupal site a view named 'st_eval_mode' (id st_eval_mode) uses the select_translation Views filter. Inspect its live configuration and tell me: which selection mode is that filter set to, and if it is the custom-priority mode, what is the exact language priority list?",
+      "must_contain_any": [
+        "fr,en,current",
+        "list",
+        "custom"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The select_translation filter on view st_eval_mode is in custom list mode (value = list) with priorities = 'fr,en,current' — i.e. French, then English, then the current interface language (with the original node language as the implicit final fallback).",
+      "setup": "agent-module-documentation/evaluation/verify/select_translation-filter-mode-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/select_translation-filter-mode-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "select_translation-unpublished-fallback",
+      "mode": "introspection",
+      "prompt": "The view 'st_eval_unpub' on this site has a select_translation Views filter. Does that filter have the option enabled that returns the site-default-language node when the current-language translation exists but is unpublished? Inspect the live view configuration to answer.",
+      "must_contain_any": [
+        "yes",
+        "enabled",
+        "include_content_with_unpublished_translation",
+        "is enabled",
+        "turned on"
+      ],
+      "must_not_contain": [
+        "not enabled",
+        "is disabled",
+        "not set"
+      ],
+      "expected_output": "Yes. On view st_eval_unpub the filter's include_content_with_unpublished_translation option is set to 1 (enabled); its base selection mode value is 'default'. So the default-language node is returned when the current-language translation is unpublished.",
+      "setup": "agent-module-documentation/evaluation/verify/select_translation-unpublished-fallback-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/select_translation-unpublished-fallback-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "select_translation-add-original",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site there is a node view with id 'st_eval_add' that currently has no translation filter. Add the select_translation Views filter (plugin id select_translation_filter, 'Content: Select translation') to its default display and configure it in the mode that shows the node in the current interface language and otherwise falls back to the node's original language (the 'original' mode). Apply the change to the live site config.",
+      "reset": "agent-module-documentation/evaluation/verify/select_translation-add-original-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/select_translation-add-original-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/select_translation-add-original-cleanup.sh",
+      "expected_output": "views.view.st_eval_add gains a filter with plugin_id select_translation_filter on the node_field_data table whose value (selection mode) is 'original'."
+    },
+    {
+      "id": "select_translation-custom-priority",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site the node view with id 'st_eval_priority' has no translation filter yet. Add the select_translation Views filter (plugin id select_translation_filter) to its default display and set it to the custom language-priorities mode with the priority list 'en,fr,current' (English first, then French, then the current interface language). Apply the change to the live site config.",
+      "reset": "agent-module-documentation/evaluation/verify/select_translation-custom-priority-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/select_translation-custom-priority-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/select_translation-custom-priority-cleanup.sh",
+      "expected_output": "views.view.st_eval_priority gains a filter with plugin_id select_translation_filter whose value (selection mode) is 'list' and whose priorities string contains the language codes en and fr (e.g. 'en,fr,current')."
+    }
+  ]
+}

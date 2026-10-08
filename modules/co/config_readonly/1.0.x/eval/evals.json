@@ -1,0 +1,102 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "config_readonly",
+  "version": "1.0.x",
+  "note": "config_readonly has no admin UI, no configure route, no permissions, no Drush commands, no plugins and no config object of its own. All of its state lives in settings.php: $settings['config_readonly'] (the master switch) and $settings['config_readonly_whitelist_patterns'] (an exemption list surfaced through hook_config_readonly_whitelist_patterns()). The module unconditionally swaps core's config.storage service for Drupal\\config_readonly\\Config\\ConfigReadonlyStorage via ConfigReadonlyServiceProvider::alter(); that storage throws ConfigReadonlyStorageException from write/delete/rename/deleteAll unless the lock is off, a ConfigImporter run holds the config_importer lock, the route is system.db_update, or the config name matches a whitelist pattern. A second guard (config_readonly_form_alter + ReadOnlyFormSubscriber, priority 200) disables submit buttons on ConfigFormBase / ConfigEntityListBuilder / ConfigTranslationFormBase / config-entity forms and on config_single_import_form, system_modules, system_modules_uninstall and user_admin_permissions. Medium and hard cases are grounded in that real settings.php state and in the live module handler's hook aggregation; they deliberately never activate the lock on this shared site (the lock-state case installs a conditional block that stays OFF), so no case can leave the site write-protected.",
+  "evals": [
+    {
+      "id": "config_readonly-activate",
+      "mode": "recipe",
+      "prompt": "I installed and enabled the Drupal contrib module config_readonly on a site, but I can still save every configuration form. Why does enabling the module alone not lock anything, and exactly what do I have to do to make the active configuration store read-only?",
+      "must_contain_any": [
+        "settings.php",
+        "$settings['config_readonly'] = TRUE",
+        "$settings['config_readonly']"
+      ],
+      "must_not_contain": [],
+      "expected_output": "config_readonly has no admin UI and no configure route. The lock is a site setting: add $settings['config_readonly'] = TRUE; to settings.php (often wrapped in an environment conditional). Until that setting is truthy, both guards (ConfigReadonlyStorage::checkLock() and config_readonly_form_alter()) return early. /admin/reports/status shows 'Config is writable — The Config Read-only module is enabled but not active' in that state.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "config_readonly-whitelist",
+      "mode": "recipe",
+      "prompt": "On a Drupal site locked down with config_readonly I still need the maintenance-mode setting and every view to stay editable. What are the two supported ways to exempt specific configuration from the lock, and what wildcard syntax do the exemption patterns support?",
+      "must_contain_any": [
+        "config_readonly_whitelist_patterns",
+        "hook_config_readonly_whitelist_patterns"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Either set $settings['config_readonly_whitelist_patterns'] = ['system.maintenance', 'views.view.*']; in settings.php (config_readonly implements hook_config_readonly_whitelist_patterns() to return that setting) or implement hook_config_readonly_whitelist_patterns() in your own module and return the same kind of array. Patterns are preg_quote'd with '*' turned into '.*' and anchored with ^...$, so '*' is the only wildcard and the pattern must match the whole config name.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "config_readonly-import-bypass",
+      "mode": "recipe",
+      "prompt": "With config_readonly active on a Drupal 11 production site, does `drush config:import` still work, and does update.php still work? Explain the mechanism in ConfigReadonlyStorage that lets those through while ordinary config saves throw an exception. Name the exception class.",
+      "must_contain_any": [
+        "ConfigImporter",
+        "config_importer",
+        "lockMayBeAvailable",
+        "system.db_update"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Yes to both. ConfigReadonlyStorage::checkLock() only throws Drupal\\config_readonly\\Exception\\ConfigReadonlyStorageException when Settings::get('config_readonly') is truthy AND $this->lock->lockMayBeAvailable(ConfigImporter::LOCK_NAME) is TRUE — during a config import the importer holds the 'config_importer' lock so the check returns early. It also returns early when the current request's route is system.db_update (update.php). Otherwise write(), delete(), rename() and deleteAll() throw.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "config_readonly-whitelist-lookup",
+      "mode": "introspection",
+      "prompt": "This Drupal site has config_readonly installed and a whitelist of configuration that is exempt from the read-only lock. Inspect the running site and list every whitelist pattern that is currently in effect.",
+      "must_contain_any": [
+        "views.view.cr_eval_*"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Three patterns are in effect: system.maintenance, mymodule.editable_settings and views.view.cr_eval_*. They come from $settings['config_readonly_whitelist_patterns'] in settings.php, which config_readonly returns from its own hook_config_readonly_whitelist_patterns() implementation; the aggregated list is readable with drush php:eval 'print_r(\\Drupal::moduleHandler()->invokeAll(\"config_readonly_whitelist_patterns\"));'.",
+      "setup": "agent-module-documentation/evaluation/verify/config_readonly-whitelist-lookup-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/config_readonly-whitelist-lookup-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "config_readonly-lock-state",
+      "mode": "introspection",
+      "prompt": "settings.php on this Drupal site contains a $settings['config_readonly'] assignment, and the config_readonly module is enabled. Inspect the RUNNING site and tell me whether the configuration active store is actually locked right now — and say which class the config.storage service currently resolves to.",
+      "must_contain_any": [
+        "not active",
+        "not locked",
+        "writable",
+        "is off",
+        "is OFF",
+        "NULL",
+        "not currently locked"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The store is NOT locked. The settings.php assignment is inside `if (getenv('CR_EVAL_LOCK') === '1')` and that variable is not set, so Settings::get('config_readonly') returns NULL and both guards return early — the status report says 'Config is writable / The Config Read-only module is enabled but not active'. The config.storage service is nevertheless always Drupal\\config_readonly\\Config\\ConfigReadonlyStorage, because ConfigReadonlyServiceProvider::alter() swaps the class unconditionally.",
+      "setup": "agent-module-documentation/evaluation/verify/config_readonly-lock-state-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/config_readonly-lock-state-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "config_readonly-settings-whitelist",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, config_readonly is installed. Using the module's settings.php whitelist mechanism, make exactly two things exempt from the read-only lock: the config object `system.maintenance`, and every Views config entity (all `views.view.*` objects). Do not whitelist anything else and do not turn the lock itself on. Apply the change to the live site so the running site reports both exemptions.",
+      "reset": "agent-module-documentation/evaluation/verify/config_readonly-settings-whitelist-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/config_readonly-settings-whitelist-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/config_readonly-settings-whitelist-cleanup.sh",
+      "expected_output": "Add to web/sites/default/settings.php: $settings['config_readonly_whitelist_patterns'] = ['system.maintenance', 'views.view.*'];  config_readonly's own hook_config_readonly_whitelist_patterns() returns that setting, so \\Drupal::moduleHandler()->invokeAll('config_readonly_whitelist_patterns') then yields both patterns, and ConfigReadonlyWhitelistTrait::matchesWhitelistPattern() (preg_quote + '*'→'.*', anchored ^...$) matches system.maintenance, views.view.frontpage and views.view.content but not system.site."
+    },
+    {
+      "id": "config_readonly-hook-module",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, config_readonly is installed. Create and enable a custom module with the machine name `cr_eval_whitelist` at web/modules/custom/cr_eval_whitelist that supplies the config_readonly exemption pattern `cr_eval.settings` through the module hook config_readonly invites — not through settings.php. Leave settings.php untouched.",
+      "reset": "agent-module-documentation/evaluation/verify/config_readonly-hook-module-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/config_readonly-hook-module-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/config_readonly-hook-module-cleanup.sh",
+      "expected_output": "web/modules/custom/cr_eval_whitelist/cr_eval_whitelist.info.yml (type: module, core_version_requirement, dependency on config_readonly) plus cr_eval_whitelist.module implementing function cr_eval_whitelist_config_readonly_whitelist_patterns() { return ['cr_eval.settings']; }, then `drush en cr_eval_whitelist -y`. Afterwards \\Drupal::moduleHandler()->invokeAllWith('config_readonly_whitelist_patterns', ...) lists cr_eval_whitelist as an implementor and invokeAll() contains 'cr_eval.settings', while Settings::get('config_readonly_whitelist_patterns') does not."
+    }
+  ]
+}

@@ -1,0 +1,57 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "ckeditor_indentblock",
+  "version": "1.1.x",
+  "note": "CKEditor IndentBlock adds CKEditor 5 block (paragraph) indentation via a single CKEditor 5 plugin id `ckeditor_indentblock_indent` (JS plugin `indent.IndentBlock`). It ships NO toolbar button of its own: it depends on core's `ckeditor5_indent` plugin, whose toolbar items are `indent` and `outdent`, and activates once those buttons are in a format's toolbar. It has no global config UI (`configure` is null) — it is enabled per text format on the `editor.editor.<format>` config entity: Indent/Outdent in `settings.toolbar.items`, plus a vertical-tab checkbox stored at `settings.plugins.ckeditor_indentblock_indent.enable` (default TRUE). Easy `recipe` cases probe the plugin id, the reused toolbar items, and the enabling steps (response-graded). The medium `introspection` case enables IndentBlock on full_html (setup) and asks which format has it (cleanup restores). The hard `execution` case has the agent add the Indent toolbar item to basic_html to enable IndentBlock, graded by reset->build->verify on editor.editor.basic_html.",
+  "evals": [
+    {
+      "id": "cib-plugin-id",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "On a Drupal 11 site with the ckeditor_indentblock module, what is the CKEditor 5 plugin id it registers, and which CKEditor 5 JS plugin does it turn on for block indentation?",
+      "must_contain_any": ["ckeditor_indentblock_indent"],
+      "must_not_contain": [],
+      "expected_output": "The Drupal CKEditor 5 plugin id is `ckeditor_indentblock_indent` (defined in ckeditor_indentblock.ckeditor5.yml). It enables CKEditor 5's `indent.IndentBlock` JS plugin, applying CSS classes Indent1-Indent10 to paragraphs."
+    },
+    {
+      "id": "cib-toolbar-item",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "Which toolbar button do I add to a CKEditor 5 text format to get ckeditor_indentblock's paragraph indentation? Does this module provide its own toolbar button?",
+      "must_contain_any": ["indent", "outdent", "Indent", "Outdent"],
+      "must_not_contain": [],
+      "expected_output": "It provides NO button of its own. IndentBlock reuses core's Indent plugin (`ckeditor5_indent`) buttons: the `indent` and `outdent` toolbar items. Add Indent (and Outdent) to the toolbar; IndentBlock's condition (`plugins: [ckeditor5_indent]`) is then met and it indents whole paragraphs."
+    },
+    {
+      "id": "cib-enable-per-format",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "How is ckeditor_indentblock enabled - is there a global settings page, or is it configured somewhere else? Where is the on/off setting stored?",
+      "must_contain_any": ["text format", "per format", "editor.editor", "settings.plugins.ckeditor_indentblock_indent", "/admin/config/content/formats"],
+      "must_not_contain": [],
+      "expected_output": "No global config page (`configure` is null). It is configured per text format at /admin/config/content/formats. On the format's editor entity you add the Indent/Outdent toolbar items and the 'Indent block' vertical-tab 'Enable indentation on paragraphs' checkbox (default on). The flag is stored at settings.plugins.ckeditor_indentblock_indent.enable on the editor.editor.<format> config entity."
+    },
+    {
+      "id": "cib-known-format",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "This Drupal site has ckeditor_indentblock enabled. Exactly one CKEditor 5 text format has the CKEditor IndentBlock plugin explicitly configured/enabled in its saved editor settings (the ckeditor_indentblock_indent plugin). Inspect the live editor configuration and tell me which text format it is, and how you can tell.",
+      "must_contain_any": ["full_html", "Full HTML"],
+      "must_not_contain": [],
+      "setup": "agent-module-documentation/evaluation/verify/ckeditor_indentblock-known-format-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/ckeditor_indentblock-known-format-cleanup.sh",
+      "expected_output": "The `full_html` format. Inspecting editor.editor.full_html (e.g. `drush config:get editor.editor.full_html settings`) shows the IndentBlock plugin explicitly configured at settings.plugins.ckeditor_indentblock_indent.enable = true, alongside `indent`/`outdent` in settings.toolbar.items. That saved plugin-settings key is the unique marker: other formats (e.g. webform_default may carry an `indent` button by default, activating IndentBlock implicitly) do not have the ckeditor_indentblock_indent settings entry."
+    },
+    {
+      "id": "cib-add-toolbar",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site (ckeditor_indentblock is enabled), turn on CKEditor 5 block indentation for the `basic_html` text format. Add the Indent (and Outdent) toolbar item to basic_html's CKEditor 5 toolbar so the ckeditor_indentblock_indent plugin activates, keep IndentBlock enabled, and apply it to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/ckeditor_indentblock-add-toolbar-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/ckeditor_indentblock-add-toolbar-verify.sh",
+      "expected_output": "Edit editor.editor.basic_html: append `indent` (and `outdent`) to settings.toolbar.items, and leave settings.plugins.ckeditor_indentblock_indent.enable at TRUE (default) so IndentBlock is active, then clear caches. Verify checks basic_html is a ckeditor5 editor with the `indent` toolbar item and IndentBlock not disabled."
+    }
+  ]
+}

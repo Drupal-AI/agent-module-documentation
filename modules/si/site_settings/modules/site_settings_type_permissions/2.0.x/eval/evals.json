@@ -1,0 +1,95 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "site_settings_type_permissions",
+  "version": "2.0.x",
+  "note": "Submodule of site_settings. It has no routes, no config, no services and no plugins - only a dynamic permission callback plus three hooks. site_settings_type_permissions.permissions.yml declares permission_callbacks pointing at SiteSettingTypePermissions::siteSettingTypePermissionsList(), which emits eight permissions per site_setting_entity_type: 'view published <id> site setting entities', 'view unpublished <id> site setting entities', 'create <id> site setting', 'edit <id> site setting', 'delete <id> site setting', 'view <id> site setting entity revisions', 'revert <id> site setting entity revision', 'delete <id> site setting entity revision'. hook_ENTITY_TYPE_access() answers view/update/delete plus four revision operations with 'global permission OR type permission', returning FORBIDDEN when neither is held, and hook_ENTITY_TYPE_create_access() does the same for create. hook_views_pre_render() drops inaccessible rows from the 'site_settings' View. All eval artefacts are namespaced sstp_*.",
+  "evals": [
+    {
+      "id": "site_settings_type_permissions-permission-names",
+      "mode": "recipe",
+      "prompt": "The Drupal submodule site_settings_type_permissions adds per-type permissions for Site Settings. For a settings type with the machine name phone_number, what are the permission names it generates, and how are they declared given that they are not listed statically?",
+      "must_contain_any": [
+        "edit phone_number site setting",
+        "permission_callbacks"
+      ],
+      "must_not_contain": [],
+      "expected_output": "They are declared dynamically: site_settings_type_permissions.permissions.yml contains only permission_callbacks pointing at \\Drupal\\site_settings_type_permissions\\SiteSettingTypePermissions::siteSettingTypePermissionsList, which loops over every site_setting_entity_type. For phone_number it produces eight: 'view published phone_number site setting entities', 'view unpublished phone_number site setting entities', 'create phone_number site setting', 'edit phone_number site setting', 'delete phone_number site setting', 'view phone_number site setting entity revisions', 'revert phone_number site setting entity revision' and 'delete phone_number site setting entity revision'.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "site_settings_type_permissions-access-logic",
+      "mode": "recipe",
+      "prompt": "How does the Drupal site_settings_type_permissions submodule combine its per-type permissions with the parent module's global site settings permissions, and what happens to a user who has neither?",
+      "must_contain_any": [
+        "OR",
+        "forbidden",
+        "AccessResult::forbidden"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Its hook_ENTITY_TYPE_access() for site_setting_entity allows the operation if the account has the GLOBAL permission OR the type-specific one (e.g. 'edit site setting entities' OR 'edit <type> site setting'), and hook_ENTITY_TYPE_create_access() uses AccessResult::allowedIfHasPermissions([...], 'OR'). If neither is held it returns AccessResult::forbidden() - not neutral - so enabling the submodule makes access strictly opt-in for non-admin roles. Operations outside the supported list (view, update, delete, view revision, view all revisions, revert, delete revision) return neutral. Results are cachePerPermissions() and statically cached per user, type and operation.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "site_settings_type_permissions-views-filtering",
+      "mode": "recipe",
+      "prompt": "Why does the Drupal site_settings_type_permissions submodule implement hook_views_pre_render(), and which view does it act on?",
+      "must_contain_any": [
+        "views_pre_render",
+        "site_settings"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Because Views table rows do not run entity access checks themselves (core issue 777578). site_settings_type_permissions_views_pre_render() therefore acts on the view whose id is 'site_settings' and unsets every result row whose $value->_entity fails access('view'), so a user only sees the settings rows they are allowed to view.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "site_settings_type_permissions-known-role",
+      "mode": "introspection",
+      "prompt": "On this Drupal site there is a role with the machine name sstp_probe_editor and two site settings types, sstp_probe_alpha and sstp_probe_beta. Inspect the live role configuration and tell me which of those two settings types the role is allowed to edit, and name the exact permission that grants it.",
+      "must_contain_any": [
+        "edit sstp_probe_beta site setting"
+      ],
+      "must_not_contain": [],
+      "expected_output": "sstp_probe_beta. The role sstp_probe_editor holds the per-type permission 'edit sstp_probe_beta site setting' (plus 'view published sstp_probe_beta site setting entities' and 'access content') and no permission for sstp_probe_alpha and no global 'edit site setting entities'.",
+      "setup": "agent-module-documentation/evaluation/verify/site_settings_type_permissions-known-role-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/site_settings_type_permissions-known-role-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "site_settings_type_permissions-perm-list",
+      "mode": "introspection",
+      "prompt": "A site settings type with the machine name sstp_list_type exists on this Drupal site and site_settings_type_permissions is enabled. Inspect the live permission list and tell me how many permissions the submodule generated for that one type and what they are called.",
+      "must_contain_any": [
+        "revert sstp_list_type site setting entity revision",
+        "delete sstp_list_type site setting entity revision"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Eight: 'view published sstp_list_type site setting entities', 'view unpublished sstp_list_type site setting entities', 'create sstp_list_type site setting', 'edit sstp_list_type site setting', 'delete sstp_list_type site setting', 'view sstp_list_type site setting entity revisions', 'revert sstp_list_type site setting entity revision' and 'delete sstp_list_type site setting entity revision' - all produced by SiteSettingTypePermissions::buildPermissions() for that type.",
+      "setup": "agent-module-documentation/evaluation/verify/site_settings_type_permissions-perm-list-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/site_settings_type_permissions-perm-list-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "site_settings_type_permissions-grant-edit",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "This Drupal site has the site_settings_type_permissions submodule enabled, a site settings type sstp_task_type and a role sstp_task_role with no site settings access at all. Grant that role permission to view and edit ONLY the sstp_task_type site setting - it must not gain the site-wide edit permission for all site settings. Apply it to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/site_settings_type_permissions-grant-edit-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/site_settings_type_permissions-grant-edit-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/site_settings_type_permissions-grant-edit-cleanup.sh",
+      "expected_output": "user.role.sstp_task_role must hold the per-type permissions 'edit sstp_task_type site setting' and 'view published sstp_task_type site setting entities' and must NOT hold the global 'edit site setting entities'."
+    },
+    {
+      "id": "site_settings_type_permissions-anon-view",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "site-owner-layman",
+      "prompt": "On this Drupal site there is a site setting of the type sstp_view_type that visitors who are not logged in currently cannot see. Please make that one setting visible to anonymous visitors, without giving them blanket access to every other site setting. Apply it to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/site_settings_type_permissions-anon-view-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/site_settings_type_permissions-anon-view-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/site_settings_type_permissions-anon-view-cleanup.sh",
+      "expected_output": "The anonymous role must be granted the per-type permission 'view published sstp_view_type site setting entities' (and NOT the global 'view published site setting entities'), so that $entity->access('view', User::load(0)) returns TRUE for the published sstp_view_type site setting."
+    }
+  ]
+}

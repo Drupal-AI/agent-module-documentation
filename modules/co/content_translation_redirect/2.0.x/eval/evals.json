@@ -1,0 +1,80 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "content_translation_redirect",
+  "version": "2.0.x",
+  "note": "Content Translation Redirect defines the content_translation_redirect config entity (config names content_translation_redirect.entity.<id>, admin at /admin/config/regional/content-translation-redirect, permission 'administer content translation redirects'). Ids are 'default' (locked, all types), '<entity_type>', or '<entity_type>__<bundle>'; keys code (300/301/302/303/304/305/307 or null=disabled), path ('' = redirect to original content), mode (translatable|untranslatable|all). Medium/hard cases are grounded in these config entities and read via the entity storage handler. The runtime redirect only fires on a MULTILINGUAL site (this site is currently single-language), so cases deliberately verify the redirect CONFIGURATION, not live redirect behaviour. Fixtures/builds use raw config writes because config-entity saves via the entity API are currently blocked by an unrelated broken commerce_giftcard field on this shared site.",
+  "evals": [
+    {
+      "id": "content_translation_redirect-what",
+      "mode": "recipe",
+      "prompt": "What problem does the content_translation_redirect module solve, and where do you configure it in Drupal?",
+      "must_contain_any": ["/admin/config/regional/content-translation-redirect", "non-existent", "missing translation", "untranslated", "translation"],
+      "must_not_contain": [],
+      "expected_output": "It redirects visitors who request a content entity in a language it has not been translated into, sending them to the original content (or a chosen path) with a configured HTTP status code instead of showing an untranslated page. Configure it at /admin/config/regional/content-translation-redirect (permission 'administer content translation redirects').",
+      "difficulty": "easy"
+    },
+    {
+      "id": "content_translation_redirect-codes-modes",
+      "mode": "recipe",
+      "prompt": "In content_translation_redirect, what does a redirect entity let you set - which status codes and which 'act on' translation modes are available, and what does leaving the redirect path blank do?",
+      "must_contain_any": ["301", "302", "translatable", "untranslatable", "all"],
+      "must_not_contain": [],
+      "expected_output": "Each redirect has a status code (300, 301, 302, 303, 304, 305 or 307; blank/null = disabled), an 'Act on' mode of translatable, untranslatable or all, and a redirect path. A blank path redirects to the same content in its original (untranslated) language.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "content_translation_redirect-ids",
+      "mode": "recipe",
+      "prompt": "How does content_translation_redirect decide which redirect applies to a given entity - what is the id scheme and matching order, and what is the 'Default' redirect?",
+      "must_contain_any": ["default", "__", "bundle", "most specific", "entity type"],
+      "must_not_contain": [],
+      "expected_output": "Redirect ids are 'default' (the locked Default redirect, applies to all supported types), '<entity_type>' (e.g. node), or '<entity_type>__<bundle>' (e.g. node__article). Matching is most-specific-first: bundle -> entity type -> Default. The Default redirect ships disabled (code null).",
+      "difficulty": "easy"
+    },
+    {
+      "id": "content_translation_redirect-known",
+      "mode": "introspection",
+      "prompt": "This site has a content translation redirect configured for a specific node bundle. Inspect the live configuration and report which entity/bundle it targets, its HTTP status code and its 'act on' mode.",
+      "must_contain_any": ["302"],
+      "must_not_contain": [],
+      "expected_output": "There is a content_translation_redirect.entity.node__article with code 302 and mode 'all' (targets Article nodes). Read with `drush cget content_translation_redirect.entity.node__article` or load the content_translation_redirect entity 'node__article'.",
+      "setup": "agent-module-documentation/evaluation/verify/content_translation_redirect-known-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/content_translation_redirect-known-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "content_translation_redirect-default",
+      "mode": "introspection",
+      "prompt": "On this site, the site-wide Default content translation redirect has been given a status code. Inspect the live configuration and state the Default redirect's HTTP status code.",
+      "must_contain_any": ["301"],
+      "must_not_contain": [],
+      "expected_output": "The Default redirect (content_translation_redirect.entity.default) has code 301. Read with `drush cget content_translation_redirect.entity.default`.",
+      "setup": "agent-module-documentation/evaluation/verify/content_translation_redirect-default-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/content_translation_redirect-default-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "content_translation_redirect-create",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, add a content translation redirect for the Article node bundle that returns a 301 (Moved Permanently) and acts on all entities, redirecting to the original content. Apply it to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/content_translation_redirect-create-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/content_translation_redirect-create-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/content_translation_redirect-create-reset.sh",
+      "expected_output": "Create a content_translation_redirect entity with id node__article, code 301, mode 'all', path '' (empty). E.g. via the add form at /admin/config/regional/content-translation-redirect/add or the content_translation_redirect entity storage."
+    },
+    {
+      "id": "content_translation_redirect-set-default",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this site, turn on the site-wide Default content translation redirect so that any missing translation returns a 302 (Found). Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/content_translation_redirect-setdefault-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/content_translation_redirect-setdefault-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/content_translation_redirect-setdefault-reset.sh",
+      "expected_output": "Set the Default redirect (content_translation_redirect.entity.default) status code to 302 (edit it at /admin/config/regional/content-translation-redirect or via the entity/config API)."
+    }
+  ]
+}

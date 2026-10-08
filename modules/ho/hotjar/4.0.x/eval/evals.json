@@ -1,0 +1,80 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "hotjar",
+  "version": "4.0.x",
+  "note": "Hotjar injects the Hotjar analytics JS snippet, controlled entirely by the hotjar.settings config object (account = Hotjar ID; visibility_pages 0=all-except-listed/1=only-listed/2=none; pages; visibility_roles; roles; attachment_mode build|drupal_settings). Hotjar is an EXTERNAL service, so all cases are grounded in the LOCAL config, not in live tracking behaviour. Baseline (config/install) = account '', visibility_pages 0, default pages list, attachment_mode build. Medium cases set a known account / visibility and read it back; hard cases reset to a known baseline (verify FAILS) and require the agent to set the target config. cleanup restores shipped defaults.",
+  "evals": [
+    {
+      "id": "hotjar-where-id",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "I enabled the Hotjar Drupal module. Where do I enter my Hotjar ID, which config object stores it, and does anything get output before I set it?",
+      "must_contain_any": ["hotjar.settings", "account", "/admin/config/system/hotjar", "hotjar.admin_settings_form"],
+      "must_not_contain": [],
+      "expected_output": "Enter the Hotjar ID on the settings form at /admin/config/system/hotjar (route hotjar.admin_settings_form, permission 'administer hotjar'). It is stored as hotjar.settings.account. Nothing is output until account is non-empty."
+    },
+    {
+      "id": "hotjar-visibility-modes",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "In the Hotjar module, what does the visibility_pages setting control and what do its values mean?",
+      "must_contain_any": ["visibility_pages", "except", "only", "0", "1", "2"],
+      "must_not_contain": [],
+      "expected_output": "visibility_pages controls page-based visibility against the 'pages' list: 0 = add tracking to every page EXCEPT the listed pages; 1 = add it ONLY to the listed pages; 2 = do not add it anywhere. Tracking is also always suppressed on 403/404 responses."
+    },
+    {
+      "id": "hotjar-attachment-modes",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "The Hotjar module has an attachment_mode setting. What are the two modes and how do they differ in how the snippet is delivered?",
+      "must_contain_any": ["build", "drupal_settings", "drupalSettings", "snippet_path", "html_head"],
+      "must_not_contain": [],
+      "expected_output": "build (default): the activation script is written to a JS file at snippet_path (public://hotjar/hotjar.script.js) and added as a <script src> in the head. drupal_settings: the ID/version are passed via drupalSettings and the hotjar/hotjar library runs it."
+    },
+    {
+      "id": "hotjar-known-account",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "This Drupal site already has Hotjar configured. Inspect the live configuration and tell me the Hotjar ID (account) currently set.",
+      "must_contain_any": ["1234567"],
+      "must_not_contain": [],
+      "expected_output": "The configured Hotjar ID is 1234567 (hotjar.settings.account = 1234567).",
+      "setup": "agent-module-documentation/evaluation/verify/hotjar-account-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/hotjar-account-cleanup.sh"
+    },
+    {
+      "id": "hotjar-known-visibility",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "On this site, Hotjar has been restricted to only certain pages. Inspect the live configuration and tell me the page-visibility mode and which pages the tracking is limited to.",
+      "must_contain_any": ["/landing", "/promo", "only"],
+      "must_not_contain": [],
+      "expected_output": "visibility_pages is 1 (track ONLY the listed pages) and the pages list is /landing and /promo (hotjar.settings.visibility_pages = 1, pages = /landing, /promo).",
+      "setup": "agent-module-documentation/evaluation/verify/hotjar-visibility-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/hotjar-visibility-cleanup.sh"
+    },
+    {
+      "id": "hotjar-set-id",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, configure the Hotjar module so the site is tracked under Hotjar ID 7654321. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/hotjar-set-id-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/hotjar-set-id-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/hotjar-set-id-cleanup.sh",
+      "expected_output": "Set hotjar.settings.account to 7654321 (via the settings form at /admin/config/system/hotjar or drush config)."
+    },
+    {
+      "id": "hotjar-restrict-pages",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "site-owner",
+      "prompt": "I only want the Hotjar tracking to run on my landing page at /landing and nowhere else. Configure the Hotjar module on this site to do that.",
+      "reset": "agent-module-documentation/evaluation/verify/hotjar-restrict-pages-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/hotjar-restrict-pages-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/hotjar-restrict-pages-cleanup.sh",
+      "expected_output": "Set hotjar.settings.visibility_pages to 1 (only listed pages) and set pages to include /landing."
+    }
+  ]
+}

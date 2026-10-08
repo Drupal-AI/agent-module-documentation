@@ -1,0 +1,80 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "lp_fontawesome",
+  "version": "6.7.x",
+  "note": "Libraries Provider Font Awesome is a definition-only module: a single lp_fontawesome.libraries.yml declaring two asset libraries, lp_fontawesome/fontawesome (CSS/webfont, Font Awesome 6.7.2 from cdn.jsdelivr.net) and lp_fontawesome/fontawesome-svg (SVG+JS build). It ships no code, config, routes, permissions or plugins (configure=null), so there is no per-site configurable state. The medium (introspection) cases therefore have the agent inspect the LIVE asset-library registry (library.discovery) to report the real resolved CDN URL/version/asset type; setup/cleanup only rebuild caches. The hard (execution) cases require the agent to actually USE the library: create a tiny custom module (lp_fontawesome_attach) whose hook_page_attachments attaches the lp_fontawesome library on every page, verified by invoking page_attachments on the live site (the library is absent until the module exists and is enabled). The reset uninstalls that module (pmu BEFORE deleting its directory) so no orphaned module remains.",
+  "evals": [
+    {
+      "id": "lp_fontawesome-attach",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "How do I load Font Awesome on a page using the lp_fontawesome Drupal module - what is the asset library name and how do I attach it?",
+      "must_contain_any": ["lp_fontawesome/fontawesome", "attach_library", "#attached"],
+      "must_not_contain": [],
+      "expected_output": "Attach the lp_fontawesome/fontawesome library - via {{ attach_library('lp_fontawesome/fontawesome') }} in Twig, $build['#attached']['library'][] = 'lp_fontawesome/fontawesome'; in a render array, or as a dependency in a *.libraries.yml."
+    },
+    {
+      "id": "lp_fontawesome-source-version",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "Where does the lp_fontawesome module load Font Awesome from by default, and which Font Awesome version does it provide?",
+      "must_contain_any": ["jsdelivr", "6.7.2", "cdn"],
+      "must_not_contain": [],
+      "expected_output": "By default it loads Font Awesome 6.7.2 from the jsDelivr CDN (cdn.jsdelivr.net). The module version maps to FA with the minor x10 (module 6.7.20 = FA 6.7.2)."
+    },
+    {
+      "id": "lp_fontawesome-two-libraries",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "What are the two libraries lp_fontawesome defines, and how can you change the Font Awesome version or serve it locally?",
+      "must_contain_any": ["fontawesome-svg", "libraries_provider", "svg"],
+      "must_not_contain": [],
+      "expected_output": "lp_fontawesome/fontawesome (CSS/webfont) and lp_fontawesome/fontawesome-svg (SVG+JS). Install the optional drupal/libraries_provider module to override the version or load assets from the local filesystem via the libraries_provider keys."
+    },
+    {
+      "id": "lp_fontawesome-live-cdn-url",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "Inspect the live asset-library registry on this site and report the CDN host and Font Awesome version that the lp_fontawesome/fontawesome library resolves to.",
+      "must_contain_any": ["jsdelivr", "6.7.2"],
+      "must_not_contain": [],
+      "expected_output": "library.discovery->getLibraryByName('lp_fontawesome','fontawesome') shows the CSS asset at cdn.jsdelivr.net for @fortawesome/fontawesome-free@6.7.2, version 6.7.2.",
+      "setup": "agent-module-documentation/evaluation/verify/lp_fontawesome-registry-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/lp_fontawesome-registry-cleanup.sh"
+    },
+    {
+      "id": "lp_fontawesome-live-svg-asset",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "Inspect the live library registry and report the asset file that the lp_fontawesome/fontawesome-svg library loads (the JS build).",
+      "must_contain_any": ["all.min.js"],
+      "must_not_contain": [],
+      "expected_output": "The fontawesome-svg library loads .../@fortawesome/fontawesome-free@6.7.2/js/all.min.js (a JS asset).",
+      "setup": "agent-module-documentation/evaluation/verify/lp_fontawesome-registry-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/lp_fontawesome-registry-cleanup.sh"
+    },
+    {
+      "id": "lp_fontawesome-attach-globally-css",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "Make the lp_fontawesome/fontawesome (CSS) library load on every page of this site. Create a small custom module named 'lp_fontawesome_attach' whose hook_page_attachments attaches the lp_fontawesome/fontawesome library, enable it, and apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/lp_fontawesome-attach-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/lp_fontawesome-attach-css-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/lp_fontawesome-attach-reset.sh",
+      "expected_output": "A custom module lp_fontawesome_attach implementing hook_page_attachments(&$attachments) with $attachments['#attached']['library'][] = 'lp_fontawesome/fontawesome'; enabled, so page_attachments includes that library."
+    },
+    {
+      "id": "lp_fontawesome-attach-globally-svg",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "Make the SVG build of Font Awesome load site-wide: create a custom module named 'lp_fontawesome_attach' whose hook_page_attachments attaches the lp_fontawesome/fontawesome-svg library, enable it, and apply it to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/lp_fontawesome-attach-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/lp_fontawesome-attach-svg-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/lp_fontawesome-attach-reset.sh",
+      "expected_output": "A custom module lp_fontawesome_attach implementing hook_page_attachments(&$attachments) with $attachments['#attached']['library'][] = 'lp_fontawesome/fontawesome-svg'; enabled, so page_attachments includes that library."
+    }
+  ]
+}

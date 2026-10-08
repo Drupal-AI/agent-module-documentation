@@ -1,0 +1,96 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "scheduled_transitions",
+  "version": "2.8.x",
+  "note": "Scheduled Transitions schedules a content-moderation revision to change moderation state at a future time. Requires content_moderation + dynamic_entity_reference. Config object scheduled_transitions.settings (bundles enabled, automation.cron_create_queue_items, message_transition_* templates, message_override, mirror_operations, retain_processed). Settings form route scheduled_transitions.settings (/admin/config/workflow/scheduled-transitions). A scheduled change is a scheduled_transition content entity created via ScheduledTransition::createFrom($workflow,$state,$revision,$dateTime,$author). Due ones are queued by ScheduledTransitionsJobs::jobCreator() (cron, or `drush scheduled-transitions:queue-jobs` alias sctr-jobs) onto the scheduled_transition_job queue and run by ScheduledTransitionsRunner::runTransition(). Three dynamic per-bundle permissions ('view/add/reschedule scheduled transitions <entity_type> <bundle>') plus 'view all scheduled transitions' and 'administer scheduled transitions'. Event scheduled_transitions.new_revision overrides which revision is used. Medium cases read scheduled_transitions.settings (retain_processed.duration sentinel 604800; SCHTRMARK message marker). Hard cases use a namespaced moderated content type schtr_page on the editorial workflow: schedule a transition (verify a scheduled_transition entity to 'archived' exists) and process a past-due transition (verify the node's latest revision moderation_state == 'archived'). Smoke-tested: hard-2 processed via `drush scheduled-transitions:queue-jobs` + `drush queue:run scheduled_transition_job`.",
+  "evals": [
+    {
+      "id": "scheduled_transitions-drush-queue",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "On a Drupal 11 site with scheduled_transitions, I do not want to wait for cron. Which Drush command forces the module to find due scheduled transitions and queue them for processing, and does it have an alias?",
+      "must_contain_any": [
+        "scheduled-transitions:queue-jobs",
+        "sctr-jobs"
+      ],
+      "must_not_contain": [],
+      "expected_output": "drush scheduled-transitions:queue-jobs (alias sctr-jobs) calls ScheduledTransitionsJobs::jobCreator() to push due, unprocessed transitions onto the scheduled_transition_job queue. Then run `drush queue:run scheduled_transition_job` to process them."
+    },
+    {
+      "id": "scheduled_transitions-enable-bundle",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "I enabled scheduled_transitions but the 'Scheduled transitions' tab does not show on my Article nodes. What two conditions must a content type meet, and where do I enable it for scheduled transitions?",
+      "must_contain_any": [
+        "/admin/config/workflow/scheduled-transitions",
+        "settings",
+        "bundles",
+        "content moderation",
+        "moderated"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The bundle must be (1) moderated by a content_moderation workflow and (2) enabled on the Scheduled transitions settings form (/admin/config/workflow/scheduled-transitions, route scheduled_transitions.settings). Enabled bundles are stored as scheduled_transitions.settings:bundles (a sequence of {entity_type, bundle})."
+    },
+    {
+      "id": "scheduled_transitions-requirements",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "What Drupal modules must be installed for scheduled_transitions to work, and what kind of entity does it store each scheduled change as?",
+      "must_contain_any": [
+        "content_moderation",
+        "dynamic_entity_reference"
+      ],
+      "must_not_contain": [],
+      "expected_output": "It depends on core content_moderation and dynamic_entity_reference (and system). Each scheduled change is stored as a 'scheduled_transition' content entity that references the target entity revision, target moderation_state, workflow and a transition_on timestamp."
+    },
+    {
+      "id": "scheduled_transitions-retain-duration",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "This site has scheduled_transitions configured to keep processed transition records for a while. Inspect the live configuration and tell me the retention duration, in seconds, for processed scheduled transitions.",
+      "must_contain_any": [
+        "604800"
+      ],
+      "must_not_contain": [],
+      "expected_output": "retain_processed.duration is 604800 seconds (7 days). Read scheduled_transitions.settings:retain_processed (enabled: true, duration: 604800).",
+      "setup": "agent-module-documentation/evaluation/verify/scheduled_transitions-retain-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/scheduled_transitions-retain-cleanup.sh"
+    },
+    {
+      "id": "scheduled_transitions-message-marker",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "On this site, the revision-log message template that scheduled_transitions writes when it transitions a non-latest (historical) revision has been customised. Inspect the live config and quote the distinctive first word of that template.",
+      "must_contain_any": [
+        "SCHTRMARK"
+      ],
+      "must_not_contain": [],
+      "expected_output": "scheduled_transitions.settings:message_transition_historical begins with the marker 'SCHTRMARK'.",
+      "setup": "agent-module-documentation/evaluation/verify/scheduled_transitions-message-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/scheduled_transitions-message-cleanup.sh"
+    },
+    {
+      "id": "scheduled_transitions-schedule",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "This site has a moderated content type schtr_page (on the editorial workflow, enabled for scheduled transitions) and a published node titled 'ST Sched One'. Using scheduled_transitions, schedule this node to move to the 'archived' moderation state at a future date/time. Create the scheduled transition on the live site (do not process it yet).",
+      "reset": "agent-module-documentation/evaluation/verify/scheduled_transitions-schedule-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/scheduled_transitions-schedule-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/scheduled_transitions-schedule-cleanup.sh",
+      "expected_output": "A scheduled_transition entity exists referencing the 'ST Sched One' node with moderation_state 'archived' and is_processed = false. Create it with ScheduledTransition::createFrom(Workflow::load('editorial'), 'archived', $node, $futureDateTime, $author)->save(), or via the node's Scheduled transitions tab."
+    },
+    {
+      "id": "scheduled_transitions-run",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "This site has a published node 'ST Run One' (content type schtr_page) with a scheduled_transitions transition that is already past due and targets the 'archived' state. Process the due scheduled transition on this site so the node actually moves to the archived state.",
+      "reset": "agent-module-documentation/evaluation/verify/scheduled_transitions-run-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/scheduled_transitions-run-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/scheduled_transitions-run-cleanup.sh",
+      "expected_output": "After processing, the latest revision of node 'ST Run One' has moderation_state 'archived'. Process due transitions with `drush scheduled-transitions:queue-jobs` then `drush queue:run scheduled_transition_job` (or call ScheduledTransitionsRunner::runTransition() directly, or run cron)."
+    }
+  ]
+}

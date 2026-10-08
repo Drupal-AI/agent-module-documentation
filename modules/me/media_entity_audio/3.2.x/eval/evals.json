@@ -1,0 +1,80 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "media_entity_audio",
+  "version": "3.2.x",
+  "note": "Media Entity Audio Streams adds a media SOURCE 'audio_stream' (AudioStream, allowed_field_types = {link}, default thumbnail audio.png; default name = basename of the link URI; prepareViewDisplay sets the source field to the audio_stream_html5 formatter) and a field FORMATTER 'audio_stream_html5' (for link fields; single boolean setting 'controls', default TRUE) that renders URLs in an HTML5 <audio> player via the theme hook 'media_audio' (template media-audio.html.twig; MIME guessed by file.mime_type.guesser, mapping audio/x-wav->audio/wav, passing audio/mpeg + audio/ogg). No settings form, no permissions, no Drush, configure=null; config schema provided. You use it by creating a Media type whose source is audio_stream (stored at media.type.<id> -> source: audio_stream, with a link source_field). Medium/hard cases create dedicated media types (mea_*) and read/write media.type.* config and the media source-field view display formatter.",
+  "evals": [
+    {
+      "id": "media_entity_audio-source",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "I want a Drupal Media type for audio that is referenced by URL (a stream / external file), not uploaded. The media_entity_audio module provides this. What media source do I choose, and what field type backs it?",
+      "must_contain_any": ["audio_stream", "Audio Stream", "link"],
+      "must_not_contain": [],
+      "expected_output": "Create a Media type and choose the 'Audio Stream' media source (plugin id audio_stream). Its source field is a 'link' field (allowed_field_types = {link}) holding the audio URL. Stored as media.type.<id> -> source: audio_stream."
+    },
+    {
+      "id": "media_entity_audio-formatter",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "How does media_entity_audio render an audio-stream media item's URL to site visitors, and what single setting controls whether the play/pause controls appear? What is that setting's default?",
+      "must_contain_any": ["audio_stream_html5", "controls", "audio"],
+      "must_not_contain": [],
+      "expected_output": "It uses the 'audio_stream_html5' field formatter (on the link source field) which renders an HTML5 <audio> element via the media_audio theme hook. Its single boolean setting 'controls' toggles the transport controls and defaults to TRUE (controls shown)."
+    },
+    {
+      "id": "media_entity_audio-mime",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "In media_entity_audio, how is each audio <source> element's type attribute determined, and which audio MIME types are supported out of the box (including any remapping)?",
+      "must_contain_any": ["mime", "audio/mpeg", "audio/ogg", "audio/wav", "audio/x-wav", "file.mime_type.guesser"],
+      "must_not_contain": [],
+      "expected_output": "template_preprocess_media_audio guesses each URL's MIME type with the file.mime_type.guesser service and maps it: audio/x-wav is remapped to audio/wav, audio/mpeg and audio/ogg pass through, and anything else gets no type attribute on that <source>. When controls is TRUE the <audio> element gets the controls attribute."
+    },
+    {
+      "id": "media_entity_audio-known-type",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "On this Drupal site one Media type uses the media_entity_audio 'audio_stream' source. Inspect the live media type configuration and give the machine name of that media type.",
+      "must_contain_any": ["mea_known"],
+      "must_not_contain": [],
+      "expected_output": "The media type is mea_known: media.type.mea_known has source: audio_stream. Find it e.g. with: drush cget media.type.mea_known source",
+      "setup": "agent-module-documentation/evaluation/verify/media_entity_audio-known-type-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/media_entity_audio-known-type-cleanup.sh"
+    },
+    {
+      "id": "media_entity_audio-controls-known",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "The media type 'mea_ctrl' on this site uses media_entity_audio and its source field is displayed with the audio_stream_html5 formatter. Inspect the live default display configuration and state whether the HTML5 audio controls are enabled or disabled for it.",
+      "must_contain_any": ["disabled", "false", "not displayed", "off", "hidden"],
+      "must_not_contain": [],
+      "expected_output": "Controls are disabled: in the media.mea_ctrl.default view display, the source field's audio_stream_html5 formatter has settings.controls = false, so the <audio> player renders without transport controls.",
+      "setup": "agent-module-documentation/evaluation/verify/media_entity_audio-controls-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/media_entity_audio-controls-cleanup.sh"
+    },
+    {
+      "id": "media_entity_audio-create-type",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this site, using the media_entity_audio module, create a new Media type with machine name 'mea_task' that uses the Audio Stream source so editors can add audio by URL. Wire up its link source field and apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/media_entity_audio-create-type-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/media_entity_audio-create-type-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/media_entity_audio-create-type-cleanup.sh",
+      "expected_output": "Create MediaType id 'mea_task' with source 'audio_stream', create the source field via the source's createSourceField() (a link field), save its storage + instance, and set source_configuration.source_field to it. verify passes when mea_task's source is audio_stream and the source field is a link field."
+    },
+    {
+      "id": "media_entity_audio-enable-controls",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this site the media type 'mea_show' uses media_entity_audio and its audio player is currently rendered WITHOUT controls (the audio_stream_html5 formatter has controls turned off). Update its default display so the HTML5 audio player shows play/pause controls, and apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/media_entity_audio-enable-controls-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/media_entity_audio-enable-controls-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/media_entity_audio-enable-controls-cleanup.sh",
+      "expected_output": "In the media.mea_show.default view display, set the source field's audio_stream_html5 formatter settings.controls to TRUE and save. verify passes when the formatter is audio_stream_html5 and controls === true."
+    }
+  ]
+}

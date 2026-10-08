@@ -1,0 +1,102 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "flat_taxonomy",
+  "version": "2.0.x",
+  "note": "Flat Taxonomy forces a vocabulary to be flat (non-hierarchical). It adds a 'Flat taxonomy' checkbox to the vocabulary form; the flag is stored as a third-party setting flat_taxonomy.flat (value 1 = flat) on the taxonomy.vocabulary.<id> config entity (schema taxonomy.vocabulary.*.third_party.flat_taxonomy; constants FlatConstants::FLAT_TAXONOMY_FLAT=1 / NORMAL=0). No configure route (configure=null), no permissions, no Drush, no plugins; runs on core Taxonomy. When flat: term-form parent hidden+validated, 'Add child' op removed, overview drag-drop nesting stripped, hook_taxonomy_term_presave forces parent=0. Ticking the box calls the flat_taxonomy.taxonomy_flattener service (Flattener::flatten()) which un-nests existing terms. Medium cases read back which namespaced vocabulary is flat; hard cases flag a vocabulary flat and flatten an existing nested vocabulary, verified against live config / term parents.",
+  "evals": [
+    {
+      "id": "flat_taxonomy-how-set",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "How do I make a specific taxonomy vocabulary flat (non-hierarchical) with the flat_taxonomy module, and where is that choice stored?",
+      "must_contain_any": [
+        "Flat taxonomy",
+        "vocabulary",
+        "third_party_settings",
+        "flat_taxonomy",
+        "taxonomy.vocabulary"
+      ],
+      "must_not_contain": [],
+      "expected_output": "On the vocabulary add/edit form tick the 'Flat taxonomy' checkbox and save. It is stored as a third-party setting on the vocabulary config entity: taxonomy.vocabulary.<id> -> third_party_settings.flat_taxonomy.flat = 1 (1 = flat)."
+    },
+    {
+      "id": "flat_taxonomy-enforcement",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "Once a vocabulary is marked flat by flat_taxonomy, what does the module do to stop editors creating nested terms?",
+      "must_contain_any": [
+        "parent",
+        "Add child",
+        "drag",
+        "presave"
+      ],
+      "must_not_contain": [],
+      "expected_output": "It hides the parent field on the term add/edit form (and validates that no parent is submitted), removes the 'Add child' term operation, strips the depth/parent drag-and-drop from the term overview, and hook_taxonomy_term_presave resets parent to 0 (with a warning) if a term is saved with a parent programmatically."
+    },
+    {
+      "id": "flat_taxonomy-flatten-existing",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "If I turn on flat_taxonomy for a vocabulary that already has nested terms, what happens to the existing hierarchy, and which service does it?",
+      "must_contain_any": [
+        "flatten",
+        "flat_taxonomy.taxonomy_flattener",
+        "Flattener"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Ticking the Flat checkbox immediately flattens existing terms (moves them to the root) via the flat_taxonomy.taxonomy_flattener service (Flattener::flatten()), which recursively sets each term's parent to 0 while preserving order via weights."
+    },
+    {
+      "id": "flat_taxonomy-which-vocab",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "On this site, one taxonomy vocabulary has been forced flat with flat_taxonomy. Inspect the live vocabulary configuration and give the machine name (vid) of that flat vocabulary.",
+      "must_contain_any": [
+        "flattax_known"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The vocabulary flattax_known is flat: taxonomy.vocabulary.flattax_known -> third_party_settings.flat_taxonomy.flat = 1.",
+      "setup": "agent-module-documentation/evaluation/verify/flat_taxonomy-known-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/flat_taxonomy-known-cleanup.sh"
+    },
+    {
+      "id": "flat_taxonomy-is-flat",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "Is the vocabulary 'flattax_known' on this site configured as a flat taxonomy? Inspect its live configuration and report the flat_taxonomy setting value.",
+      "must_contain_any": [
+        "1",
+        "flat",
+        "yes",
+        "true"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Yes: taxonomy.vocabulary.flattax_known has third_party_settings.flat_taxonomy.flat = 1, so it is flat.",
+      "setup": "agent-module-documentation/evaluation/verify/flat_taxonomy-known-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/flat_taxonomy-known-cleanup.sh"
+    },
+    {
+      "id": "flat_taxonomy-make-flat",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "This site has a taxonomy vocabulary with the machine name 'flattax_task' that is currently a normal (hierarchical) vocabulary. Using flat_taxonomy, force this vocabulary to be flat so editors can no longer nest its terms. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/flat_taxonomy-make-flat-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/flat_taxonomy-make-flat-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/flat_taxonomy-make-flat-cleanup.sh",
+      "expected_output": "taxonomy.vocabulary.flattax_task has third_party_settings.flat_taxonomy.flat = 1. Set it via the 'Flat taxonomy' checkbox on the vocabulary form, or $vocab->setThirdPartySetting('flat_taxonomy','flat',1)->save()."
+    },
+    {
+      "id": "flat_taxonomy-flatten",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "The vocabulary 'flattax_tree' on this site currently has nested terms (a child term under a parent term). Using flat_taxonomy, make this vocabulary flat and flatten it so none of its terms have a parent anymore. Apply the change to the live site (keep the terms, just remove the nesting).",
+      "reset": "agent-module-documentation/evaluation/verify/flat_taxonomy-flatten-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/flat_taxonomy-flatten-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/flat_taxonomy-flatten-cleanup.sh",
+      "expected_output": "After flattening, no term in flattax_tree has a non-zero parent. Set the vocabulary flat (third_party_settings.flat_taxonomy.flat=1) and run the flat_taxonomy.taxonomy_flattener service's flatten() on it (ticking the Flat checkbox on the vocabulary form does both automatically)."
+    }
+  ]
+}

@@ -1,0 +1,80 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "layout_paragraphs_limit",
+  "version": "1.1.x",
+  "note": "Layout Paragraphs Limit restricts, per Layout Paragraphs layout+region, which paragraph types may be added and how many components a region holds. All rules live in the config object layout_paragraphs_limit.settings under disallowed_types.<layout_id>.<region> => {negate: bool, numeric_limit: int, paragraph_types: {<ptype>: <ptype>|0}}. negate FALSE = exclude checked types; TRUE = include only checked types; numeric_limit 0 = unlimited. Enforcement is an event subscriber on LayoutParagraphsAllowedTypesEvent. Config route layout_paragraphs_limit.settings_form at /admin/config/content/layout_paragraphs/limit (perm: administer site configuration). Layout ids/regions are core layout plugins (layout_onecol/content, layout_twocol/top,first,second,bottom). Real paragraph types on this site include bp_card and bp_callout. Medium/hard cases are grounded in that config object.",
+  "evals": [
+    {
+      "id": "layout_paragraphs_limit-config-object",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "In the Drupal contrib module layout_paragraphs_limit, where are the per-region paragraph-type restrictions stored? Name the config object and the key/structure, and explain what the 'negate' flag does.",
+      "must_contain_any": ["layout_paragraphs_limit.settings", "disallowed_types", "negate"],
+      "must_not_contain": [],
+      "expected_output": "Rules live in the config object layout_paragraphs_limit.settings under disallowed_types.<layout_id>.<region>, each holding negate (bool), numeric_limit (int) and paragraph_types (checkboxes). negate=false EXCLUDES the checked paragraph types from that region; negate=true INCLUDES only the checked types."
+    },
+    {
+      "id": "layout_paragraphs_limit-configure-route",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "What is the admin path / route of the layout_paragraphs_limit settings form, and which permission controls access to it?",
+      "must_contain_any": ["/admin/config/content/layout_paragraphs/limit", "layout_paragraphs_limit.settings_form", "administer site configuration"],
+      "must_not_contain": [],
+      "expected_output": "Route layout_paragraphs_limit.settings_form at /admin/config/content/layout_paragraphs/limit, gated by the core permission 'administer site configuration'."
+    },
+    {
+      "id": "layout_paragraphs_limit-mechanism",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "How does layout_paragraphs_limit actually enforce its restrictions at edit time in Layout Paragraphs? Which event does it react to, and how does the numeric limit work?",
+      "must_contain_any": ["LayoutParagraphsAllowedTypesEvent", "event subscriber", "numeric_limit"],
+      "must_not_contain": [],
+      "expected_output": "An event subscriber (LayoutParagraphsLimitAllowedTypesSubscriber) listens to LayoutParagraphsAllowedTypesEvent; for the edited layout+region it diffs (exclude) or intersects (include) the allowed paragraph types, and when the region already holds numeric_limit or more components it sets the allowed types to [] so nothing more can be added."
+    },
+    {
+      "id": "layout_paragraphs_limit-known-exclusion",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "On this Drupal site, layout_paragraphs_limit has been configured to restrict paragraph types in the 'content' region of the layout_onecol layout. Inspect the live configuration and state which paragraph type is disallowed there.",
+      "must_contain_any": ["bp_card"],
+      "must_not_contain": [],
+      "expected_output": "bp_card is excluded: layout_paragraphs_limit.settings -> disallowed_types.layout_onecol.content has negate=false and paragraph_types containing bp_card.",
+      "setup": "agent-module-documentation/evaluation/verify/layout_paragraphs_limit-region-rule-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/layout_paragraphs_limit-clear-cleanup.sh"
+    },
+    {
+      "id": "layout_paragraphs_limit-known-limit",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "On this site, layout_paragraphs_limit sets a maximum number of components on the 'first' region of the layout_twocol layout. Inspect the live configuration and state that maximum.",
+      "must_contain_any": ["2"],
+      "must_not_contain": [],
+      "expected_output": "The numeric limit is 2: layout_paragraphs_limit.settings -> disallowed_types.layout_twocol.first.numeric_limit = 2.",
+      "setup": "agent-module-documentation/evaluation/verify/layout_paragraphs_limit-numeric-limit-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/layout_paragraphs_limit-clear-cleanup.sh"
+    },
+    {
+      "id": "layout_paragraphs_limit-set-exclude",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "Using layout_paragraphs_limit on this Drupal site, configure the 'content' region of the layout_onecol layout so that the paragraph type bp_callout is NOT allowed there (exclude it). Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/layout_paragraphs_limit-clear-cleanup.sh",
+      "verify": "agent-module-documentation/evaluation/verify/layout_paragraphs_limit-set-exclude-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/layout_paragraphs_limit-clear-cleanup.sh",
+      "expected_output": "Set layout_paragraphs_limit.settings disallowed_types.layout_onecol.content to {negate: false, numeric_limit: 0, paragraph_types: {bp_callout: bp_callout}} (via the settings form or config), so bp_callout is excluded from that region."
+    },
+    {
+      "id": "layout_paragraphs_limit-set-limit",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "Using layout_paragraphs_limit, limit the 'second' region of the layout_twocol layout to at most 1 component. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/layout_paragraphs_limit-clear-cleanup.sh",
+      "verify": "agent-module-documentation/evaluation/verify/layout_paragraphs_limit-set-limit-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/layout_paragraphs_limit-clear-cleanup.sh",
+      "expected_output": "Set layout_paragraphs_limit.settings disallowed_types.layout_twocol.second.numeric_limit = 1 (with negate false and empty paragraph_types), so the region caps at one component."
+    }
+  ]
+}

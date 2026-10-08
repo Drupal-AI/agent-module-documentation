@@ -1,0 +1,58 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "smart_ip_abstract_web_service",
+  "version": "5.0.x",
+  "note": "Smart IP data-source submodule. 'Abstract' is the vendor brand (abstractapi.com), NOT an abstract PHP base class. It registers the Smart IP source id 'abstract_web_service' via an event subscriber (SmartIpEventSubscriber extends the parent's SmartIpEventSubscriberBase; sourceId()/configName()). It becomes active only when smart_ip.settings:data_source == 'abstract_web_service'. Its own settings live in smart_ip_abstract_web_service.settings (version:int=1, api_key:string required). Lookups call AbstractWebService::V1_URL (https://ipgeolocation.abstractapi.com/v1/) per request and need a paid/registered API key, so medium/hard tiers are grounded in the source-selection + api_key CONFIG (smart_ip.settings + smart_ip_abstract_web_service.settings), never live geolocation calls.",
+  "evals": [
+    {
+      "id": "smart_ip_abstract_web_service-activate-recipe",
+      "mode": "recipe",
+      "prompt": "On a Drupal 11 site with the smart_ip_abstract_web_service submodule enabled, which Smart IP config key and value make the Abstract IP Geolocation web service the active geolocation data source?",
+      "must_contain_any": ["smart_ip.settings", "data_source", "abstract_web_service"],
+      "must_not_contain": [],
+      "expected_output": "Set smart_ip.settings:data_source to 'abstract_web_service' (the source id this submodule contributes). e.g. drush config:set smart_ip.settings data_source abstract_web_service -y.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "smart_ip_abstract_web_service-settings-recipe",
+      "mode": "recipe",
+      "prompt": "What settings does the smart_ip_abstract_web_service submodule store, in which config object, and what web-service endpoint does it call?",
+      "must_contain_any": ["smart_ip_abstract_web_service.settings", "api_key", "version", "abstractapi.com"],
+      "must_not_contain": [],
+      "expected_output": "It stores version (integer, only 1) and api_key (required) in the config object smart_ip_abstract_web_service.settings. Lookups hit AbstractWebService::V1_URL = https://ipgeolocation.abstractapi.com/v1/. Form validation blocks selecting the source without an API key.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "smart_ip_abstract_web_service-source-contract-recipe",
+      "mode": "recipe",
+      "prompt": "How does the smart_ip_abstract_web_service submodule plug into Smart IP as a data source — what class does it extend and what identifies the source?",
+      "must_contain_any": ["SmartIpEventSubscriberBase", "SmartIpEventSubscriber", "event subscriber", "sourceId"],
+      "must_not_contain": [],
+      "expected_output": "It provides an event subscriber SmartIpEventSubscriber that extends the parent Drupal\\smart_ip\\SmartIpEventSubscriberBase (which implements SmartIpDataSourceInterface). sourceId() returns 'abstract_web_service' and configName() returns 'smart_ip_abstract_web_service.settings'; processQuery(), formSettings(), validateFormSettings(), submitFormSettings() etc. implement the source contract.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "smart_ip_abstract_web_service-apikey-introspect",
+      "mode": "introspection",
+      "prompt": "This Drupal site has the Abstract IP Geolocation Smart IP data source configured. Inspect the live configuration and report the API key currently stored for it.",
+      "must_contain_any": ["abstract_test_key_9f3a"],
+      "must_not_contain": [],
+      "expected_output": "The key is abstract_test_key_9f3a, stored at smart_ip_abstract_web_service.settings:api_key (read it with drush config:get smart_ip_abstract_web_service.settings api_key).",
+      "setup": "agent-module-documentation/evaluation/verify/smart_ip_abstract_web_service-apikey-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/smart_ip_abstract_web_service-apikey-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "smart_ip_abstract_web_service-activate-execute",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, configure Smart IP to use the Abstract IP Geolocation web service (the smart_ip_abstract_web_service submodule) as its active geolocation data source, and apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/smart_ip_abstract_web_service-activate-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/smart_ip_abstract_web_service-activate-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/smart_ip_abstract_web_service-activate-cleanup.sh",
+      "expected_output": "Set smart_ip.settings:data_source to 'abstract_web_service' (e.g. drush config:set smart_ip.settings data_source abstract_web_service -y). In production you would also store an Abstract api_key; the verify checks only the source selection."
+    }
+  ]
+}

@@ -1,0 +1,80 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "prlp_password_policy",
+  "version": "2.1.x",
+  "note": "prlp_password_policy integrates prlp with password_policy. It subscribes to PRLP's events (prlp.password_validate -> validate the new password against Password Policy and setErrorByName; prlp.password_before_save -> reset field_last_password_reset/field_password_expiration/field_pending_expire_sent), adds the password_policy_status constraints table (with AJAX) to the reset form, overrides the validation manager (prlp_password_policy.validation_manager) so tableShouldBeVisible()/validationShouldRun() also apply on user.reset/user.reset.form, and overrides the user.reset.form controller to carry the reset hash/timeout. It has no config of its own; whether the constraints table shows is driven by password_policy config entities (password_policy.password_policy.<id>) with show_policy_table=TRUE for the user's roles. Medium cases create a known password_policy entity and read it back; hard cases create/enable a policy's show_policy_table, verified against the live config entity; reset removes/disables it so verify fails on empty state. Requires prlp + password_policy.",
+  "evals": [
+    {
+      "id": "prlppp-what-it-integrates",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "What two modules does the prlp_password_policy submodule connect, and what does that let you do?",
+      "must_contain_any": ["password_policy", "Password Policy", "prlp", "PRLP"],
+      "must_not_contain": [],
+      "expected_output": "It integrates PRLP (Password Reset Landing Page) with the Password Policy module, so password-policy constraints are enforced — and the constraints status table is shown — when a user sets a new password from a reset link."
+    },
+    {
+      "id": "prlppp-events",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "Which PRLP events does prlp_password_policy subscribe to, and what does it do in each?",
+      "must_contain_any": ["password_validate", "password_before_save", "PASSWORD_VALIDATE", "PASSWORD_BEFORE_SAVE", "field_last_password_reset", "validatePassword"],
+      "must_not_contain": [],
+      "expected_output": "prlp.password_validate -> validates the submitted password against Password Policy and adds a form error (setErrorByName('pass2', ...)) on failure; prlp.password_before_save -> resets the user's policy expiration fields (field_last_password_reset = now, field_password_expiration = 0, field_pending_expire_sent = 0)."
+    },
+    {
+      "id": "prlppp-table-visibility",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "With prlp_password_policy, what determines whether the password-policy constraints table is shown on the reset landing page?",
+      "must_contain_any": ["show_policy_table", "show policy table", "constraints table", "policy table", "roles"],
+      "must_not_contain": [],
+      "expected_output": "It shows when a Password Policy targeting the user's roles has 'Show policy table' (show_policy_table) enabled — the overridden validation manager's tableShouldBeVisible() returns TRUE (and it also enables this on the user.reset / user.reset.form routes)."
+    },
+    {
+      "id": "prlppp-shown-policy",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "This site has a Password Policy whose constraints table is configured to be shown (which prlp_password_policy would render on the reset page). Inspect the configuration and give the machine id of that policy.",
+      "must_contain_any": ["prlp_eval_policy"],
+      "must_not_contain": [],
+      "setup": "agent-module-documentation/evaluation/verify/prlppp-shown-policy-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/prlppp-shown-policy-cleanup.sh",
+      "expected_output": "The policy is prlp_eval_policy: password_policy.password_policy.prlp_eval_policy has show_policy_table: true (find it via an entity query on password_policy where show_policy_table = TRUE, or `drush cget`)."
+    },
+    {
+      "id": "prlppp-policy-roles",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "A Password Policy named 'prlp_eval_roles' exists on this site. Inspect its configuration and state which user role(s) it applies to.",
+      "must_contain_any": ["authenticated"],
+      "must_not_contain": [],
+      "setup": "agent-module-documentation/evaluation/verify/prlppp-policy-roles-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/prlppp-policy-roles-cleanup.sh",
+      "expected_output": "It applies to the 'authenticated' role: password_policy.password_policy.prlp_eval_roles has roles containing 'authenticated'."
+    },
+    {
+      "id": "prlppp-create-policy",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "So the PRLP reset landing page shows a live password-policy constraints table, create a Password Policy with machine id 'prlp_eval_task' (label 'PRLP Eval Task') that targets the authenticated role and has its policy table set to be shown. Apply it to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/prlppp-create-policy-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/prlppp-create-policy-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/prlppp-create-policy-cleanup.sh",
+      "expected_output": "A password_policy config entity prlp_eval_task exists with show_policy_table = true (and roles including authenticated). e.g. PasswordPolicy::create(['id'=>'prlp_eval_task','label'=>'PRLP Eval Task','policy_constraints'=>[],'roles'=>['authenticated'=>'authenticated'],'show_policy_table'=>TRUE,'password_reset'=>0,'send_reset_email'=>FALSE,'send_pending_email'=>[]])->save();"
+    },
+    {
+      "id": "prlppp-enable-table",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "There is a Password Policy 'prlp_eval_toggle' on this site whose constraints table is currently NOT shown. Enable its 'Show policy table' option so that prlp_password_policy would render its constraints table on the reset page. Save the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/prlppp-enable-table-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/prlppp-enable-table-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/prlppp-enable-table-cleanup.sh",
+      "expected_output": "password_policy.password_policy.prlp_eval_toggle has show_policy_table = true. e.g. $p = PasswordPolicy::load('prlp_eval_toggle'); $p->set('show_policy_table', TRUE)->save(); (or tick 'Show policy table' on the policy edit form)."
+    }
+  ]
+}

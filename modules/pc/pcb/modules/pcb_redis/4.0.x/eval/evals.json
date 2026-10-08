@@ -1,0 +1,93 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "pcb_redis",
+  "version": "4.0.x",
+  "note": "pcb_redis is a glue-shim submodule of pcb that registers ONE service, cache.backend.permanent_redis (PermanentRedisBackendFactory -> PermanentRedisBackend). This site has no live Redis server configured, so per the campaign brief the medium/hard cases are grounded in the local service/plugin definition and module lifecycle (server-independent): the observable live state is whether pcb_redis is installed and its backend service is registered in the container - checkable with \\Drupal::hasService('cache.backend.permanent_redis') and \\Drupal::moduleHandler()->moduleExists('pcb_redis') - not on a running Redis instance. The redis contrib module is already enabled at baseline; pcb_redis is uninstalled at baseline. Scripts only enable/uninstall pcb_redis (never touch redis).",
+  "evals": [
+    {
+      "id": "pcb-redis-service",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "The pcb_redis submodule of Permanent Cache Bin adds a Redis-backed permanent cache backend. What is the machine name of the cache backend service it registers, and what does its factory extend?",
+      "must_contain_any": [
+        "cache.backend.permanent_redis"
+      ],
+      "must_not_contain": [],
+      "expected_output": "It registers the service cache.backend.permanent_redis, whose factory PermanentRedisBackendFactory extends the Redis module's CacheBackendFactory and returns a PermanentRedisBackend (Redis backend + pcb's PermanentBackendTrait)."
+    },
+    {
+      "id": "pcb-redis-point-bin",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "With pcb_redis enabled, how do I make a cache bin named 'stock' use the Redis permanent backend (surviving drush cr)?",
+      "must_contain_any": [
+        "cache.backend.permanent_redis",
+        "$settings['cache']['bins']",
+        "default_backend"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Register a cache.stock service tagged { name: cache.bin, default_backend: cache.backend.permanent_redis }, or in settings.php set $settings['cache']['bins']['stock'] = 'cache.backend.permanent_redis'."
+    },
+    {
+      "id": "pcb-redis-requirements",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "What does the pcb_redis submodule depend on, and what else is needed for it to actually store cache in Redis?",
+      "must_contain_any": [
+        "redis",
+        "pcb"
+      ],
+      "must_not_contain": [],
+      "expected_output": "It depends on the contrib Redis module (redis:redis >= 8.x-1.0-rc2) and the parent pcb module, and needs a working Redis server wired into Drupal for the bin to actually be stored in Redis."
+    },
+    {
+      "id": "pcb-redis-service-live",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "On this Drupal site, inspect the live service container and tell me the exact machine name of the permanent Redis cache backend service that is currently available.",
+      "must_contain_any": [
+        "cache.backend.permanent_redis"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The service cache.backend.permanent_redis is registered (pcb_redis is installed). Check with: drush php:eval 'var_export(\\Drupal::hasService(\"cache.backend.permanent_redis\"));'.",
+      "setup": "agent-module-documentation/evaluation/verify/pcb_redis-service-live-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/pcb_redis-service-live-cleanup.sh"
+    },
+    {
+      "id": "pcb-redis-which-module",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "On this Drupal site a permanent Redis cache backend is available. Inspect the live site and tell me which module provides it (which pcb submodule is installed).",
+      "must_contain_any": [
+        "pcb_redis"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The pcb_redis submodule is installed (drush pm:list shows pcb_redis enabled); it provides the cache.backend.permanent_redis service.",
+      "setup": "agent-module-documentation/evaluation/verify/pcb_redis-which-module-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/pcb_redis-which-module-cleanup.sh"
+    },
+    {
+      "id": "pcb-redis-enable",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, the Redis contrib module is enabled but pcb's Redis permanent-cache integration is not. Make a permanent Redis cache backend service (cache.backend.permanent_redis) available on the site. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/pcb_redis-enable-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/pcb_redis-enable-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/pcb_redis-enable-cleanup.sh",
+      "expected_output": "Enable the pcb_redis submodule (drush en pcb_redis -y); afterwards \\Drupal::hasService('cache.backend.permanent_redis') is TRUE and the module is installed."
+    },
+    {
+      "id": "pcb-redis-uninstall",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, pcb's Redis permanent-cache integration submodule is currently installed but the ops team wants it removed so its permanent Redis backend service is no longer registered. Uninstall it. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/pcb_redis-uninstall-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/pcb_redis-uninstall-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/pcb_redis-uninstall-cleanup.sh",
+      "expected_output": "Uninstall the pcb_redis submodule (drush pmu pcb_redis -y); afterwards \\Drupal::moduleHandler()->moduleExists('pcb_redis') is FALSE and \\Drupal::hasService('cache.backend.permanent_redis') is FALSE."
+    }
+  ]
+}

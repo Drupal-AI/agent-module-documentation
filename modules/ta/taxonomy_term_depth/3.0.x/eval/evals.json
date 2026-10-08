@@ -1,0 +1,80 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "taxonomy_term_depth",
+  "version": "3.0.x",
+  "note": "Taxonomy term depth adds a 1-based 'depth_level' integer base field to taxonomy_term (root=1, child=2, ...), stored in the taxonomy_term_field_data.depth_level column and readable as $term->depth_level->value. It is auto-maintained on term insert/update (hook_entity_insert/update), exposed to Views (numeric Depth field/sort/filter), and can be (re)built via the 'Update term depths' form/operation (route taxonomy_term_depth.update_depth_form at /admin/structure/taxonomy/manage/{vid}/taxonomy_term_depth_update), the taxonomy_term_depth.queue_service QueueManager (setVid()->queueBatch()/queueBatchMissing()), or per-term with taxonomy_term_depth_get_by_tid($tid, TRUE) (force). Read API: get_by_tid, get_parent(s), get_children, get_full_chain. Legacy Drush command term-depth-prepare-uninstall (tdpu) nulls values for uninstall. No configure route, no config schema, no permissions of its own. Medium/hard cases build real nested vocabularies (ttd_eval*) and read/recompute the live depth_level column.",
+  "evals": [
+    {
+      "id": "ttd-what-field",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "What does the taxonomy_term_depth module add to taxonomy terms, and where is the value stored? What does a root term's value look like?",
+      "must_contain_any": ["depth_level", "depth", "taxonomy_term_field_data", "base field"],
+      "must_not_contain": [],
+      "expected_output": "It adds a 1-based integer base field 'depth_level' to every taxonomy term (via hook_entity_base_field_info), stored in the taxonomy_term_field_data.depth_level column and readable as $term->depth_level->value. A root term (no parent) has depth 1, its child 2, and so on."
+    },
+    {
+      "id": "ttd-get-depth-api",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "Which taxonomy_term_depth function returns a single term's depth in code, and how do I force it to recalculate the depth instead of using the cached/stored value?",
+      "must_contain_any": ["taxonomy_term_depth_get_by_tid", "get_by_tid", "force", "TRUE"],
+      "must_not_contain": [],
+      "expected_output": "taxonomy_term_depth_get_by_tid($tid) returns the term's depth. Pass the second argument TRUE - taxonomy_term_depth_get_by_tid($tid, TRUE) - to recalculate from SQL and write the fresh value back to taxonomy_term_field_data."
+    },
+    {
+      "id": "ttd-recalc-all",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "After importing a lot of taxonomy terms, how do I get taxonomy_term_depth to (re)calculate all the depth values for a vocabulary?",
+      "must_contain_any": ["Update term depths", "queueBatch", "taxonomy_term_depth.queue_service", "queue", "batch"],
+      "must_not_contain": [],
+      "expected_output": "Use the 'Update term depths' local task/operation on the vocabulary (/admin/structure/taxonomy/manage/{vid}/taxonomy_term_depth_update), or programmatically the queue manager service: \\Drupal::service('taxonomy_term_depth.queue_service')->setVid($vid)->queueBatch(); (or queueBatchMissing() for only NULL values). The install hook also queues all terms automatically."
+    },
+    {
+      "id": "ttd-grand-depth",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "On this Drupal site there is a taxonomy vocabulary 'ttd_eval_m' with a nested term named 'TTD Grand'. Inspect the live site and tell me the stored depth_level of 'TTD Grand'.",
+      "must_contain_any": ["3"],
+      "must_not_contain": [],
+      "expected_output": "TTD Grand has depth_level 3 (TTD Root=1 -> TTD Child=2 -> TTD Grand=3), stored in taxonomy_term_field_data.depth_level.",
+      "setup": "agent-module-documentation/evaluation/verify/taxonomy_term_depth-depth3-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/taxonomy_term_depth-depth3-cleanup.sh"
+    },
+    {
+      "id": "ttd-l4-depth",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "On this Drupal site the vocabulary 'ttd_eval_m2' contains a chain of nested terms ending in one named 'TTD L4'. Inspect the live depth data and tell me the depth_level stored for 'TTD L4'.",
+      "must_contain_any": ["4"],
+      "must_not_contain": [],
+      "expected_output": "TTD L4 has depth_level 4 (chain TTD L1=1, TTD L2=2, TTD L3=3, TTD L4=4).",
+      "setup": "agent-module-documentation/evaluation/verify/taxonomy_term_depth-depth4-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/taxonomy_term_depth-depth4-cleanup.sh"
+    },
+    {
+      "id": "ttd-recalc-vocab",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site the vocabulary 'ttd_eval_h' has terms TTD Root, TTD Child and TTD Grand (a 3-level chain) but their taxonomy_term_depth depth_level values have been wiped (NULL). Using the taxonomy_term_depth module, recalculate and store the correct depth for every term in that vocabulary on the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/taxonomy_term_depth-recalc-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/taxonomy_term_depth-recalc-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/taxonomy_term_depth-recalc-cleanup.sh",
+      "expected_output": "Recalculate the vocabulary's depths, e.g. \\Drupal::service('taxonomy_term_depth.queue_service')->setVid('ttd_eval_h')->queueBatch(); (or the Update term depths form, or taxonomy_term_depth_get_by_tid($tid, TRUE) per term). Afterwards taxonomy_term_field_data.depth_level is TTD Root=1, TTD Child=2, TTD Grand=3."
+    },
+    {
+      "id": "ttd-force-single",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site the term 'TTD Kid' (in vocabulary 'ttd_eval_h2', child of 'TTD Parent') has an incorrect stored taxonomy_term_depth depth_level of 99. Its real depth is 2. Using the taxonomy_term_depth module, force its depth to be recalculated and corrected on the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/taxonomy_term_depth-force-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/taxonomy_term_depth-force-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/taxonomy_term_depth-force-cleanup.sh",
+      "expected_output": "Force a recalculation of that term: taxonomy_term_depth_get_by_tid($kid_tid, TRUE); (the TRUE force flag recomputes from SQL and writes it back), or re-save the term. Afterwards TTD Kid's depth_level is 2."
+    }
+  ]
+}

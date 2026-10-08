@@ -1,0 +1,90 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "lightning_core",
+  "version": "6.1.x",
+  "note": "Lightning Core is the shared base module for the Lightning distribution (installable standalone). It has no settings form of its own; its real surface is APIs/plumbing: it overrides the user_role / entity_view_mode / entity_form_mode entity classes to add descriptions (stored as third_party_settings.lightning_core.description) plus `internal` (view mode) and `revision_ui` (form mode) flags, adds an `_is_administrator` route access check, hangs a Lightning menu at /admin/config/system/lightning, ships a `long_12h` core date format, and adds Drush command hooks (base-profile field on core:status, plugin-cache prune before updatedb). Cases span three tiers: easy/recipe (response-graded facts from 6.1.x/agent/), medium/introspection (a setup script installs KNOWN lightning_core-managed config — a role description, a date-format pattern — the agent inspects the running site via drush to answer, a cleanup script restores baseline), and hard/execution (a reset script clears state, the agent builds the config on the live site, a verify script checks live state: reset -> build -> verify). Grounded in module source. The base module defines NO permissions and NO plugin types, so easy cases lean on the entity-description API, the _is_administrator check, the date format, and the submodule map. The four submodules (lightning_roles, lightning_page, lightning_search, lightning_contact_form) are documented separately and are recipe-only.",
+  "evals": [
+    {
+      "id": "lightning_core-what-it-provides",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "On a Drupal 11 site, what is the `lightning_core` module and what does it provide? Does it add an end-user feature, define permissions, or is it mostly shared APIs? Name at least two concrete things it adds and where its admin landing page lives.",
+      "must_contain_any": ["/admin/config/system/lightning", "_is_administrator", "description", "shared", "date format"],
+      "must_not_contain": [],
+      "expected_output": "Lightning Core is the shared base/plumbing module for the Lightning distribution (installable standalone). It defines no permissions and no end-user feature of its own; it adds cross-cutting APIs: role/view-mode/form-mode descriptions (third_party_settings.lightning_core.description), an `_is_administrator` route access check, a `long_12h` date format, a Lightning config landing page at /admin/config/system/lightning, and Drush command hooks. Optional feature submodules (roles, page, search, contact form) build on it."
+    },
+    {
+      "id": "lightning_core-entity-descriptions",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "How does Lightning Core let you attach a human-readable description to a user role (and to entity view/form modes) on a Drupal 11 site? Where is that description stored, and which trait/interface implements it?",
+      "must_contain_any": ["third_party_settings", "lightning_core", "ConfigEntityDescriptionTrait", "EntityDescriptionInterface", "getThirdPartySetting"],
+      "must_not_contain": [],
+      "expected_output": "Lightning Core overrides the user_role, entity_view_mode and entity_form_mode entity classes so each implements EntityDescriptionInterface via ConfigEntityDescriptionTrait, storing the text as a third-party setting: third_party_settings.lightning_core.description (getThirdPartySetting/setThirdPartySetting under the `lightning_core` provider). View modes also carry an `internal` flag and form modes a `revision_ui` flag under the same provider."
+    },
+    {
+      "id": "lightning_core-submodules",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "Which submodules does the Lightning Core project ship, and what does each one do at a high level?",
+      "must_contain_any": ["lightning_roles", "lightning_page", "lightning_search", "lightning_contact_form"],
+      "must_not_contain": [],
+      "expected_output": "Four optional submodules: lightning_roles (auto-creates per-content-type creator/reviewer user roles), lightning_page / Basic Page (a simple `page` content type), lightning_search (a Search API site-wide search index), and lightning_contact_form (a site-wide contact form backed by Contact Storage)."
+    },
+    {
+      "id": "lightning_core-introspect-role-description",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "persona": "drupal-expert",
+      "prompt": "This Drupal site has a user role named `eval_lc_role` whose description was set using Lightning Core's role-description feature (drush available). Inspect the running site and tell me exactly what description text is configured for that role.",
+      "setup": "agent-module-documentation/evaluation/verify/lightning_core-role-description-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/lightning_core-role-description-cleanup.sh",
+      "must_contain_any": ["Reviews and approves editorial content"],
+      "must_not_contain": [],
+      "expected_output": "The `eval_lc_role` role has the Lightning Core description \"Reviews and approves editorial content before publication.\", stored in user.role.eval_lc_role under third_party_settings.lightning_core.description."
+    },
+    {
+      "id": "lightning_core-introspect-date-format",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site there is a date format with machine id `long_12h` (the one Lightning Core ships). Inspect the running site (drush available) and tell me the exact PHP date pattern currently configured for it.",
+      "setup": "agent-module-documentation/evaluation/verify/lightning_core-date-format-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/lightning_core-date-format-cleanup.sh",
+      "must_contain_any": ["Y/m/d h:i A", "Y/m/d"],
+      "must_not_contain": [],
+      "expected_output": "The `long_12h` date format (core.date_format.long_12h) is currently configured with the pattern `Y/m/d h:i A`."
+    },
+    {
+      "id": "lightning_core-create-role-description",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site (drush available), create a new user role with machine name `eval_content_editor` and give it a human-readable description using Lightning Core's role-description feature (a description that reads well, e.g. explaining that it edits and manages article content). Apply it to the live site as a real user.role config entity — don't just describe it. One-line summary.",
+      "reset": "agent-module-documentation/evaluation/verify/lightning_core-role-description-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/lightning_core-role-description-verify.sh",
+      "expected_output": "A user.role.eval_content_editor config entity exists with a non-empty description stored under third_party_settings.lightning_core.description (Lightning Core's role-description feature). Verified against live site state."
+    },
+    {
+      "id": "lightning_core-create-view-mode-internal",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site (drush available), create a node view mode with machine id `eval_summary` (so the full config entity id is `node.eval_summary`), and use Lightning Core's view-mode features to mark it as internal and give it a description. Apply it to the live site as a real entity_view_mode config entity — don't just describe it. One-line summary.",
+      "reset": "agent-module-documentation/evaluation/verify/lightning_core-view-mode-internal-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/lightning_core-view-mode-internal-verify.sh",
+      "expected_output": "A core.entity_view_mode.node.eval_summary config entity exists with third_party_settings.lightning_core.internal = true and a non-empty lightning_core.description. Verified against live site state."
+    },
+    {
+      "id": "lightning_core-recreate-date-format",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site (drush available), the `long_12h` date format that Lightning Core ships has been removed. Recreate it exactly as Lightning Core installs it: machine id `long_12h`, label `Long (12-hour)`, and the PHP date pattern `F j, Y \\a\\t g:i A`. Apply it to the live site as a real date_format config entity — don't just describe it. One-line summary.",
+      "reset": "agent-module-documentation/evaluation/verify/lightning_core-date-format-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/lightning_core-date-format-verify.sh",
+      "expected_output": "A core.date_format.long_12h config entity exists with pattern `F j, Y \\a\\t g:i A`. Verified against live site state."
+    }
+  ]
+}

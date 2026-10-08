@@ -1,0 +1,101 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "sitewide_alert",
+  "version": "3.1.x",
+  "note": "Sitewide Alert shows dismissible banners at the top of every page; each alert is a `sitewide_alert` content entity, configured with a global settings object (sitewide_alert.settings) and Drush commands. Cases span three difficulty tiers: easy (recipe, response-graded, no site mutation), medium (introspection — sitewide_alert-intro-setup.sh installs two KNOWN alerts and the agent must inspect the live site to answer, then sitewide_alert-intro-cleanup.sh restores baseline), and hard (execution, persona drupal-expert — the agent CREATES a real alert entity and a verify script checks live state, exit 0 = pass).",
+  "evals": [
+    {
+      "id": "swa-entity-type",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "In the Sitewide Alert module (Drupal 11), what kind of Drupal object is a single alert, and where in the admin are individual alerts created and listed? Name the entity type id.",
+      "must_contain_any": ["sitewide_alert", "content entity"],
+      "must_not_contain": [],
+      "expected_output": "Each alert is a `sitewide_alert` content entity (fieldable/revisionable/translatable), created and listed at Admin > Content > 'Sitewide alerts' (/admin/content/sitewide_alert, route entity.sitewide_alert.collection)."
+    },
+    {
+      "id": "swa-drush-create",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "Give the Drush command to create a new sitewide alert from the CLI with a label and message, and the command to instantly disable all currently active alerts. Sitewide Alert on Drupal 11.",
+      "must_contain_any": ["sitewide-alert:create", "sitewide-alert:disable"],
+      "must_not_contain": [],
+      "expected_output": "drush sitewide-alert:create \"<label>\" \"<message>\" (options: --style, --start, --end, --no-active, --dismissible) to create one; drush sitewide-alert:disable to disable all active alerts."
+    },
+    {
+      "id": "swa-styles-config",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "I want to add a new 'danger' color style that editors can pick for a sitewide alert. Which config object and key control the list of available alert styles, and what is the format of an entry?",
+      "must_contain_any": ["alert_styles", "sitewide_alert.settings"],
+      "must_not_contain": [],
+      "expected_output": "The `alert_styles` key of the `sitewide_alert.settings` config object holds a newline-separated list of `machine_key|Human label` entries (e.g. add a line `danger|Danger`); AlertStyleProvider::alertStyles() turns each line into a selectable style on the alert form."
+    },
+    {
+      "id": "swa-view-permission",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "Which Sitewide Alert permission must anonymous and authenticated roles have so that end users actually see active alert banners (it also gates the alert-loading endpoint)?",
+      "must_contain_any": ["view published sitewide alert entities"],
+      "must_not_contain": [],
+      "expected_output": "`view published sitewide alert entities` — grant it to every role that should see active alerts; it also gates the /sitewide_alert/load JSON endpoint."
+    },
+    {
+      "id": "swa-intro-message",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "persona": "drupal-expert",
+      "setup": "agent-module-documentation/evaluation/verify/sitewide_alert-intro-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/sitewide_alert-intro-cleanup.sh",
+      "prompt": "This Drupal site already has some sitewide alerts configured. Inspect the live site (drush is available) and quote exactly the alert message shown by the alert named 'Eval Maintenance Notice'.",
+      "must_contain_any": ["Scheduled maintenance on Sunday at 03:00 UTC."],
+      "must_not_contain": [],
+      "expected_output": "Its message is: \"Scheduled maintenance on Sunday at 03:00 UTC.\""
+    },
+    {
+      "id": "swa-intro-style",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "persona": "drupal-expert",
+      "setup": "agent-module-documentation/evaluation/verify/sitewide_alert-intro-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/sitewide_alert-intro-cleanup.sh",
+      "prompt": "This Drupal site already has sitewide alerts configured. Inspect the live site (drush available) and tell me which style the 'Eval Maintenance Notice' alert uses and whether it is currently active/dismissible.",
+      "must_contain_any": ["danger"],
+      "must_not_contain": [],
+      "expected_output": "The 'Eval Maintenance Notice' alert uses the `danger` style, and it is active (published) and dismissible."
+    },
+    {
+      "id": "swa-intro-active-count",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "persona": "drupal-expert",
+      "setup": "agent-module-documentation/evaluation/verify/sitewide_alert-intro-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/sitewide_alert-intro-cleanup.sh",
+      "prompt": "This Drupal site already has sitewide alerts configured. Inspect the live site (drush available) and list which alerts are currently ACTIVE and which are INACTIVE (by name).",
+      "must_contain_any": ["Eval Maintenance Notice"],
+      "must_not_contain": [],
+      "expected_output": "Active: 'Eval Maintenance Notice'. Inactive: 'Eval Welcome'. (Two alerts total.)"
+    },
+    {
+      "id": "swa-build-outage",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site (drush available), create a working sitewide alert that will actually display at the top of pages. It must be Active (published) and dismissible, use the default 'primary' style, and show the exact message: 'Our online store is temporarily offline for maintenance.' Apply it to the live site so the alert entity really exists; do not just describe it. Give a one-line summary.",
+      "reset": "agent-module-documentation/evaluation/verify/sitewide_alert-build-outage-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/sitewide_alert-build-outage-verify.sh",
+      "expected_output": "An active, dismissible sitewide_alert entity with the 'primary' style and the outage message exists on the live site."
+    },
+    {
+      "id": "swa-build-scheduled",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site (drush available), create a working SCHEDULED sitewide alert: it must be Active, have scheduling enabled with both a start and an end date/time (any reasonable window), and show a message containing the text 'Early-bird registration is now open'. Apply it to the live site so the alert entity really exists (scheduled_alert enabled with a scheduled_date range); do not just describe it. Give a one-line summary.",
+      "reset": "agent-module-documentation/evaluation/verify/sitewide_alert-build-scheduled-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/sitewide_alert-build-scheduled-verify.sh",
+      "expected_output": "An active sitewide_alert with scheduled_alert=TRUE and a start+end scheduled_date, whose message contains 'Early-bird registration is now open', exists on the live site."
+    }
+  ]
+}

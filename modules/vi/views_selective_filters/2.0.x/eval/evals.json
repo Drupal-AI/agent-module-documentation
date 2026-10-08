@@ -1,0 +1,69 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "views_selective_filters",
+  "version": "2.0.x",
+  "note": "Views Selective Filters has no config UI. It adds a synthetic '<field>_selective' variant of every filterable Views field via hook_views_data_alter(); a placed selective filter is stored in the view config with plugin_id 'views_selective_filters_filter' (class Selective), which proxies the original filter but overrides getValueOptions() to only offer values present in the result set. Medium/hard cases are grounded in real view config: introspection reads a view that already has a selective filter and identifies it; execution adds a selective filter to a view, verified by the presence of a filter whose plugin_id is views_selective_filters_filter. The fixture views are minimal config entities used only for config introspection/verification, not full rendering.",
+  "evals": [
+    {
+      "id": "views_selective_filters-what",
+      "mode": "recipe",
+      "prompt": "What does the Drupal 'Views Selective Filters' module do to an exposed Views filter, and what problem does it solve?",
+      "must_contain_any": ["result set", "present", "distinct", "only", "no empty", "options"],
+      "must_not_contain": [],
+      "expected_output": "It makes an exposed filter offer only the option values that actually appear in the current result set (so users can't pick a value that returns zero rows). It does this by adding a 'selective' variant of each filterable field.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "views_selective_filters-how-to-add",
+      "mode": "recipe",
+      "prompt": "How do I turn a normal exposed filter in a Drupal view into a selective one using the views_selective_filters module? Roughly what steps do I take in the Views UI?",
+      "must_contain_any": ["selective", "add the field", "field", "Hidden from display", "expose"],
+      "must_not_contain": [],
+      "expected_output": "Add the field you want to filter on to the view (optionally 'Hidden from display'), then add the matching filter ending in '(selective)', expose it. The selective filter and the field must share the same base field.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "views_selective_filters-plugin-id",
+      "mode": "recipe",
+      "prompt": "In a Drupal view's configuration, what plugin id identifies a Views Selective Filters filter, and what is the default cap on how many distinct option values a selective filter will build before it rejects the field?",
+      "must_contain_any": ["views_selective_filters_filter", "100", "selective_items_limit"],
+      "must_not_contain": [],
+      "expected_output": "The placed filter has plugin_id 'views_selective_filters_filter'. The default selective_items_limit is 100 distinct values, above which the field is rejected as unsuitable.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "views_selective_filters-known-view",
+      "mode": "introspection",
+      "prompt": "This Drupal site has a view with the machine name 'vsf_eval_view'. Inspect its configuration and tell me whether any of its exposed filters use Views Selective Filters, and name the filter plugin that indicates this.",
+      "must_contain_any": ["views_selective_filters_filter"],
+      "must_not_contain": [],
+      "expected_output": "Yes: the default display has a filter (type_selective) whose plugin_id is views_selective_filters_filter, which is the Views Selective Filters plugin.",
+      "setup": "agent-module-documentation/evaluation/verify/views_selective_filters-known-view-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/views_selective_filters-known-view-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "views_selective_filters-add-filter",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site there is a view named 'vsf_eval_hard' (base table node_field_data) that currently has no filters. Add a Views Selective Filters exposed filter to its default display (using the views_selective_filters_filter plugin) and save the view.",
+      "reset": "agent-module-documentation/evaluation/verify/views_selective_filters-add-filter-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/views_selective_filters-add-filter-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/views_selective_filters-add-filter-cleanup.sh",
+      "expected_output": "Add a filter entry to the vsf_eval_hard view's default display with plugin_id 'views_selective_filters_filter' (e.g. a type_selective filter on node_field_data) and save. Verified: the view has a filter whose plugin_id is views_selective_filters_filter."
+    },
+    {
+      "id": "views_selective_filters-add-filter-plain",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "site-builder",
+      "prompt": "In the view 'vsf_eval_hard' on this site, make it so an exposed filter will only show the options that actually appear in the results, using the Views Selective Filters module. Apply the change to the saved view.",
+      "reset": "agent-module-documentation/evaluation/verify/views_selective_filters-add-filter-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/views_selective_filters-add-filter-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/views_selective_filters-add-filter-cleanup.sh",
+      "expected_output": "Add a selective exposed filter (plugin_id views_selective_filters_filter) to the vsf_eval_hard view and save, so exposed options are limited to values in the result set. Verified: a filter with plugin_id views_selective_filters_filter exists on the view."
+    }
+  ]
+}

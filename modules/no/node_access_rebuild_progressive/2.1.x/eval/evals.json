@@ -1,0 +1,80 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "node_access_rebuild_progressive",
+  "version": "2.1.x",
+  "note": "Node Access Rebuild Progressive rebuilds node access grants in chunks via a Drush command (node-access-rebuild-progressive, options --force/--resume/--bundle) or on cron. Config object node_access_rebuild_progressive.settings has cron (bool, default false) and chunk (int, default 500). Working position lives in Drupal state: node_access_rebuild_progressive.current (0 = idle/finished), .processed, .bundles. It disables core's node_configure_rebuild_confirm form. Medium cases seed known config values; hard cases (1) set cron+chunk via the settings config and verify, and (2) clear leftover interrupted-rebuild state (finished(): current=0, delete bundles) and verify. All state/config is restored to shipped defaults (chunk=500, cron=false) by cleanup.",
+  "evals": [
+    {
+      "id": "node_access_rebuild_progressive-drush-cmd",
+      "mode": "recipe",
+      "prompt": "On a large Drupal site I need to rebuild the node access grants without timing out, using the node_access_rebuild_progressive module. What Drush command do I run, and how do I continue if it gets interrupted?",
+      "must_contain_any": ["node-access-rebuild-progressive", "--resume"],
+      "must_not_contain": [],
+      "expected_output": "Run `drush node-access-rebuild-progressive`. If it is interrupted, continue with `drush node-access-rebuild-progressive --resume`. Also supports --force and --bundle=article,page.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "node_access_rebuild_progressive-config-keys",
+      "mode": "recipe",
+      "prompt": "Which configuration object and keys does node_access_rebuild_progressive use to control cron processing and how many nodes are handled per pass, and what are the default values?",
+      "must_contain_any": ["chunk", "cron", "node_access_rebuild_progressive.settings"],
+      "must_not_contain": [],
+      "expected_output": "Config object node_access_rebuild_progressive.settings with `cron` (boolean, default false) and `chunk` (integer, default 500).",
+      "difficulty": "easy"
+    },
+    {
+      "id": "node_access_rebuild_progressive-core-form",
+      "mode": "recipe",
+      "prompt": "After enabling node_access_rebuild_progressive, what happens to Drupal core's built-in 'Rebuild permissions' form, and how are administrators told to rebuild instead?",
+      "must_contain_any": ["disabled", "drush", "node-access-rebuild-progressive"],
+      "must_not_contain": [],
+      "expected_output": "The module implements hook_form_node_configure_rebuild_confirm_alter() to disable core's rebuild form and replace its text with instructions to run `drush node-access-rebuild-progressive` (and --resume for an interrupted rebuild).",
+      "difficulty": "easy"
+    },
+    {
+      "id": "node_access_rebuild_progressive-known-chunk",
+      "mode": "introspection",
+      "prompt": "On this Drupal site, node_access_rebuild_progressive has been given a specific chunk (batch) size. Inspect the live configuration and state how many nodes it will process per pass.",
+      "must_contain_any": ["250"],
+      "must_not_contain": [],
+      "expected_output": "chunk = 250 in node_access_rebuild_progressive.settings.",
+      "setup": "agent-module-documentation/evaluation/verify/node_access_rebuild_progressive-chunk-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/node_access_rebuild_progressive-chunk-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "node_access_rebuild_progressive-cron-state",
+      "mode": "introspection",
+      "prompt": "On this site, is node_access_rebuild_progressive configured to process node-access rebuilds during cron runs? Inspect the live configuration and answer.",
+      "must_contain_any": ["yes", "enabled", "true", "on"],
+      "must_not_contain": [],
+      "expected_output": "Yes — node_access_rebuild_progressive.settings cron is true, so a chunk is processed on each cron run when a rebuild is pending.",
+      "setup": "agent-module-documentation/evaluation/verify/node_access_rebuild_progressive-cron-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/node_access_rebuild_progressive-cron-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "node_access_rebuild_progressive-configure",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "Configure node_access_rebuild_progressive on this site for a memory-constrained host: enable progressive rebuilding during cron runs, and set it to process 50 nodes per pass. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/node_access_rebuild_progressive-configure-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/node_access_rebuild_progressive-configure-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/node_access_rebuild_progressive-configure-cleanup.sh",
+      "expected_output": "node_access_rebuild_progressive.settings: cron = true and chunk = 50 (e.g. `drush cset node_access_rebuild_progressive.settings cron true` and `... chunk 50`)."
+    },
+    {
+      "id": "node_access_rebuild_progressive-clear-state",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "A previous progressive node-access rebuild on this site was interrupted and left leftover state (a non-zero current position and a stored bundle filter). Clear the node_access_rebuild_progressive progressive-rebuild state so a fresh rebuild can start cleanly, without deleting the module's settings.",
+      "reset": "agent-module-documentation/evaluation/verify/node_access_rebuild_progressive-clear-state-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/node_access_rebuild_progressive-clear-state-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/node_access_rebuild_progressive-clear-state-cleanup.sh",
+      "expected_output": "State node_access_rebuild_progressive.current set to 0 and node_access_rebuild_progressive.bundles deleted (as node_access_rebuild_progressive_finished() does), e.g. `drush sset node_access_rebuild_progressive.current 0` and `drush sdel node_access_rebuild_progressive.bundles`."
+    }
+  ]
+}

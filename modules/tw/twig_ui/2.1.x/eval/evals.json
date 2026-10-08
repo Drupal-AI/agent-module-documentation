@@ -1,0 +1,100 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "twig_ui",
+  "version": "2.1.x",
+  "note": "Twig UI Templates stores each managed template as a `twig_template` config entity (config_prefix=template -> config name twig_ui.template.<id>) with keys status, id, label, theme_suggestion, template_code, themes[]. Enabling a template makes the twig_ui.template_manager service write public://twig_ui/<theme>/<suggestion-with-dashes>.html.twig and hook_theme() registers it as an override; only one enabled template is allowed per theme_suggestion+theme (TemplateManager::templateExists / form validation). Global settings live in the twig_ui.settings config object (allowed_themes all|selected, allowed_theme_list, default_selected_themes, codemirror_config). Admin UIs: /admin/structure/templates and /admin/config/system/twig_ui. Medium/hard cases are grounded in those real config entities and the settings object; the site's enabled themes are olivero (default) and claro.",
+  "evals": [
+    {
+      "id": "twig_ui-what-entity",
+      "mode": "recipe",
+      "prompt": "In the Drupal contrib module twig_ui (Twig UI Templates), what kind of Drupal object is a saved Twig UI template, and what config name / entity type id is it stored under?",
+      "must_contain_any": [
+        "twig_template",
+        "twig_ui.template",
+        "config entity"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Each template is a config entity of type twig_template (config_prefix=template), stored as configuration named twig_ui.template.<id> with keys status, id, label, theme_suggestion, template_code and themes.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "twig_ui-what-overrides",
+      "mode": "recipe",
+      "prompt": "With twig_ui, which property of a Twig UI template determines which template it overrides, and where on disk does the module write the actual template file when the template is enabled?",
+      "must_contain_any": [
+        "theme_suggestion",
+        "public://twig_ui",
+        ".html.twig",
+        "hook_theme"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The theme_suggestion property (e.g. node__article) plus the selected themes decide what it overrides. When enabled, the twig_ui.template_manager writes public://twig_ui/<theme>/<suggestion-with-underscores-as-dashes>.html.twig and hook_theme() registers it so it overrides the file-based template.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "twig_ui-one-per-combo",
+      "mode": "recipe",
+      "prompt": "In twig_ui, can two enabled Twig UI templates override the same theme suggestion for the same theme at once? And which config object controls which themes are even selectable for new templates?",
+      "must_contain_any": [
+        "one",
+        "only one",
+        "templateExists",
+        "allowed_themes",
+        "twig_ui.settings"
+      ],
+      "must_not_contain": [],
+      "expected_output": "No - only one enabled template may target a given theme_suggestion + theme combination; the form validates this via TemplateManager::templateExists(). The twig_ui.settings config object (allowed_themes = all|selected, allowed_theme_list) controls which themes are selectable.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "twig_ui-known-template",
+      "mode": "introspection",
+      "prompt": "This Drupal site has a Twig UI template configured through the twig_ui module. Inspect the live configuration and give the template's machine name (id) and the theme suggestion it overrides.",
+      "must_contain_any": [
+        "twui_known",
+        "region__sidebar_first"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The template id is twui_known; its config (twig_ui.template.twui_known) has theme_suggestion region__sidebar_first and targets the olivero theme.",
+      "setup": "agent-module-documentation/evaluation/verify/twig_ui-known-template-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/twig_ui-known-template-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "twig_ui-status",
+      "mode": "introspection",
+      "prompt": "This site has two Twig UI templates (twig_ui module): twui_on and twui_off. Exactly one of them is enabled/active. Inspect the live configuration and state which one is enabled.",
+      "must_contain_any": [
+        "twui_on"
+      ],
+      "must_not_contain": [],
+      "expected_output": "twui_on is enabled (status: true) and twui_off is disabled (status: false); check the status key on twig_ui.template.twui_on vs twig_ui.template.twui_off.",
+      "setup": "agent-module-documentation/evaluation/verify/twig_ui-status-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/twig_ui-status-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "twig_ui-create-template",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "Using the twig_ui module on this site, create a Twig UI template with machine name twui_task that overrides the page__front theme suggestion for the Olivero theme. It must be enabled and may contain any template code. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/twig_ui-create-template-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/twig_ui-create-template-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/twig_ui-create-template-cleanup.sh",
+      "expected_output": "A twig_template config entity twui_task exists with theme_suggestion=page__front, themes containing olivero, and status=true (e.g. created via the twig_template storage or the /admin/structure/templates/add form)."
+    },
+    {
+      "id": "twig_ui-settings",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "Configure the twig_ui module's global settings on this site so that new Twig UI templates may only be created for the Olivero theme (restrict the allowed themes to a selected list containing only olivero). Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/twig_ui-settings-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/twig_ui-settings-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/twig_ui-settings-cleanup.sh",
+      "expected_output": "In twig_ui.settings, allowed_themes is set to 'selected' and allowed_theme_list contains 'olivero' (set via the settings form at /admin/config/system/twig_ui or drush config)."
+    }
+  ]
+}

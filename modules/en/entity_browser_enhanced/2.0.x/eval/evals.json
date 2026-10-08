@@ -1,0 +1,97 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "entity_browser_enhanced",
+  "version": "2.0.x",
+  "note": "Enhanced Entity Browser has no settings form and no configure route. Its entire persistent state is one plain config object per entity browser, entity_browser_enhanced.widgets.<entity_browser_id>, whose keys are the UUIDs of that browser's widgets and whose values are enhancer plugin ids ('multiselect', 'autoselect') or '_none_'. The dropdown is only added to widgets whose plugin is 'view'. Enhancers themselves are a YAML-discovery plugin type, entity_browser_enhanced_plugin (manager service plugin.manager.entity_browser_enhanced_plugin), discovered from <module>.enhancers.yml with four required keys: id, label, form_extra_class, library. Medium cases read live enhancer assignments back off real entity browsers; hard cases require writing an assignment and defining a new enhancer plugin, both verified against live state.",
+  "evals": [
+    {
+      "id": "entity_browser_enhanced-where-configured",
+      "mode": "recipe",
+      "prompt": "On a Drupal 11 site with the entity_browser_enhanced module, how do I turn on the Enhanced Multiselect behaviour for an entity browser, and where exactly is that choice stored in configuration?",
+      "must_contain_any": [
+        "entity_browser_enhanced.widgets",
+        "Select enhancer",
+        "uuid",
+        "UUID"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Edit the entity browser (/admin/config/content/entity_browser), go to the Widgets step, and pick 'Enhanced Multiselect' in the 'Select enhancer' dropdown that appears on each View widget row. The choice is stored in the config object entity_browser_enhanced.widgets.<entity_browser_id>, keyed by the widget's UUID, with the enhancer id ('multiselect', 'autoselect') or '_none_' as the value.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "entity_browser_enhanced-which-widgets",
+      "mode": "recipe",
+      "prompt": "I enabled entity_browser_enhanced but the 'Select enhancer' dropdown only shows up on some of my entity browser's widgets. Which widget type does it apply to, and which enhancers ship with the module?",
+      "must_contain_any": [
+        "View widget",
+        "\"view\"",
+        "view widget",
+        "multiselect"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Only widgets whose plugin is the Entity Browser 'view' widget (instances of Drupal\\entity_browser\\Plugin\\EntityBrowser\\Widget\\View) get the dropdown; upload/entity_form and other widget types are skipped. The module ships two enhancers: multiselect ('Enhanced Multiselect') and autoselect ('Enhanced Autoselect').",
+      "difficulty": "easy"
+    },
+    {
+      "id": "entity_browser_enhanced-custom-enhancer-how",
+      "mode": "recipe",
+      "prompt": "How do I define my own enhancer plugin for the Drupal entity_browser_enhanced module? Which file does the definition go in and which keys are required?",
+      "must_contain_any": [
+        "enhancers.yml",
+        "form_extra_class"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Enhancers are a YAML-discovery plugin type (entity_browser_enhanced_plugin, manager plugin.manager.entity_browser_enhanced_plugin). Add a <mymodule>.enhancers.yml file with a definition carrying four required keys: id, label, form_extra_class (extra CSS class placed on the browser form) and library (a module or theme asset library). The plugin manager throws a PluginException if any of them is empty. Then assign the enhancer id to a View widget's UUID in entity_browser_enhanced.widgets.<browser_id>.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "entity_browser_enhanced-known-enhancer",
+      "mode": "introspection",
+      "prompt": "This Drupal site has an entity browser with the machine name 'ebe_demo'. An entity_browser_enhanced enhancer has been assigned to its widget. Inspect the running site and tell me which enhancer is assigned.",
+      "must_contain_any": [
+        "multiselect"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The 'multiselect' (Enhanced Multiselect) enhancer. The config object entity_browser_enhanced.widgets.ebe_demo maps the View widget's UUID (aaaaaaaa-1111-4111-8111-ebe000000001, from entity_browser.browser.ebe_demo widgets) to 'multiselect'.",
+      "setup": "agent-module-documentation/evaluation/verify/entity_browser_enhanced-known-enhancer-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/entity_browser_enhanced-known-enhancer-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "entity_browser_enhanced-two-widgets",
+      "mode": "introspection",
+      "prompt": "The entity browser 'ebe_two' on this Drupal site has two View widgets, labelled 'Photos' and 'Documents'. Only one of them has an entity_browser_enhanced enhancer assigned. Inspect the live configuration and tell me which widget it is and which enhancer it uses.",
+      "must_contain_any": [
+        "autoselect"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The 'Documents' widget uses the 'autoselect' enhancer. In entity_browser_enhanced.widgets.ebe_two the Documents widget UUID (aaaaaaaa-1111-4111-8111-ebe000000003) maps to 'autoselect' while the Photos widget UUID (…0002) is set to '_none_'.",
+      "setup": "agent-module-documentation/evaluation/verify/entity_browser_enhanced-two-widgets-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/entity_browser_enhanced-two-widgets-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "entity_browser_enhanced-assign-multiselect",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "This Drupal site has an entity browser with the machine name 'ebe_task' that contains a single View widget. Using the entity_browser_enhanced module, assign the Enhanced Multiselect enhancer to that widget and apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/entity_browser_enhanced-assign-multiselect-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/entity_browser_enhanced-assign-multiselect-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/entity_browser_enhanced-assign-multiselect-cleanup.sh",
+      "expected_output": "The config object entity_browser_enhanced.widgets.ebe_task must map the View widget's UUID (read it from entity_browser.browser.ebe_task widgets) to the string 'multiselect' - via the 'Select enhancer' dropdown on the browser's Widgets step, or by writing the config directly."
+    },
+    {
+      "id": "entity_browser_enhanced-custom-enhancer",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, extend the entity_browser_enhanced module with a new enhancer plugin of your own. It must be discoverable on the live site with the plugin id 'ebe_zoom', carry a human-readable label, an extra form CSS class, and point at an asset library that actually exists and resolves on this site (provide that library yourself). Build it as a custom module under web/modules/custom and enable it.",
+      "reset": "agent-module-documentation/evaluation/verify/entity_browser_enhanced-custom-enhancer-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/entity_browser_enhanced-custom-enhancer-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/entity_browser_enhanced-custom-enhancer-cleanup.sh",
+      "expected_output": "A custom module (e.g. web/modules/custom/ebe_zoom_enhancer) with an <module>.enhancers.yml declaring ebe_zoom with id/label/form_extra_class/library, plus a <module>.libraries.yml defining the referenced library and its JS/CSS file, installed and cache-rebuilt so plugin.manager.entity_browser_enhanced_plugin->getDefinitions() contains 'ebe_zoom' and library.discovery resolves its library."
+    }
+  ]
+}

@@ -1,0 +1,80 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "toc_api_example",
+  "version": "2.0.x",
+  "note": "toc_api_example is a one-hook reference implementation of the TOC API. hook_node_view() adds a TOC to 'page' and 'article' nodes in the 'full' view mode when the body has >= header_count (default 2) top-level headers, using the 'default' toc_type's options and the toc_api.manager/toc_api.builder services. No config, routes, or permissions of its own. Medium cases read the live 'default' toc_type (title/template) that the demo relies on (setup mutates it, cleanup restores the shipped values title='Table of Contents', template='responsive'). Hard cases create an Article/Page node whose multi-heading body makes the demo render a TOC, verified by rendering the node full view and detecting the toc-responsive wrapper; reset deletes the node so verify fails on empty state.",
+  "evals": [
+    {
+      "id": "toc_api_example-which-hook",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "In the toc_api_example module, which Drupal hook is used to inject a table of contents into rendered nodes?",
+      "must_contain_any": ["hook_node_view", "node_view"],
+      "must_not_contain": [],
+      "expected_output": "It implements hook_node_view() (toc_api_example_node_view()), which alters the node's build render array to prepend a TOC."
+    },
+    {
+      "id": "toc_api_example-which-types",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "Which content types and which view mode does toc_api_example add a table of contents to?",
+      "must_contain_any": ["article", "page", "full"],
+      "must_not_contain": [],
+      "expected_output": "Page and Article nodes, in the 'full' view mode (and only when a body field is present)."
+    },
+    {
+      "id": "toc_api_example-when-visible",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "toc_api_example doesn't always show a table of contents. What condition decides whether the TOC actually appears on a node?",
+      "must_contain_any": ["isVisible", "header_count", "two", "2 ", "top-level headers", "enough headers"],
+      "must_not_contain": [],
+      "expected_output": "It only replaces the body when $toc->isVisible() is true — i.e. the body contains at least header_count (default 2) top-level headers."
+    },
+    {
+      "id": "toc_api_example-default-title",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "toc_api_example builds its table of contents from the 'default' TOC API type. Inspect the live configuration and tell me the table-of-contents title currently set on that type.",
+      "must_contain_any": ["Eval Page Contents"],
+      "must_not_contain": [],
+      "setup": "agent-module-documentation/evaluation/verify/toc_api_example-default-title-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/toc_api_example-default-title-cleanup.sh",
+      "expected_output": "The title is 'Eval Page Contents': toc_api.toc_type.default has options.title = 'Eval Page Contents' (drush cget toc_api.toc_type.default options.title)."
+    },
+    {
+      "id": "toc_api_example-default-template",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "The demo module renders its TOC using the 'default' TOC API type. Look at that type's live configuration and state which table-of-contents template (layout) it currently uses.",
+      "must_contain_any": ["tree"],
+      "must_not_contain": [],
+      "setup": "agent-module-documentation/evaluation/verify/toc_api_example-default-template-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/toc_api_example-default-template-cleanup.sh",
+      "expected_output": "The 'tree' template: toc_api.toc_type.default has options.template = tree."
+    },
+    {
+      "id": "toc_api_example-article-toc",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "The toc_api_example module is enabled on this site. Create an Article node titled exactly 'TOC Api Example Article' whose body contains at least three HTML h2 headings (use a full-HTML text format), so that when the node is viewed the module automatically renders a table of contents. Save it to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/toc_api_example-article-toc-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/toc_api_example-article-toc-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/toc_api_example-article-toc-cleanup.sh",
+      "expected_output": "An Article node 'TOC Api Example Article' exists whose body (full_html) contains multiple <h2> headings, so that parsing the body with the 'default' toc_type yields a visible TOC (TocInterface::isVisible() is true, i.e. >= header_count top-level headers) — exactly the precondition toc_api_example_node_view() uses before replacing the body."
+    },
+    {
+      "id": "toc_api_example-blog-toc",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "site-owner",
+      "prompt": "I have the TOC API example module turned on. Write a blog-style Article titled exactly 'TOC Api Example Blog' with a few big section headings in its body so the article automatically shows a clickable table of contents at the top. Publish it on the site.",
+      "reset": "agent-module-documentation/evaluation/verify/toc_api_example-blog-toc-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/toc_api_example-blog-toc-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/toc_api_example-blog-toc-cleanup.sh",
+      "expected_output": "An Article node 'TOC Api Example Blog' exists whose body (full_html) has multiple <h2> headings, so parsing it with the 'default' toc_type produces a visible TOC (TocInterface::isVisible() true) — the precondition toc_api_example uses before injecting a TOC into page/article bodies. (Note: on a standard site this also works for the 'page' type, but this site's Page bundle has no body field.)"
+    }
+  ]
+}

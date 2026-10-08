@@ -1,0 +1,103 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "file_link",
+  "version": "2.2.x",
+  "note": "File Link provides the 'file_link' field type (Drupal\\file_link\\Plugin\\Field\\FieldType\\FileLinkItem, extends core LinkItem): a link that must point at a file and stores the target's size (int) and format (MIME) columns, fetched via HTTP on save (or via the file_link_metadata_update queue worker on cron when deferred). Per-field settings: file_extensions (default 'txt'), no_extension (bool), deferred_request (bool). Widget file_link_default; formatters file_link / file_link_separate (option format_size). Validation constraint LinkToFile. Site-wide settings.php flags: file_link.follow_redirect_on_validate (default TRUE), file_link.disable_http_requests (default FALSE). No configure route, no permissions, no Drush. Medium/hard cases are grounded in real field config (a file_link field on Article, its file_extensions/deferred_request settings), verified against field storage/field config - no external file fetch needed.",
+  "evals": [
+    {
+      "id": "file_link-what-it-stores",
+      "mode": "recipe",
+      "prompt": "How does the file_link module extend a core Link field, and what extra data does its field type store about the target?",
+      "must_contain_any": [
+        "size",
+        "mime",
+        "MIME",
+        "format",
+        "metadata"
+      ],
+      "must_not_contain": [],
+      "expected_output": "file_link adds a 'file_link' field type (extends the core LinkItem) whose link must point at a file. On save it stores extra metadata about the target file: its size (bytes) and format (MIME type), fetched from the URL's Content-Length/Content-Type headers.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "file_link-restrict-extensions",
+      "mode": "recipe",
+      "prompt": "With the file_link field type, how do I restrict which target file types are allowed (e.g. only PDFs), and which setting controls it?",
+      "must_contain_any": [
+        "file_extensions",
+        "allowed",
+        "extension"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Set the field's 'file_extensions' setting (a space-separated list, default 'txt') to the allowed extensions, e.g. 'pdf'. The LinkToFile constraint then rejects links whose target isn't a file with an allowed extension (unless no_extension is enabled).",
+      "difficulty": "easy"
+    },
+    {
+      "id": "file_link-bulk-import",
+      "mode": "recipe",
+      "prompt": "I'm bulk-importing thousands of nodes that have file_link fields and don't want each save to make an HTTP request to fetch file metadata. What options does file_link give me to avoid or defer those requests?",
+      "must_contain_any": [
+        "deferred_request",
+        "disable_http_requests",
+        "cron",
+        "queue"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Either enable the field's deferred_request setting (metadata is fetched later by cron via the file_link_metadata_update queue worker instead of on save), or set $settings['file_link.disable_http_requests'] = TRUE in settings.php to disable all HTTP requests. You can also set file_link.follow_redirect_on_validate = FALSE.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "file_link-known-extensions",
+      "mode": "introspection",
+      "prompt": "On this Drupal site the Article content type has a file_link field named field_flink_known. Inspect the live field configuration and report which target file extensions it allows.",
+      "must_contain_any": [
+        "epub",
+        "pdf"
+      ],
+      "must_not_contain": [],
+      "expected_output": "field_flink_known allows 'pdf epub' (field setting file_extensions), read from field.field.node.article.field_flink_known.settings.file_extensions.",
+      "setup": "agent-module-documentation/evaluation/verify/file_link-known-field-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/file_link-known-field-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "file_link-known-deferred",
+      "mode": "introspection",
+      "prompt": "The Article field field_flink_known on this site is a file_link field. Inspect its live configuration and state whether its file metadata (size/format) is fetched immediately on save or deferred to cron.",
+      "must_contain_any": [
+        "defer",
+        "deferred",
+        "cron",
+        "deferred_request"
+      ],
+      "must_not_contain": [],
+      "expected_output": "It is deferred: field_flink_known has deferred_request = TRUE, so size/format are updated by cron (the file_link_metadata_update queue worker), not immediately on save.",
+      "setup": "agent-module-documentation/evaluation/verify/file_link-known-field-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/file_link-known-field-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "file_link-add-field",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, add a field named field_flink_task to the Article content type using the file_link field type, and save it to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/file_link-add-field-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/file_link-add-field-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/file_link-add-field-cleanup.sh",
+      "expected_output": "A field storage node.field_flink_task of type file_link exists with a matching field on the article bundle."
+    },
+    {
+      "id": "file_link-allow-pdf",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site the Article content type has a file_link field field_flink_cfg that currently only allows .txt targets. Change its configuration so it also allows PDF files, and save it to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/file_link-set-extensions-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/file_link-set-extensions-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/file_link-set-extensions-cleanup.sh",
+      "expected_output": "field.field.node.article.field_flink_cfg settings.file_extensions includes 'pdf' (e.g. 'txt pdf' or 'pdf')."
+    }
+  ]
+}

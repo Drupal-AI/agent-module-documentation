@@ -1,0 +1,80 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "custom_field",
+  "version": "5.0.x",
+  "note": "Custom Field provides a single Drupal field type `custom` (class CustomItem) whose storage is a list of columns (subfields). Storage config: field.storage.<entity>.<field>.settings.columns is keyed by column machine name -> {name,type,...} where type is a custom_field_type plugin id (string, integer, datetime, ...). The parent field is edited with base widget custom_flex or custom_stacked and displayed with custom_formatter/custom_inline/custom_list/custom_table/flipped_table/custom_template. No settings page (configure=null), no permissions. Drush: custom_field:add-column (cf-add-column) / custom_field:remove-column (cf-remove-column). Service custom_field.update_manager add/removes columns on populated fields. All medium/hard cases are grounded in that real config on a namespaced content type cf_eval with field_cf_* fields (created by setup/reset, removed by cleanup) so no other agent's data is touched.",
+  "evals": [
+    {
+      "id": "custom_field-type-and-widgets",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "In the Drupal contrib module custom_field, what is the machine name of the Drupal field type it provides, and what are the two base widgets used to edit the whole field on an entity form?",
+      "must_contain_any": ["custom_flex", "custom_stacked"],
+      "must_not_contain": [],
+      "expected_output": "The field type machine name is `custom` (class CustomItem). The parent field is edited with one of two base widgets: custom_flex (a CSS-flexbox layout) or custom_stacked."
+    },
+    {
+      "id": "custom_field-columns-storage",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "A custom_field field stores several subfields in one table. In the field storage configuration, under which setting are those subfields defined, and what must each entry specify?",
+      "must_contain_any": ["columns", "settings.columns", "setting"],
+      "must_not_contain": [],
+      "expected_output": "They are defined under the storage setting `columns` (field.storage.<entity>.<field>.settings.columns), keyed by column machine name; each entry specifies at least a `name` and a `type` (a custom_field_type subfield plugin id such as string or integer). Each becomes a <field>_<column> DB column."
+    },
+    {
+      "id": "custom_field-drush-columns",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "Which Drush commands does custom_field add to add or remove a column on a Custom Field that already contains data?",
+      "must_contain_any": ["custom_field:add-column", "cf-add-column", "custom_field:remove-column", "cf-remove-column", "add-column", "remove-column"],
+      "must_not_contain": [],
+      "expected_output": "custom_field:add-column (alias cf-add-column) and custom_field:remove-column (alias cf-remove-column), both interactive and backed by the custom_field.update_manager service."
+    },
+    {
+      "id": "custom_field-known-columns",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "On this Drupal site there is a Custom Field named field_cf_cols on the 'cf_eval' content type. Inspect the live field storage configuration and list the machine names of its subfield columns.",
+      "must_contain_any": ["headline", "rank"],
+      "must_not_contain": [],
+      "expected_output": "field.storage.node.field_cf_cols has settings.columns with two columns: headline (type string) and rank (type integer).",
+      "setup": "agent-module-documentation/evaluation/verify/custom_field-known-columns-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/custom_field-known-columns-cleanup.sh"
+    },
+    {
+      "id": "custom_field-known-widget",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "On this Drupal site, the Custom Field field_cf_wid on the 'cf_eval' content type is configured on the default form display. Inspect the live configuration and state which base widget (custom_flex or custom_stacked) edits it, and which per-column widget its 'body' column uses.",
+      "must_contain_any": ["custom_flex", "textarea"],
+      "must_not_contain": [],
+      "expected_output": "In core.entity_form_display.node.cf_eval.default the field_cf_wid component uses base widget type custom_flex, and its 'body' column uses the textarea widget (settings.field_settings.body.type = textarea).",
+      "setup": "agent-module-documentation/evaluation/verify/custom_field-known-widget-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/custom_field-known-widget-cleanup.sh"
+    },
+    {
+      "id": "custom_field-build-field",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site there is a content type with machine name 'cf_eval'. Using the custom_field module, create a Custom Field named field_cf_task on that content type whose storage defines two subfield columns: 'title' (a plain string, max length 255) and 'score' (an integer). Apply it to the live site so the field storage and its columns exist.",
+      "reset": "agent-module-documentation/evaluation/verify/custom_field-build-field-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/custom_field-build-field-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/custom_field-build-field-cleanup.sh",
+      "expected_output": "field.storage.node.field_cf_task is a `custom` field whose settings.columns contains title (type string) and score (type integer), instanced on the cf_eval bundle; the DB table node__field_cf_task has columns field_cf_task_title and field_cf_task_score."
+    },
+    {
+      "id": "custom_field-set-flex-widget",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site the Custom Field field_cf_disp on content type 'cf_eval' is currently edited with the custom_stacked base widget on the default form display. Reconfigure the default form display so the field is edited with the custom_flex base widget instead, and apply it to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/custom_field-set-flex-widget-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/custom_field-set-flex-widget-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/custom_field-set-flex-widget-cleanup.sh",
+      "expected_output": "In core.entity_form_display.node.cf_eval.default the field_cf_disp component has type = custom_flex."
+    }
+  ]
+}

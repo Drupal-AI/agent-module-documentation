@@ -1,0 +1,100 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "entity_bundle_permissions",
+  "version": "1.1.x",
+  "note": "Entity Bundle Permissions generates a permission per content-entity bundle named 'entity_bundle_permissions access <entity_type> <bundle>' (via DynamicPermissions::get registered in permission_callbacks) and forbids all operations on an entity whose bundle the account lacks that permission for (entity_bundle_permissions_entity_access). The permission is purely restrictive. Config object entity_bundle_permissions.settings has one key, ignored_entity_types (sequence of entity type IDs), edited at /admin/config/entity-bundle-permissions (route entity_bundle_permissions.settings, permission 'administer entity_bundle_permissions'). Medium/hard cases are grounded in that real config and in role permission grants: introspection reads back ignored_entity_types and which role holds the article bundle permission; execution grants the article bundle permission to a role and adds an entity type to the ignored list, both verified against live config.",
+  "evals": [
+    {
+      "id": "ebp-permission-name",
+      "mode": "recipe",
+      "prompt": "In the Drupal contrib module entity_bundle_permissions, what is the machine-name pattern of the per-bundle permission it generates? Give the exact permission string it would generate to gate access to the Article (article) bundle of the node entity type.",
+      "must_contain_any": [
+        "entity_bundle_permissions access node article",
+        "entity_bundle_permissions access {entity_type} {bundle}",
+        "entity_bundle_permissions access <entity_type> <bundle>"
+      ],
+      "must_not_contain": [],
+      "expected_output": "It generates one permission per bundle named 'entity_bundle_permissions access {entity_type_id} {bundle_id}'. For the Article node bundle that is 'entity_bundle_permissions access node article'.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "ebp-restrict-semantics",
+      "mode": "recipe",
+      "prompt": "If I grant a role the 'entity_bundle_permissions access node article' permission from the entity_bundle_permissions module, does that GRANT the role extra access to Article nodes, or does it only affect access some other way? Explain what happens to a role that lacks it.",
+      "must_contain_any": [
+        "only restrict",
+        "further restrict",
+        "does not grant",
+        "no additional access",
+        "forbid",
+        "forbidden"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Granting it imbues no additional access; it is purely restrictive. entity_bundle_permissions_entity_access() returns AccessResult::forbidden() for every operation on an Article node when the account lacks the permission, so a role without it is blocked from viewing/editing/deleting that bundle even if other rules would allow it.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "ebp-ignore-setting",
+      "mode": "recipe",
+      "prompt": "Using entity_bundle_permissions, how do I stop the module from interfering with a particular entity type (say taxonomy terms)? Name the config object and key, and the admin path of the settings form.",
+      "must_contain_any": [
+        "ignored_entity_types",
+        "entity_bundle_permissions.settings",
+        "/admin/config/entity-bundle-permissions"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Add the entity type ID to the ignored_entity_types sequence in the entity_bundle_permissions.settings config object, editable at /admin/config/entity-bundle-permissions (route entity_bundle_permissions.settings). Ignored types are skipped by both permission generation and the access hook.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "ebp-known-ignored-list",
+      "mode": "introspection",
+      "prompt": "On this Drupal site, the entity_bundle_permissions module has been configured to ignore some entity types. Inspect the live configuration and list exactly which entity type IDs are in its ignored list.",
+      "must_contain_any": [
+        "taxonomy_term",
+        "block_content"
+      ],
+      "must_not_contain": [],
+      "expected_output": "entity_bundle_permissions.settings:ignored_entity_types is [taxonomy_term, block_content].",
+      "setup": "agent-module-documentation/evaluation/verify/ebp-ignored-config-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/ebp-ignored-config-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "ebp-known-role",
+      "mode": "introspection",
+      "prompt": "On this site a custom user role has been granted the entity_bundle_permissions per-bundle permission that gates the Article (node) bundle. Inspect the live role configuration and give the machine name of that role.",
+      "must_contain_any": [
+        "ebp_known_reviewer"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The role ebp_known_reviewer holds permission 'entity_bundle_permissions access node article'.",
+      "setup": "agent-module-documentation/evaluation/verify/ebp-known-role-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/ebp-known-role-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "ebp-grant-role",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site there is a user role with machine name ebp_task_role. Using the entity_bundle_permissions module's per-bundle permission scheme, grant this role access to the Article (article) bundle of the node entity type, and apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/ebp-grant-role-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/ebp-grant-role-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/ebp-grant-role-cleanup.sh",
+      "expected_output": "The role ebp_task_role is granted the permission 'entity_bundle_permissions access node article' (e.g. via drush role:perm:add ebp_task_role 'entity_bundle_permissions access node article', or Role::load('ebp_task_role')->grantPermission(...)->save())."
+    },
+    {
+      "id": "ebp-ignore-type",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "Configure the entity_bundle_permissions module on this site so that it no longer interferes with the taxonomy_term entity type (it should be added to the module's ignored entity types). Apply the change to the live configuration.",
+      "reset": "agent-module-documentation/evaluation/verify/ebp-ignore-type-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/ebp-ignore-type-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/ebp-ignore-type-reset.sh",
+      "expected_output": "entity_bundle_permissions.settings:ignored_entity_types contains 'taxonomy_term' (e.g. set the sequence to include taxonomy_term and save the config, or select it on the settings form)."
+    }
+  ]
+}

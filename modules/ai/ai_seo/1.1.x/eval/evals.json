@@ -1,0 +1,96 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "ai_seo",
+  "version": "1.1.x",
+  "note": "ai_seo sends a node's rendered HTML to an LLM (via drupal/ai) and stores an SEO/GEO audit. All evals are grounded in LOCAL config, never in an actual AI call: the prompts are ai_seo_report_type config entities (config prefix report_type -> ai_seo.report_type.<id>; fields id/label/description/prompt/status/default_prompt_hash; 8 shipped: full, topic_authority, natural_language, link_analysis, headings_and_structure, schema_org_markup, ai_citability, agentic_readiness), and global settings are the ai_seo.settings config object (provider_and_model, custom_system_prompt, custom_prompt, enable_field_buttons). Medium cases seed a disabled report type and a distinctive provider_and_model and read them back via drush; hard cases create a new report type entity and toggle a shipped one's status, verified against the live config entities. No case requires the AI provider to run.",
+  "evals": [
+    {
+      "id": "ai_seo-report-type-entity",
+      "mode": "recipe",
+      "prompt": "In the Drupal module ai_seo, where are the SEO analysis prompts stored so a site builder can edit them without code? Name the config entity type and at least two of the report types it ships with.",
+      "must_contain_any": [
+        "ai_seo_report_type",
+        "report type",
+        "full",
+        "ai_citability"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Prompts live in ai_seo_report_type config entities (config prefix report_type, e.g. ai_seo.report_type.full). Eight ship: full, topic_authority, natural_language, link_analysis, headings_and_structure, schema_org_markup, ai_citability, agentic_readiness. Managed at /admin/config/ai/seo/report-types.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "ai_seo-provider-setting",
+      "mode": "recipe",
+      "prompt": "The ai_seo module needs an AI backend. Which module does it depend on, and which ai_seo.settings config key selects the provider and model used for analysis?",
+      "must_contain_any": [
+        "provider_and_model",
+        "ai_seo.settings"
+      ],
+      "must_not_contain": [],
+      "expected_output": "It depends on the drupal/ai module (dependency ai:ai). The provider+model is chosen at /admin/config/ai/seo and stored in ai_seo.settings under the provider_and_model key. Also configurable: custom_system_prompt, custom_prompt, enable_field_buttons.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "ai_seo-permissions",
+      "mode": "recipe",
+      "prompt": "Which ai_seo permission controls actually generating an SEO report (and therefore incurs AI API costs), and which one only lets a user view existing reports?",
+      "must_contain_any": [
+        "create seo reports",
+        "view seo reports"
+      ],
+      "must_not_contain": [],
+      "expected_output": "'create seo reports' allows generating reports (calls the AI provider, incurs cost); 'view seo reports' only allows viewing saved reports and the Analyze SEO link. There are also 'administer ai seo' (settings) and 'administer ai seo settings' (report types).",
+      "difficulty": "easy"
+    },
+    {
+      "id": "ai_seo-which-disabled",
+      "mode": "introspection",
+      "prompt": "On this Drupal site, one of ai_seo's shipped report types has been disabled so it is no longer offered. Inspect the live report-type configuration and tell me which report type is currently disabled.",
+      "must_contain_any": [
+        "link_analysis"
+      ],
+      "must_not_contain": [],
+      "expected_output": "link_analysis is disabled: the ai_seo_report_type entity link_analysis (config ai_seo.report_type.link_analysis) has status: false. Discoverable via drush cget ai_seo.report_type.link_analysis or loading the ai_seo_report_type entities and checking status.",
+      "setup": "agent-module-documentation/evaluation/verify/ai_seo-disabled-type-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/ai_seo-disabled-type-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "ai_seo-current-provider",
+      "mode": "introspection",
+      "prompt": "On this site, ai_seo has been configured with a specific AI provider and model. Inspect the live ai_seo settings and tell me the configured provider_and_model value.",
+      "must_contain_any": [
+        "evalprovider__evalmodel",
+        "evalprovider"
+      ],
+      "must_not_contain": [],
+      "expected_output": "provider_and_model is 'evalprovider__evalmodel' in ai_seo.settings. Discoverable via drush cget ai_seo.settings provider_and_model.",
+      "setup": "agent-module-documentation/evaluation/verify/ai_seo-provider-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/ai_seo-provider-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "ai_seo-create-report-type",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, create a new ai_seo report type with the machine id 'ai_seo_task'. Give it a label, a non-empty analysis prompt, and leave it enabled. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/ai_seo-create-type-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/ai_seo-create-type-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/ai_seo-create-type-cleanup.sh",
+      "expected_output": "An ai_seo_report_type config entity with id ai_seo_task, status TRUE and a non-empty prompt. Create via the Add Report Type form at /admin/config/ai/seo/report-types/add or ReportType::create([...])->save()."
+    },
+    {
+      "id": "ai_seo-disable-report-type",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this site, disable the ai_seo 'topic_authority' report type so it is no longer offered for analysis, and apply the change to the live site (do not delete it).",
+      "reset": "agent-module-documentation/evaluation/verify/ai_seo-disable-full-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/ai_seo-disable-full-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/ai_seo-disable-full-cleanup.sh",
+      "expected_output": "The ai_seo_report_type entity topic_authority has status set to FALSE (config ai_seo.report_type.topic_authority status: false). Toggle via the edit form or by loading the entity and setting status FALSE and saving."
+    }
+  ]
+}

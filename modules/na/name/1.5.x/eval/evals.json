@@ -1,0 +1,101 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "name",
+  "version": "1.5.x",
+  "note": "Name Field provides a compound `name` field type (six varchar components: title, given, middle, family, generational, credentials) with a `name_default` widget and `name_default` formatter (configure=name.settings). Output is driven by `name_format` config entities whose `pattern` uses single-letter tokens (t title, g given, m middle, f family, s generational, c credentials, i/j/k separators, plus initials/conditionals/modifiers) joined with a `+` conditional operator; the shipped `default` pattern is `((((t+ig)+im)+if)+is)+jc` -> e.g. 'Mr. John Peter Smith Jr., PhD'. Formatting is also exposed via services name.formatter->format() and name.format_parser->parse(). Admin UI at /admin/config/regional/name (name_format list) and /admin/config/regional/name/settings (separators sep1/sep2/sep3, required marker); no custom permissions, no Drush. Medium cases read back a KNOWN name_format entity pattern and a KNOWN name field's enabled components from the live site; hard cases create a name_format config entity and add a `name` field to a namespaced content type, both verified against live config.",
+  "evals": [
+    {
+      "id": "name-field-components",
+      "mode": "recipe",
+      "prompt": "In Drupal, the contrib 'Name' (name) module adds a dedicated field type for storing a person's name. What is the field type's machine id, which discrete name components does it store, and what are its default widget and formatter plugin ids?",
+      "must_contain_any": [
+        "name_default",
+        "title, given, middle, family",
+        "given, middle, family"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The field type id is `name`. It stores six components: title, given, middle, family, generational (suffix) and credentials. Its default widget and default formatter are both `name_default`.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "name-pattern-tokens",
+      "mode": "recipe",
+      "prompt": "The Drupal 'Name' module renders names from a 'name format' pattern made of single letters. In that pattern syntax, which letters output the given name, the family name, the title and the generational suffix, and what does the '+' operator between tokens do?",
+      "must_contain_any": [
+        "g",
+        "family name",
+        "given name",
+        "conditional"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Lowercase tokens: g = given name, f = family name, t = title, s = generational suffix (also m = middle, c = credentials, i/j/k = the three separators). The `+` is a conditional join: a piece like `a+b` is only emitted when its neighbouring components are present, so separators collapse around empty components (e.g. no trailing comma when credentials are missing).",
+      "difficulty": "easy"
+    },
+    {
+      "id": "name-format-in-code",
+      "mode": "recipe",
+      "prompt": "Using the Drupal 'Name' module, how do I take an array of name components (title, given, family, etc.) and turn it into a formatted string in custom PHP code? Name the service and method.",
+      "must_contain_any": [
+        "name.formatter",
+        "NameFormatterInterface",
+        "->format(",
+        "name.format_parser"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Use the `name.formatter` service (NameFormatterInterface): `\\Drupal::service('name.formatter')->format($components, 'default')` where `$components` is a keyed array (title/given/middle/family/generational/credentials) and the second arg is a name_format entity id. For an arbitrary pattern string use `name.format_parser`->parse($components, 'f, g').",
+      "difficulty": "easy"
+    },
+    {
+      "id": "name-format-pattern",
+      "mode": "introspection",
+      "prompt": "This Drupal site has a Name module 'name format' config entity with the machine id `name_probe`. Inspect the live configuration and report the exact pattern string it uses.",
+      "must_contain_any": [
+        "f, g"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The name_format entity name_probe has pattern `f, g` (family name, literal comma-space, given name) — readable via `drush cget name.name_format.name_probe pattern`.",
+      "setup": "agent-module-documentation/evaluation/verify/name-format-pattern-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/name-format-pattern-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "name-field-components-live",
+      "mode": "introspection",
+      "prompt": "On this Drupal site the content type with machine name `name_ctm` has a Name field `field_name_ctm`. Some name components have been disabled on that field. Inspect the live field configuration and state which name components are enabled.",
+      "must_contain_any": [
+        "given and family",
+        "given, family",
+        "given name and family",
+        "given and family name"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Only the given and family components are enabled on field_name_ctm; title, middle, generational and credentials are disabled. Discoverable via `drush cget field.field.node.name_ctm.field_name_ctm settings.components`.",
+      "setup": "agent-module-documentation/evaluation/verify/name-field-components-live-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/name-field-components-live-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "name-create-format",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, use the Name module to create a new 'name format' config entity with machine id `name_hardfmt`, label 'Surname first', and a pattern that outputs the family name, then a comma and space, then the given name (i.e. 'Smith, John'). Apply it to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/name-create-format-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/name-create-format-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/name-create-format-cleanup.sh",
+      "expected_output": "A name_format config entity `name.name_format.name_hardfmt` exists whose pattern renders family then separator then given, e.g. pattern `f, g` (or `f+jg`). Create via \\Drupal\\name\\Entity\\NameFormat::create(['id'=>'name_hardfmt','label'=>'Surname first','pattern'=>'f, g'])->save();"
+    },
+    {
+      "id": "name-add-field",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site the content type `name_cth` already exists but has no name field. Using the Name module, add a Name field with machine name `field_name_cth` (label 'Full name') to the `name_cth` content type and apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/name-add-field-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/name-add-field-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/name-add-field-cleanup.sh",
+      "expected_output": "A FieldStorageConfig node.field_name_cth of type `name` and a FieldConfig on bundle name_cth exist. Create both: FieldStorageConfig::create(['field_name'=>'field_name_cth','entity_type'=>'node','type'=>'name'])->save(); then FieldConfig::create([... 'bundle'=>'name_cth', 'label'=>'Full name'])->save()."
+    }
+  ]
+}

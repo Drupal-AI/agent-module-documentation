@@ -1,0 +1,67 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "block_exclude_pages",
+  "version": "2.2.x",
+  "note": "block_exclude_pages has no config UI, permissions, drush, or new plugin id of its own. It implements hook_condition_info_alter() to swap the core `request_path` condition class for BlockExcludePagesRequestPath, which adds `!`-prefixed exclude patterns to the existing block 'Pages' visibility (stored at block.block.<id> visibility.request_path.pages). Easy `recipe` cases probe the exclude syntax and the alter mechanism (response-graded). The medium `introspection` case places a block with a known exclude-pages visibility and asks which pages it is excluded from (setup/cleanup). The hard `execution` cases have the agent place a block with a specific exclude-pages visibility condition, graded by reset->build->verify live-state checks on block.block visibility.",
+  "evals": [
+    {
+      "id": "bep-exclude-syntax",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "On a Drupal 11 site with the block_exclude_pages module, in a block's 'Pages' visibility setting I want to show the block on all of /user/* but NOT on /user/jc. What exact syntax do I put in the Pages textarea?",
+      "must_contain_any": ["!/user/jc", "!/user/jc/*"],
+      "must_not_contain": [],
+      "expected_output": "List the include and exclude patterns, one per line, e.g. `/user/*` then `!/user/jc` (a leading `!` marks an exclude pattern). Also `!/user/jc/*` to exclude everything beneath it."
+    },
+    {
+      "id": "bep-mechanism",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "How does the block_exclude_pages module add its exclude feature to blocks - does it register a new block-visibility condition plugin id, and which hook and class are involved? Where is the value stored on a block?",
+      "must_contain_any": ["hook_condition_info_alter", "condition_info_alter", "BlockExcludePagesRequestPath", "request_path"],
+      "must_not_contain": [],
+      "expected_output": "It does NOT add a new condition id. It implements hook_condition_info_alter() to replace the core `request_path` condition's class with Drupal\\block_exclude_pages\\Plugin\\Condition\\BlockExcludePagesRequestPath (a subclass of core RequestPath). The value is stored on the block config entity at visibility.request_path.pages, so the id stays `request_path`."
+    },
+    {
+      "id": "bep-order-matters",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "In block_exclude_pages, does line order in the Pages list matter, and can an include pattern re-add a page that a wildcard exclude removed? Explain briefly.",
+      "must_contain_any": ["order", "last", "xor", "re-include", "reincludes"],
+      "must_not_contain": [],
+      "expected_output": "Yes - order matters. evaluate() carries a single match/exclude flag through the lines so the last matching line wins, and it returns path_match XOR is_exclude. So an include line placed AFTER an exclude line (e.g. `!/order/*/*` then `/order/*/complete`) re-includes that page; the reverse order does not."
+    },
+    {
+      "id": "bep-known-visibility",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "This Drupal site has a block with the machine name `bep_eval_known` placed via the block layout. Inspect its page-visibility (request_path) configuration and tell me: on which pages is this block EXCLUDED from showing (the exclude patterns), and on which pages is it set to show?",
+      "must_contain_any": ["/user/jc", "!/user/jc"],
+      "must_not_contain": [],
+      "setup": "agent-module-documentation/evaluation/verify/block_exclude_pages-known-visibility-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/block_exclude_pages-known-visibility-cleanup.sh",
+      "expected_output": "Reading block.block.bep_eval_known visibility.request_path.pages (e.g. `drush config:get block.block.bep_eval_known visibility`): it shows on /user/* and is EXCLUDED from /user/jc and /user/jc/* (the `!`-prefixed lines), with negate false (show for the listed pages)."
+    },
+    {
+      "id": "bep-user-exclude",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site (block_exclude_pages is enabled), place a 'Powered by Drupal' block in the content region of the default Olivero theme with the machine name `bep_user_promo`. It must be visible on all user pages (/user/*) but excluded from the profile at /user/jc and everything beneath it, using the block_exclude_pages exclude syntax. Set 'Show for the listed pages'. Apply it to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/block_exclude_pages-user-exclude-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/block_exclude_pages-user-exclude-verify.sh",
+      "expected_output": "Create block config entity block.block.bep_user_promo (plugin system_powered_by_block, theme olivero, region content) with visibility.request_path.pages set to `/user/*` plus exclude lines `!/user/jc` and `!/user/jc/*`, negate false, then clear caches."
+    },
+    {
+      "id": "bep-banner-front",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, place a sitewide banner block with the machine name `bep_sitewide_banner` (a 'Powered by Drupal' block is fine) in the content region of the Olivero theme. It should appear on every page EXCEPT the front page, using block_exclude_pages exclude syntax in the Pages visibility with 'Show for the listed pages'. Make it live.",
+      "reset": "agent-module-documentation/evaluation/verify/block_exclude_pages-banner-front-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/block_exclude_pages-banner-front-verify.sh",
+      "expected_output": "Create block config entity block.block.bep_sitewide_banner with visibility.request_path.pages set to `/*` (include everything) plus exclude line `!<front>`, negate false, then clear caches."
+    }
+  ]
+}

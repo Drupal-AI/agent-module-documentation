@@ -1,0 +1,80 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "section_library",
+  "version": "2.0.x",
+  "note": "Section Library saves Layout Builder sections as reusable CONTENT: each saved section/page is a `section_library_template` content entity (base table `section_library_template`) with a `label`, a `type` of `section` or `template`, and the serialized layout in an unlimited-cardinality `layout_section` field. There is no plugin type and no Drush; the only config object is `section_library.settings` (two relabel keys). Easy `recipe` cases (response-graded) probe the entity/data model, the save/reuse flow, and the permission machine names. Medium `introspection` cases install two known templates and ask the agent to read the live library. Hard `execution` cases have the agent create a specific template entity, verified against live state.",
+  "evals": [
+    {
+      "id": "sl-entity-type",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "In the Section Library module on Drupal 11, when an editor saves a Layout Builder section to the library, what kind of thing is stored (config or content?), what is its entity type id, and where are saved templates managed in the admin?",
+      "must_contain_any": ["section_library_template", "content entity", "content-based", "/admin/content/section-library"],
+      "must_not_contain": ["config entity"],
+      "expected_output": "Each saved section/page is stored as a `section_library_template` CONTENT entity (not config; base table `section_library_template`), managed at Admin -> Content -> Section library (`/admin/content/section-library`)."
+    },
+    {
+      "id": "sl-section-vs-template",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "Section Library can save either a single section or a whole page of sections. In the section_library_template entity, which field distinguishes the two and what are its two allowed values? Which field holds the actual serialized Layout Builder layout?",
+      "must_contain_any": ["type", "section", "template", "layout_section"],
+      "must_not_contain": [],
+      "expected_output": "The `type` field (a list_string) with allowed values `section` (a single section) and `template` (a whole page). The serialized Layout Builder section(s) live in the unlimited-cardinality `layout_section` field."
+    },
+    {
+      "id": "sl-permissions",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "List the machine names of the Section Library permissions, in particular the one required to import a saved template into a layout and the one that grants full administration of the template entities.",
+      "must_contain_any": ["import template from section library", "administer section library template entities"],
+      "must_not_contain": [],
+      "expected_output": "Six permissions: `import template from section library` (import into a layout), `view section library templates`, `add section library templates`, `edit section library templates`, `delete section library templates`, and `administer section library template entities` (full admin)."
+    },
+    {
+      "id": "sl-intro-list",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "persona": "drupal-expert",
+      "setup": "agent-module-documentation/evaluation/verify/section_library-intro-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/section_library-intro-cleanup.sh",
+      "prompt": "This Drupal site already has some Section Library templates saved. Inspect the live site (drush is available) and tell me the label of every saved section_library_template entity, and for each whether it is a single 'section' or a whole-page 'template'.",
+      "must_contain_any": ["Eval Landing Page", "Eval Promo Section"],
+      "must_not_contain": [],
+      "expected_output": "Two saved templates: 'Eval Landing Page' (type=template, a whole page) and 'Eval Promo Section' (type=section, a single section)."
+    },
+    {
+      "id": "sl-intro-detail",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "persona": "drupal-expert",
+      "setup": "agent-module-documentation/evaluation/verify/section_library-intro-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/section_library-intro-cleanup.sh",
+      "prompt": "On this site, look at the saved Section Library template labelled 'Eval Landing Page'. How many Layout Builder sections does its layout_section field hold, and what is the layout id of its first section?",
+      "must_contain_any": ["2", "layout_onecol"],
+      "must_not_contain": [],
+      "expected_output": "'Eval Landing Page' holds 2 sections in its layout_section field; the first section's layout id is `layout_onecol` (the second is `layout_twocol_section`)."
+    },
+    {
+      "id": "sl-build-hero",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "reset": "agent-module-documentation/evaluation/verify/section_library-build-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/section_library-hero-verify.sh",
+      "prompt": "On this Drupal site, create a Section Library entry so editors can reuse it. Add a `section_library_template` content entity labelled exactly 'Homepage Hero' that is a whole-page template (type `template`) and contains a single one-column Layout Builder section (layout id `layout_onecol`). Save it to the live site so it appears in the section library.",
+      "expected_output": "Create a `section_library_template` entity with label 'Homepage Hero', type 'template', and one `layout_section` value that is a Layout Builder Section with layout id `layout_onecol` (e.g. via drush php:eval using \\Drupal\\layout_builder\\Section and the entity storage), then save it."
+    },
+    {
+      "id": "sl-build-promo",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "reset": "agent-module-documentation/evaluation/verify/section_library-build-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/section_library-promo-verify.sh",
+      "prompt": "On this Drupal site, add a reusable single section to the Section Library: create a `section_library_template` content entity labelled exactly 'Promo Banner' with type `section` (a single section, not a whole page) whose layout is a two-column Layout Builder section (layout id `layout_twocol_section`). Persist it to the running site.",
+      "expected_output": "Create a `section_library_template` entity with label 'Promo Banner', type 'section', and one `layout_section` value that is a Layout Builder Section with layout id `layout_twocol_section`, then save it."
+    }
+  ]
+}

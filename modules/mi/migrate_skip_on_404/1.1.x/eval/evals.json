@@ -1,0 +1,80 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "migrate_skip_on_404",
+  "version": "1.1.x",
+  "note": "migrate_skip_on_404 provides one migrate process plugin, skip_on_404 (class SkipOn404), plus hook_migration_plugins_alter() that auto-adds it to core D7 file migrations (d7_file, d7_file_private, upgrade_d7_file, upgrade_d7_file_private). No config, routes, permissions, schema or Drush. method:row throws MigrateSkipRowException; method:process calls stopPipeline(). Existence check: external URLs via http_client HEAD, local via file_exists(). Medium/hard cases are grounded in a real migrate_plus.migration config entity that references skip_on_404 in its process pipeline: introspection reads which guard plugin a migration uses; execution builds a migration whose file process uses skip_on_404, verified by reading the migration config.",
+  "evals": [
+    {
+      "id": "migrate_skip_on_404-plugin-id",
+      "mode": "recipe",
+      "prompt": "In a Drupal migration, which process plugin does the migrate_skip_on_404 module provide to skip a file when it is missing rather than fail the migration, and what does method: row versus method: process do?",
+      "must_contain_any": ["skip_on_404"],
+      "must_not_contain": [],
+      "expected_output": "The plugin is skip_on_404. method: row throws a MigrateSkipRowException so the whole record is skipped (and a message is logged); method: process calls stopPipeline() so only the current property's pipeline stops while the rest of the row is kept.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "migrate_skip_on_404-auto-migrations",
+      "mode": "recipe",
+      "prompt": "After I enable migrate_skip_on_404, which core Drupal-7 file migrations does it automatically modify so missing files are skipped, and do I need to configure anything?",
+      "must_contain_any": ["d7_file", "d7_file_private", "upgrade_d7_file", "hook_migration_plugins_alter"],
+      "must_not_contain": [],
+      "expected_output": "Via hook_migration_plugins_alter() it auto-injects skip_on_404 into the source_full_path chain of d7_file, d7_file_private, upgrade_d7_file and upgrade_d7_file_private. No configuration is needed - enabling the module is enough.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "migrate_skip_on_404-existence-check",
+      "mode": "recipe",
+      "prompt": "How does the migrate_skip_on_404 skip_on_404 plugin decide whether a source file exists for an external URL versus a local path?",
+      "must_contain_any": ["HEAD", "http_client", "file_exists", "RequestException"],
+      "must_not_contain": [],
+      "expected_output": "For external URLs it issues a Guzzle HEAD request via the http_client service and treats a RequestException as missing; for local paths it uses PHP file_exists().",
+      "difficulty": "easy"
+    },
+    {
+      "id": "migrate_skip_on_404-known-migration",
+      "mode": "introspection",
+      "prompt": "This Drupal site has a migration named msk_known. Inspect its live configuration and state which migrate_skip_on_404 process plugin it applies to its file property to guard against missing files.",
+      "must_contain_any": ["skip_on_404"],
+      "must_not_contain": [],
+      "expected_output": "The migration migrate_plus.migration.msk_known applies the skip_on_404 plugin (method: row, source: fileurl) on its uri process property.",
+      "setup": "agent-module-documentation/evaluation/verify/migrate_skip_on_404-known-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/migrate_skip_on_404-known-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "migrate_skip_on_404-known-method",
+      "mode": "introspection",
+      "prompt": "On this site the migration msk_known uses migrate_skip_on_404 to guard a file field. Inspect its configuration and state the method the skip_on_404 step is configured with (row or process).",
+      "must_contain_any": ["row"],
+      "must_not_contain": [],
+      "expected_output": "The skip_on_404 step in migrate_plus.migration.msk_known is configured with method: row, so a missing file skips the entire record.",
+      "setup": "agent-module-documentation/evaluation/verify/migrate_skip_on_404-known-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/migrate_skip_on_404-known-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "migrate_skip_on_404-build-migration",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, create a migrate_plus migration config entity with id msk_task whose file/URI process pipeline uses the migrate_skip_on_404 skip_on_404 plugin (method: row) so that a missing source file skips the row instead of failing. Apply it to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/migrate_skip_on_404-build-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/migrate_skip_on_404-build-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/migrate_skip_on_404-build-cleanup.sh",
+      "expected_output": "Create config migrate_plus.migration.msk_task with a process step that has plugin: skip_on_404 (e.g. on a uri property, method: row, source: fileurl). Verified by reading the migration config for a skip_on_404 process plugin."
+    },
+    {
+      "id": "migrate_skip_on_404-build-migration-layman",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "site-owner",
+      "prompt": "Some of the files I'm importing don't exist any more and they crash my import. Set up a migration called msk_task that just quietly skips a row when its file is missing, using the migrate_skip_on_404 module. Make it live on this site.",
+      "reset": "agent-module-documentation/evaluation/verify/migrate_skip_on_404-build-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/migrate_skip_on_404-build-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/migrate_skip_on_404-build-cleanup.sh",
+      "expected_output": "Same verified end state as migrate_skip_on_404-build-migration: config migrate_plus.migration.msk_task exists with a skip_on_404 process plugin in its pipeline."
+    }
+  ]
+}

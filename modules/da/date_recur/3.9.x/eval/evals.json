@@ -1,0 +1,87 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "date_recur",
+  "version": "3.9.x",
+  "note": "date_recur adds a `date_recur` field type: a datetime_range field plus an RFC 5545 RRULE, expanded to a per-field occurrence table. Recipe cases are response-graded. Medium cases install a known field / interpreter and require live introspection. Hard cases build live config (a WEEKLY-restricted date_recur field; a date_recur_interpreter config entity) verified against real state.",
+  "evals": [
+    {
+      "id": "date-recur-field-type",
+      "mode": "recipe",
+      "prompt": "On a Drupal 11 site I need a single field that stores an event and all its repeats (e.g. every Tuesday). Which contrib module and field type provide this, what standard describes the repeat rule it stores, and which extra database column does it add on top of core's date range field?",
+      "must_contain_any": ["date_recur", "rrule", "RRULE"],
+      "must_not_contain": [],
+      "expected_output": "The date_recur module's `date_recur` field type. It extends core datetime_range and adds an `rrule` column (plus `timezone` and a derived `infinite` flag) storing an RFC 5545 / iCalendar RRULE.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "date-recur-library",
+      "mode": "recipe",
+      "prompt": "Which third-party PHP library does the Drupal `date_recur` module use to parse RRULEs and generate occurrences?",
+      "must_contain_any": ["rlanvin/php-rrule", "php-rrule", "rlanvin"],
+      "must_not_contain": [],
+      "expected_output": "rlanvin/php-rrule (^2), a Composer dependency of the module.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "date-recur-interpreter",
+      "mode": "recipe",
+      "prompt": "I want to turn a stored recurring-date rule into a human-readable sentence in Drupal, and I want to manage those text settings in the admin UI. What plugin type does date_recur define for this, what config entity type stores an instance, and where in the admin is it configured?",
+      "must_contain_any": ["date_recur_interpreter", "recurring-date-interpreters", "interpreter"],
+      "must_not_contain": [],
+      "expected_output": "The `date_recur_interpreter` plugin type (shipped `rl` plugin). Instances are `date_recur_interpreter` config entities managed at /admin/config/regional/recurring-date-interpreters (route entity.date_recur_interpreter.collection, permission 'date_recur manage interpreters').",
+      "difficulty": "easy"
+    },
+    {
+      "id": "date-recur-helper-api",
+      "mode": "recipe",
+      "prompt": "In custom PHP I have an RRULE string and a start DateTime and want the concrete occurrence dates without loading an entity. Which date_recur value-object class do I build, which method returns the occurrences, and what must I pass for an infinite rule so it terminates?",
+      "must_contain_any": ["DateRecurHelper", "getOccurrences", "generateOccurrences"],
+      "must_not_contain": [],
+      "expected_output": "Build Drupal\\date_recur\\DateRecurHelper::create($rrule, $start[, $startEnd]) and call getOccurrences($rangeStart, $rangeEnd, $limit) — pass a $limit or a date range (or use the generateOccurrences() Generator) for infinite rules. isInfinite() detects unbounded rules.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "date-recur-known-field-frequency",
+      "mode": "introspection",
+      "prompt": "A recurring-date field has been added to the Article content type on this site. Inspect its field configuration and tell me: which single recurrence frequency are editors restricted to entering, and what is the field's precreate interval setting?",
+      "setup": "agent-module-documentation/evaluation/verify/date_recur-known-field-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/date_recur-known-field-cleanup.sh",
+      "must_contain_any": ["WEEKLY", "Weekly", "P3Y"],
+      "must_not_contain": [],
+      "expected_output": "The field node.article.field_recur_intro restricts editors to the WEEKLY frequency only (parts.all = false, only WEEKLY enabled in the parts grid) and has precreate = P3Y.",
+      "difficulty": "medium"
+    },
+    {
+      "id": "date-recur-known-interpreter",
+      "mode": "introspection",
+      "prompt": "This site has a recurring-date interpreter configured for evaluation (not the shipped default). Inspect the site's date_recur_interpreter configuration and tell me its label, which interpreter plugin it uses, and the date format its settings apply.",
+      "setup": "agent-module-documentation/evaluation/verify/date_recur-known-interpreter-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/date_recur-known-interpreter-cleanup.sh",
+      "must_contain_any": ["Eval Intro Interpreter", "eval_intro_interpreter"],
+      "must_not_contain": [],
+      "expected_output": "The date_recur_interpreter config entity eval_intro_interpreter, label 'Eval Intro Interpreter', plugin 'rl', with settings.date_format = 'long' (show_start_date/show_until/show_infinite all true).",
+      "difficulty": "medium"
+    },
+    {
+      "id": "date-recur-weekly-field",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, add a recurring-date field to the Article content type using the field type provided by the date_recur module. Name it field_eval_recur, and configure its field settings so editors may ONLY create weekly recurrences (restrict the parts grid to the WEEKLY frequency; disable all other frequencies). Apply it live so the field and its storage exist on Article nodes.",
+      "reset": "agent-module-documentation/evaluation/verify/date_recur-weekly-field-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/date_recur-weekly-field-verify.sh",
+      "expected_output": "A FieldStorageConfig node.field_eval_recur of type `date_recur` and a FieldConfig on node.article referencing it exist, with field settings parts.all = false and only WEEKLY enabled in parts.frequencies."
+    },
+    {
+      "id": "date-recur-interpreter-entity",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, create a recurring-date interpreter so RRULEs can be rendered as human-readable text. Create a date_recur_interpreter config entity with id `eval_interpreter`, label it however you like, and use the interpreter plugin that ships with the date_recur module. Save it to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/date_recur-interpreter-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/date_recur-interpreter-verify.sh",
+      "expected_output": "A date_recur_interpreter config entity with id eval_interpreter and plugin `rl` now exists on the live site (loadable via DateRecurInterpreter::load('eval_interpreter'))."
+    }
+  ]
+}

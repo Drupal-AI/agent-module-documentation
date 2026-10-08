@@ -1,0 +1,99 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "simple_oauth_password_grant",
+  "version": "2.1.x",
+  "note": "Developer/API module. It adds ONE plugin to Simple OAuth's Oauth2Grant plugin type: id 'password' (Drupal\\simple_oauth_password_grant\\Plugin\\Oauth2Grant\\Password), wrapping the PHP League PasswordGrant. There is no settings page (configure=null), no permissions, no Drush. The grant is turned on per Consumer entity via its multi-value grant_types field (value 'password'); a client then POSTs grant_type=password + client_id/client_secret/username/password to Simple OAuth's /oauth/token. Credential checks (username OR email, active users only) and flood protection live in service simple_oauth_password_grant.repositories.user. Easy cases probe that surface as text. Medium/hard cases are grounded in Consumer config the agent can create WITHOUT any live token exchange: enabling the password grant in a consumer's grant_types, verified against the consumer entity. Consumers are namespaced with sopg_* client_ids.",
+  "evals": [
+    {
+      "id": "simple_oauth_password_grant-how-to-get-token",
+      "mode": "recipe",
+      "prompt": "I enabled simple_oauth_password_grant on a decoupled Drupal 11 site. How does a trusted first-party client obtain an OAuth2 access token using a Drupal user's credentials? Give the grant_type value and the parameters to POST.",
+      "must_contain_any": [
+        "grant_type=password",
+        "\"password\"",
+        "password",
+        "client_id",
+        "username"
+      ],
+      "must_not_contain": [],
+      "expected_output": "POST to Simple OAuth's token endpoint (/oauth/token) with grant_type=password plus client_id, client_secret, username and password. The username may be the Drupal username or the account email. You first enable the Password grant on the consumer. Response returns an access_token (and refresh_token when allowed).",
+      "difficulty": "easy"
+    },
+    {
+      "id": "simple_oauth_password_grant-enable-where",
+      "mode": "recipe",
+      "prompt": "There is no admin settings page for simple_oauth_password_grant. On a Simple OAuth Consumer, where/how do I turn the password grant on?",
+      "must_contain_any": [
+        "grant_types",
+        "grant types",
+        "Consumer",
+        "Password"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Enable the 'Password' grant on the specific Consumer entity by adding 'password' to its grant_types field (Configuration > Web services > Consumers, tick Password). configure is null; there is no module settings form.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "simple_oauth_password_grant-username-or-email",
+      "mode": "recipe",
+      "prompt": "With the simple_oauth_password_grant password grant, can a user authenticate with their email address instead of their Drupal username, and what protects the token endpoint against brute-force login attempts?",
+      "must_contain_any": [
+        "email",
+        "flood",
+        "user.flood"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Yes - the username field accepts the Drupal username or the account email (email matched first when it contains @). The module's UserRepository applies core flood protection using user.flood limits (IP event oauth2_password_grant.failed_login_ip and per-user oauth2_password_grant.failed_login_user), throwing a 403 flood_ip_blocked / flood_user_blocked when exceeded.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "simple_oauth_password_grant-consumer-grants",
+      "mode": "introspection",
+      "prompt": "This Drupal site has a Simple OAuth Consumer labelled 'SOPG Probe Consumer'. Inspect the live consumer configuration and state whether the OAuth2 password grant is enabled on it.",
+      "must_contain_any": [
+        "password"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Yes - the consumer (client_id sopg_probe_client) has grant_types including 'password' (and 'refresh_token').",
+      "setup": "agent-module-documentation/evaluation/verify/simple_oauth_password_grant-known-consumer-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/simple_oauth_password_grant-known-consumer-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "simple_oauth_password_grant-consumer-client-id",
+      "mode": "introspection",
+      "prompt": "On this site exactly one Simple OAuth Consumer has the password grant enabled. Inspect the live consumers and report that consumer's client_id.",
+      "must_contain_any": [
+        "sopg_probe_client"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The consumer with grant_types containing 'password' has client_id sopg_probe_client (label 'SOPG Probe Consumer').",
+      "setup": "agent-module-documentation/evaluation/verify/simple_oauth_password_grant-known-consumer-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/simple_oauth_password_grant-known-consumer-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "simple_oauth_password_grant-enable-grant",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site there is a Simple OAuth Consumer with client_id 'sopg_task_client' that does NOT currently allow the password grant. Enable the OAuth2 password grant on that consumer and save it to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/simple_oauth_password_grant-enable-grant-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/simple_oauth_password_grant-enable-grant-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/simple_oauth_password_grant-enable-grant-cleanup.sh",
+      "expected_output": "The consumer with client_id sopg_task_client has 'password' added to its grant_types field (value saved on the consumer entity)."
+    },
+    {
+      "id": "simple_oauth_password_grant-create-consumer",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, create a Simple OAuth Consumer with client_id 'sopg_new_client' that has the OAuth2 password grant enabled, and save it to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/simple_oauth_password_grant-create-consumer-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/simple_oauth_password_grant-create-consumer-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/simple_oauth_password_grant-create-consumer-cleanup.sh",
+      "expected_output": "A consumer entity with client_id sopg_new_client exists and its grant_types field includes 'password'."
+    }
+  ]
+}

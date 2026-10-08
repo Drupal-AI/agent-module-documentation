@@ -1,0 +1,80 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "media_duplicates",
+  "version": "2.0.x",
+  "note": "Media Duplicates hashes each media item's source into a duplicates_checksum base field on presave and can block duplicate saves via a MediaUniqueChecksum constraint. Its persistent enforcement state is the config object media_duplicates.settings with three booleans: restrict_duplicates, restrict_new_media_only, compare_within_bundle_only. There is NO config/install file, so baseline is the object absent (all effectively FALSE). Medium cases seed known booleans and read them back; hard cases require the agent to set the booleans, verified against live config. Baseline restore = delete the media_duplicates.settings object. Checksum plugin type = MediaDuplicatesChecksum (built-ins File, OEmbed). Drush command id: media-duplicates:checksums:rebuild.",
+  "evals": [
+    {
+      "id": "md-restrict-settings",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "In the Media Duplicates module, which settings control whether and how duplicate media are blocked? Name the config object and the relevant keys.",
+      "must_contain_any": ["restrict_duplicates", "compare_within_bundle_only", "restrict_new_media_only", "media_duplicates.settings"],
+      "must_not_contain": [],
+      "expected_output": "Config object media_duplicates.settings with booleans restrict_duplicates (master block switch), restrict_new_media_only (only block new items), and compare_within_bundle_only (only compare within the same media type)."
+    },
+    {
+      "id": "md-rebuild-command",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "I just installed Media Duplicates on a site that already has media. Which Drush command generates the missing duplicate checksums for the existing media?",
+      "must_contain_any": ["media-duplicates:checksums:rebuild", "checksums:rebuild"],
+      "must_not_contain": [],
+      "expected_output": "drush media-duplicates:checksums:rebuild <bundles|all> (e.g. `drush media-duplicates:checksums:rebuild all`). Same as the /admin/config/media/media-duplicates/refresh form."
+    },
+    {
+      "id": "md-how-detected",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "How does Media Duplicates decide that two media entities are duplicates? What is stored on each media item?",
+      "must_contain_any": ["duplicates_checksum", "checksum", "SHA-256", "sha256"],
+      "must_not_contain": [],
+      "expected_output": "On presave it computes a checksum of the media's source (File plugin SHA-256 hashes the file contents; OEmbed plugin hashes the source value) and stores it in the revisionable base field duplicates_checksum; items with matching checksums are duplicates."
+    },
+    {
+      "id": "md-known-new-only",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "Media Duplicates is configured to restrict duplicates on this site. Inspect the live configuration: is it blocking ALL media with a duplicate checksum, or only NEW media items?",
+      "must_contain_any": ["restrict_new_media_only", "new media only", "only new", "only NEW", "only new media"],
+      "must_not_contain": [],
+      "expected_output": "Only new media — media_duplicates.settings has restrict_duplicates: true and restrict_new_media_only: true (compare_within_bundle_only: false).",
+      "setup": "agent-module-documentation/evaluation/verify/media_duplicates-known-new-only-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/media_duplicates-known-new-only-cleanup.sh"
+    },
+    {
+      "id": "md-known-bundle-scope",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "Media Duplicates restriction is enabled on this site. Inspect the live configuration and state whether duplicate comparison happens across ALL media types or only within the SAME media type (bundle).",
+      "must_contain_any": ["compare_within_bundle_only", "same media type", "same bundle", "within the same", "within-bundle", "per-bundle"],
+      "must_not_contain": [],
+      "expected_output": "Within the same media type only — media_duplicates.settings has restrict_duplicates: true and compare_within_bundle_only: true.",
+      "setup": "agent-module-documentation/evaluation/verify/media_duplicates-known-bundle-scope-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/media_duplicates-known-bundle-scope-cleanup.sh"
+    },
+    {
+      "id": "md-restrict-new-only",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "Using the Media Duplicates module, configure this site to restrict creation of duplicate media, but only for NEW media items (existing duplicates must still be saveable). Apply it to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/media_duplicates-settings-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/media_duplicates-restrict-new-only-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/media_duplicates-settings-cleanup.sh",
+      "expected_output": "In media_duplicates.settings set restrict_duplicates: true and restrict_new_media_only: true (e.g. `drush config:set media_duplicates.settings restrict_duplicates true -y` and `... restrict_new_media_only true -y`, or the /admin/config/media/media-duplicates form)."
+    },
+    {
+      "id": "md-restrict-within-bundle",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "site-owner-layman",
+      "prompt": "I don't want editors uploading the same file twice, but only worry about duplicates within the same kind of media (e.g. two Image items) — not an image matching a document. Set that up on the live site using Media Duplicates.",
+      "reset": "agent-module-documentation/evaluation/verify/media_duplicates-settings-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/media_duplicates-restrict-within-bundle-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/media_duplicates-settings-cleanup.sh",
+      "expected_output": "In media_duplicates.settings set restrict_duplicates: true and compare_within_bundle_only: true."
+    }
+  ]
+}

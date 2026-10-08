@@ -1,0 +1,57 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "reroute_email_symfony_mailer",
+  "version": "2.3.x",
+  "note": "Submodule of Reroute Email. It exists because the Symfony Mailer pipeline never invokes hook_mail_alter(), so the parent module's interception does not fire; this submodule plugs reroute logic into Symfony Mailer's adjuster/handler/builder pipeline instead. All cases are `recipe` (response-graded) — the submodule adds no new config route, reusing reroute_email.settings.",
+  "evals": [
+    {
+      "id": "reroutesf-why-exists",
+      "mode": "recipe",
+      "prompt": "My Drupal 11 site uses the symfony_mailer module as its mail transport, and the plain Reroute Email module is enabled but outgoing test mail is NOT being rerouted. Why does the base Reroute Email interception fail here, and what do I install to fix it?",
+      "must_contain_any": ["hook_mail_alter", "reroute_email_symfony_mailer"],
+      "must_not_contain": [],
+      "expected_output": "Core Reroute Email intercepts via hook_mail_alter(), which Symfony Mailer's send pipeline never invokes, so nothing is rerouted. Enable the reroute_email_symfony_mailer submodule, which plugs the reroute logic into Symfony Mailer's pipeline instead."
+    },
+    {
+      "id": "reroutesf-handler-plugin",
+      "mode": "recipe",
+      "prompt": "In the reroute_email_symfony_mailer submodule, which plugin actually adapts the shared reroute logic to Symfony Mailer's EmailInterface (get/set To/Cc/Bcc, headers, body), and what does it throw to abort/skip a message?",
+      "must_contain_any": ["RerouteEmailHandler", "SkipMailException", "symfony_mailer_adjuster"],
+      "must_not_contain": [],
+      "expected_output": "The SymfonyMailer RerouteEmailHandler plugin (applied = {\"symfony_mailer_adjuster\"}), a subclass of RerouteEmailHandlerPluginBase that adapts to Symfony Mailer's EmailInterface. To abort a message it throws Drupal\\symfony_mailer\\Exception\\SkipMailException."
+    },
+    {
+      "id": "reroutesf-adjuster-global-vs-policy",
+      "mode": "recipe",
+      "prompt": "On a Symfony Mailer site with reroute_email_symfony_mailer enabled, I want one specific mailer policy to reroute to a different address than the site-wide reroute setting. Which plugin/setting controls global vs per-policy behavior, and how do I switch to per-policy overrides?",
+      "must_contain_any": ["use_global", "Use global configuration", "reroute_email", "per-policy"],
+      "must_not_contain": [],
+      "expected_output": "The EmailAdjuster plugin (id reroute_email) exposes a per-policy settings form with a 'Use global configuration' checkbox (use_global, default on → uses reroute_email.settings). Uncheck it to set per-policy overrides (address, allowlist, roles, mail-key filters) on that mailer policy."
+    },
+    {
+      "id": "reroutesf-test-form-builder",
+      "mode": "recipe",
+      "prompt": "How does the Reroute Email test form send its test message through Symfony Mailer instead of the classic mail system in the reroute_email_symfony_mailer submodule? Name the plugin and the send mechanism.",
+      "must_contain_any": ["EmailBuilder", "sendTypedEmail", "test_email_form"],
+      "must_not_contain": [],
+      "expected_output": "An EmailBuilder plugin (id reroute_email, sub-type test_email_form) lets the test form send via Symfony Mailer. A hook_form_FORM_ID_alter swaps the submit handler to email_factory->sendTypedEmail('reroute_email', 'test_email_form', $params) and displays the applied mailer policy."
+    },
+    {
+      "id": "reroutesf-dependencies",
+      "mode": "recipe",
+      "prompt": "What modules must be present for reroute_email_symfony_mailer to work, and does enabling it add a new settings/config route of its own?",
+      "must_contain_any": ["symfony_mailer", "reroute_email.settings", "reroute_email"],
+      "must_not_contain": [],
+      "expected_output": "It depends on both reroute_email and symfony_mailer (drush en reroute_email_symfony_mailer pulls them in). It adds no new settings route — it reuses the parent module's reroute_email.settings config and form."
+    },
+    {
+      "id": "reroutesf-adjuster-weight",
+      "mode": "recipe",
+      "prompt": "In the reroute_email_symfony_mailer submodule, how is the reroute adjuster ordered relative to the other Symfony Mailer adjusters, and how is that ordering enforced?",
+      "must_contain_any": ["hook_mailer_adjuster_info_alter", "max", "+100", "after all"],
+      "must_not_contain": [],
+      "expected_output": "The reroute_email adjuster is forced to run after every other adjuster; hook_mailer_adjuster_info_alter() bumps its weight to max(weight) + 100 so it has the highest weight."
+    }
+  ]
+}

@@ -1,0 +1,100 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "migmag_callback_upgrade",
+  "version": "1.8.x",
+  "note": "Backport module: hook_migrate_process_info_alter() swaps the 'callback' process plugin class to MigMagCallback ONLY when core < 9.2.0. On this Drupal 11 site the gate is false, so the module is a deliberate NO-OP - the callback plugin class stays core Callback. Evals are honest about this: they are grounded in module-enable state and the (unchanged) callback plugin class read via the core process plugin manager (which works; the migration plugin manager is broken by pathauto but is not needed). Baseline: this module DISABLED. Execution 'enable' verifies the module is enabled AND that callback is still core Callback (inert); 'remove' verifies it is uninstalled.",
+  "evals": [
+    {
+      "id": "migmag_cu-what",
+      "mode": "recipe",
+      "prompt": "What does the Drupal module migmag_callback_upgrade do, and on which Drupal core versions does it actually change anything?",
+      "must_contain_any": [
+        "9.2",
+        "no-op",
+        "backport",
+        "unpack_source"
+      ],
+      "must_not_contain": [],
+      "expected_output": "It backports core 9.2's 'callback' process plugin (which adds the unpack_source option) to older cores by swapping the callback plugin's class to MigMagCallback - but only when core is older than 9.2.0. On 9.2+/10/11 it is a deliberate no-op.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "migmag_cu-gate",
+      "mode": "recipe",
+      "prompt": "What is the exact version condition migmag_callback_upgrade checks before replacing the core 'callback' process plugin class, and what does that mean on Drupal 11?",
+      "must_contain_any": [
+        "9.2",
+        "less than",
+        "lt"
+      ],
+      "must_not_contain": [],
+      "expected_output": "It only swaps the class when version_compare(\\Drupal::VERSION, '9.2.0', 'lt') is true (core older than 9.2.0). On Drupal 11 that is false, so it changes nothing.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "migmag_cu-class",
+      "mode": "recipe",
+      "prompt": "Which class does migmag_callback_upgrade provide as the replacement callback process plugin, and what feature does it add?",
+      "must_contain_any": [
+        "MigMagCallback",
+        "unpack_source"
+      ],
+      "must_not_contain": [],
+      "expected_output": "MigMagCallback (extends core Callback). It adds the unpack_source option, which spreads a source array as separate arguments to the callable.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "migmag_cu-inert-class",
+      "mode": "introspection",
+      "prompt": "On this Drupal 11 site migmag_callback_upgrade has been enabled. Inspect the migrate process plugin manager and report the implementing class of the 'callback' process plugin - has migmag_callback_upgrade changed it?",
+      "must_contain_any": [
+        "Drupal\\migrate\\Plugin\\migrate\\process\\Callback",
+        "unchanged",
+        "no-op",
+        "not changed",
+        "core Callback"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The callback plugin class is still core Drupal\\migrate\\Plugin\\migrate\\process\\Callback - migmag_callback_upgrade did NOT change it, because this core is >= 9.2 so the module is inert.",
+      "setup": "agent-module-documentation/evaluation/verify/migmag-callback-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/migmag-callback-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "migmag_cu-why-inert",
+      "mode": "introspection",
+      "prompt": "On this Drupal 11 site migmag_callback_upgrade is enabled but appears to have no effect on migrations. Inspect the site (its core version) and explain why the module is inert here.",
+      "must_contain_any": [
+        "9.2"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Because Drupal core here is >= 9.2 (Drupal 11), the module's version gate (version_compare < 9.2.0) is false, so it never swaps the callback plugin class. Core's callback already supports unpack_source.",
+      "setup": "agent-module-documentation/evaluation/verify/migmag-callback-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/migmag-callback-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "migmag_cu-enable",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, enable Migrate Magician's callback process plugin upgrade module. Apply the change to the live site. (Note: on Drupal 11 this module is a deliberate no-op, so core's 'callback' plugin class must remain unchanged.)",
+      "reset": "agent-module-documentation/evaluation/verify/migmag-callback-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/migmag-callback-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/migmag-callback-cleanup.sh",
+      "expected_output": "Enable migmag_callback_upgrade (drush en migmag_callback_upgrade -y). The module is then enabled; because core >= 9.2 the 'callback' process plugin class stays core Drupal\\migrate\\Plugin\\migrate\\process\\Callback (no-op)."
+    },
+    {
+      "id": "migmag_cu-remove",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site migmag_callback_upgrade is currently enabled. Since it has no effect on Drupal 11, uninstall it so it is no longer enabled. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/migmag-callback-remove-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/migmag-callback-remove-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/migmag-callback-cleanup.sh",
+      "expected_output": "Uninstall migmag_callback_upgrade (drush pmu migmag_callback_upgrade -y); afterwards the module is no longer enabled."
+    }
+  ]
+}

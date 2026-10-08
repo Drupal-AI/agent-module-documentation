@@ -1,0 +1,80 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "m4032404",
+  "version": "2.0.x",
+  "note": "403 to 404 converts AccessDeniedHttpException into NotFoundHttpException via M4032404EventSubscriber (priority 50 on KernelEvents::EXCEPTION). All state is the m4032404.settings config object (admin_only bool, pages sequence, negate bool; shipped defaults admin_only=false, pages=[], negate=true). Two permissions: 'access 403 page' (bypass, see the real 403) and 'administer 403 to 404 settings' (config form). Configure route m4032404.config -> /admin/config/system/m4032404. Evals are grounded in the module's config/behavior only. Medium reads config back; hard writes config and is verified against the live m4032404.settings.",
+  "evals": [
+    {
+      "id": "m4032404-what-it-does",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "What does the Drupal m4032404 (403 to 404) module do, and why would a site use it?",
+      "must_contain_any": ["404", "403", "access denied", "not found"],
+      "must_not_contain": [],
+      "expected_output": "It converts 403 Access Denied responses into 404 Not Found (an exception subscriber swaps AccessDeniedHttpException for NotFoundHttpException), so protected pages look non-existent - hiding their existence from anonymous users/crawlers and reducing information leakage during URL enumeration."
+    },
+    {
+      "id": "m4032404-bypass-permission",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "With the m4032404 module active, which permission lets a specific user still see the real 403 Access Denied page instead of the 404?",
+      "must_contain_any": ["access 403 page"],
+      "must_not_contain": [],
+      "expected_output": "The 'access 403 page' permission. Users who have it bypass the redirect and see the genuine 403; everyone else gets the 404."
+    },
+    {
+      "id": "m4032404-settings-keys",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "What configuration options does the m4032404 module expose, and what does the 'negate' option do together with the pages list?",
+      "must_contain_any": ["admin_only", "pages", "negate"],
+      "must_not_contain": [],
+      "expected_output": "m4032404.settings has admin_only (restrict to admin routes), pages (path patterns), and negate. With negate=false the listed pages are the ones redirected; with negate=true the listed pages are EXCLUDED and everything else is redirected. An empty pages list applies to all paths."
+    },
+    {
+      "id": "m4032404-read-admin-only",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "This Drupal site has the m4032404 module configured. Inspect the live m4032404.settings and tell me whether the 403->404 behaviour is limited to admin pages, and which path(s) are in its pages list.",
+      "must_contain_any": ["/user/*"],
+      "must_not_contain": [],
+      "expected_output": "admin_only is true (limited to admin routes) and pages contains /user/* (with negate=false, i.e. an include list). Read via `drush cget m4032404.settings`.",
+      "setup": "agent-module-documentation/evaluation/verify/m4032404-adminpages-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/m4032404-restore-defaults.sh"
+    },
+    {
+      "id": "m4032404-read-negate",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "On this site the m4032404 module is configured with a pages list. Inspect the live configuration and tell me whether the listed path(s) are the ones being redirected to 404, or the ones being excluded from the behaviour.",
+      "must_contain_any": ["exclud", "negate", "not redirect", "except"],
+      "must_not_contain": [],
+      "expected_output": "pages is [/blog/*] and negate is true, so /blog/* is EXCLUDED from the 403->404 behaviour (everything except /blog/* is redirected).",
+      "setup": "agent-module-documentation/evaluation/verify/m4032404-negate-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/m4032404-restore-defaults.sh"
+    },
+    {
+      "id": "m4032404-redirect-secret",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, configure the m4032404 module so that ONLY paths under /secret/ have their 403 Access Denied responses turned into 404 Not Found (all other paths should keep their normal 403). Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/m4032404-restore-defaults.sh",
+      "verify": "agent-module-documentation/evaluation/verify/m4032404-pages-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/m4032404-restore-defaults.sh",
+      "expected_output": "In m4032404.settings set pages to include /secret/* and set negate to false (an include list), so only /secret/* is redirected to 404."
+    },
+    {
+      "id": "m4032404-admin-only",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "site-owner",
+      "prompt": "Using the m4032404 module, make the 403-to-404 behaviour apply only to the Drupal admin pages. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/m4032404-restore-defaults.sh",
+      "verify": "agent-module-documentation/evaluation/verify/m4032404-adminonly-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/m4032404-restore-defaults.sh",
+      "expected_output": "Set m4032404.settings.admin_only to true (e.g. `drush cset m4032404.settings admin_only 1 -y` or tick 'Enforce on Admin Only' on the form)."
+    }
+  ]
+}

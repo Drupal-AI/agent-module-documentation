@@ -1,0 +1,99 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "menu_firstchild",
+  "version": "2.2.x",
+  "note": "Menu Firstchild makes a pathless parent menu_link_content resolve to its first viewable child's URL at render time. It has no config page/permission/schema; its only persistent state is a per-link option stored in the menu link's link-field options: options['menu_firstchild']['enabled'] = TRUE (enabled links also store uri route:<none>). Rendering runs hook_preprocess_menu -> menu_firstchild.menu_item_parser (MenuItemParser::parse), which rewrites the URL and adds a menu-firstchild class; hook_menu_firstchild_item_alter lets modules adjust it. Medium cases seed real menu_link_content links (one enabled, one not; and a routeless enabled link) and read their options back via drush; hard cases enable first-child on an existing link and create a new first-child link, verified against the live link option.",
+  "evals": [
+    {
+      "id": "menu_firstchild-what",
+      "mode": "recipe",
+      "prompt": "Using the Drupal module menu_firstchild, how do I make a parent menu item that has no path of its own but links to its first child item?",
+      "must_contain_any": [
+        "First child",
+        "first child",
+        "menu_firstchild",
+        "checkbox"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Create/edit a custom menu (menu_link_content) link and tick the 'First child' checkbox; the path field is then disabled (the link stores uri route:<none>). At render time it resolves to the first viewable child's URL.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "menu_firstchild-storage",
+      "mode": "recipe",
+      "prompt": "Where does menu_firstchild store the 'first child' flag for a menu link, and what does it do to the item when the menu is rendered?",
+      "must_contain_any": [
+        "options",
+        "menu_firstchild",
+        "preprocess",
+        "menu-firstchild"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The flag lives in the menu link's link-field options: options['menu_firstchild']['enabled'] = true (no separate config object). hook_preprocess_menu runs the item through MenuItemParser, which rewrites its url to the first access-checked child and adds a menu-firstchild CSS class.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "menu_firstchild-hook",
+      "mode": "recipe",
+      "prompt": "Which hook does menu_firstchild provide so another module can alter the menu item it generates, and which service performs the first-child resolution?",
+      "must_contain_any": [
+        "hook_menu_firstchild_item_alter",
+        "menu_firstchild.menu_item_parser",
+        "MenuItemParser"
+      ],
+      "must_not_contain": [],
+      "expected_output": "hook_menu_firstchild_item_alter(&$menu_item, $child) is invoked after the URL is rewritten. The resolution is done by the menu_firstchild.menu_item_parser service (MenuItemParser::parse), called from hook_preprocess_menu.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "menu_firstchild-which-enabled",
+      "mode": "introspection",
+      "prompt": "On this Drupal site the main menu has two custom links: 'MFC Enabled Link' and 'MFC Plain Link'. Exactly one uses menu_firstchild first-child linking. Inspect the live menu links and tell me which one has the first-child behavior enabled.",
+      "must_contain_any": [
+        "MFC Enabled Link"
+      ],
+      "must_not_contain": [],
+      "expected_output": "MFC Enabled Link has it enabled: its menu_link_content link options contain menu_firstchild.enabled = true (and uri route:<none>), whereas MFC Plain Link is a normal link. Discoverable by loading the menu_link_content entities and inspecting link->first()->options.",
+      "setup": "agent-module-documentation/evaluation/verify/menu_firstchild-which-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/menu_firstchild-which-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "menu_firstchild-routeless-uri",
+      "mode": "introspection",
+      "prompt": "On this site there is a main-menu link 'MFC Routeless' that uses menu_firstchild and has no destination path of its own. Inspect the live menu link and tell me what URI value is stored in its link field.",
+      "must_contain_any": [
+        "route:<none>",
+        "<none>"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Its link uri is 'route:<none>' (menu_firstchild-enabled links carry no real path; the destination is computed at render from the first child). Discoverable via the menu_link_content link->first()->uri.",
+      "setup": "agent-module-documentation/evaluation/verify/menu_firstchild-uri-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/menu_firstchild-uri-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "menu_firstchild-enable-existing",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site the main menu has a link 'MFC Task Parent' (currently a normal link) that has child links beneath it. Using menu_firstchild, configure this link so it links to its first child instead of its own path, and apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/menu_firstchild-enable-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/menu_firstchild-enable-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/menu_firstchild-enable-cleanup.sh",
+      "expected_output": "The MFC Task Parent menu_link_content has options['menu_firstchild']['enabled'] = true in its link field (typically with uri route:<none>). Set by ticking 'First child' on the link form or editing the link entity's options and saving."
+    },
+    {
+      "id": "menu_firstchild-create-link",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this site, create a new custom menu link in the main menu titled 'MFC Build Parent' that uses menu_firstchild first-child linking (it should have no path of its own and instead point to its first child). Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/menu_firstchild-build-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/menu_firstchild-build-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/menu_firstchild-build-cleanup.sh",
+      "expected_output": "A menu_link_content in the main menu titled 'MFC Build Parent' whose link options contain menu_firstchild.enabled = true (uri route:<none>). Create via the Add link form with 'First child' ticked, or MenuLinkContent::create([...])->save()."
+    }
+  ]
+}

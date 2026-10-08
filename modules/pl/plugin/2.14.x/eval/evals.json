@@ -1,0 +1,100 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "plugin",
+  "version": "2.14.x",
+  "note": "Plugin is a developer/API module. It defines ONE plugin type of its own, plugin_selector (manager plugin.manager.plugin.plugin_selector; selectors plugin_radios, plugin_select_list), and provides: a plugin-type registry (plugin.plugin_type_manager, discovery via MODULE.plugin_type.yml, admin UI /admin/structure/plugin route plugin.plugin_type.list, perm plugin.overview.view, ParamConverters), a 'plugin' (plugin collection) field type derived per registered plugin type as plugin:<plugin_type_id> (e.g. plugin:condition, plugin:action, plugin:block) with a derived Plugin selector widget (plugin_selector:plugin_radios / plugin_selector:plugin_select_list) and plugin_label / plugin_block_built formatters, hook_plugin_selector_alter(), and a Drush 'plugin-types' cache-clear callback (no standalone drush command). Easy cases probe that API surface as text. Medium/hard cases are grounded in real config the agent can create on the live site: a plugin:<type> field on Article and the Plugin selector widget on its form display (verified against field storage / form-display config). No live external calls involved.",
+  "evals": [
+    {
+      "id": "plugin-register-type",
+      "mode": "recipe",
+      "prompt": "Using the contrib Plugin module (drupal/plugin) on Drupal 11, how does a module make its own plugin manager show up as a discoverable 'plugin type' in the plugin registry, and which service lists all registered plugin types?",
+      "must_contain_any": [
+        "plugin_type.yml",
+        "plugin.plugin_type_manager",
+        "PluginTypeManager"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Add a MODULE.plugin_type.yml file listing the plugin type id with its label and plugin_manager_service_id. The plugin.plugin_type_manager service (PluginTypeManagerInterface) then exposes them via getPluginTypes()/getPluginType($id), and they appear at /admin/structure/plugin (route plugin.plugin_type.list, perm plugin.overview.view).",
+      "difficulty": "easy"
+    },
+    {
+      "id": "plugin-field-type",
+      "mode": "recipe",
+      "prompt": "The drupal/plugin module lets an entity field store a chosen plugin and its configuration. What is the field type called, how are the concrete field-type ids named per plugin type, and which widget lets an editor pick the plugin?",
+      "must_contain_any": [
+        "plugin:",
+        "plugin collection",
+        "plugin_selector",
+        "plugin_reference"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The field type base id is 'plugin' (a plugin collection), derived per plugin type as plugin:<plugin_type_id> (e.g. plugin:condition, plugin:block). Editors pick a plugin with the derived Plugin selector widget (plugin_selector:plugin_radios or plugin_selector:plugin_select_list); formatters are plugin_label and plugin_block_built.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "plugin-selector-plugin-type",
+      "mode": "recipe",
+      "prompt": "In the drupal/plugin module, which plugin type does the module define itself (as opposed to the core types it merely registers), what are the two shipped selector plugins, and how do you alter the available ones?",
+      "must_contain_any": [
+        "plugin_selector",
+        "plugin_radios",
+        "plugin_select_list",
+        "hook_plugin_selector_alter"
+      ],
+      "must_not_contain": [],
+      "expected_output": "It defines the plugin_selector plugin type (manager plugin.manager.plugin.plugin_selector). Shipped selectors are plugin_radios and plugin_select_list. Alter them with hook_plugin_selector_alter(array &$definitions).",
+      "difficulty": "easy"
+    },
+    {
+      "id": "plugin-known-field-type",
+      "mode": "introspection",
+      "prompt": "On this Drupal site the Article content type has a field named field_plugin_known created with the drupal/plugin 'plugin collection' field type. Inspect the live field configuration and state which plugin type that field references (i.e. its exact field-type id).",
+      "must_contain_any": [
+        "plugin:condition"
+      ],
+      "must_not_contain": [],
+      "expected_output": "field_plugin_known has field-type id plugin:condition (a plugin-collection field keyed to the core Condition plugin type), visible in field.storage.node.field_plugin_known.type or via drush field:info.",
+      "setup": "agent-module-documentation/evaluation/verify/plugin-known-field-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/plugin-known-field-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "plugin-field-widget",
+      "mode": "introspection",
+      "prompt": "The Article content type on this site has a plugin-collection field field_plugin_widget. Inspect the live default form display and report which edit widget is configured for that field.",
+      "must_contain_any": [
+        "plugin_selector:plugin_select_list",
+        "plugin_selector",
+        "Plugin selector"
+      ],
+      "must_not_contain": [],
+      "expected_output": "field_plugin_widget uses the Plugin selector widget plugin_selector:plugin_select_list on core.entity_form_display.node.article.default (component type).",
+      "setup": "agent-module-documentation/evaluation/verify/plugin-field-widget-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/plugin-field-widget-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "plugin-add-field",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, add a field named field_plugin_task to the Article content type using the drupal/plugin 'plugin collection' field type (any plugin type is fine, e.g. plugin:condition or plugin:action). Create the field storage and the field on Article on the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/plugin-add-field-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/plugin-add-field-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/plugin-add-field-cleanup.sh",
+      "expected_output": "A field storage node.field_plugin_task exists whose type is plugin:<plugin_type_id> (e.g. plugin:condition), with a matching field on the article bundle."
+    },
+    {
+      "id": "plugin-set-selector-widget",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site the Article content type already has a plugin-collection field field_plugin_wtask, but it is not shown on the edit form. Configure the default form display so field_plugin_wtask uses the drupal/plugin 'Plugin selector' widget, and save it to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/plugin-set-widget-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/plugin-set-widget-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/plugin-set-widget-cleanup.sh",
+      "expected_output": "In core.entity_form_display.node.article.default the field_plugin_wtask component has a widget type starting with plugin_selector (e.g. plugin_selector:plugin_select_list or plugin_selector:plugin_radios)."
+    }
+  ]
+}

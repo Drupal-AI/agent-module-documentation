@@ -1,0 +1,95 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "block_form_alter",
+  "version": "2.1.x",
+  "note": "Block Form Alter is a pure developer/hook module: no config, UI, permissions, services or plugins. It dispatches two hooks via moduleHandler invokeAll: hook_block_plugin_form_alter(&$form,&$form_state,$plugin) for block plugins (all except block_content/inline_block) and hook_block_type_form_alter(&$form,&$form_state,$block_type) for content/inline block bundle forms. Following the repo's hook-module pattern (cf. facebook_pixel-alter-hook), medium cases install a fixed probe module that implements one hook (introspected live via moduleHandler), and hard cases have the agent write a small custom module implementing a hook, verified by invoking the hook directly with moduleHandler->invokeAll and asserting the form was altered for the target plugin/bundle and left untouched for another. All fixture modules are namespaced block_form_alter_* under web/modules/custom and are uninstalled (drush pm:uninstall) before their directory is removed, then caches cleared.",
+  "evals": [
+    {
+      "id": "block_form_alter-two-hooks",
+      "mode": "recipe",
+      "prompt": "What two hooks does the Drupal block_form_alter module provide, and what is each one for?",
+      "must_contain_any": [
+        "hook_block_plugin_form_alter",
+        "block_plugin_form_alter",
+        "hook_block_type_form_alter",
+        "block_type_form_alter"
+      ],
+      "must_not_contain": [],
+      "expected_output": "hook_block_plugin_form_alter(&$form,&$form_state,$plugin) alters block PLUGIN configuration forms (any plugin except block_content/inline_block), and hook_block_type_form_alter(&$form,&$form_state,$block_type) alters custom content-block / inline_block forms by bundle machine name.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "block_form_alter-inline-lb",
+      "mode": "recipe",
+      "prompt": "Using block_form_alter, which hook do I implement to alter the form of an inline (content) block that was placed via Layout Builder, and what is the hook's third argument?",
+      "must_contain_any": [
+        "hook_block_type_form_alter",
+        "block_type_form_alter"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Use hook_block_type_form_alter(); its third argument is the content-block bundle machine name ($block_type). block_form_alter handles inline_block (including Layout Builder placements) through this hook via a process callback.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "block_form_alter-which-hook",
+      "mode": "recipe",
+      "prompt": "With block_form_alter enabled, I want to set a default value on the settings form of the 'system_powered_by_block' block plugin. Which hook should I implement and why not the other one?",
+      "must_contain_any": [
+        "hook_block_plugin_form_alter",
+        "block_plugin_form_alter"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Implement hook_block_plugin_form_alter() — it fires for block plugins keyed by plugin id (e.g. system_powered_by_block). hook_block_type_form_alter() is only for block_content/inline_block bundle forms, and block_plugin_form_alter explicitly skips those two plugin ids.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "block_form_alter-probe-marker",
+      "mode": "introspection",
+      "prompt": "On this site a module uses block_form_alter's block-plugin form-alter hook to inject a marker into the 'system_powered_by_block' block plugin's configuration form. Inspect the running site and report the marker string it adds.",
+      "must_contain_any": [
+        "bfa-probe-plugin-777"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The implementation adds $form['bfa_probe_marker']['#value'] = 'bfa-probe-plugin-777' when hook_block_plugin_form_alter fires for plugin system_powered_by_block. Discoverable by invoking block_plugin_form_alter via moduleHandler or reading the block_form_alter_probe module.",
+      "setup": "agent-module-documentation/evaluation/verify/block_form_alter-probe-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/block_form_alter-probe-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "block_form_alter-probe-module",
+      "mode": "introspection",
+      "prompt": "This site has exactly one enabled module implementing hook_block_plugin_form_alter() (provided by block_form_alter). Inspect the running site and name that module.",
+      "must_contain_any": [
+        "block_form_alter_probe"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The module is block_form_alter_probe. Find it via \\Drupal::moduleHandler()->getImplementations('block_plugin_form_alter') / hasImplementations, or drush php:eval.",
+      "setup": "agent-module-documentation/evaluation/verify/block_form_alter-probe-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/block_form_alter-probe-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "block_form_alter-impl-plugin-hook",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site (block_form_alter is enabled), create and enable a small custom module named 'block_form_alter_eval_plugin' that implements hook_block_plugin_form_alter() so that, for the 'system_powered_by_block' block plugin only, it adds a form element $form['bfa_marker'] with '#value' set to 'ok'. It must leave other block plugins' forms untouched.",
+      "reset": "agent-module-documentation/evaluation/verify/block_form_alter-impl-plugin-hook-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/block_form_alter-impl-plugin-hook-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/block_form_alter-impl-plugin-hook-cleanup.sh",
+      "expected_output": "A custom module block_form_alter_eval_plugin implements hook_block_plugin_form_alter(&$form,&$form_state,$plugin) that sets $form['bfa_marker']['#value']='ok' when $plugin==='system_powered_by_block' and does nothing for other plugins. Verified by invoking block_plugin_form_alter via moduleHandler for system_powered_by_block (marker present) and for another plugin (untouched)."
+    },
+    {
+      "id": "block_form_alter-impl-type-hook",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site (block_form_alter is enabled), create and enable a small custom module named 'block_form_alter_eval_type' that implements hook_block_type_form_alter() so that, for the content-block bundle 'basic' only, it adds a form element $form['bfa_marker'] with '#value' set to 'ok'. Other block types must be left untouched.",
+      "reset": "agent-module-documentation/evaluation/verify/block_form_alter-impl-type-hook-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/block_form_alter-impl-type-hook-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/block_form_alter-impl-type-hook-cleanup.sh",
+      "expected_output": "A custom module block_form_alter_eval_type implements hook_block_type_form_alter(&$form,&$form_state,$block_type) that sets $form['bfa_marker']['#value']='ok' when $block_type==='basic' and does nothing for other bundles. Verified by invoking block_type_form_alter via moduleHandler for 'basic' (marker present) and for another bundle (untouched)."
+    }
+  ]
+}

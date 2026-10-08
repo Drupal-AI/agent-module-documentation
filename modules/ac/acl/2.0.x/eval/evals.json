@@ -1,0 +1,80 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "acl",
+  "version": "2.0.x",
+  "note": "ACL is a node-access API module with NO UI, no config, no permissions, no Drush, no services. It exposes procedural acl_* functions (in acl.module) backed by three tables: acl(acl_id,module,name,figure), acl_user(acl_id,uid), acl_node(acl_id,nid,grant_view,grant_update,grant_delete,priority). Core flow: acl_create_acl($module,$name,$figure) returns acl_id; acl_add_user($acl_id,$uid); acl_node_add_acl($nid,$acl_id,$view,$update,$delete,$priority). It registers node-access realm 'acl' via hook_node_grants()/hook_node_access_records(); a client module must implement hook_enabled() returning TRUE for its grants to apply, and a userless list yields a deny. Lookup helpers: acl_get_id_by_name, acl_get_id_by_figure, acl_get_ids_by_user, acl_has_user(s), acl_get_uids, acl_get_usernames. Medium/hard cases are grounded in the real ACL tables/API: introspection reads back a list's membership; execution creates a list + adds a user, and grants a node view access, verified via the acl/acl_user/acl_node tables. Because ACL is an API module, setup/verify operate on its DB tables directly rather than a UI.",
+  "evals": [
+    {
+      "id": "acl-create-function",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "In the Drupal ACL module, which function does a client module call to create a new access control list, what arguments does it take, and what does it return?",
+      "must_contain_any": ["acl_create_acl"],
+      "must_not_contain": [],
+      "expected_output": "acl_create_acl($module, $name = NULL, $figure = NULL) inserts a new list into the {acl} table and returns the new acl_id. $module is the client module machine name; identify the list by a free-form $name and/or numeric $figure."
+    },
+    {
+      "id": "acl-grant-user-node",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "Using the ACL module API, how do I give a specific user access to a specific node (e.g. view access)? Name the functions involved.",
+      "must_contain_any": ["acl_add_user", "acl_node_add_acl"],
+      "must_not_contain": [],
+      "expected_output": "Create a list with acl_create_acl(), add the user with acl_add_user($acl_id, $uid), and attach it to the node with acl_node_add_acl($nid, $acl_id, $view, $update, $delete, $priority). ACL then grants access via the 'acl' node-access realm (hook_node_grants/hook_node_access_records)."
+    },
+    {
+      "id": "acl-tables-realm",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "What database tables does the ACL module use to store its data, and what node access realm does it register?",
+      "must_contain_any": ["acl_node", "acl_user", "realm", "'acl'", "acl_id"],
+      "must_not_contain": [],
+      "expected_output": "Three tables: acl (acl_id, module, name, figure), acl_user (acl_id, uid) and acl_node (acl_id, nid, grant_view, grant_update, grant_delete, priority). It registers the node-access realm 'acl'."
+    },
+    {
+      "id": "acl-list-member",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "On this Drupal site an ACL was created by the client module 'acl_probe1' with the name 'acl_known_list'. Using the ACL API or its tables, find that list and report the username(s) of the user(s) assigned to it.",
+      "must_contain_any": ["admin"],
+      "must_not_contain": [],
+      "expected_output": "The acl_probe1/acl_known_list list has one member, uid 1 (the 'admin' user). Find it via acl_get_id_by_name('acl_probe1','acl_known_list') then acl_get_usernames($acl_id).",
+      "setup": "agent-module-documentation/evaluation/verify/acl-list-with-user-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/acl-list-with-user-cleanup.sh"
+    },
+    {
+      "id": "acl-empty-list",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "On this Drupal site the client module 'acl_probe2' created an ACL with the figure 7. Using the ACL API or its tables, determine whether that list currently has any users assigned to it.",
+      "must_contain_any": ["no", "none", "0", "zero", "empty", "not"],
+      "must_not_contain": [],
+      "expected_output": "The acl_probe2 (figure 7) list has no users — acl_has_users() returns 0. Find the list with acl_get_id_by_figure('acl_probe2', 7) and check acl_has_users($acl_id) / the {acl_user} table.",
+      "setup": "agent-module-documentation/evaluation/verify/acl-empty-list-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/acl-empty-list-cleanup.sh"
+    },
+    {
+      "id": "acl-create-and-add-user",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, use the ACL module API to create a new access control list owned by the module 'acl_task' with the name 'task_list', and add the admin user (uid 1) to it. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/acl-create-list-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/acl-create-list-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/acl-create-list-cleanup.sh",
+      "expected_output": "The {acl} table has a row with module='acl_task' and name='task_list', and {acl_user} has a row linking that acl_id to uid 1 (e.g. $id = acl_create_acl('acl_task','task_list'); acl_add_user($id, 1);)."
+    },
+    {
+      "id": "acl-grant-node-view",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site there is already an ACL owned by module 'acl_task2' with the name 'node_grant', and a node titled 'acl_task2_node'. Using the ACL module API, grant that ACL VIEW access to that node (view only; no update or delete). Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/acl-grant-node-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/acl-grant-node-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/acl-grant-node-cleanup.sh",
+      "expected_output": "The {acl_node} table has a row linking the acl_task2/node_grant acl_id to the acl_task2_node node's nid with grant_view = 1 (e.g. $id = acl_get_id_by_name('acl_task2','node_grant'); acl_node_add_acl($nid, $id, 1, 0, 0);)."
+    }
+  ]
+}

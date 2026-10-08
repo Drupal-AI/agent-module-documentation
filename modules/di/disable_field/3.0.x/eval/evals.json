@@ -1,0 +1,80 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "disable_field",
+  "version": "3.0.x",
+  "note": "Disable Field adds per-field 'Disable Field Settings' to the field-config / base-field-override edit forms (gated by the 'administer disable field settings' permission) and disables a field's widget on the add and/or edit entity form via #disabled. State is stored as third-party settings on the field's config entity: disable_field.add_disable / edit_disable (one of none|all|roles|roles_enable) plus add_roles / edit_roles (arrays of role ids). No configure route, Drush, or plugins. Medium/hard cases are grounded in those real third-party settings: introspection reads which field is disabled on which form; execution sets edit_disable=all and add_disable=roles (for a seeded role) on a field, verified against the live FieldConfig.",
+  "evals": [
+    {
+      "id": "df-where-configured",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "I enabled the disable_field module but there is no admin settings page for it. How do I make a specific field read-only (disabled) on the node edit form, and where is that choice stored?",
+      "must_contain_any": ["third_party_settings", "third party setting", "field edit", "Field Settings", "field config"],
+      "must_not_contain": [],
+      "expected_output": "There is no configure route. Edit the field itself (the field-config edit form, or base-field-override form for base fields like title), open 'Disable Field Settings', and set the edit-form mode to 'Disable for all users'. It is stored as a third-party setting on the field's config entity: field.field.<entity>.<bundle>.<field>.third_party_settings.disable_field.edit_disable."
+    },
+    {
+      "id": "df-modes",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "For each of the add and edit forms, what are the possible disable modes offered by the disable_field module?",
+      "must_contain_any": ["roles_enable", "all", "none", "roles"],
+      "must_not_contain": [],
+      "expected_output": "Four modes per form, stored in add_disable / edit_disable: none (enable for all users), all (disable for all users), roles (disable for the selected roles), roles_enable (enable only for the selected roles, disabled for everyone else). Selected roles go in add_roles / edit_roles."
+    },
+    {
+      "id": "df-permission",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "Which permission does the disable_field module define, and what does it control?",
+      "must_contain_any": ["administer disable field settings"],
+      "must_not_contain": [],
+      "expected_output": "It defines 'administer disable field settings' (restrict access: TRUE). It controls whether the 'Disable Field Settings' fieldset appears on the field-config / base-field-override edit forms; it does not itself gate whether fields are disabled on content forms."
+    },
+    {
+      "id": "df-which-edit-disabled",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "On this Drupal site the Article content type has two fields configured with disable_field: field_df_on and field_df_add. Inspect the live field configuration and state which field is disabled on the EDIT content form for all users.",
+      "must_contain_any": ["field_df_on"],
+      "must_not_contain": [],
+      "expected_output": "field_df_on: its FieldConfig third-party settings have disable_field.edit_disable = all (field_df_add instead disables the add form).",
+      "setup": "agent-module-documentation/evaluation/verify/disable_field-intro-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/disable_field-intro-cleanup.sh"
+    },
+    {
+      "id": "df-which-add-disabled",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "On this Drupal site the Article content type has two disable_field-configured fields, field_df_on and field_df_add. Inspect the live configuration and state which field is disabled on the ADD content form for all users.",
+      "must_contain_any": ["field_df_add"],
+      "must_not_contain": [],
+      "expected_output": "field_df_add: its FieldConfig third-party settings have disable_field.add_disable = all (field_df_on instead disables the edit form).",
+      "setup": "agent-module-documentation/evaluation/verify/disable_field-intro-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/disable_field-intro-cleanup.sh"
+    },
+    {
+      "id": "df-disable-edit-all",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site the Article content type has a field named field_df_task. Using the disable_field module, configure it so the field is disabled (read-only) on the EDIT content form for all users. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/disable_field-configure-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/disable_field-edit-all-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/disable_field-configure-cleanup.sh",
+      "expected_output": "field.field.node.article.field_df_task third_party_settings.disable_field.edit_disable = all (e.g. $fc->setThirdPartySetting('disable_field','edit_disable','all'); $fc->save())."
+    },
+    {
+      "id": "df-disable-add-roles",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site the Article content type has a field named field_df_task, and a role with machine id 'content_editor' exists. Using the disable_field module, configure the field so it is disabled on the ADD content form for the content_editor role only (the 'Disable for certain roles' mode). Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/disable_field-configure-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/disable_field-add-roles-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/disable_field-configure-cleanup.sh",
+      "expected_output": "field.field.node.article.field_df_task third_party_settings.disable_field.add_disable = roles and add_roles contains 'content_editor' (e.g. setThirdPartySetting('disable_field','add_disable','roles') and setThirdPartySetting('disable_field','add_roles',['content_editor']))."
+    }
+  ]
+}

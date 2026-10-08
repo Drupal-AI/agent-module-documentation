@@ -1,0 +1,80 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "node_title_length",
+  "version": "2.1.x",
+  "note": "node_title_length is the title_length submodule that widens the node 'title' column beyond core's 255 (default 500). Concrete subclass Drupal\\node_title_length\\NodeTitleLength extends EntityTitleLength (entity 'node', field 'title'); service id node_title_length.node. getLength() = Settings::get('node_title_length_chars') ?: 500; changeLength() runs Schema::changeField() on node_field_data.title and node_field_revision.title and re-installs the base-field storage definition. A hook_entity_base_field_info_alter() sets the runtime title max_length to getLength(). No UI/config object/permissions. Medium tiers read the REAL column width (the base-field max_length always mirrors getLength() from the hook, so scripts set/inspect the actual node_field_data.title schema). Hard tiers verify real DB effects (a long title persists / column width).",
+  "evals": [
+    {
+      "id": "node_title_length-default-recipe",
+      "mode": "recipe",
+      "prompt": "After enabling the Drupal node_title_length module, how long can node titles be by default, and how do I change that limit to a different number?",
+      "must_contain_any": ["500", "node_title_length_chars", "settings.php", "title_length:update"],
+      "must_not_contain": [],
+      "expected_output": "Default is 500 characters (EntityTitleLengthInterface::DEFAULT_LENGTH). Override it by setting $settings['node_title_length_chars'] = <n>; in settings.php, then re-apply with `drush title_length:update node`.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "node_title_length-mechanism-recipe",
+      "mode": "recipe",
+      "prompt": "How does node_title_length actually make node titles longer — which database columns and which service/hook are involved?",
+      "must_contain_any": ["node_field_data", "changeField", "changeLength", "entity_base_field_info_alter", "node_title_length.node"],
+      "must_not_contain": [],
+      "expected_output": "On install the node_title_length.node service's changeLength() runs Schema::changeField() to widen node_field_data.title (and node_field_revision.title) and re-installs the title base-field storage definition. A hook_entity_base_field_info_alter() sets the runtime title base-field max_length to getLength() so form/validation matches the column.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "node_title_length-uninstall-recipe",
+      "mode": "recipe",
+      "prompt": "What happens to node titles if I uninstall node_title_length, and when will the uninstall be blocked?",
+      "must_contain_any": ["255", "ModuleUninstallValidatorException", "shrink", "longer than 255"],
+      "must_not_contain": [],
+      "expected_output": "Uninstall shrinks the node title column back to 255 (ORIGINAL_LENGTH). It first calls checkIfExistEntitiesWithLongTitles() and throws ModuleUninstallValidatorException if any node or node revision already has a title longer than 255 (you must shorten or delete those first).",
+      "difficulty": "easy"
+    },
+    {
+      "id": "node_title_length-width-introspect",
+      "mode": "introspection",
+      "prompt": "On this Drupal site the maximum node title length has been changed from the module default. Inspect the live database schema and report the current maximum length of the node title column.",
+      "must_contain_any": ["823"],
+      "must_not_contain": [],
+      "expected_output": "The node_field_data.title column is varchar(823). Check information_schema.COLUMNS for TABLE_NAME='node_field_data', COLUMN_NAME='title' (the base-field max_length also reports 823 via the runtime hook, but the schema column is the source of truth).",
+      "setup": "agent-module-documentation/evaluation/verify/node_title_length-width-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/node_title_length-width-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "node_title_length-width-small-introspect",
+      "mode": "introspection",
+      "prompt": "Someone assumed node titles on this site are capped at 500, but the limit was changed. Inspect the running site and state the actual maximum length of the node title column.",
+      "must_contain_any": ["384"],
+      "must_not_contain": [],
+      "expected_output": "The node title column is actually 384, not 500. Read the real schema (information_schema.COLUMNS for node_field_data.title) rather than assuming the default.",
+      "setup": "agent-module-documentation/evaluation/verify/node_title_length-width-small-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/node_title_length-width-small-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "node_title_length-widen-execute",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, node titles are currently capped at 255 characters. Using the node_title_length module, make node titles able to store up to 700 characters and apply the change to the database.",
+      "reset": "agent-module-documentation/evaluation/verify/node_title_length-widen-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/node_title_length-widen-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/node_title_length-widen-cleanup.sh",
+      "expected_output": "Widen the node title column to 700, e.g. \\Drupal::service('node_title_length.node')->changeLength(700); or set $settings['node_title_length_chars']=700 in settings.php then `drush title_length:update node`. Verify checks node_field_data.title CHARACTER_MAXIMUM_LENGTH === 700."
+    },
+    {
+      "id": "node_title_length-revision-execute",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, node titles are currently capped at 255 characters. Using node_title_length, make node titles able to hold up to 640 characters, and ensure the change applies to node revisions as well (not only the current-revision table).",
+      "reset": "agent-module-documentation/evaluation/verify/node_title_length-revision-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/node_title_length-revision-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/node_title_length-revision-cleanup.sh",
+      "expected_output": "Set the length to 640 via node_title_length (e.g. \\Drupal::service('node_title_length.node')->changeLength(640); or $settings['node_title_length_chars']=640 then `drush title_length:update node`). changeLength() widens BOTH node_field_data.title and node_field_revision.title; verify checks both columns are 640."
+    }
+  ]
+}

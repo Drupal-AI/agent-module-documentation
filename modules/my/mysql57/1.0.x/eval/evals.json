@@ -1,0 +1,57 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "mysql57",
+  "version": "1.0.x",
+  "note": "MySQL 5.7 is a database-driver shim that subclasses core mysql and only lowers the minimum server version, activated via settings.php (no admin UI). Cases are `recipe` (response-graded) and probe: the relaxed minimum versions, that it subclasses core mysql, how settings.php points namespace/autoload at the driver, the bundled settings.inc include, and the absence of any config UI/permissions/Drush. No site mutation.",
+  "evals": [
+    {
+      "id": "mysql57-minimum-versions",
+      "mode": "recipe",
+      "prompt": "On Drupal 11, what database server minimums does the MySQL 5.7 (mysql57) module allow, and why would I need it instead of core's mysql driver?",
+      "must_contain_any": ["5.7.8", "10.3.7"],
+      "must_not_contain": [],
+      "expected_output": "It lowers the minimum to MySQL 5.7.8+ and MariaDB 10.3.7+ (its Tasks subclass sets MYSQL_MINIMUM_VERSION = 5.7.8 and MARIADB_MINIMUM_VERSION = 10.3.7), whereas core's mysql driver requires newer MySQL 8.0 / MariaDB 10.6, so the module lets Drupal install/run on those older servers."
+    },
+    {
+      "id": "mysql57-subclasses-core",
+      "mode": "recipe",
+      "prompt": "How does the mysql57 module implement its driver — does it reimplement MySQL query/schema logic, and what does it depend on?",
+      "must_contain_any": ["extends", "subclass", "inherits", "drupal:mysql", "core mysql"],
+      "must_not_contain": [],
+      "expected_output": "It does not reimplement anything: its Connection is an empty subclass of core Drupal\\mysql\\Driver\\Database\\mysql\\Connection and its install Tasks subclass only overrides the version constants and driver name. It depends on the core mysql module (drupal:mysql) and inherits all query, schema, and transaction behavior unchanged."
+    },
+    {
+      "id": "mysql57-settings-php-namespace",
+      "mode": "recipe",
+      "prompt": "How do I activate the mysql57 driver for a database connection in Drupal? Is there an admin form? Name the settings.php keys.",
+      "must_contain_any": ["namespace", "Drupal\\mysql57\\Driver\\Database\\mysql", "settings.php", "autoload"],
+      "must_not_contain": [],
+      "expected_output": "There is no admin UI. In settings.php you set the connection's namespace to Drupal\\mysql57\\Driver\\Database\\mysql and an autoload path (modules/contrib/mysql57/src/Driver/Database/mysql/), keep driver as mysql, and declare core mysql as a dependency of the driver."
+    },
+    {
+      "id": "mysql57-settings-inc-include",
+      "mode": "recipe",
+      "prompt": "The mysql57 module ships a settings.inc file. What does it do and how do I use it?",
+      "must_contain_any": ["settings.inc", "require", "every connection", "all connections", "$databases"],
+      "must_not_contain": [],
+      "expected_output": "settings.inc is a snippet (an IIFE) that rewrites every existing connection/target in $databases whose driver is mysql to the mysql57 namespace and autoload path. You activate it by adding require DRUPAL_ROOT . '/modules/contrib/mysql57/settings.inc'; to settings.php after $databases is defined."
+    },
+    {
+      "id": "mysql57-no-ui-no-drush",
+      "mode": "recipe",
+      "prompt": "Does the mysql57 module provide a configuration form, permissions, config schema, or Drush commands?",
+      "must_contain_any": ["no", "none", "does not"],
+      "must_not_contain": [],
+      "expected_output": "No. It is a pure database-layer shim with no configuration form, no permissions, no config schema, and no Drush commands; it is configured only through settings.php."
+    },
+    {
+      "id": "mysql57-installer-label",
+      "mode": "recipe",
+      "prompt": "When installing a fresh Drupal site with the mysql57 module present, how does its driver appear on the database selection screen?",
+      "must_contain_any": ["MySQL 5.7", "MariaDB 10.3", "10.4", "10.5"],
+      "must_not_contain": [],
+      "expected_output": "Its Install\\Tasks subclass overrides the driver name so the installer's database screen labels it 'MySQL 5.7 or MariaDB 10.3, 10.4, or 10.5', and it still enforces the 5.7.8 / 10.3.7 minimums."
+    }
+  ]
+}

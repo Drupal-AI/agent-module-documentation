@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+set -uo pipefail
+cd /var/www/html
+drush php:eval 'use Drupal\user\Entity\Role; if ($r = Role::load("spl_ui_role")) { $r->delete(); }' >/dev/null 2>&1
+drush cr >/dev/null 2>&1
+echo "cleanup: role spl_ui_role removed"

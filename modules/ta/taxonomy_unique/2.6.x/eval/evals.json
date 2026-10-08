@@ -1,0 +1,100 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "taxonomy_unique",
+  "version": "2.6.x",
+  "note": "Taxonomy Unique blocks saving a taxonomy term whose name already exists in the same vocabulary and language. It has no global settings page (configure=null): uniqueness is enabled per vocabulary as third-party settings on the taxonomy.vocabulary.<vid> config entity (taxonomy_unique.enabled bool, taxonomy_unique.message string with %term/%vocabulary placeholders). Enforcement is a validation constraint added to the term name base field, backed by the taxonomy_unique.manager service (isUnique()). It also ships a taxonomy_unique EntityReferenceSelection handler that blocks auto-creating duplicate terms. Medium/hard cases are grounded in that real config: introspection reads the enabled flag / custom message off a live vocabulary; execution enables uniqueness (and sets a message) on a vocabulary, verified by pure config reads of taxonomy.vocabulary.<vid>.third_party_settings.taxonomy_unique.",
+  "evals": [
+    {
+      "id": "taxonomy_unique-where-config",
+      "mode": "recipe",
+      "prompt": "I installed the Drupal Taxonomy Unique module but there is no admin settings page for it. How do I actually turn on 'terms must be unique' for a specific vocabulary, and where is that choice stored?",
+      "must_contain_any": [
+        "vocabulary",
+        "third_party_settings",
+        "third party setting",
+        "Terms should be unique",
+        "Taxonomy unique"
+      ],
+      "must_not_contain": [],
+      "expected_output": "There is no global settings page (configure=null). Edit the vocabulary (/admin/structure/taxonomy/manage/<vid>), open the 'Taxonomy unique' fieldset, tick 'Terms should be unique.' (optionally set a message) and Save. It is stored as third-party settings on the taxonomy.vocabulary.<vid> config entity: third_party_settings.taxonomy_unique.enabled (bool) and .message (string).",
+      "difficulty": "easy"
+    },
+    {
+      "id": "taxonomy_unique-default-message",
+      "mode": "recipe",
+      "prompt": "When Taxonomy Unique blocks a duplicate taxonomy term, what does the default validation error message say, and which placeholders can I use in a custom message?",
+      "must_contain_any": [
+        "%term",
+        "%vocabulary",
+        "already exists"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The default message is: Term \"%term\" already exists in vocabulary \"%vocabulary\". A custom message can use the %term and %vocabulary placeholders; if left empty the default is used.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "taxonomy_unique-scope",
+      "mode": "recipe",
+      "prompt": "For the Taxonomy Unique module, what exactly counts as a duplicate? If two vocabularies both have a term named 'News', is that blocked? What about the same term name in two different languages?",
+      "must_contain_any": [
+        "same vocabulary",
+        "vid",
+        "langcode",
+        "language",
+        "per vocabulary"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Uniqueness is scoped to the same vocabulary AND the same language: isUnique() queries by vid + name + langcode. The same name in a different vocabulary is allowed, and the same name in a different langcode is allowed; a term also never collides with itself on edit.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "taxonomy_unique-known-message",
+      "mode": "introspection",
+      "prompt": "On this Drupal site there is a taxonomy vocabulary tu_known that has Taxonomy Unique enabled with a custom duplicate-term error message. Inspect the live configuration and give the exact message string configured for it.",
+      "must_contain_any": [
+        "TU duplicate blocked: %term in %vocabulary"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The message is 'TU duplicate blocked: %term in %vocabulary': taxonomy.vocabulary.tu_known has third_party_settings.taxonomy_unique.enabled true and .message set to that string.",
+      "setup": "agent-module-documentation/evaluation/verify/taxonomy_unique-known-msg-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/taxonomy_unique-known-msg-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "taxonomy_unique-which-enforces",
+      "mode": "introspection",
+      "prompt": "This site has two taxonomy vocabularies, tu_on and tu_off. Exactly one of them is configured with Taxonomy Unique to reject duplicate term names. Inspect the live configuration and state which vocabulary enforces uniqueness.",
+      "must_contain_any": [
+        "tu_on"
+      ],
+      "must_not_contain": [],
+      "expected_output": "tu_on enforces uniqueness: taxonomy.vocabulary.tu_on has third_party_settings.taxonomy_unique.enabled true, whereas tu_off has it false.",
+      "setup": "agent-module-documentation/evaluation/verify/taxonomy_unique-which-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/taxonomy_unique-which-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "taxonomy_unique-enable-vocab",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site there is a taxonomy vocabulary tu_task that currently allows duplicate term names. Using the Taxonomy Unique module, configure this vocabulary so that duplicate term names are rejected, and apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/taxonomy_unique-enable-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/taxonomy_unique-enable-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/taxonomy_unique-enable-cleanup.sh",
+      "expected_output": "The vocabulary taxonomy.vocabulary.tu_task carries third_party_settings.taxonomy_unique.enabled: true (e.g. tick 'Terms should be unique.' on the vocabulary edit form, or setThirdPartySetting('taxonomy_unique','enabled',TRUE) and save)."
+    },
+    {
+      "id": "taxonomy_unique-enable-with-message",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "The taxonomy vocabulary tu_msg on this site currently allows duplicate term names. Using Taxonomy Unique, enforce unique term names on it AND set the duplicate error message to exactly 'TU no duplicates allowed'. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/taxonomy_unique-message-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/taxonomy_unique-message-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/taxonomy_unique-message-cleanup.sh",
+      "expected_output": "taxonomy.vocabulary.tu_msg carries third_party_settings.taxonomy_unique.enabled: true and third_party_settings.taxonomy_unique.message: 'TU no duplicates allowed'."
+    }
+  ]
+}

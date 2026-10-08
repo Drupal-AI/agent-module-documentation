@@ -1,0 +1,80 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "config_normalizer",
+  "version": "1.0.x",
+  "note": "Configuration Normalizer defines a ConfigNormalizer plugin type (Plugin/ConfigNormalizer, manager plugin.manager.config_normalizer) and ships three plugins run in weight order: active (0, copies uuid/_core from the active reference storage), sort (20, recursively sorts arrays - assoc by key, indexed by value, only in compare mode), filter_format (20, strips 'roles' from filter.format.* in compare mode). NormalizedReadOnlyStorage decorates any storage and normalizes on read; context = {normalization_mode: compare|provide, reference_storage_service}. ConfigItemNormalizer normalizes one item; NormalizedStorageComparerTrait::createStorageComparer() builds a StorageComparer over two normalized storages. No configure route, no permissions, no Drush, no config entity of its own. Medium/hard cases write schemaless config objects (config_normalizer_eval.*) to the ACTIVE storage and require the agent to read them back through NormalizedReadOnlyStorage in compare mode; hard cases store the normalized result in Drupal State, verified live.",
+  "evals": [
+    {
+      "id": "config_normalizer-three-plugins",
+      "mode": "recipe",
+      "prompt": "The Drupal contrib module config_normalizer ships three configuration normalizer plugins. Name them and say what each one does.",
+      "must_contain_any": ["sort", "active", "filter_format"],
+      "must_not_contain": [],
+      "expected_output": "active (weight 0) copies uuid and _core from the active reference storage so those core-set values don't count as differences; sort (weight 20) recursively sorts arrays (associative by key, indexed by value); filter_format (weight 20) strips the export-only 'roles' element from filter.format.* config. sort and filter_format only run in the default/compare mode.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "config_normalizer-storage-class",
+      "mode": "recipe",
+      "prompt": "In config_normalizer, which class do you use to wrap a configuration storage so that every read returns normalized data, and what limitation does it have?",
+      "must_contain_any": ["NormalizedReadOnlyStorage", "read only", "read-only", "ReadOnlyStorage"],
+      "must_not_contain": [],
+      "expected_output": "NormalizedReadOnlyStorage — a ReadOnlyStorage decorator that runs the normalizer plugins on every read()/readMultiple(). It is read-only, so writing to it throws. You construct it with the decorated storage, the plugin.manager.config_normalizer, and a context array.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "config_normalizer-comparer-trait",
+      "mode": "recipe",
+      "prompt": "How does config_normalizer help you build a StorageComparer that ignores non-meaningful differences? Name the trait and the method it provides.",
+      "must_contain_any": ["NormalizedStorageComparerTrait", "createStorageComparer"],
+      "must_not_contain": [],
+      "expected_output": "Use NormalizedStorageComparerTrait, which adds createStorageComparer($source, $target, $mode = 'compare'): it wraps each storage in a NormalizedReadOnlyStorage (each normalized against the other) and returns a core StorageComparer built with config.manager.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "config_normalizer-sort-known",
+      "mode": "introspection",
+      "prompt": "This Drupal site has a configuration object 'config_normalizer_eval.data' in the active storage whose keys were stored out of order. Using config_normalizer, read that object back in normalized (compare) form and report the order of its top-level keys.",
+      "must_contain_any": ["apple, mango, zebra", "apple,mango,zebra", "apple", "apple mango zebra"],
+      "must_not_contain": [],
+      "expected_output": "Wrap config.storage in a NormalizedReadOnlyStorage (mode compare) and read config_normalizer_eval.data; the sort normalizer returns the keys as apple, mango, zebra.",
+      "setup": "agent-module-documentation/evaluation/verify/config_normalizer-sort-known-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/config_normalizer-sort-known-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "config_normalizer-nested-sort",
+      "mode": "introspection",
+      "prompt": "The active config object 'config_normalizer_eval.nested' has a nested associative array under the key 'group' stored out of order. Read it back normalized through config_normalizer and report the order of the keys inside 'group'.",
+      "must_contain_any": ["alpha, mike, yankee", "alpha,mike,yankee", "alpha", "alpha mike yankee"],
+      "must_not_contain": [],
+      "expected_output": "The sort normalizer sorts arrays recursively, so reading config_normalizer_eval.nested through a NormalizedReadOnlyStorage (compare mode) returns group with keys alpha, mike, yankee.",
+      "setup": "agent-module-documentation/evaluation/verify/config_normalizer-nested-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/config_normalizer-nested-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "config_normalizer-normalize-assoc",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site there is an active config object 'config_normalizer_eval.data' whose keys are stored out of order. Using config_normalizer, read it in normalized (compare) form and store the resulting normalized array into Drupal State under the key 'config_normalizer_eval_sorted'. Apply this to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/config_normalizer-normalize-assoc-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/config_normalizer-normalize-assoc-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/config_normalizer-normalize-assoc-cleanup.sh",
+      "expected_output": "e.g. $n = new NormalizedReadOnlyStorage(\\Drupal::service('config.storage'), \\Drupal::service('plugin.manager.config_normalizer'), ['normalization_mode' => 'compare']); \\Drupal::state()->set('config_normalizer_eval_sorted', $n->read('config_normalizer_eval.data')); — the stored array's keys must be apple, mango, zebra in order."
+    },
+    {
+      "id": "config_normalizer-normalize-indexed",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "The active config object 'config_normalizer_eval.list' has an indexed array under 'items' stored out of order. Use config_normalizer to read it normalized (compare mode) and save the normalized config array into Drupal State under the key 'config_normalizer_eval_list'. Apply it to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/config_normalizer-normalize-indexed-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/config_normalizer-normalize-indexed-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/config_normalizer-normalize-indexed-cleanup.sh",
+      "expected_output": "Read config_normalizer_eval.list through a NormalizedReadOnlyStorage in compare mode; the sort normalizer sorts the indexed 'items' array by value to apple, mango, zebra. Store the normalized array (with that items order) into state key config_normalizer_eval_list."
+    }
+  ]
+}

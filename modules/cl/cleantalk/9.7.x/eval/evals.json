@@ -1,0 +1,95 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "cleantalk",
+  "version": "9.7.x",
+  "note": "CleanTalk is a cloud anti-spam service: real spam verdicts require a valid CleanTalk Access key AND outbound network access to the CleanTalk API, which the eval environment does not have. All cases are therefore grounded in the module's Drupal config object (cleantalk.settings) only — the stored Access key and the per-form protection toggles — never in a live spam check. Easy = recipe (response-graded on the API-key setting, which forms are protected, and the config object). Medium = introspection (a known cleantalk.settings baseline is written, the agent reads it back). Hard = execution (agent writes cleantalk.settings on the live site; verified by reading config, exit 0 = pass).",
+  "evals": [
+    {
+      "id": "cleantalk-api-key-setting",
+      "mode": "recipe",
+      "prompt": "On a Drupal site using the CleanTalk (Antispam by CleanTalk) module, which config object and which key hold the CleanTalk Access/API key, and is that key required for spam checks to actually run?",
+      "must_contain_any": [
+        "cleantalk_authkey",
+        "cleantalk.settings"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The key is stored in the cleantalk.settings config object under cleantalk_authkey (the settings form labels it 'Access key'). It is required: without a valid Access key (and outbound network access to the CleanTalk API) no live spam verdict happens.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "cleantalk-which-forms-protected",
+      "mode": "recipe",
+      "prompt": "In the CleanTalk Drupal module, which config keys turn spam protection on or off for comments, user registration, and webforms?",
+      "must_contain_any": [
+        "cleantalk_check_comments",
+        "cleantalk_check_register",
+        "cleantalk_check_webforms"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Boolean per-form toggles in cleantalk.settings: cleantalk_check_comments (comments), cleantalk_check_register (user registration), cleantalk_check_webforms (Webform submissions). Related toggles include cleantalk_check_contact_forms, cleantalk_check_search_form, cleantalk_check_forum_topics, cleantalk_check_added_content, cleantalk_check_ccf, cleantalk_check_external.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "cleantalk-config-route",
+      "mode": "recipe",
+      "prompt": "Where is the CleanTalk module configured in the Drupal admin, and what is the settings-form route name?",
+      "must_contain_any": [
+        "cleantalk.settings",
+        "/admin/config/cleantalk/cleantalk_settings_form"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Settings form route cleantalk.settings at /admin/config/cleantalk/cleantalk_settings_form (Admin > Config > Antispam by Cleantalk > Settings), gated by the 'change cleantalk settings' permission.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "cleantalk-read-stored-key",
+      "mode": "introspection",
+      "prompt": "This Drupal site already has the CleanTalk module configured. What CleanTalk Access key is currently stored, and is comment spam protection currently turned on?",
+      "setup": "agent-module-documentation/evaluation/verify/cleantalk-known-config-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/cleantalk-known-config-cleanup.sh",
+      "must_contain_any": [
+        "known1234evalkey"
+      ],
+      "must_not_contain": [],
+      "expected_output": "cleantalk.settings.cleantalk_authkey is 'known1234evalkey' and cleantalk_check_comments is TRUE (comment protection is on). Read live with: drush config:get cleantalk.settings cleantalk_authkey.",
+      "difficulty": "medium"
+    },
+    {
+      "id": "cleantalk-which-forms-on",
+      "mode": "introspection",
+      "prompt": "On this Drupal site, look at the current CleanTalk configuration and tell me which of these are being spam-checked right now: webforms, forum topics, and the search form.",
+      "setup": "agent-module-documentation/evaluation/verify/cleantalk-known-config-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/cleantalk-known-config-cleanup.sh",
+      "must_contain_any": [
+        "forum",
+        "cleantalk_check_forum_topics"
+      ],
+      "must_not_contain": [],
+      "expected_output": "From live cleantalk.settings: forum topics ARE checked (cleantalk_check_forum_topics = TRUE); webforms are NOT (cleantalk_check_webforms = FALSE) and the search form is NOT (cleantalk_check_search_form = FALSE).",
+      "difficulty": "medium"
+    },
+    {
+      "id": "cleantalk-set-key-protect-comments",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "Configure the CleanTalk module on this Drupal 11 site: set the CleanTalk Access key to the dummy value DUMMYKEY0001 and make sure spam protection is enabled for both comments and user registration. Persist it to the live site. (No network spam check is expected — just get the configuration right.)",
+      "reset": "agent-module-documentation/evaluation/verify/cleantalk-key-and-comments-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/cleantalk-key-and-comments-verify.sh",
+      "expected_output": "cleantalk.settings has cleantalk_authkey = 'DUMMYKEY0001' (any non-empty key), cleantalk_check_comments = TRUE, and cleantalk_check_register = TRUE. Verified by reading live config (no CleanTalk API call).",
+      "note": "Config-only: verify never contacts the CleanTalk API. The dummy key would fail real validation on the settings form; here it is written straight to config (e.g. drush config:set cleantalk.settings cleantalk_authkey DUMMYKEY0001)."
+    },
+    {
+      "id": "cleantalk-forum-not-search",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal 11 site, set a dummy CleanTalk Access key, then turn CleanTalk spam checking ON for forum topic posts and OFF for the search form. Apply it to the live site. (No live spam verdict is expected — configuration only.)",
+      "reset": "agent-module-documentation/evaluation/verify/cleantalk-forum-not-search-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/cleantalk-forum-not-search-verify.sh",
+      "expected_output": "cleantalk.settings has a non-empty cleantalk_authkey, cleantalk_check_forum_topics = TRUE, and cleantalk_check_search_form = FALSE. Verified by reading live config (no CleanTalk API call).",
+      "note": "Config-only verification; the CleanTalk API is never contacted."
+    }
+  ]
+}

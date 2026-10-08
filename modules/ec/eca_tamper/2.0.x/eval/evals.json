@@ -1,0 +1,86 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "eca_tamper",
+  "version": "2.0.x",
+  "note": "ECA Tamper derives one ECA action per Tamper plugin (id eca_tamper:<tamper_id>, base plugin eca_tamper) and one ECA condition (eca_tamper_condition:<tamper_id>, for Text/Date-time/Number/Other categories). The action adds config keys eca_data (value to tamper, token-aware) and eca_token_name (token that receives the result) on top of the wrapped Tamper plugin's own settings; the condition extends StringComparisonBase and tampers 'left' to compare with 'right'. No configure route, no permissions, no Drush. Usage is entirely within ECA models (eca.eca.<id> config entities), so medium cases read back a seeded model's action plugin/token, and hard cases build an ECA model whose action references an eca_tamper:* derivative (verified on the live eca config entity). Note: an ECA model with empty events still saves and preserves its actions, which the verify relies on.",
+  "evals": [
+    {
+      "id": "eca_tamper-action-id",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "In an ECA model, I want to use the Tamper 'Trim' plugin via the eca_tamper module to clean up a value. What is the action plugin id I reference, and which two extra configuration keys does eca_tamper add (one for the input value, one for where the result is stored)?",
+      "must_contain_any": [
+        "eca_tamper:trim",
+        "eca_data",
+        "eca_token_name",
+        "eca_tamper:"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The action plugin id is eca_tamper:trim (base plugin eca_tamper, one derivative per Tamper plugin). eca_tamper adds eca_data (the value to tamper, token-aware) and eca_token_name (the token the tampered result is written to), in addition to the Tamper plugin's own settings."
+    },
+    {
+      "id": "eca_tamper-condition",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "Besides actions, eca_tamper also exposes Tamper plugins as ECA conditions. What is the condition plugin id pattern, what base class do these conditions extend, and what do they compare?",
+      "must_contain_any": [
+        "eca_tamper_condition",
+        "StringComparisonBase",
+        "left",
+        "right"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Conditions are eca_tamper_condition:<tamper_id> (only for Tamper plugins in the Text, Date/time, Number, Other categories). They extend ECA's StringComparisonBase: the 'left' value is tampered and compared against 'right' using the ECA operator/type (with case/negate)."
+    },
+    {
+      "id": "eca_tamper-known-plugin",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "This site has an ECA model with machine name ectamp_known that contains a single eca_tamper action. Inspect the live ECA configuration and state which Tamper plugin (the action's plugin id) that model uses.",
+      "must_contain_any": [
+        "eca_tamper:convert_case",
+        "convert_case"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The ectamp_known model's action uses plugin eca_tamper:convert_case (readable from the eca.eca.ectamp_known config entity actions, e.g. $eca->get('actions')['act_case']['plugin']).",
+      "setup": "agent-module-documentation/evaluation/verify/eca_tamper-known-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/eca_tamper-known-cleanup.sh"
+    },
+    {
+      "id": "eca_tamper-token-name",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "An ECA model named ectamp_tok on this site uses an eca_tamper Trim action. Inspect the live configuration and state the token name (eca_token_name) that the trim action writes its result into.",
+      "must_contain_any": [
+        "cleaned_value"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The trim action in ectamp_tok has eca_token_name = cleaned_value (in the action's configuration inside eca.eca.ectamp_tok).",
+      "setup": "agent-module-documentation/evaluation/verify/eca_tamper-token-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/eca_tamper-token-cleanup.sh"
+    },
+    {
+      "id": "eca_tamper-build-trim",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, create an ECA model with machine name ectamp_task that includes a Tamper 'Trim' action provided by eca_tamper (plugin eca_tamper:trim), configured with an eca_data value and an eca_token_name for the result. Save the model to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/eca_tamper-build-trim-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/eca_tamper-build-trim-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/eca_tamper-build-trim-cleanup.sh",
+      "expected_output": "An eca.eca.ectamp_task config entity exists whose actions include one with plugin=eca_tamper:trim (with eca_data and eca_token_name in its configuration). Create it via the eca storage, e.g. \\Drupal::entityTypeManager()->getStorage('eca')->create([...])->save()."
+    },
+    {
+      "id": "eca_tamper-build-find-replace",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "Create an ECA model with machine name ectamp_task2 that uses the eca_tamper 'Find replace' action (plugin eca_tamper:find_replace) to transform a value, and save it to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/eca_tamper-build-replace-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/eca_tamper-build-replace-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/eca_tamper-build-replace-cleanup.sh",
+      "expected_output": "An eca.eca.ectamp_task2 config entity whose actions include one with plugin=eca_tamper:find_replace (plus eca_data/eca_token_name and the find/replace settings)."
+    }
+  ]
+}

@@ -1,0 +1,98 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "login_redirect_per_role",
+  "version": "1.11.x",
+  "note": "Login And Logout Redirect Per Role redirects a user after login/logout to a role-specific URL. All state lives in ONE config object login_redirect_per_role.settings with two top-level maps `login` and `logout`, each keyed by role machine name to { redirect_url, allow_destination, weight }. The module ships NO config/install default, so the object does not exist until saved (drush cget errors = baseline). On hook_user_login/hook_user_logout the login_redirect_per_role.service sorts rows ascending by weight and uses the FIRST role the user has whose redirect_url is non-empty, setting Drupal's `destination` query param; lower weight = higher priority. redirect_url may be '<front>', a path starting with '/','?','#', or a token. Login redirects are suppressed on user.reset*/commerce_checkout.form/change_pwd_page.reset/tfa.entry. This site's roles include content_editor and administrator. Medium/hard cases are grounded in that real config object read/written via drush; cleanup/reset restore baseline by DELETING the config object.",
+  "evals": [
+    {
+      "id": "lrpr-config-location",
+      "mode": "recipe",
+      "prompt": "In the Drupal module login_redirect_per_role, where are the per-role login and logout redirect destinations stored, and what is the shape of that configuration (which config object, and the fields kept for each role)?",
+      "must_contain_any": [
+        "login_redirect_per_role.settings",
+        "redirect_url",
+        "allow_destination"
+      ],
+      "must_not_contain": [],
+      "expected_output": "They live in the config object login_redirect_per_role.settings, under two top-level maps `login` and `logout`. Each is keyed by role machine name to a row { redirect_url, allow_destination, weight }. The module ships no config/install default, so the object is absent until the settings form (route login_redirect_per_role.redirect_url_admin_settings) is saved.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "lrpr-priority",
+      "mode": "recipe",
+      "prompt": "A user on a login_redirect_per_role site has several roles, more than one of which has a Redirect URL configured. How does the module decide which URL to send the user to on login?",
+      "must_contain_any": [
+        "weight",
+        "priority",
+        "first",
+        "order"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The rows for the action are sorted ascending by weight (lower weight = higher priority), then walked in order; the first role the user actually has whose redirect_url is non-empty wins and its URL is used (the loop breaks). Empty URLs fall through to the next role; no match means default Drupal behavior.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "lrpr-url-formats",
+      "mode": "recipe",
+      "prompt": "In login_redirect_per_role, what values are accepted for a role's Redirect URL, and what does the 'Allow destination' checkbox do?",
+      "must_contain_any": [
+        "<front>",
+        "destination",
+        "token",
+        "allow_destination"
+      ],
+      "must_not_contain": [],
+      "expected_output": "A Redirect URL may be '<front>', an internal path/user input beginning with '/', '?' or '#', or a token like [current-user:uid] (Token module). Allow destination, when ticked, makes the module respect an existing ?destination= query parameter instead of overriding it with the role URL. Under the hood the service sets Drupal's `destination` query param on hook_user_login / hook_user_logout.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "lrpr-known-login",
+      "mode": "introspection",
+      "prompt": "On this Drupal site, login_redirect_per_role is configured to send users with the content_editor role somewhere specific when they log in. Inspect the live configuration and state the exact path that role is redirected to on login.",
+      "must_contain_any": [
+        "/admin/content"
+      ],
+      "must_not_contain": [],
+      "expected_output": "content_editor is redirected to /admin/content on login: in login_redirect_per_role.settings the login.content_editor row has redirect_url: '/admin/content' (drush cget login_redirect_per_role.settings login.content_editor).",
+      "setup": "agent-module-documentation/evaluation/verify/login_redirect_per_role-login-known-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/login_redirect_per_role-login-known-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "lrpr-priority-live",
+      "mode": "introspection",
+      "prompt": "This site's login_redirect_per_role configuration defines login redirects for more than one role. Inspect the live config and determine: a user who has BOTH the content_editor and authenticated roles logs in — which URL does the module redirect them to, and why?",
+      "must_contain_any": [
+        "/dashboard-editor"
+      ],
+      "must_not_contain": [],
+      "expected_output": "They are sent to /dashboard-editor. In login_redirect_per_role.settings the login rows are content_editor (weight 0, /dashboard-editor) and authenticated (weight 1, /user); rows are sorted ascending by weight and the first role the user has with a non-empty redirect_url wins, so the lower-weight content_editor row takes precedence over authenticated.",
+      "setup": "agent-module-documentation/evaluation/verify/login_redirect_per_role-priority-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/login_redirect_per_role-priority-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "lrpr-set-login",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, use the login_redirect_per_role module to configure things so that users with the 'content_editor' role are redirected to /admin/content immediately after they log in. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/login_redirect_per_role-set-login-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/login_redirect_per_role-set-login-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/login_redirect_per_role-set-login-cleanup.sh",
+      "expected_output": "In login_redirect_per_role.settings the login.content_editor row has redirect_url '/admin/content' (set via the settings form at /admin/people/login-and-logout-redirect-per-role, or by writing the config: $c->set('login', ['content_editor' => ['redirect_url' => '/admin/content', 'allow_destination' => FALSE, 'weight' => 0]] + ($c->get('login') ?? []))->save())."
+    },
+    {
+      "id": "lrpr-set-logout-front",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "site-owner",
+      "prompt": "Using the login_redirect_per_role module on this site, make it so that when a logged-in user logs out they are sent to the site's front page. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/login_redirect_per_role-set-logout-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/login_redirect_per_role-set-logout-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/login_redirect_per_role-set-logout-cleanup.sh",
+      "expected_output": "In login_redirect_per_role.settings the logout.authenticated row has redirect_url '<front>' (the module resolves '<front>' with Url::fromRoute('<front>')). Set it via the Logout redirect table of the settings form, or by writing the config object's `logout` map for the authenticated role."
+    }
+  ]
+}

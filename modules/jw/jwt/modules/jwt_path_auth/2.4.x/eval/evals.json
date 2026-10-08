@@ -1,0 +1,80 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "jwt_path_auth",
+  "version": "2.4.x",
+  "note": "jwt_path_auth adds a global authentication provider (id jwt_path_auth) that reads a JWT from the ?jwt= query string, but only for request paths beginning with one of jwt_path_auth.config -> allowed_path_prefixes (config/install default ['/system/files/']). The token must carry drupal.path_auth.uid and drupal.path_auth.path claims. Config form route jwt_path_auth.config_form at /admin/config/system/jwt/path-auth (permission 'administer jwt'). Medium/hard cases are grounded entirely in the real allowed_path_prefixes config (never jwt.config): mediums read a known prefix list, hards add/replace prefixes and verify the live list.",
+  "evals": [
+    {
+      "id": "jwt_path_auth-how-token-passed",
+      "mode": "recipe",
+      "prompt": "How does the Drupal jwt_path_auth module expect a JWT to be supplied on a request, and what limits where that is accepted?",
+      "must_contain_any": ["query", "?jwt", "jwt=", "allowed_path_prefixes", "path prefix"],
+      "must_not_contain": [],
+      "expected_output": "The token is passed in the ?jwt= query-string parameter. The provider only applies when the request path starts with one of the configured jwt_path_auth.config allowed_path_prefixes (default /system/files/).",
+      "difficulty": "easy"
+    },
+    {
+      "id": "jwt_path_auth-default-prefix",
+      "mode": "recipe",
+      "prompt": "Out of the box, on which path(s) does jwt_path_auth accept a query-string JWT, and where do you change that?",
+      "must_contain_any": ["/system/files/", "allowed_path_prefixes", "/admin/config/system/jwt/path-auth"],
+      "must_not_contain": [],
+      "expected_output": "The shipped default allowed_path_prefixes is ['/system/files/'] (private files). Change it in jwt_path_auth.config, via the form at /admin/config/system/jwt/path-auth (route jwt_path_auth.config_form, permission 'administer jwt').",
+      "difficulty": "easy"
+    },
+    {
+      "id": "jwt_path_auth-claims",
+      "mode": "recipe",
+      "prompt": "Which claims must a token carry for jwt_path_auth to authenticate a request, and how is the token bound to a specific URL?",
+      "must_contain_any": ["path_auth", "drupal.path_auth.uid", "drupal.path_auth.path", "path claim"],
+      "must_not_contain": [],
+      "expected_output": "The token must include nested claims drupal.path_auth.uid and drupal.path_auth.path. Authentication succeeds only if the request path starts with the token's path claim, binding the token to a URL prefix.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "jwt_path_auth-known-prefixes",
+      "mode": "introspection",
+      "prompt": "On this Drupal site, which request-path prefixes will jwt_path_auth accept a query-string JWT on? Inspect the live configuration and list them.",
+      "must_contain_any": ["/jwtpa-eval/"],
+      "must_not_contain": [],
+      "expected_output": "allowed_path_prefixes is ['/jwtpa-eval/', '/system/files/'] on this site. Read it with `drush cget jwt_path_auth.config allowed_path_prefixes`.",
+      "setup": "agent-module-documentation/evaluation/verify/jwt_path_auth-m1-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/jwt_path_auth-m1-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "jwt_path_auth-single-prefix",
+      "mode": "introspection",
+      "prompt": "A JWT is passed as ?jwt=... on this site. Inspect the live jwt_path_auth configuration and state the single path prefix under which such a token would be accepted.",
+      "must_contain_any": ["/jwtpa-report/"],
+      "must_not_contain": [],
+      "expected_output": "allowed_path_prefixes is ['/jwtpa-report/']. Only requests whose path begins with /jwtpa-report/ will attempt query-string JWT auth. Read it with `drush cget jwt_path_auth.config allowed_path_prefixes`.",
+      "setup": "agent-module-documentation/evaluation/verify/jwt_path_auth-m2-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/jwt_path_auth-m2-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "jwt_path_auth-add-prefix",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, query-string JWT authentication should also work for URLs under /jwtpa-task/, in addition to whatever is already allowed. Update jwt_path_auth so that /jwtpa-task/ is an accepted path prefix. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/jwt_path_auth-h1-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/jwt_path_auth-h1-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/jwt_path_auth-h1-cleanup.sh",
+      "expected_output": "Add '/jwtpa-task/' to jwt_path_auth.config allowed_path_prefixes (via the path-auth config form or config). Verify passes when '/jwtpa-task/' is present in the list."
+    },
+    {
+      "id": "jwt_path_auth-replace-prefixes",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "This site should accept query-string JWTs ONLY on URLs under /downloads/ — no other paths, including the default private-files path. Configure jwt_path_auth so its allowed path prefixes are exactly ['/downloads/']. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/jwt_path_auth-h2-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/jwt_path_auth-h2-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/jwt_path_auth-h2-cleanup.sh",
+      "expected_output": "Set jwt_path_auth.config allowed_path_prefixes to exactly ['/downloads/'] (replacing the default). Verify passes when the list equals ['/downloads/']."
+    }
+  ]
+}

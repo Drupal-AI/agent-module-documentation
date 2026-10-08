@@ -1,0 +1,96 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "views_rss_format",
+  "version": "2.4.x",
+  "note": "views_rss_format adds no RSS elements and no View-config options of its own - it is a one-function theming shim (views_rss_format_preprocess_views_view_row_rss(), a hook_preprocess_HOOK() for the views_view_row_rss theme hook) that converts each item element's raw attributes array into a Drupal\\Core\\Template\\Attribute object so enclosure/media:*/guid/cloud attributes render as real XML attributes. Since it has no config surface, medium/hard cases are grounded in (a) the module's own enabled/disabled state and (b) the parent feed wiring it participates in - a View mapping a core <enclosure> element, which needs this module enabled to render its url/length/type attributes correctly.",
+  "evals": [
+    {
+      "id": "views_rss_format-theme-hook",
+      "mode": "recipe",
+      "prompt": "Which theme hook does views_rss_format implement a preprocess function for, and what is that function's name?",
+      "must_contain_any": [
+        "views_view_row_rss",
+        "views_rss_format_preprocess_views_view_row_rss"
+      ],
+      "must_not_contain": [],
+      "expected_output": "It implements hook_preprocess_HOOK() for the views_view_row_rss theme hook, via views_rss_format_preprocess_views_view_row_rss().",
+      "difficulty": "easy"
+    },
+    {
+      "id": "views_rss_format-attribute-conversion",
+      "mode": "recipe",
+      "prompt": "Why would an RSS item's <enclosure> or <media:content> element render with missing or malformed XML attributes if the views_rss_format submodule were disabled?",
+      "must_contain_any": [
+        "Attribute",
+        "attributes"
+      ],
+      "must_not_contain": [],
+      "expected_output": "views_rss_format_preprocess_views_view_row_rss() is what converts each element's raw PHP 'attributes' array into a Drupal\\Core\\Template\\Attribute object before the row Twig template prints it; without that conversion the template would print a PHP array cast to string instead of key=\"value\" XML attributes.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "views_rss_format-template-variables",
+      "mode": "recipe",
+      "prompt": "What top-level template variables does views_rss_format's preprocess function set for the row Twig template, and where do their values come from?",
+      "must_contain_any": [
+        "title",
+        "link",
+        "description",
+        "item_elements"
+      ],
+      "must_not_contain": [],
+      "expected_output": "It sets title, link (with dangerous protocols stripped), description, and item_elements, all derived from the \\stdClass $item object the views_rss_fields row plugin built in its render()/mapRow().",
+      "difficulty": "easy"
+    },
+    {
+      "id": "views_rss_format-module-status",
+      "mode": "introspection",
+      "prompt": "Inspect this Drupal site and report whether the views_rss_format submodule is currently enabled or disabled.",
+      "must_contain_any": [
+        "disabled",
+        "Disabled",
+        "not enabled",
+        "not installed"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Disabled - drush pm:list (or \\Drupal::moduleHandler()->moduleExists('views_rss_format')) shows it is not currently enabled.",
+      "setup": "agent-module-documentation/evaluation/verify/views_rss_format-module-status-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/views_rss_format-module-status-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "views_rss_format-enclosure-wiring",
+      "mode": "introspection",
+      "prompt": "This Drupal site has a View called vrss_fmt_enclosure with an RSS feed display already configured, mapping some field to the item <enclosure> element (whose url/length/type attributes depend on views_rss_format to render correctly). Inspect its live configuration and report which field id is mapped to the enclosure element.",
+      "must_contain_any": [
+        "field_vrss_fmt_marker_8823"
+      ],
+      "must_not_contain": [],
+      "expected_output": "field_vrss_fmt_marker_8823 - found at views.view.vrss_fmt_enclosure: display.feed_1.display_options.row.options.item.core.views_rss_core.enclosure.",
+      "setup": "agent-module-documentation/evaluation/verify/views_rss_format-enclosure-wiring-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/views_rss_format-enclosure-wiring-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "views_rss_format-enable-module",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, the views_rss_format module (Advanced Views RSS Feed: Format) is currently disabled. Enable it so that RSS item elements with XML attributes (enclosure, media:content, guid, etc.) render those attributes correctly. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/views_rss_format-enable-module-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/views_rss_format-enable-module-verify.sh",
+      "expected_output": "views_rss_format is enabled (\\Drupal::moduleHandler()->moduleExists('views_rss_format') === TRUE)."
+    },
+    {
+      "id": "views_rss_format-enclosure-task",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, enable the views_rss_format module and build a new View called vrss_fmt_task with a Feed display using the Advanced Views RSS Feed row plugin (views_rss_fields), mapping a field to the item <enclosure> RSS element, so its attributes render correctly. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/views_rss_format-enclosure-task-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/views_rss_format-enclosure-task-verify.sh",
+      "expected_output": "views_rss_format is enabled AND views.view.vrss_fmt_task has a display whose display_options.row.type is views_rss_fields with a non-empty display_options.row.options.item.core.views_rss_core.enclosure."
+    }
+  ]
+}

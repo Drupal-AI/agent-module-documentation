@@ -1,0 +1,99 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "interval",
+  "version": "1.17.x",
+  "note": "Interval Field provides one field type `interval` (int count + period machine name), one widget `interval_default` with a single setting `allowed_periods`, and three formatters (interval_default/Plain, interval_php/PHP date-time, interval_raw/Raw). Periods are YAML plugins from *.intervals.yml discovered by plugin.manager.interval.intervals; built-ins include day, week (multiplier 7 days), fortnight (14 days), quarter (3 months). No configure route (configure=null), no permissions, no Drush, config schema exists only for the widget setting. Medium/hard cases are grounded in real field + form-display config: introspection reads which interval field exists / which periods a widget allows; execution creates an interval field and restricts its widget's allowed_periods.",
+  "evals": [
+    {
+      "id": "interval-field-and-formatters",
+      "mode": "recipe",
+      "prompt": "In the Drupal contrib module 'interval' (Interval Field), what field type does it add and what formatters can display it? Name the field type machine name, the widget machine name, and at least one formatter id.",
+      "must_contain_any": [
+        "interval_default",
+        "interval_php",
+        "interval_raw"
+      ],
+      "must_not_contain": [],
+      "expected_output": "It adds the field type `interval` (integer count + period). The widget is `interval_default` ('Interval and Period'). Formatters: interval_default (Plain), interval_php (PHP date/time), interval_raw (Raw value).",
+      "difficulty": "easy"
+    },
+    {
+      "id": "interval-custom-period",
+      "mode": "recipe",
+      "prompt": "How do I add a new selectable period (for example a 'decade') to the Drupal interval module, and what keys does a period definition need? Which file provides periods?",
+      "must_contain_any": [
+        "intervals.yml",
+        "multiplier",
+        "plugin.manager.interval.intervals"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Periods are YAML plugins discovered from a MODULE.intervals.yml file by plugin.manager.interval.intervals. Add an entry keyed by the period id with singular, plural, php (a DateTime::modify unit like years/days/months) and multiplier; e.g. decade: {singular: Decade, plural: Decades, php: years, multiplier: 10}. Then drush cr. hook_intervals_alter() can alter existing periods.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "interval-week-multiplier",
+      "mode": "recipe",
+      "prompt": "In the Drupal interval module, how is a period like 'week' converted into a real date span when applyInterval() is called on a field value? What role does the multiplier play for the built-in 'week' period?",
+      "must_contain_any": [
+        "multiplier",
+        "7",
+        "buildPHPString",
+        "modify"
+      ],
+      "must_not_contain": [],
+      "expected_output": "applyInterval(\\DateTime $date, $limit) calls $date->modify(buildPHPString()), where buildPHPString() returns (entered count x multiplier) . ' ' . php-unit. The 'week' period has php=days and multiplier=7, so 3 weeks becomes '21 days'. The optional $limit guard clamps month overflow to the last day of the previous month.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "interval-which-field",
+      "mode": "introspection",
+      "prompt": "On this Drupal site the Article content type has a field using the 'interval' module's field type. Inspect the live configuration and give the machine name of that interval field.",
+      "must_contain_any": [
+        "field_interval_dur"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The field is field_interval_dur: a field storage of type 'interval' attached to node.article (label 'Membership Duration').",
+      "setup": "agent-module-documentation/evaluation/verify/interval-which-field-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/interval-which-field-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "interval-allowed-periods",
+      "mode": "introspection",
+      "prompt": "On this Drupal site the Article content type has an interval field field_interval_periods whose widget has been restricted to only offer some periods in its dropdown. Inspect the live default form display and state which periods that widget allows.",
+      "must_contain_any": [
+        "day",
+        "week",
+        "month"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The interval_default widget for field_interval_periods has allowed_periods set to day, week and month (in core.entity_form_display.node.article.default -> content.field_interval_periods.settings.allowed_periods).",
+      "setup": "agent-module-documentation/evaluation/verify/interval-allowed-periods-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/interval-allowed-periods-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "interval-add-field",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, add a new field of the interval module's 'interval' type to the Article content type. Name the field field_interval_task with label 'Task Duration', and apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/interval-add-field-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/interval-add-field-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/interval-add-field-cleanup.sh",
+      "expected_output": "A FieldStorageConfig node.field_interval_task of type 'interval' plus a FieldConfig on node.article exist (create via FieldStorageConfig::create + FieldConfig::create, or the Field UI)."
+    },
+    {
+      "id": "interval-restrict-periods",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site the Article content type has an interval field field_interval_limit whose interval_default widget currently offers every period in its dropdown. Restrict that widget so its period dropdown only offers Days and Weeks, and apply the change to the live default form display.",
+      "reset": "agent-module-documentation/evaluation/verify/interval-restrict-periods-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/interval-restrict-periods-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/interval-restrict-periods-cleanup.sh",
+      "expected_output": "In core.entity_form_display.node.article.default the field_interval_limit component's widget settings.allowed_periods retains only day and week (e.g. set allowed_periods to ['day'=>'day','week'=>'week'] and save)."
+    }
+  ]
+}

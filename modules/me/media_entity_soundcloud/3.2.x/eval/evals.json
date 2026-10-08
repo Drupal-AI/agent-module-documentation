@@ -1,0 +1,97 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "media_entity_soundcloud",
+  "version": "3.2.x",
+  "note": "Media Entity Soundcloud adds a core-Media source plugin (id 'soundcloud', allowed source field types string/string_long/link) and a field formatter (id 'soundcloud_embed'). Depends on media. No admin settings page (configure=null), no permissions, no Drush. Config surface: the media type (media.type.<id> with source:soundcloud + source_configuration.source_field), the display formatter (soundcloud_embed with type/width/height/color/options), and one config object media_entity_soundcloud.settings:thumbnail_destination (default public://soundcloud). Metadata attributes track_id/playlist_id/source_id/html/thumbnail_uri come from soundcloud.com oEmbed (getMetadata makes live HTTP calls). Medium cases read back a known thumbnail_destination and a known media type's source field name; hard cases build a real SoundCloud media type and switch a field display to the soundcloud_embed (classic) formatter, verified against live config. All fixtures namespaced mes_* / field_mes_*.",
+  "evals": [
+    {
+      "id": "media_entity_soundcloud-source-plugin",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "I want to store SoundCloud tracks as Drupal Media entities. Which media source plugin does the media_entity_soundcloud module provide, and what field types can be used as the source field that holds the SoundCloud URL?",
+      "must_contain_any": [
+        "soundcloud",
+        "string",
+        "link"
+      ],
+      "must_not_contain": [],
+      "expected_output": "It provides a MediaSource plugin with id 'soundcloud'. Its allowed source field types are string, string_long, and link — the source field holds the SoundCloud track/playlist URL."
+    },
+    {
+      "id": "media_entity_soundcloud-embed-formatter",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "With media_entity_soundcloud, which field formatter renders a SoundCloud media item as an embedded player, and what are its main display settings (e.g. the player type)?",
+      "must_contain_any": [
+        "soundcloud_embed",
+        "visual",
+        "classic"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The formatter id is soundcloud_embed. Settings: type (visual or classic), width (default 100%), height (default 450), color (default #ff5500), and an options checkbox set (autoplay, hide_related, show_artwork, etc.). It renders an <iframe> to the SoundCloud widget player."
+    },
+    {
+      "id": "media_entity_soundcloud-metadata",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "How does the media_entity_soundcloud source get metadata (like the thumbnail and track id) from a SoundCloud URL, and what metadata attributes does it expose?",
+      "must_contain_any": [
+        "oembed",
+        "source_id",
+        "track_id",
+        "thumbnail_uri"
+      ],
+      "must_not_contain": [],
+      "expected_output": "It calls SoundCloud's oEmbed endpoint (https://soundcloud.com/oembed) and exposes the attributes track_id, playlist_id, source_id (tracks/{id} or playlists/{id}), html (embed code), and thumbnail_uri (downloaded to thumbnail_destination)."
+    },
+    {
+      "id": "media_entity_soundcloud-thumb-dest",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "On this Drupal site, where does the media_entity_soundcloud module store the thumbnail images it downloads for SoundCloud media? Inspect the live configuration and report the destination URI.",
+      "must_contain_any": [
+        "public://mes_probe_thumbs"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The destination is public://mes_probe_thumbs — media_entity_soundcloud.settings:thumbnail_destination (drush cget media_entity_soundcloud.settings thumbnail_destination).",
+      "setup": "agent-module-documentation/evaluation/verify/media_entity_soundcloud-thumb-dest-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/media_entity_soundcloud-thumb-dest-cleanup.sh"
+    },
+    {
+      "id": "media_entity_soundcloud-type-field",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "This Drupal site has a media type with the machine name 'mes_intro' that uses the SoundCloud media source. Inspect its configuration and report the machine name of its source field (the field that holds the SoundCloud URL).",
+      "must_contain_any": [
+        "field_mes_iurl"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The source field is field_mes_iurl: media.type.mes_intro has source: soundcloud and source_configuration.source_field: field_mes_iurl (drush cget media.type.mes_intro).",
+      "setup": "agent-module-documentation/evaluation/verify/media_entity_soundcloud-type-field-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/media_entity_soundcloud-type-field-cleanup.sh"
+    },
+    {
+      "id": "media_entity_soundcloud-create-type",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, create a Media type with the machine name 'mes_podcast' that uses the media_entity_soundcloud SoundCloud source, including a working source field to hold the SoundCloud URL. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/media_entity_soundcloud-create-type-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/media_entity_soundcloud-create-type-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/media_entity_soundcloud-create-type-cleanup.sh",
+      "expected_output": "Create media.type.mes_podcast with source 'soundcloud' and a source field (e.g. via MediaType::create()+getSource()->createSourceField(), or the /admin/structure/media/add UI). The media type must have source=soundcloud and a configured source_field that exists on the media entity."
+    },
+    {
+      "id": "media_entity_soundcloud-embed-display",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site there is a SoundCloud media type 'mes_embed' whose source field is field_mes_eurl. Configure its default display so that field is rendered with the media_entity_soundcloud embedded player using the 'classic' player type. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/media_entity_soundcloud-embed-display-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/media_entity_soundcloud-embed-display-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/media_entity_soundcloud-embed-display-cleanup.sh",
+      "expected_output": "In core.entity_view_display.media.mes_embed.default set the field_mes_eurl component's formatter type to soundcloud_embed with settings.type = 'classic' (Manage display: choose 'Soundcloud embed' format, set Type = Classic). Verified: component type === soundcloud_embed and settings.type === classic."
+    }
+  ]
+}

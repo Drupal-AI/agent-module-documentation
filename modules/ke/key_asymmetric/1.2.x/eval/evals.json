@@ -1,0 +1,80 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "key_asymmetric",
+  "version": "1.2.x",
+  "note": "Asymmetric Keys extends the Key module with two KeyType plugins: asymmetric_private (Private key) and asymmetric_public (Public key/certificate). Keys are stored as core Key module 'key' config entities (key.key.<id>) with key_type set to one of those ids; phpseclib validates values on the admin form and stores metadata (format/algo/key_size/hash_algo/fingerprint/cert...) in key_type_settings. The public key type has one UI-editable setting, private_key, referencing an asymmetric_private key (the key-pair link). Service key_asymmetric.key_pair::getKeyProperties(value, password) returns metadata for a raw key string. No configure route, no permissions of its own, no Drush. Easy cases quiz the plugin ids, the phpseclib validation/metadata, and the private_key pairing; medium cases read back a seeded private Key entity's type and a public Key's private_key reference; hard cases build an asymmetric_private Key entity from a provided PEM and an asymmetric_public Key entity linked to an existing private key, verified against live key config. Hard cases place a throwaway RSA PEM at /tmp/key_asymmetric_task_*.pem in their reset scripts for the agent to use.",
+  "evals": [
+    {
+      "id": "key_asymmetric-key-types",
+      "mode": "recipe",
+      "prompt": "What key types does the Drupal key_asymmetric module add to the Key module, and what are their machine ids?",
+      "must_contain_any": ["asymmetric_private", "asymmetric_public"],
+      "must_not_contain": [],
+      "expected_output": "It adds two Key Type plugins: 'Private key' (id asymmetric_private) and 'Public key/certificate' (id asymmetric_public, which also accepts an X.509 certificate).",
+      "difficulty": "easy"
+    },
+    {
+      "id": "key_asymmetric-validation",
+      "mode": "recipe",
+      "prompt": "When you save a key using the key_asymmetric module's key types, how is the value checked and what does the module store about it? What library is used?",
+      "must_contain_any": ["phpseclib", "metadata", "key type settings", "key_type_settings", "getKeyProperties", "format"],
+      "must_not_contain": [],
+      "expected_output": "The value is validated with the phpseclib library; if recognised, extracted metadata (format, algorithm, key size, hashing algorithm, fingerprint, and cert subject/issuer/validity for X.509) is stored in the key's key_type_settings. A 'Skip key validation' option accepts any value without storing metadata; a passphrase field (never stored) validates password-protected private keys.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "key_asymmetric-pair-link",
+      "mode": "recipe",
+      "prompt": "Using the key_asymmetric module, how do you record that a stored public key/certificate belongs with a particular private key?",
+      "must_contain_any": ["private_key", "key pair", "reference", "asymmetric_private"],
+      "must_not_contain": [],
+      "expected_output": "The public key type (asymmetric_public) has a UI-editable setting named private_key (a key_select filtered to asymmetric_private keys). Set it to the corresponding private key so applications can recognise the key pair.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "key_asymmetric-inspect-priv-type",
+      "mode": "introspection",
+      "prompt": "This site has a Key entity with id 'ka_probe_priv' created via the key_asymmetric module. Inspect the live key configuration and tell me what key type it uses.",
+      "must_contain_any": ["asymmetric_private"],
+      "must_not_contain": [],
+      "expected_output": "The key config key.key.ka_probe_priv has key_type: asymmetric_private (a private key).",
+      "setup": "agent-module-documentation/evaluation/verify/key_asymmetric-probe-priv-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/key_asymmetric-probe-priv-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "key_asymmetric-inspect-pair",
+      "mode": "introspection",
+      "prompt": "On this site there is a public key stored as Key entity 'ka_probe_pub' (type asymmetric_public) created with key_asymmetric. Inspect the live configuration and tell me which private key it is linked to.",
+      "must_contain_any": ["ka_probe_priv2"],
+      "must_not_contain": [],
+      "expected_output": "The key.key.ka_probe_pub config has key_type_settings.private_key = ka_probe_priv2, so it is paired with the private key ka_probe_priv2.",
+      "setup": "agent-module-documentation/evaluation/verify/key_asymmetric-probe-pair-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/key_asymmetric-probe-pair-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "key_asymmetric-build-private",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, use the key_asymmetric module to store a private key as a Key entity with the id 'ka_task_priv' of type 'Private key' (asymmetric_private). A PEM private key file has been placed at /tmp/key_asymmetric_task_priv.pem inside the container - use its contents as the key value. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/key_asymmetric-build-priv-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/key_asymmetric-build-priv-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/key_asymmetric-build-priv-cleanup.sh",
+      "expected_output": "Create a core Key entity ka_task_priv with key_type asymmetric_private and the PEM from /tmp/key_asymmetric_task_priv.pem as its value (e.g. Key::create(['id'=>'ka_task_priv','key_type'=>'asymmetric_private','key_provider'=>'config','key_provider_settings'=>['key_value'=>$pem],...])->save() or via the Keys admin UI), so key.key.ka_task_priv exists as an asymmetric_private key with a non-empty value."
+    },
+    {
+      "id": "key_asymmetric-build-public-pair",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "This Drupal site already has a private key stored as Key entity 'ka_task_priv2'. Using the key_asymmetric module, store the matching public key as a new Key entity with id 'ka_task_pub' of type 'Public key/certificate' (asymmetric_public), using the PEM at /tmp/key_asymmetric_task_pub.pem as its value, and link it to the existing private key ka_task_priv2. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/key_asymmetric-build-pub-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/key_asymmetric-build-pub-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/key_asymmetric-build-pub-cleanup.sh",
+      "expected_output": "Create a Key entity ka_task_pub with key_type asymmetric_public, the PEM from /tmp/key_asymmetric_task_pub.pem as value, and key_type_settings.private_key = 'ka_task_priv2' (the pairing). So key.key.ka_task_pub exists as asymmetric_public with a non-empty value and private_key referencing ka_task_priv2."
+    }
+  ]
+}

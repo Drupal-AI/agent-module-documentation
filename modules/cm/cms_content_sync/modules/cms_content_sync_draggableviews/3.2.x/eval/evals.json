@@ -1,0 +1,58 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "cms_content_sync_draggableviews",
+  "version": "3.2.x",
+  "note": "Glue submodule: a single event subscriber (DraggableViewsSyncExtend, service cms_content_sync_draggableviews.event_subscriber) that carries DraggableViews weights across sites via Content Sync push/pull events. No config/UI/Drush/permissions. Medium introspects the running site's container for that subscriber; hard is an enable-the-integration task (module toggling is safe - it has no dependents). No sync backend is needed for either.",
+  "evals": [
+    {
+      "id": "ccs-dv-what",
+      "mode": "recipe",
+      "prompt": "What does the cms_content_sync_draggableviews module do, and which contrib module does it require besides cms_content_sync?",
+      "must_contain_any": ["draggableviews", "weight", "order", "ordering"],
+      "must_not_contain": [],
+      "expected_output": "It makes DraggableViews manual-ordering weights travel with entities during Content Sync push/pull (reading/writing the draggableviews_structure table), so drag ordering is preserved across syndicated sites. It requires the contrib draggableviews module plus cms_content_sync.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "ccs-dv-events",
+      "mode": "recipe",
+      "prompt": "How does cms_content_sync_draggableviews hook into Content Sync? Name the Content Sync events its subscriber listens to.",
+      "must_contain_any": ["BeforeEntityPush", "AfterEntityPull", "BeforeEntityTypeExport", "entity.push.before", "entity.pull.after", "entity_type.push.before"],
+      "must_not_contain": [],
+      "expected_output": "Via one event subscriber (DraggableViewsSyncExtend) subscribing to BeforeEntityTypeExport (add a draggableviews property), BeforeEntityPush (attach weight rows) and AfterEntityPull (write weights back).",
+      "difficulty": "easy"
+    },
+    {
+      "id": "ccs-dv-property",
+      "mode": "recipe",
+      "prompt": "cms_content_sync_draggableviews adds an extra property to the Content Sync payload/entity-type export. What is that property named, and where does the weight data come from?",
+      "must_contain_any": ["draggableviews", "draggableviews_structure"],
+      "must_not_contain": [],
+      "expected_output": "The property is named 'draggableviews' (DraggableViewsSyncExtend::PROPERTY_NAME); the weight data is read from and written to the draggableviews_structure database table.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "ccs-dv-subscriber-service",
+      "mode": "introspection",
+      "prompt": "On this running Drupal site, the cms_content_sync_draggableviews integration is active. Inspect the site's service container and give the machine id of the event subscriber service this module registers.",
+      "must_contain_any": ["cms_content_sync_draggableviews.event_subscriber"],
+      "must_not_contain": [],
+      "expected_output": "The service id is cms_content_sync_draggableviews.event_subscriber (class DraggableViewsSyncExtend). Confirm with drush ev '\\Drupal::getContainer()->has(\"cms_content_sync_draggableviews.event_subscriber\")'.",
+      "setup": "agent-module-documentation/evaluation/verify/cms_content_sync_draggableviews-subscriber-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/cms_content_sync_draggableviews-subscriber-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "ccs-dv-enable",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "This Drupal site uses Content Sync and the contrib draggableviews module. Enable the Content Sync integration that keeps DraggableViews ordering in sync across sites, so that drag-ordering weights are carried during push/pull.",
+      "reset": "agent-module-documentation/evaluation/verify/cms_content_sync_draggableviews-enable-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/cms_content_sync_draggableviews-enable-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/cms_content_sync_draggableviews-enable-cleanup.sh",
+      "expected_output": "The cms_content_sync_draggableviews module is enabled (e.g. drush en cms_content_sync_draggableviews -y), which registers the DraggableViewsSyncExtend event subscriber."
+    }
+  ]
+}

@@ -1,0 +1,89 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "ai",
+  "version": "1.4.x",
+  "note": "All recipe (response-graded) — no AI provider/API key needed, so these run in CI without mutating the site or spending on an LLM vendor. Each probes an ai (AI Core) architecture fact an unfamiliar agent would otherwise have to read src/ to answer.",
+  "evals": [
+    {
+      "id": "ai-provider-service",
+      "mode": "recipe",
+      "prompt": "In the Drupal ai (AI Core) module, I want to call an LLM from custom code without hard-coding a vendor. Which service do I ask for a provider, and what plugin type does that service manage? Name both.",
+      "must_contain_any": ["ai.provider"],
+      "must_not_contain": [],
+      "expected_output": "The ai.provider service (AiProviderPluginManager), which manages AiProvider plugins."
+    },
+    {
+      "id": "ai-operation-types",
+      "mode": "recipe",
+      "prompt": "In AI Core (ai), capabilities like chat, embeddings and text-to-image are modeled as a plugin type so every provider exposes them the same way. What is that plugin type called?",
+      "must_contain_any": ["OperationType", "operation type", "operation_type"],
+      "must_not_contain": [],
+      "expected_output": "OperationType plugins (e.g. chat, embeddings, text_to_image, moderation), each with a typed input/output under src/OperationType/."
+    },
+    {
+      "id": "ai-chat-input",
+      "mode": "recipe",
+      "prompt": "In the ai module, to send a chat request you build a typed input object holding message objects, then call ->chat() on the provider. Name the input class and the message class.",
+      "must_contain_any": ["ChatInput"],
+      "must_not_contain": [],
+      "expected_output": "Build a ChatInput containing ChatMessage(role, text) objects, then $provider->chat($input, $model_id)."
+    },
+    {
+      "id": "ai-default-provider-method",
+      "mode": "recipe",
+      "prompt": "In the ai module's provider plugin manager (ai.provider service), which method returns the site's configured default provider id and model id for a given operation type such as 'chat'? Give the method name.",
+      "must_contain_any": ["getDefaultProviderForOperationType"],
+      "must_not_contain": [],
+      "expected_output": "getDefaultProviderForOperationType('chat'), which returns ['provider_id' => ..., 'model_id' => ...] or NULL."
+    },
+    {
+      "id": "ai-keys-via-key-module",
+      "mode": "recipe",
+      "prompt": "Where should AI provider API keys be stored for the Drupal ai module — should I put them in ai.settings config? What is the required dependency that handles this?",
+      "must_contain_any": ["key module", "Key module", "key entity", "Key entity", "drupal/key"],
+      "must_not_contain": [],
+      "expected_output": "Not in config — ai depends on the Key module; store the API key as a Key entity and select it in the provider settings, keeping secrets out of exported config."
+    },
+    {
+      "id": "ai-extend-events-not-hooks",
+      "mode": "recipe",
+      "prompt": "I want to inspect or alter every AI request the ai (AI Core) module makes, just before it calls the provider. Does ai provide an ai.api.php hook for this? What is the mechanism and name the relevant event.",
+      "must_contain_any": ["PreGenerateResponseEvent", "event"],
+      "must_not_contain": [],
+      "expected_output": "There is no ai.api.php / hook API; use Symfony events. Subscribe to PreGenerateResponseEvent (and PostGenerateResponseEvent for the response)."
+    },
+    {
+      "id": "ai-guardrails-global",
+      "mode": "recipe",
+      "prompt": "In the ai module, I want a content policy applied to EVERY AI request site-wide without writing an event subscriber. Which config entity groups the policy, and which ai.settings key applies it globally?",
+      "must_contain_any": ["global_guardrails"],
+      "must_not_contain": [],
+      "expected_output": "Create an ai_guardrail_set (of ai_guardrail entities) and list it under ai.settings:global_guardrails."
+    },
+    {
+      "id": "ai-function-call-plugin",
+      "mode": "recipe",
+      "prompt": "In AI Core (ai), to expose a piece of Drupal logic as a 'tool' the LLM can invoke via function calling, which plugin type do I implement and in which Plugin/ namespace do the classes live?",
+      "must_contain_any": ["FunctionCall"],
+      "must_not_contain": [],
+      "expected_output": "Implement a FunctionCall plugin (attribute #[FunctionCall]) under Plugin/AiFunctionCall."
+    },
+    {
+      "id": "ai-allowed-hosts",
+      "mode": "recipe",
+      "prompt": "In the ai module's ai.settings, which setting key restricts the outbound hosts that AI providers are permitted to call (an allow-list for egress)? Name the exact key.",
+      "must_contain_any": ["allowed_hosts"],
+      "must_not_contain": [],
+      "expected_output": "The allowed_hosts setting in ai.settings (an array; empty by default)."
+    },
+    {
+      "id": "ai-drush-chat",
+      "mode": "recipe",
+      "prompt": "On this Drupal site with the ai module, what is the drush command to send a one-off message to the default chat provider and print the reply? Give the command.",
+      "must_contain_any": ["drush ai:chat", "ai:chat"],
+      "must_not_contain": [],
+      "expected_output": "drush ai:chat \"your message\" (aliases: drush chat / drush ai; --provider, --model, --system override the defaults)."
+    }
+  ]
+}

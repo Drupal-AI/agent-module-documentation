@@ -1,0 +1,80 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "themable_forms",
+  "version": "1.1.x",
+  "note": "themable_forms is four hooks, no config: hook_form_alter recursively attaches #form_id (e.g. node_article_form) to every element; hook_theme_suggestions_form_element adds form_element__type__<type>, form_element__form_id__<form_id>, form_element__<form_id>__<type>; hook_theme_suggestions_form_element_label adds the form_element_label equivalents; hook_preprocess_form_element copies #form_id/#form_element_type onto the label. Everything is observable via drush php:eval by building a node form (entity.form_builder) and reading #form_id, or by calling themable_forms_theme_suggestions_form_element($vars) directly. Medium/hard cases create a namespaced content type (themf_*) and read the module's effect back off the live form. No dblog, no theme files (default theme is core olivero, not written to).",
+  "evals": [
+    {
+      "id": "themable-forms-suggestions",
+      "mode": "recipe",
+      "prompt": "What Twig theme suggestions does the themable_forms module add for form elements, and give an example template file name I would create to theme every element on a specific form.",
+      "must_contain_any": ["form_element__form_id__", "form-element--form-id--", "form_element__type__", "form_element__"],
+      "must_not_contain": [],
+      "expected_output": "For the form_element theme hook it adds form_element__type__<type>, form_element__form_id__<form_id>, and form_element__<form_id>__<type>. To theme every element on the article node form you add templates/form-element--form-id--node-article-form.html.twig (double underscores in the suggestion become -- and underscores become - in the file name).",
+      "difficulty": "easy"
+    },
+    {
+      "id": "themable-forms-form-id-attach",
+      "mode": "recipe",
+      "prompt": "How does themable_forms make the form id available on every form element (so the per-form theme suggestions work)? Which hook does that and what property does it set?",
+      "must_contain_any": ["hook_form_alter", "#form_id", "form_alter"],
+      "must_not_contain": [],
+      "expected_output": "themable_forms_form_alter() implements hook_form_alter() and recursively walks the form render array, setting $element['#form_id'] on every child element to the form's id (e.g. node_article_form). The theme-suggestion hooks then read #form_id to build the form_id-based suggestions.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "themable-forms-label-hook",
+      "mode": "recipe",
+      "prompt": "Does themable_forms also let me theme form element labels per form, and which theme hook / suggestions does it use for that?",
+      "must_contain_any": ["form_element_label", "form-element-label", "theme_suggestions_form_element_label"],
+      "must_not_contain": [],
+      "expected_output": "Yes. hook_theme_suggestions_form_element_label() adds suggestions for the form_element_label theme hook: form_element_label__type__<type>, form_element_label__form-id__<form_id>, and form_element_label__<form_id>__<type>. hook_preprocess_form_element() copies #form_id and #form_element_type onto the label so those suggestions have data.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "themable-forms-known-form-id",
+      "mode": "introspection",
+      "prompt": "This site has a content type with machine name themf_known. Inspect the live site and state the exact #form_id value that themable_forms attaches to the form elements of the themf_known node add/edit form.",
+      "must_contain_any": ["node_themf_known_form"],
+      "must_not_contain": [],
+      "expected_output": "themable_forms attaches #form_id = 'node_themf_known_form' to every element of that form (the form id of the add/edit form for the themf_known content type).",
+      "setup": "agent-module-documentation/evaluation/verify/themable_forms-known-form-id-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/themable_forms-known-form-id-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "themable-forms-known-suggestion",
+      "mode": "introspection",
+      "prompt": "This site has a test content type whose machine name contains 'themf_disc'. Inspect the live site and give the exact form_element theme suggestion (the form-id based one) that themable_forms generates for a form element on that content type's add form.",
+      "must_contain_any": ["form_element__form_id__node_themf_disc_form", "node_themf_disc_form"],
+      "must_not_contain": [],
+      "expected_output": "The suggestion is form_element__form_id__node_themf_disc_form (from themable_forms_theme_suggestions_form_element for elements whose #form_id is node_themf_disc_form).",
+      "setup": "agent-module-documentation/evaluation/verify/themable_forms-known-suggestion-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/themable_forms-known-suggestion-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "themable-forms-attach-newtype",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this site themable_forms is enabled. Create a content type with machine name themf_task (label 'THEMF Task'). themable_forms must then attach the form id to the elements of its node add/edit form so per-form theming works. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/themable_forms-attach-newtype-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/themable_forms-attach-newtype-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/themable_forms-attach-newtype-cleanup.sh",
+      "expected_output": "A content type node.themf_task exists and its default form (built via entity.form_builder) has child elements carrying #form_id = 'node_themf_task_form', added by themable_forms_form_alter()."
+    },
+    {
+      "id": "themable-forms-suggestion-newtype",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "site-owner",
+      "prompt": "I want to be able to give the form fields of a new 'Report' content type their own Twig template using themable_forms. Create a content type with machine name themf_report so that themable_forms exposes per-form theme suggestions for its add/edit form. Apply it to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/themable_forms-suggestion-newtype-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/themable_forms-suggestion-newtype-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/themable_forms-suggestion-newtype-cleanup.sh",
+      "expected_output": "A content type node.themf_report exists; building its node form, the elements carry #form_id = 'node_themf_report_form', and themable_forms_theme_suggestions_form_element() for such an element yields the suggestion form_element__form_id__node_themf_report_form (so a form-element--form-id--node-report-form.html.twig template would apply)."
+    }
+  ]
+}

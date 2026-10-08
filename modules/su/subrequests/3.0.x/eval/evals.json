@@ -1,0 +1,94 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "subrequests",
+  "version": "3.0.x",
+  "note": "Subrequests has no configure route, no config schema, and no Drush commands. Its only configurable, drush-readable surface is a single permission, 'issue subrequests', gating the /subrequests route (subrequests.routing.yml, subrequests.permissions.yml). All medium/hard cases are therefore grounded in real Role entities and that real permission machine name: introspection creates namespaced roles (subreq_role_partner / subreq_role_on / subreq_role_off) and reads back which has the permission via Role::hasPermission(); execution grants or revokes 'issue subrequests' on a namespaced role (subreq_client_role / subreq_legacy_role), verified live the same way. HTTP-execution of the front controller itself was avoided for the hard tier because the live site currently 500s on every HTTP request due to an unrelated container/DI conflict between other agents' modules (gin_lb_plus vs storybook) -- drush's CLI bootstrap is unaffected, so role/permission-based verification stays reliable.",
+  "evals": [
+    {
+      "id": "subrequests-token-syntax",
+      "mode": "recipe",
+      "prompt": "In a Drupal subrequests blueprint (the subrequests contrib module), how do I reference part of an earlier subrequest's JSON response body inside a later subrequest's uri or body? Give the exact replacement token syntax, e.g. pulling the `id` field out of the response to a subrequest with requestId `req-1`.",
+      "must_contain_any": [
+        "{{req-1.body@$.id}}",
+        "{{req-1.body@",
+        "body@$.",
+        "requestId.body@"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Use a token of the form `{{<requestId>.body@<jsonpath-expression>}}`, e.g. `{{req-1.body@$.id}}`. The JsonPathReplacer service finds tokens matching `\\{\\{([^\\{\\}]+\\.[^\\{\\}]+)@([^\\{\\}]+)\\}\\}` in the uri/body, runs the JSONPath expression against the referenced requestId's JSON response body, and substitutes the result; if the JSONPath resolves to multiple values, the subrequest is cloned once per value. The dependant subrequest must also list that requestId in its waitFor.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "subrequests-blueprint-keys",
+      "mode": "recipe",
+      "prompt": "What properties can a subrequest object inside a Drupal subrequests blueprint JSON array contain, and which two of them are practically required for the subrequest to work at all?",
+      "must_contain_any": [
+        "uri",
+        "action"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Each subrequest object may contain requestId, uri, action, headers, body, and waitFor. uri and action are the practically required ones -- action selects the HTTP method (view=GET, create=POST, update=PATCH, replace=PUT, delete=DELETE, exists=HEAD, discover=OPTIONS) and uri is the path to dispatch the sub-request to.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "subrequests-permission-and-endpoint",
+      "mode": "recipe",
+      "prompt": "Which Drupal permission gates use of the subrequests front controller, what path is the endpoint mounted at, and what HTTP status code does a successful bundled response use?",
+      "must_contain_any": [
+        "issue subrequests"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The 'issue subrequests' permission (subrequests.permissions.yml) gates the route defined in subrequests.routing.yml, mounted at /subrequests (GET or POST). A successful response always uses HTTP 207 Multi-Status -- multipart/related by default, or a single JSON object keyed by requestId when requested with ?_format=json.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "subrequests-known-role",
+      "mode": "introspection",
+      "prompt": "This Drupal site has a custom role that was granted the 'issue subrequests' permission so an API integration partner can batch requests through the subrequests front controller. Inspect the live roles/permissions and give the machine name of that role.",
+      "must_contain_any": [
+        "subreq_role_partner"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The role is subreq_role_partner -- it has been granted the 'issue subrequests' permission (Role::hasPermission('issue subrequests') is TRUE for that role).",
+      "setup": "agent-module-documentation/evaluation/verify/subrequests-known-role-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/subrequests-known-role-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "subrequests-granted-vs-denied",
+      "mode": "introspection",
+      "prompt": "This site has two custom roles, subreq_role_on and subreq_role_off. Exactly one of them has been granted the 'issue subrequests' permission and can call the subrequests front controller; the other cannot. Inspect the live role permissions and state which role has access.",
+      "must_contain_any": [
+        "subreq_role_on"
+      ],
+      "must_not_contain": [],
+      "expected_output": "subreq_role_on has the 'issue subrequests' permission granted; subreq_role_off does not (it only has 'access content'), so only subreq_role_on can call the /subrequests front controller.",
+      "setup": "agent-module-documentation/evaluation/verify/subrequests-granted-vs-denied-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/subrequests-granted-vs-denied-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "subrequests-grant-access",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, the role subreq_client_role exists (it already has 'access content') but is not able to use the subrequests front controller. Grant this role whatever permission is needed so it can call the /subrequests endpoint, using the subrequests module. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/subrequests-grant-access-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/subrequests-grant-access-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/subrequests-grant-access-cleanup.sh",
+      "expected_output": "Grant subreq_client_role the 'issue subrequests' permission, e.g. `drush role:perm:add subreq_client_role 'issue subrequests'` or via user_role_grant_permissions('subreq_client_role', ['issue subrequests']), or by ticking it on /admin/people/permissions."
+    },
+    {
+      "id": "subrequests-revoke-access",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, the role subreq_legacy_role currently has both 'access content' and 'issue subrequests' granted. This role no longer needs bulk API access. Revoke only its ability to use the subrequests front controller, while leaving its other permissions (such as 'access content') intact. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/subrequests-revoke-access-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/subrequests-revoke-access-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/subrequests-revoke-access-cleanup.sh",
+      "expected_output": "Revoke just the 'issue subrequests' permission from subreq_legacy_role, e.g. `drush role:perm:remove subreq_legacy_role 'issue subrequests'` or via user_role_revoke_permissions('subreq_legacy_role', ['issue subrequests']), without deleting the role or removing its other permissions like 'access content'."
+    }
+  ]
+}

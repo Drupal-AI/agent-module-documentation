@@ -1,0 +1,98 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "simple_recaptcha",
+  "version": "1.0.x",
+  "note": "Simple Google reCaptcha attaches reCAPTCHA to forms listed in config object simple_recaptcha.config (keys form_ids CSV with * wildcards, recaptcha_type v2|v3, site_key/secret_key, site_key_v3/secret_key_v3, v3_score int default 80, recaptcha_use_globally bool, hide_badge_v3 bool). NOTE the route is simple_recaptcha.settings but the config OBJECT is simple_recaptcha.config. Actually verifying a captcha requires Google reCAPTCHA keys (external), so all medium/hard cases are grounded in the LOCAL config object only, verifiable via drush php:eval: introspection reads back the protected form_ids and the v3 type/score; execution adds a form to form_ids and switches to v3 with a score threshold. Booleans/integers are set via the config API to avoid drush config:set mis-casting.",
+  "evals": [
+    {
+      "id": "simple_recaptcha-config-object",
+      "mode": "recipe",
+      "prompt": "Using the simple_recaptcha module, which forms get reCAPTCHA is controlled by a config value. What is the config object's name and the key that lists the protected form IDs?",
+      "must_contain_any": [
+        "simple_recaptcha.config",
+        "form_ids"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The config object is simple_recaptcha.config (note the admin route is simple_recaptcha.settings). Its 'form_ids' key is a comma-separated list of form IDs to protect, supporting * wildcards.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "simple_recaptcha-versions",
+      "mode": "recipe",
+      "prompt": "Which reCAPTCHA versions does the simple_recaptcha module support, and which config key selects between them?",
+      "must_contain_any": [
+        "v2",
+        "v3",
+        "recaptcha_type"
+      ],
+      "must_not_contain": [],
+      "expected_output": "It supports reCAPTCHA v2 (checkbox) and v3 (invisible); the recaptcha_type key in simple_recaptcha.config selects 'v2' or 'v3'. For v3 the v3_score key sets the minimum score.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "simple_recaptcha-bypass",
+      "mode": "recipe",
+      "prompt": "How can certain users or forms skip the reCAPTCHA that simple_recaptcha adds? Name the permission and the alter hook.",
+      "must_contain_any": [
+        "bypass simple_recaptcha",
+        "hook_simple_recaptcha_bypass_alter",
+        "simple_recaptcha_bypass_alter"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Users with the 'bypass simple_recaptcha' permission skip reCAPTCHA on all forms; code can also implement hook_simple_recaptcha_bypass_alter(&$form, &$result) and set $result = TRUE to leave a given form unprotected.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "simple_recaptcha-known-formids",
+      "mode": "introspection",
+      "prompt": "On this site, inspect the simple_recaptcha configuration and tell me which forms are currently protected by reCAPTCHA (the configured form IDs).",
+      "must_contain_any": [
+        "user_login_form",
+        "contact_message_feedback",
+        "webform_submission_*"
+      ],
+      "must_not_contain": [],
+      "expected_output": "config simple_recaptcha.config form_ids = 'user_login_form,contact_message_feedback,webform_submission_*' (so the login form, the feedback contact form, and all webform submission forms are protected).",
+      "setup": "agent-module-documentation/evaluation/verify/simple_recaptcha-formids-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/simple_recaptcha-formids-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "simple_recaptcha-known-v3",
+      "mode": "introspection",
+      "prompt": "Inspect the live simple_recaptcha configuration and tell me which reCAPTCHA version is active and, if it is v3, what minimum score threshold is configured.",
+      "must_contain_any": [
+        "v3",
+        "65"
+      ],
+      "must_not_contain": [],
+      "expected_output": "recaptcha_type is v3 and v3_score is 65 in config simple_recaptcha.config.",
+      "setup": "agent-module-documentation/evaluation/verify/simple_recaptcha-v3-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/simple_recaptcha-v3-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "simple_recaptcha-protect-login",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "Configure the simple_recaptcha module so that the user login form (form id user_login_form) is protected by reCAPTCHA, in addition to whatever is already protected. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/simple_recaptcha-protect-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/simple_recaptcha-protect-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/simple_recaptcha-protect-cleanup.sh",
+      "expected_output": "Add user_login_form to the comma-separated form_ids in config simple_recaptcha.config (e.g. set form_ids to 'user_pass,user_register_form,user_login_form') and save. verify checks user_login_form is in the list."
+    },
+    {
+      "id": "simple_recaptcha-switch-v3",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "Switch the simple_recaptcha module to reCAPTCHA v3 (invisible) and set the minimum acceptable score to 75. Apply the change to the live site's configuration.",
+      "reset": "agent-module-documentation/evaluation/verify/simple_recaptcha-switchv3-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/simple_recaptcha-switchv3-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/simple_recaptcha-switchv3-cleanup.sh",
+      "expected_output": "In config simple_recaptcha.config set recaptcha_type = 'v3' and v3_score = 75 and save (e.g. \\Drupal::configFactory()->getEditable('simple_recaptcha.config')->set('recaptcha_type','v3')->set('v3_score',75)->save())."
+    }
+  ]
+}

@@ -1,0 +1,98 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "amswap",
+  "version": "3.3.x",
+  "note": "Admin Menu Swap replaces the toolbar administration ('Manage') menu per role. Its only persistent state is the config object amswap.amswapconfig -> role_menu_pairs, a sequence of {role, menu, ignored_roles[]}. Config route amswap.amswap_config_form at /admin/config/amswap, permission 'administer amswap'. Depends on toolbar + user. Medium/hard cases are grounded in that real config: introspection reads back which menu/ignored_roles a pair carries; execution builds a role-menu pair verified against amswap.amswapconfig. Test roles are namespaced amswap_* and menus used ('tools','footer','main') are core default menus.",
+  "evals": [
+    {
+      "id": "amswap-where-configured",
+      "mode": "recipe",
+      "prompt": "Using the Drupal contrib module amswap (Admin Menu Swap), how do I make a particular user role see a different administration (Manage) toolbar menu? Name the config page/route and the permission required.",
+      "must_contain_any": [
+        "/admin/config/amswap",
+        "amswap.amswap_config_form",
+        "administer amswap",
+        "role-menu",
+        "role_menu_pairs"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Go to /admin/config/amswap (route amswap.amswap_config_form, permission 'administer amswap') and add a role-menu pair choosing the menu to display and the role it applies to. Pairs are saved in amswap.amswapconfig:role_menu_pairs.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "amswap-config-shape",
+      "mode": "recipe",
+      "prompt": "In the amswap module, which config object stores the role-to-menu mappings, and what fields does each stored pair contain?",
+      "must_contain_any": [
+        "amswap.amswapconfig",
+        "role_menu_pairs",
+        "ignored_roles"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The config object amswap.amswapconfig has one key, role_menu_pairs, a sequence of mappings each with role (role id), menu (menu id to show), and optional ignored_roles (roles that suppress the pair).",
+      "difficulty": "easy"
+    },
+    {
+      "id": "amswap-no-match",
+      "mode": "recipe",
+      "prompt": "With amswap installed, what admin toolbar menu does a user see if none of the configured role-menu pairs match their roles, and what is the purpose of a pair's 'ignored_roles'?",
+      "must_contain_any": [
+        "admin",
+        "default",
+        "system.admin"
+      ],
+      "must_not_contain": [],
+      "expected_output": "If no pair matches the user's roles, amswap falls back to the default 'admin' (system.admin) administration menu. A pair's ignored_roles lists roles that, if the user also has any of them, cause that pair to be skipped.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "amswap-known-menu",
+      "mode": "introspection",
+      "prompt": "On this Drupal site, amswap is configured so the 'amswap_reviewer' role gets a swapped administration menu. Inspect the live amswap configuration and state which menu is shown to that role.",
+      "must_contain_any": [
+        "tools"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The amswap_reviewer role is paired with the 'tools' menu: amswap.amswapconfig:role_menu_pairs has {role: amswap_reviewer, menu: tools}.",
+      "setup": "agent-module-documentation/evaluation/verify/amswap-known-menu-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/amswap-known-menu-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "amswap-ignored-roles",
+      "mode": "introspection",
+      "prompt": "On this site the amswap role-menu pair for the 'amswap_reviewer' role is configured to be skipped for users who also hold a certain role. Inspect the live amswap configuration and name the role listed in that pair's ignored_roles.",
+      "must_contain_any": [
+        "administrator"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The pair's ignored_roles contains 'administrator': in amswap.amswapconfig the amswap_reviewer pair has ignored_roles: [administrator], so users who are also administrators keep the default menu.",
+      "setup": "agent-module-documentation/evaluation/verify/amswap-ignored-roles-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/amswap-ignored-roles-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "amswap-set-pair",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site there is a role 'amswap_task'. Using the amswap module, configure the administration toolbar so that users with the amswap_task role see the 'tools' menu as their Manage menu. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/amswap-set-pair-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/amswap-set-pair-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/amswap-set-pair-cleanup.sh",
+      "expected_output": "amswap.amswapconfig:role_menu_pairs contains a pair {role: amswap_task, menu: tools} (add it via /admin/config/amswap or by setting the config directly)."
+    },
+    {
+      "id": "amswap-ignore-pair",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site there is a role 'amswap_task2'. Using amswap, configure the toolbar so amswap_task2 users see the 'footer' menu as their administration menu, EXCEPT when the user is also an 'administrator' (in which case the swap should be skipped). Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/amswap-ignore-pair-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/amswap-ignore-pair-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/amswap-ignore-pair-cleanup.sh",
+      "expected_output": "amswap.amswapconfig:role_menu_pairs contains a pair {role: amswap_task2, menu: footer, ignored_roles: [administrator]}."
+    }
+  ]
+}

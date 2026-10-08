@@ -1,0 +1,100 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "vwo",
+  "version": "2.1.x",
+  "note": "VWO is a third-party JS (VWO/Wingify Smart Code) integration; it cannot run live experiments here without a real VWO account, so every case is grounded in the local config object vwo.settings and the module's routes/permission, not live API calls. vwo.settings keys: id (integer account ID, null = no snippet), filter.enabled/userconfig/nodetypes/page.type/page.list/roles (visibility), loading.type/timeout.settings/timeout.library/usejquery. Configure route vwo.settings -> /admin/config/system/vwo (+ /visibility, /vwoid), all gated by 'administer vwo'. hook_page_attachments adds the Smart Code only when id is set and the visibility filter permits. Medium/hard cases set/read real vwo.settings values; cleanup/reset restores the shipped config/install defaults explicitly (State is unreliable on this site).",
+  "evals": [
+    {
+      "id": "vwo-account-id-key",
+      "mode": "recipe",
+      "prompt": "In the Drupal VWO (Wingify) module, where is the VWO Account ID stored? Name the config object and the key, and say what happens if it is not set.",
+      "must_contain_any": [
+        "vwo.settings",
+        "id"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The account ID is the integer key 'id' in the vwo.settings config object. If id is null, vwo_page_attachments() adds no Smart Code at all.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "vwo-configure-route",
+      "mode": "recipe",
+      "prompt": "How do I get to the VWO module's admin configuration in Drupal, and what permission controls access to it?",
+      "must_contain_any": [
+        "/admin/config/system/vwo",
+        "administer vwo",
+        "vwo.settings"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The settings live at /admin/config/system/vwo (route vwo.settings), with Visibility at /admin/config/system/vwo/visibility and Extract Account ID at /admin/config/system/vwo/vwoid. All three require the 'administer vwo' permission.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "vwo-loading-and-visibility",
+      "mode": "recipe",
+      "prompt": "The VWO module can add its Smart Code to only some pages, and can load it in different ways. Name the two loading modes it supports and a couple of the visibility filters it offers (config keys under vwo.settings).",
+      "must_contain_any": [
+        "async",
+        "sync",
+        "filter.page",
+        "filter.roles",
+        "filter.nodetypes",
+        "listinclude",
+        "listexclude"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Loading modes: async (default; inline async Smart Code + preconnect) and sync (script src to lib/<id>.js) via loading.type. Visibility filters under filter.*: page path list (filter.page.type = listinclude/listexclude/usephp with filter.page.list), content types (filter.nodetypes), roles (filter.roles), and per-user opt in/out (filter.userconfig), gated by filter.enabled.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "vwo-known-id",
+      "mode": "introspection",
+      "prompt": "On this Drupal site the VWO module is configured with an account ID. Inspect the live configuration and report the VWO Account ID currently set.",
+      "must_contain_any": [
+        "654321"
+      ],
+      "must_not_contain": [],
+      "expected_output": "vwo.settings:id is 654321.",
+      "setup": "agent-module-documentation/evaluation/verify/vwo-known-id-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/vwo-known-id-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "vwo-known-loading",
+      "mode": "introspection",
+      "prompt": "On this site the VWO module has been set up. Inspect the live vwo.settings configuration and report which loading method (asynchronous or synchronous) it is currently using for the Smart Code.",
+      "must_contain_any": [
+        "sync",
+        "synchronous"
+      ],
+      "must_not_contain": [],
+      "expected_output": "vwo.settings:loading.type is 'sync' (synchronous loading).",
+      "setup": "agent-module-documentation/evaluation/verify/vwo-known-loading-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/vwo-known-loading-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "vwo-set-account-id",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "site-builder",
+      "prompt": "Set up the VWO (Wingify) module on this Drupal site to use VWO Account ID 7654321. Apply the change to the live configuration so the module would emit the Smart Code for that account.",
+      "reset": "agent-module-documentation/evaluation/verify/vwo-set-id-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/vwo-set-id-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/vwo-set-id-cleanup.sh",
+      "expected_output": "vwo.settings:id is set to 7654321 (e.g. via the Settings form at /admin/config/system/vwo, or drush config:set vwo.settings id 7654321)."
+    },
+    {
+      "id": "vwo-restrict-to-path",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "Using the VWO module's visibility settings, configure the site so the VWO Smart Code is added ONLY on the path /vwo-landing (and nowhere else). Apply the change to the live vwo.settings configuration.",
+      "reset": "agent-module-documentation/evaluation/verify/vwo-include-path-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/vwo-include-path-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/vwo-include-path-cleanup.sh",
+      "expected_output": "vwo.settings:filter.page.type is 'listinclude' and filter.page.list contains '/vwo-landing' (set the Visibility form's path mode to include and list /vwo-landing)."
+    }
+  ]
+}

@@ -1,0 +1,47 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "markdownify_views",
+  "version": "1.1.x",
+  "note": "Submodule of markdownify. A route subscriber (MarkdownifyViewsRoutes) clones every non-admin Views 'page' display route into a Markdown variant handled by MarkdownifyViewPageController (renders the view, converts HTML->Markdown, prepends the title as an H1). No config, schema or permissions. KNOWN BUG on Drupal 11 1.1.x: the controller's create() does not initialise core ViewPageController's typed properties, so parent::handle() throws '$contextualLinks must not be accessed before initialization' and the Markdown view route 500s (verified live). Because the live output is broken on D11 there is no reliable hard-execution verify; cases are recipe + an enabled-state introspection, and the easy cases deliberately capture the known-bug fact.",
+  "evals": [
+    {
+      "id": "markdownify_views-what",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "What does the markdownify_views submodule add to Markdownify, and which kind of Views displays does it target?",
+      "must_contain_any": ["page", "views page", "listing", "page display"],
+      "must_not_contain": [],
+      "expected_output": "It extends Markdownify to Views 'page' displays (listing pages), cloning every non-admin Views page route (display plugin 'page', _format html) into a Markdown variant, so listing pages are reachable as Markdown via the same .md / prefix / header patterns."
+    },
+    {
+      "id": "markdownify_views-mechanism",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "How does markdownify_views create the Markdown routes for Views pages, and how is the Markdown produced at request time?",
+      "must_contain_any": ["route subscriber", "MarkdownifyViewsRoutes", "MarkdownifyViewPageController", "html_converter"],
+      "must_not_contain": [],
+      "expected_output": "A route subscriber (markdownify_views.route_subscriber / MarkdownifyViewsRoutes) clones qualifying Views page routes into Markdown routes pointing at MarkdownifyViewPageController::handle, which renders the view via core ViewPageController and converts the HTML with the markdownify.html_converter service, prepending the title as an H1."
+    },
+    {
+      "id": "markdownify_views-known-bug",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "A developer reports that on their Drupal 11 site, requesting the .md version of a Views page (with markdownify_views enabled) returns an HTTP 500 mentioning ViewPageController::$contextualLinks. Is this a known problem and what is the cause?",
+      "must_contain_any": ["contextualLinks", "not initialise", "not initialized", "create()", "ViewPageController", "typed property"],
+      "must_not_contain": [],
+      "expected_output": "Yes. MarkdownifyViewPageController overrides ViewPageController::create() but injects only the renderer and converter, so the parent's typed $contextualLinks property is never initialised; parent::handle() then throws 'Typed property ...::$contextualLinks must not be accessed before initialization' and the route 500s. It is an upstream bug in markdownify_views 1.1.x on Drupal 11."
+    },
+    {
+      "id": "markdownify_views-enabled",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "On this Drupal site, is Markdown output for Views listing pages (the markdownify_views submodule) currently available? Inspect the live site and say whether that submodule is enabled.",
+      "must_contain_any": ["enabled", "markdownify_views", "yes", "installed"],
+      "must_not_contain": [],
+      "expected_output": "Yes — markdownify_views is enabled (e.g. `drush pm:list --status=enabled` includes markdownify_views), so its route subscriber generates Markdown variants of non-admin Views page routes.",
+      "setup": "agent-module-documentation/evaluation/verify/markdownify_views-enabled-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/markdownify_views-enabled-cleanup.sh"
+    }
+  ]
+}

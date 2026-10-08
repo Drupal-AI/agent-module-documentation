@@ -1,0 +1,80 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "config_distro_ignore",
+  "version": "2.1.x",
+  "note": "config_distro_ignore is a submodule of config_distro. It retains listed configuration during distribution imports by returning the ACTIVE value for ignored config. Its state is the config object config_distro_ignore.settings with three sequences: all_collections (ignored everywhere), default_collection (ignored in the default collection), custom_collections (per non-default collection). Entries support shell wildcards (*,?) and an optional ::<md5-hash> suffix. The filter plugin DistroIgnoreFilter (@ConfigFilter id config_distro_ignore, storages={config_distro.storage.distro}, weight 10000) applies via the config_distro_filter bridge. UI: configure route config_distro_ignore.settings at /admin/config/development/configuration/distro/ignore, plus config_distro_ignore.add_item; both use the parent's 'synchronize distro configuration' permission. Depends on config_distro + config_distro_filter; ships config schema; no Drush or own permissions. Medium/hard cases are grounded in the real config_distro_ignore.settings config object; scripts use config_distro_eval.* names and restore the shipped-default empty lists.",
+  "evals": [
+    {
+      "id": "config_distro_ignore-what-and-config",
+      "mode": "recipe",
+      "prompt": "What does the config_distro_ignore submodule do, and in which configuration object are its ignore lists stored?",
+      "must_contain_any": ["config_distro_ignore.settings", "all_collections", "retain", "ignore"],
+      "must_not_contain": [],
+      "expected_output": "It retains (ignores) specific configuration during Config Distro distribution imports, so listed items keep their active/site value instead of the distribution's. The lists are stored in config_distro_ignore.settings with the sequences all_collections, default_collection and custom_collections.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "config_distro_ignore-filter",
+      "mode": "recipe",
+      "prompt": "How does config_distro_ignore actually keep an ignored config item from being changed on a distribution import? Name the filter plugin and describe its effect.",
+      "must_contain_any": ["DistroIgnoreFilter", "config_distro_ignore", "active", "filterRead"],
+      "must_not_contain": [],
+      "expected_output": "It provides the DistroIgnoreFilter Config Filter plugin (@ConfigFilter id config_distro_ignore, storages = {config_distro.storage.distro}, weight 10000). For any config name matched by the ignore lists, filterRead returns the value from the active storage instead of the distribution's, so the site's version is retained. It runs via the config_distro_filter bridge.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "config_distro_ignore-wildcards",
+      "mode": "recipe",
+      "prompt": "In config_distro_ignore's ignore lists, what special syntax can an entry use beyond a plain config name?",
+      "must_contain_any": ["wildcard", "*", "hash", "::"],
+      "must_not_contain": [],
+      "expected_output": "Entries may use shell wildcards (* and ?) to match groups of config names (e.g. views.view.*), and an optional ::<md5-hash> suffix so the item is ignored only while its data hashes to that value (ignore-until-changed); with no suffix it is ignored unconditionally.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "config_distro_ignore-all-list",
+      "mode": "introspection",
+      "prompt": "On this Drupal site, which configuration object is set to be permanently retained (ignored in all collections) by config_distro_ignore? Inspect the live settings and give its name.",
+      "must_contain_any": ["config_distro_eval.ignored"],
+      "must_not_contain": [],
+      "expected_output": "config_distro_ignore.settings has all_collections = ['config_distro_eval.ignored'] (drush cget config_distro_ignore.settings all_collections).",
+      "setup": "agent-module-documentation/evaluation/verify/config_distro_ignore-all-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/config_distro_ignore-all-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "config_distro_ignore-default-list",
+      "mode": "introspection",
+      "prompt": "Inspect config_distro_ignore's live configuration and report which config object is ignored specifically for the default configuration collection.",
+      "must_contain_any": ["config_distro_eval.dc"],
+      "must_not_contain": [],
+      "expected_output": "config_distro_ignore.settings has default_collection = ['config_distro_eval.dc'].",
+      "setup": "agent-module-documentation/evaluation/verify/config_distro_ignore-default-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/config_distro_ignore-default-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "config_distro_ignore-add-all",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, configure config_distro_ignore so that the configuration object 'config_distro_eval.keepme' is permanently retained (ignored in all collections) during distribution imports. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/config_distro_ignore-add-all-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/config_distro_ignore-add-all-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/config_distro_ignore-add-all-cleanup.sh",
+      "expected_output": "Add it to the all_collections list of config_distro_ignore.settings, e.g. $c = \\Drupal::configFactory()->getEditable('config_distro_ignore.settings'); $l = $c->get('all_collections'); $l[] = 'config_distro_eval.keepme'; $c->set('all_collections', array_values(array_unique($l)))->save(); — all_collections must then contain config_distro_eval.keepme."
+    },
+    {
+      "id": "config_distro_ignore-add-default",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, configure config_distro_ignore so that the configuration object 'config_distro_eval.dckeep' is retained only for the default configuration collection during distribution imports. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/config_distro_ignore-add-default-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/config_distro_ignore-add-default-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/config_distro_ignore-add-default-cleanup.sh",
+      "expected_output": "Add config_distro_eval.dckeep to the default_collection list of config_distro_ignore.settings and save; default_collection must then contain config_distro_eval.dckeep."
+    }
+  ]
+}

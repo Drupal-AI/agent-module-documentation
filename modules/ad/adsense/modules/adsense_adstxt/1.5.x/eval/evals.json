@@ -1,0 +1,58 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "adsense_adstxt",
+  "version": "1.5.x",
+  "note": "adsense_adstxt is a trivial submodule of adsense that serves /ads.txt (route adsense_adstxt.page, controller AdsenseAdsTxtController::display) generated from the AdSense publisher ID (adsense.settings:adsense_basic_id via PublisherId::get()). Output when a publisher ID is set: text/plain 'google.com, <publisher-id>, DIRECT, f08c47fec0942fa0'; 404 when unset. No config/permissions/blocks of its own. Evals are grounded in local config and the controller output only (no live Google request). The hard case invokes the controller in PHP to check the emitted /ads.txt body, so no HTTP call is needed.",
+  "evals": [
+    {
+      "id": "adsense_adstxt-url",
+      "mode": "recipe",
+      "prompt": "What URL/path does the Drupal adsense_adstxt submodule serve, and what is it for?",
+      "must_contain_any": ["/ads.txt", "ads.txt"],
+      "must_not_contain": [],
+      "expected_output": "It serves /ads.txt (route adsense_adstxt.page), an IAB authorized-digital-sellers file generated from your AdSense publisher ID.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "adsense_adstxt-format",
+      "mode": "recipe",
+      "prompt": "What does the adsense_adstxt module put in the generated /ads.txt file for a Google AdSense publisher?",
+      "must_contain_any": ["google.com", "DIRECT", "f08c47fec0942fa0"],
+      "must_not_contain": [],
+      "expected_output": "A single text/plain line: 'google.com, <publisher-id>, DIRECT, f08c47fec0942fa0' where <publisher-id> is the AdSense ca-pub-... id.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "adsense_adstxt-requires-pubid",
+      "mode": "recipe",
+      "prompt": "The adsense_adstxt module is enabled but /ads.txt returns a 404. What is the most likely cause, and where is the value it needs configured?",
+      "must_contain_any": ["adsense_basic_id", "publisher id", "publisher ID", "PublisherId"],
+      "must_not_contain": [],
+      "expected_output": "No AdSense publisher ID is set. The controller reads PublisherId::get() (adsense.settings:adsense_basic_id) and throws a 404 when it is empty; set the publisher ID in the AdSense settings. (Also, a leftover static ads.txt file in the docroot would shadow the route.)",
+      "difficulty": "easy"
+    },
+    {
+      "id": "adsense_adstxt-known-pubid",
+      "mode": "introspection",
+      "prompt": "On this Drupal site the adsense_adstxt module is serving /ads.txt. Inspect the live configuration and state the publisher ID that /ads.txt advertises.",
+      "must_contain_any": ["ca-pub-1111222233334444"],
+      "must_not_contain": [],
+      "expected_output": "/ads.txt advertises ca-pub-1111222233334444 (from adsense.settings:adsense_basic_id).",
+      "setup": "agent-module-documentation/evaluation/verify/adsense_adstxt-known-pubid-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/adsense_adstxt-known-pubid-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "adsense_adstxt-emit",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, make the adsense_adstxt module serve an /ads.txt that authorizes the AdSense publisher ID 'ca-pub-2222333344445555'. Apply the change to the live configuration. (Do not make a live Google request.)",
+      "reset": "agent-module-documentation/evaluation/verify/adsense_adstxt-emit-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/adsense_adstxt-emit-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/adsense_adstxt-emit-cleanup.sh",
+      "expected_output": "Set adsense.settings:adsense_basic_id to 'ca-pub-2222333344445555' (e.g. drush cset adsense.settings adsense_basic_id 'ca-pub-2222333344445555' -y). The controller then emits 'google.com, ca-pub-2222333344445555, DIRECT, f08c47fec0942fa0' at /ads.txt."
+    }
+  ]
+}

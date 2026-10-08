@@ -1,0 +1,102 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "entityreference_filter",
+  "version": "2.0.x",
+  "note": "Views Reference Filter registers the Views filter plugin `entityreference_filter_view_result` (extends core ManyToOne) and attaches it via hook_views_data_alter() to entity-id / entity-reference columns as '{Field} (entityreference filter)'. Its exposed-dropdown options come from a SEPARATE Entity Reference view display (reference_display), with reference_arguments enabling dependent/cascading AJAX filters. No admin UI (configure=null). Release 2.0.0-beta7 (beta). Cases span three tiers: easy=`recipe` (response-graded documented facts), medium=`introspection` (a setup script installs a KNOWN View carrying the filter, the agent inspects live config via drush, cleanup removes it), hard=`execution` (agent BUILDS a View using the filter; live-state verify checks the config uses plugin entityreference_filter_view_result).",
+  "evals": [
+    {
+      "id": "erf-plugin-id",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "On a Drupal 11 site with the Views Reference Filter (entityreference_filter) module, what is the machine id of the Views filter plugin it provides, which core Views filter class does it extend, and how does that filter get offered in the Views UI?",
+      "must_contain_any": ["entityreference_filter_view_result", "ManyToOne"],
+      "must_not_contain": [],
+      "expected_output": "The plugin id is entityreference_filter_view_result (class EntityReferenceFilterViewResult, extends core Views ManyToOne). hook_views_data_alter() attaches it to every entity-id column and *_target_id entity-reference field as an extra filter handler named '{column}_entityreference_filter', shown in the Add filter list as '{Field} (entityreference filter)'."
+    },
+    {
+      "id": "erf-options-from-view",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "With the entityreference_filter module, how does the exposed filter decide which options to show in its dropdown, and what kind of view/display must provide them? Which option key stores that choice?",
+      "must_contain_any": ["reference_display", "Entity Reference"],
+      "must_not_contain": [],
+      "expected_output": "The options are produced by running a SEPARATE view display of type 'Entity Reference' whose base entity type matches the filtered field's type. You pick it in the filter settings ('View used to select the entities'); it is stored as reference_display in the form 'view_name:display_id'. The reference view is the single source of truth for both the option set and its order."
+    },
+    {
+      "id": "erf-dependent-arguments",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "How do I make one entityreference_filter exposed filter depend on another exposed filter, so its options refresh over AJAX when the other changes? Which option and token syntax do I use?",
+      "must_contain_any": ["reference_arguments", "[", "identifier"],
+      "must_not_contain": [],
+      "expected_output": "In the filter's 'Arguments for the view' setting (reference_arguments), reference the other exposed filter's Filter identifier with a [identifier] token (also !n = the view's URL argument n, #n = contextual filter value n, other strings literal). A [identifier] token makes the two filters dependent: changing the controlling filter re-runs the reference view and updates this filter's options over AJAX via the entityreference_filter.ajax route. Circular dependencies are detected and rejected at save."
+    },
+    {
+      "id": "erf-intro-plugin",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "persona": "drupal-expert",
+      "prompt": "A View with machine name `eval_intro_erf_plugin` on this site has an exposed reference filter added by the Views Reference Filter module. Inspect the live site (drush) and tell me the exact machine id of the Views filter plugin that backs that exposed filter.",
+      "setup": "agent-module-documentation/evaluation/verify/entityreference_filter-intro-plugin-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/entityreference_filter-intro-plugin-cleanup.sh",
+      "must_contain_any": ["entityreference_filter_view_result"],
+      "must_not_contain": [],
+      "expected_output": "The exposed filter on eval_intro_erf_plugin uses plugin_id entityreference_filter_view_result, read from views.view.eval_intro_erf_plugin (the filter on the default display)."
+    },
+    {
+      "id": "erf-intro-refdisplay",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "persona": "drupal-expert",
+      "prompt": "On this site the View `eval_intro_erf_ref` has an entityreference_filter exposed filter. Inspect the live site (drush) and tell me which reference view and display supply that filter's options (its reference_display value).",
+      "setup": "agent-module-documentation/evaluation/verify/entityreference_filter-intro-refdisplay-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/entityreference_filter-intro-refdisplay-cleanup.sh",
+      "must_contain_any": ["curated_terms:entity_reference_1", "curated_terms"],
+      "must_not_contain": [],
+      "expected_output": "The filter's reference_display is 'curated_terms:entity_reference_1' — i.e. the Entity Reference display 'entity_reference_1' of the view 'curated_terms' supplies the options, read from views.view.eval_intro_erf_ref."
+    },
+    {
+      "id": "erf-intro-args",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "persona": "drupal-expert",
+      "prompt": "On this site the View `eval_intro_erf_args` has an entityreference_filter exposed filter. Inspect the live site (drush) and tell me whether that filter is dependent on another exposed filter, and what its reference_arguments value is.",
+      "setup": "agent-module-documentation/evaluation/verify/entityreference_filter-intro-args-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/entityreference_filter-intro-args-cleanup.sh",
+      "must_contain_any": ["[status]", "status"],
+      "must_not_contain": [],
+      "expected_output": "Yes — it is a dependent filter. Its reference_arguments is '[status]', a [identifier] token that ties the option list to the exposed filter whose Filter identifier is 'status'; changing that filter recomputes these options over AJAX. Read from views.view.eval_intro_erf_args."
+    },
+    {
+      "id": "erf-build-node-filter",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site (drush available), build a Content (nodes) View with machine name `eval_erf_build` that has an EXPOSED filter provided by the Views Reference Filter module (entityreference_filter) — i.e. a filter using the plugin `entityreference_filter_view_result` whose options come from a reference Entity Reference view display. A reusable reference view display `eval_erf_src:entity_reference_1` already exists on the site; point the filter's reference_display at it. Apply the View to live config so it really exists; don't just describe it. One-line summary.",
+      "reset": "agent-module-documentation/evaluation/verify/entityreference_filter-build-node-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/entityreference_filter-build-node-verify.sh",
+      "expected_output": "A View `eval_erf_build` on nodes exists in live config; one of its displays has an EXPOSED filter with plugin_id entityreference_filter_view_result and a non-empty reference_display (e.g. eval_erf_src:entity_reference_1). Verified against live site state."
+    },
+    {
+      "id": "erf-build-hide-empty",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site (drush available), build a Content (nodes) View with machine name `eval_erf_hide` that has an EXPOSED entityreference_filter (plugin `entityreference_filter_view_result`) whose reference_display points at the existing reference display `eval_erf_src:entity_reference_1`, and configure it so the 'Hide empty filter' option is turned OFF (hide_empty_filter = false) — the exposed widget must stay visible even when the option list is empty. Apply it to live config so it really exists; don't just describe it. One-line summary.",
+      "reset": "agent-module-documentation/evaluation/verify/entityreference_filter-build-hide-empty-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/entityreference_filter-build-hide-empty-verify.sh",
+      "expected_output": "A View `eval_erf_hide` on nodes exists in live config; a display has a filter with plugin_id entityreference_filter_view_result, a non-empty reference_display, and hide_empty_filter set to false (the default is true). Verified against live site state."
+    },
+    {
+      "id": "erf-build-dependent-filter",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site (drush available), build a Content (nodes) View with machine name `eval_erf_dep` that has an EXPOSED entityreference_filter (plugin `entityreference_filter_view_result`) whose reference_display points at the existing `eval_erf_src:entity_reference_1`, and make it a DEPENDENT (cascading) filter: set its reference_arguments to reference another exposed filter using a [identifier] token (for example `[status]`) so its options recompute over AJAX. Apply it to live config so it really exists; don't just describe it. One-line summary.",
+      "reset": "agent-module-documentation/evaluation/verify/entityreference_filter-build-dependent-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/entityreference_filter-build-dependent-verify.sh",
+      "expected_output": "A View `eval_erf_dep` on nodes exists in live config; a display has a filter with plugin_id entityreference_filter_view_result, a non-empty reference_display, and a reference_arguments value containing a [identifier] token (e.g. [status]) making it a dependent/cascading filter. Verified against live site state."
+    }
+  ]
+}

@@ -1,0 +1,80 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "route_condition",
+  "version": "2.1.x",
+  "note": "Route Condition ships one Condition plugin (id 'route', class Drupal\\route_condition\\Plugin\\Condition\\RouteCondition) that matches the active ROUTE NAME (analogue of core's request_path 'Pages' condition). Single config key 'routes' (textarea, one route name per line); '*' is a wildcard compiled to regex '.*'; a leading '~' excludes a route; input is lowercased; empty routes matches everywhere; first matching line wins; standard 'Negate the condition' also applies. There is no config UI of its own (configure=null), no services, no Drush, no permissions. On a placed block the config lives at block.block.<id> -> visibility.route.routes. Medium/hard cases place a system_powered_by_block in the olivero theme and read/write its visibility.route condition (config storage only; no theme regions rendering needed).",
+  "evals": [
+    {
+      "id": "route_condition-plugin-and-key",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "In Drupal, I want a block to appear only on certain pages based on the route NAME (like 'entity.node.canonical'), not the URL path. The route_condition module provides this. What is the condition plugin id it adds, and what single configuration key holds the list of route names?",
+      "must_contain_any": ["route", "routes"],
+      "must_not_contain": [],
+      "expected_output": "route_condition provides a Condition plugin with id 'route' (class RouteCondition). Its single config key is 'routes' — a textarea of one route name per line. On a block it is stored at block.block.<id> -> visibility.route.routes."
+    },
+    {
+      "id": "route_condition-wildcard-negate",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "Using the route_condition module's 'route' condition, how do I (a) match every entity's canonical view route with one line, and (b) exclude a single route? Describe the wildcard and exclusion syntax.",
+      "must_contain_any": ["*", "entity.*.canonical", "~", "tilde"],
+      "must_not_contain": [],
+      "expected_output": "Use '*' as a wildcard (compiled to regex '.*'), e.g. 'entity.*.canonical' matches every entity canonical route. Prepend '~' (tilde) to a route name to exclude it, e.g. '~user.login'. One route per line; matching is case-insensitive; the first matching line wins."
+    },
+    {
+      "id": "route_condition-empty-behavior",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "With the route_condition 'route' condition, what happens if I leave the routes field empty, and how does it read the current route? Does it match on the URL path or the route machine name?",
+      "must_contain_any": ["everywhere", "TRUE", "true", "current_route_match", "route name", "route machine name"],
+      "must_not_contain": [],
+      "expected_output": "An empty 'routes' value makes evaluate() return TRUE (matches everywhere). It reads the active route via the current_route_match service and matches on the route MACHINE NAME (e.g. entity.node.canonical), not the URL path — that is what distinguishes it from core's request_path 'Pages' condition."
+    },
+    {
+      "id": "route_condition-known-block",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "On this Drupal site a block with id 'routecond_known' is placed in the olivero theme and uses the route_condition 'route' visibility condition to restrict where it shows. Inspect the live block configuration and state the exact route name it is restricted to.",
+      "must_contain_any": ["entity.user.canonical"],
+      "must_not_contain": [],
+      "expected_output": "block.block.routecond_known has visibility.route.routes = 'entity.user.canonical', so the block only shows on the user canonical (profile) route. Read it with: drush cget block.block.routecond_known visibility.route.routes",
+      "setup": "agent-module-documentation/evaluation/verify/route_condition-known-block-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/route_condition-known-block-cleanup.sh"
+    },
+    {
+      "id": "route_condition-negated-block",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "A block with id 'routecond_neg' on this site uses the route_condition 'route' condition. Inspect its live visibility configuration and describe exactly which routes it targets, including any wildcard or exclusion it uses.",
+      "must_contain_any": ["entity.node.*", "~entity.node.edit_form"],
+      "must_not_contain": [],
+      "expected_output": "block.block.routecond_neg has visibility.route.routes with two lines: 'entity.node.*' (wildcard matching all node routes) and '~entity.node.edit_form' (tilde-excluding the node edit form route). So it targets node routes but not the node edit form.",
+      "setup": "agent-module-documentation/evaluation/verify/route_condition-negated-block-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/route_condition-negated-block-cleanup.sh"
+    },
+    {
+      "id": "route_condition-node-canonical",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this site a block with id 'routecond_task' is placed in the olivero theme but currently has an empty route_condition 'route' visibility (it shows everywhere). Using the route_condition module, configure that block's Route visibility condition so the block only appears on node canonical pages. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/route_condition-node-canonical-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/route_condition-node-canonical-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/route_condition-node-canonical-cleanup.sh",
+      "expected_output": "Set block.block.routecond_task -> visibility.route.routes to 'entity.node.canonical' (or a wildcard that matches it, e.g. 'entity.node.*' or 'entity.*.canonical'), with negate false, and save. E.g. load the Block entity, set visibility route config, save."
+    },
+    {
+      "id": "route_condition-exclude-route",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this site a block 'routecond_excl' uses the route_condition 'route' visibility condition (currently matching only 'entity.node.canonical'). Using the route_condition tilde-exclusion syntax, add a rule so the block is additionally excluded from the user login route. Apply the change to the live block configuration.",
+      "reset": "agent-module-documentation/evaluation/verify/route_condition-exclude-route-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/route_condition-exclude-route-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/route_condition-exclude-route-cleanup.sh",
+      "expected_output": "Add a line '~user.login' to block.block.routecond_excl -> visibility.route.routes (the leading tilde excludes that route). The resulting value contains both 'entity.node.canonical' and '~user.login'."
+    }
+  ]
+}

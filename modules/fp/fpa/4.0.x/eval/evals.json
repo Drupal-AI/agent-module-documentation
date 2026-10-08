@@ -1,0 +1,94 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "fpa",
+  "version": "4.0.x",
+  "note": "FPA is a UI enhancement of core's permissions page (it swaps the user.admin_permissions controller). Its only introspectable/buildable state is the single config object fpa.settings with the key disabled_sections (values: help, modules, roles, status). Easy cases are response-graded facts (path, filter syntax, route, permission, dependency); medium cases set a known disabled_sections and read it back; hard cases build a specific disabled_sections and verify live config. There are no plugins, entities, or Drush commands, so all state cases are grounded in fpa.settings.",
+  "evals": [
+    {
+      "id": "fpa-permissions-page-filter",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "On a Drupal 11 site with the FPA (Fast Permissions Administration) module enabled, which page does it enhance, and what is the search/filter syntax I type to show only permissions containing 'admin' that belong to modules containing 'system'?",
+      "must_contain_any": [
+        "admin/people/permissions",
+        "admin@system",
+        "permission@module"
+      ],
+      "must_not_contain": [],
+      "expected_output": "FPA takes over the core permissions page at /admin/people/permissions and adds a live filter. Type in the format permission@module, e.g. admin@system, to show permissions containing 'admin' in modules containing 'system'."
+    },
+    {
+      "id": "fpa-settings-route-and-permission",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "The FPA module adds a settings form where you can turn off parts of its permissions UI. What is the settings route name and path, and which permission is required to access it?",
+      "must_contain_any": [
+        "fpa.settings",
+        "admin/config/people/fpa-settings",
+        "manage fast permissions administration settings"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The settings form is route fpa.settings at /admin/config/people/fpa-settings, gated by the permission 'manage fast permissions administration settings'. Its config object is fpa.settings with the key disabled_sections."
+    },
+    {
+      "id": "fpa-dependency",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "I want to install drupal/fpa (Fast Permissions Administration) with Composer on a Drupal 11 site. Which contrib module does it depend on and will be pulled in alongside it?",
+      "must_contain_any": [
+        "js_cookie",
+        "drupal/js_cookie"
+      ],
+      "must_not_contain": [],
+      "expected_output": "FPA depends on the js_cookie contrib module (drupal/js_cookie ^1.0 | ^2.0), used to remember the UI toggle state via a cookie. No other contrib modules are required."
+    },
+    {
+      "id": "fpa-introspect-disabled-sections",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "On this live Drupal 11 site FPA is already configured with some of its permissions-page UI sections turned off. Inspect the site and tell me which FPA UI sections are currently disabled.",
+      "setup": "agent-module-documentation/evaluation/verify/fpa-sections-disabled-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/fpa-sections-disabled-cleanup.sh",
+      "must_contain_any": [
+        "modules",
+        "roles"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Reading fpa.settings (drush config:get fpa.settings disabled_sections) shows disabled_sections contains 'modules' and 'roles' — the Module listing and Role filter sections are disabled; help and status remain visible."
+    },
+    {
+      "id": "fpa-introspect-help-disabled",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "A site owner asked why the instructional help text no longer shows above the FPA permissions page. Inspect this live site: which config object and key control that, and is the page help text section currently disabled?",
+      "setup": "agent-module-documentation/evaluation/verify/fpa-help-disabled-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/fpa-help-disabled-cleanup.sh",
+      "must_contain_any": [
+        "disabled_sections",
+        "fpa.settings",
+        "help"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The fpa.settings config object, key disabled_sections, controls it. It currently contains 'help', so the page help text section is disabled."
+    },
+    {
+      "id": "fpa-disable-modules-roles",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal 11 site, configure FPA (Fast Permissions Administration) so that the Module listing and the Role filter sections of the permissions page are disabled, while leaving the page help text and the permission status filter visible. Persist the change to the fpa.settings config on the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/fpa-disable-modules-roles-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/fpa-disable-modules-roles-verify.sh"
+    },
+    {
+      "id": "fpa-disable-help-status",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal 11 site, use FPA to hide the on-page help text and the permission status (checked / not-checked) filter on the permissions page, keeping the module listing and role filter visible. Save the setting so it takes effect in the fpa.settings config on the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/fpa-disable-help-status-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/fpa-disable-help-status-verify.sh"
+    }
+  ]
+}

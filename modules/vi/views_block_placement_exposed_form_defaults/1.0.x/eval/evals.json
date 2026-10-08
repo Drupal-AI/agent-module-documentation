@@ -1,0 +1,80 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "views_block_placement_exposed_form_defaults",
+  "version": "1.0.x",
+  "note": "The module replaces the core Views Block display plugin class with ExposedFormBlockDisplay via hook_views_plugins_display_alter. It adds a display option customizable_exposed_filters (map filter id -> filter id) on the block display's 'Allow settings' section, stored at views.view.<id> -> display.<block_display>.display_options.customizable_exposed_filters. When the block is placed, default values for those filters are stored as exposed_filter_values on the placed block config and applied at render via preBlockBuild()->setExposedInput(). Schema is registered by hook_config_schema_info_alter (no config/schema dir). No admin page, permissions, or Drush. Medium/hard cases build/read a real namespaced view (vbpefd_*) with a block display carrying customizable_exposed_filters.",
+  "evals": [
+    {
+      "id": "views_block_placement_exposed_form_defaults-how-it-works",
+      "mode": "recipe",
+      "prompt": "What does the views_block_placement_exposed_form_defaults module let a site builder do, and how do you choose which exposed filters can be given default values on a Views block?",
+      "must_contain_any": ["customizable_exposed_filters", "Customizable filters", "Allow settings", "exposed"],
+      "must_not_contain": [],
+      "expected_output": "It lets you set default values for a Views block's exposed filters per placement. In the block display's 'Allow settings' section it adds a 'Customizable filters' checkbox list; the chosen filters are saved as the display option customizable_exposed_filters. It works by replacing the core Views Block display plugin with ExposedFormBlockDisplay.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "views_block_placement_exposed_form_defaults-where-stored",
+      "mode": "recipe",
+      "prompt": "When I place a Views block and set default values for its exposed filters using views_block_placement_exposed_form_defaults, where are those default values stored and how are they applied when the block renders?",
+      "must_contain_any": ["exposed_filter_values", "setExposedInput", "preBlockBuild"],
+      "must_not_contain": [],
+      "expected_output": "The per-placement defaults are stored on the placed block's configuration as exposed_filter_values (a schema key added to views_block). At render, ExposedFormBlockDisplay::preBlockBuild() calls $view->setExposedInput($exposed_filter_values) so the block loads pre-filtered.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "views_block_placement_exposed_form_defaults-mechanism",
+      "mode": "recipe",
+      "prompt": "How does views_block_placement_exposed_form_defaults hook into Views to add its behaviour, and does it define any admin page or permission?",
+      "must_contain_any": ["hook_views_plugins_display_alter", "ExposedFormBlockDisplay", "Block display", "display plugin"],
+      "must_not_contain": [],
+      "expected_output": "It implements hook_views_plugins_display_alter() to swap the core Views Block display plugin class for ExposedFormBlockDisplay (a subclass), and hook_config_schema_info_alter() to register the new config keys. It has no admin page, permission, config entity, or Drush command of its own.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "views_block_placement_exposed_form_defaults-known-customizable",
+      "mode": "introspection",
+      "prompt": "This site has a View with machine name vbpefd_view that has a Block display using this module. Inspect the live view configuration and state which exposed filter has been marked as a 'customizable' filter (customizable when placing the block).",
+      "must_contain_any": ["type"],
+      "must_not_contain": [],
+      "expected_output": "In views.view.vbpefd_view, display.block_1.display_options.customizable_exposed_filters is { type: type } — the 'type' (content type) exposed filter is marked customizable. Read with `drush cget views.view.vbpefd_view display.block_1.display_options.customizable_exposed_filters`.",
+      "setup": "agent-module-documentation/evaluation/verify/views_block_placement_exposed_form_defaults-known-customizable-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/views_block_placement_exposed_form_defaults-known-customizable-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "views_block_placement_exposed_form_defaults-known-title",
+      "mode": "introspection",
+      "prompt": "This site has a View with machine name vbpefd_view2 that has a Block display using this module, with an exposed filter marked customizable for block placement. Inspect the live view configuration and state which exposed filter is marked customizable on that block display.",
+      "must_contain_any": ["title"],
+      "must_not_contain": [],
+      "expected_output": "In views.view.vbpefd_view2, display.block_1.display_options.customizable_exposed_filters is { title: title } — the 'title' exposed filter is customizable. Read with `drush cget views.view.vbpefd_view2 display.block_1.display_options.customizable_exposed_filters`.",
+      "setup": "agent-module-documentation/evaluation/verify/views_block_placement_exposed_form_defaults-known-title-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/views_block_placement_exposed_form_defaults-known-title-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "views_block_placement_exposed_form_defaults-mark-title",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "This site has a View with machine name vbpefd_task that has a Block display (block_1) with exposed Title and Type filters. Using views_block_placement_exposed_form_defaults, mark the exposed 'title' filter as customizable so its default value can be set when the block is placed. Apply the change to the live view configuration.",
+      "reset": "agent-module-documentation/evaluation/verify/views_block_placement_exposed_form_defaults-mark-title-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/views_block_placement_exposed_form_defaults-mark-title-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/views_block_placement_exposed_form_defaults-mark-title-cleanup.sh",
+      "expected_output": "In views.view.vbpefd_task, display.block_1.display_options.customizable_exposed_filters includes 'title' (e.g. { title: title }), set via the Views UI 'Allow settings' > Customizable filters, or by editing the view config/display option."
+    },
+    {
+      "id": "views_block_placement_exposed_form_defaults-mark-type",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "This site has a View with machine name vbpefd_task that has a Block display (block_1) with exposed Title and Type filters. Using views_block_placement_exposed_form_defaults, mark the exposed 'type' (content type) filter as customizable so its default value can be set when the block is placed. Apply the change to the live view configuration.",
+      "reset": "agent-module-documentation/evaluation/verify/views_block_placement_exposed_form_defaults-mark-type-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/views_block_placement_exposed_form_defaults-mark-type-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/views_block_placement_exposed_form_defaults-mark-type-cleanup.sh",
+      "expected_output": "In views.view.vbpefd_task, display.block_1.display_options.customizable_exposed_filters includes 'type' (e.g. { type: type })."
+    }
+  ]
+}

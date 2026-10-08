@@ -1,0 +1,73 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "mailsystem",
+  "version": "4.5.x",
+  "note": "Mail System is primarily a configuration/UI + API integration point for choosing mail formatter/sender plugins. These are `recipe` (response-graded) cases probing mailsystem-specific, load-bearing facts grounded in the docs; none mutate site state.",
+  "evals": [
+    {
+      "id": "mailsystem-admin-route",
+      "mode": "recipe",
+      "prompt": "On a Drupal 11 site with the Mail System module enabled, where do I configure which mail backend Drupal uses? Give the admin URL path (and the route name if you know it).",
+      "must_contain_any": ["/admin/config/system/mailsystem", "mailsystem.settings"],
+      "must_not_contain": [],
+      "expected_output": "Admin -> Configuration -> System -> Mail System at /admin/config/system/mailsystem (route mailsystem.settings)."
+    },
+    {
+      "id": "mailsystem-formatter-vs-sender",
+      "mode": "recipe",
+      "prompt": "In the Mail System module each backend choice is a pair of plugins. What are the two roles I pick, and what does each one do?",
+      "must_contain_any": ["formatter", "sender"],
+      "must_not_contain": [],
+      "expected_output": "A formatter (builds the message body/headers via format()) and a sender (actually sends it via mail()). Both are core MailInterface plugins and can differ, e.g. Mime Mail formatting + SMTP sending."
+    },
+    {
+      "id": "mailsystem-config-object",
+      "mode": "recipe",
+      "prompt": "I want to set Mail System's routing in exported configuration rather than clicking through the UI. What is the config object, and what are its top-level keys for the site default vs per-module/per-key overrides?",
+      "must_contain_any": ["mailsystem.settings", "defaults", "modules"],
+      "must_not_contain": [],
+      "expected_output": "The mailsystem.settings config object, with `defaults` (sender/formatter used when nothing else matches), `modules` (per-module and per-key overrides, where `_default` covers every key of a module), and `theme`."
+    },
+    {
+      "id": "mailsystem-mail-theme",
+      "mode": "recipe",
+      "prompt": "Using Mail System, how do I control which theme renders my HTML emails? What are the accepted values for that setting?",
+      "must_contain_any": ["theme", "default", "current", "mailsystem_get_mail_theme"],
+      "must_not_contain": [],
+      "expected_output": "Set the `theme` key in mailsystem.settings (also on the form): `default` (site default theme), `current` (active theme at send time), or a specific theme machine name. Resolved by mailsystem_get_mail_theme()."
+    },
+    {
+      "id": "mailsystem-permission",
+      "mode": "recipe",
+      "prompt": "Which permission gates access to the Mail System settings form on a Drupal site?",
+      "must_contain_any": ["administer_mailsystem", "administer mailsystem"],
+      "must_not_contain": [],
+      "expected_output": "The `administer_mailsystem` permission gates route mailsystem.settings / the settings form."
+    },
+    {
+      "id": "mailsystem-smtp-pairing",
+      "mode": "recipe",
+      "prompt": "I installed the SMTP module (and Symfony Mailer for formatting) on my Drupal 11 site. How do I make Drupal actually send all mail through SMTP while formatting with Symfony Mailer using Mail System? Describe the wiring, not code.",
+      "must_contain_any": ["sender", "formatter", "settings form", "mailsystem.settings", "/admin/config/system/mailsystem"],
+      "must_not_contain": [],
+      "expected_output": "Those contrib modules register mail plugins; on the Mail System settings form set the site default sender to the SMTP plugin and the formatter to the Symfony/Mime Mail plugin. Install the modules first, then select their plugins on the form (or set them in mailsystem.settings)."
+    },
+    {
+      "id": "mailsystem-manager-service",
+      "mode": "recipe",
+      "prompt": "How does Mail System hook into Drupal's mail pipeline at runtime, and do I need to call anything special to route mail through it in code?",
+      "must_contain_any": ["plugin.manager.mail", "MailsystemManager", "MailManager"],
+      "must_not_contain": [],
+      "expected_output": "It replaces the core plugin.manager.mail service with MailsystemManager (extends core MailManager) via a service provider. You keep calling the standard \\Drupal::service('plugin.manager.mail')->mail($module, $key, ...); mailsystem picks the formatter/sender pair for that $module/$key from mailsystem.settings, so no special API call is needed."
+    },
+    {
+      "id": "mailsystem-custom-backend",
+      "mode": "recipe",
+      "prompt": "I wrote a custom mail backend and want it to appear as a selectable option on the Mail System settings form. What kind of plugin do I create — is there a mailsystem-specific plugin type?",
+      "must_contain_any": ["@Mail", "MailInterface", "Drupal\\Core\\Annotation\\Mail"],
+      "must_not_contain": [],
+      "expected_output": "Register a normal core mail plugin (the @Mail / Drupal\\Core\\Annotation\\Mail annotation, implementing MailInterface). It then shows up as a selectable formatter/sender on the form. There is no mailsystem-specific plugin type to implement."
+    }
+  ]
+}

@@ -1,0 +1,100 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "preprocess",
+  "version": "2.2.x",
+  "note": "Developer API. Defines a Preprocess plugin type: classes in src/Plugin/Preprocess/ implementing PreprocessInterface::preprocess(array $variables): array (extend PreprocessPluginBase), tagged with a theme 'hook' matching hook_preprocess_HOOK. Registered via @Preprocess(id, hook) annotation (modules only) or NAME.preprocessors.yml mapping id -> {class, hook} (modules and themes; the only way for themes). Manager services preprocess.plugin.manager (discovery) and preprocess.manager (dispatch); hook_preprocess() runs plugins for the hook + its suggestions, and theme_registry_alter makes it run last. No UI/config/permission/Drush. Medium cases enable a small host module that registers a plugin and the agent inspects the live preprocess.plugin.manager definitions; hard cases give an enabled scaffold host module with a Plugin/Preprocess namespace but no plugin (verify FAILS) and the agent writes a plugin for a named hook (annotation or preprocessors.yml). All host modules are namespaced preprocess_*_host and are UNINSTALLED before their directory is removed (cleanup) to avoid an orphaned-module fatal.",
+  "evals": [
+    {
+      "id": "preprocess-how-register",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "The Drupal 'preprocess' module lets me write preprocessing as plugins instead of hook_preprocess_HOOK. What are the two ways to register a Preprocess plugin, and which one must a theme use?",
+      "must_contain_any": [
+        "annotation",
+        "@Preprocess",
+        "preprocessors.yml",
+        ".preprocessors.yml"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Either a @Preprocess(id, hook) annotation on a class in src/Plugin/Preprocess/ (modules only, since annotation discovery doesn't scan themes), or a NAME.preprocessors.yml file mapping a plugin id to a class and hook. A theme must use the *.preprocessors.yml file."
+    },
+    {
+      "id": "preprocess-plugin-shape",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "For the Drupal 'preprocess' module, what interface/method must a Preprocess plugin implement, what base class is provided, and what does the plugin's 'hook' property mean?",
+      "must_contain_any": [
+        "preprocess(array $variables)",
+        "PreprocessInterface",
+        "PreprocessPluginBase",
+        "hook_preprocess_HOOK",
+        "return"
+      ],
+      "must_not_contain": [],
+      "expected_output": "It implements PreprocessInterface::preprocess(array $variables): array (extend PreprocessPluginBase) and must return the modified $variables. The plugin's 'hook' is the theme hook to preprocess, matching hook_preprocess_HOOK (e.g. node, node__article, page, block, image)."
+    },
+    {
+      "id": "preprocess-theme-scope",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "If I register a Preprocess plugin from a Drupal theme (via the preprocess module), when does it actually run? Does a theme-provided plugin apply on every theme?",
+      "must_contain_any": [
+        "active theme",
+        "base theme",
+        "only",
+        "when that theme"
+      ],
+      "must_not_contain": [],
+      "expected_output": "A theme-provided Preprocess plugin runs only when that theme is the active theme, or when it is a base theme of the active theme. Module-provided plugins always apply. (PreprocessPluginManager::getDefinitions() filters out theme definitions whose theme isn't active/base.)"
+    },
+    {
+      "id": "preprocess-registered-hook",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "This Drupal site has a module that registers a Preprocess plugin via the 'preprocess' module. Inspect the live preprocess plugin manager and state which theme hook that plugin preprocesses.",
+      "must_contain_any": [
+        "block"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The registered plugin (id preprocess_med_host.block, provided by module preprocess_med_host) has hook 'block'. Discoverable via \\Drupal::service('preprocess.plugin.manager')->getDefinitions().",
+      "setup": "agent-module-documentation/evaluation/verify/preprocess-registered-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/preprocess-registered-cleanup.sh"
+    },
+    {
+      "id": "preprocess-registered-provider",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "Using the 'preprocess' module's plugin manager, inspect this site and name the module that provides a registered Preprocess plugin (there is a custom one enabled).",
+      "must_contain_any": [
+        "preprocess_med_host"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The module preprocess_med_host provides a Preprocess plugin (preprocess_med_host.block, hook block). The definition's 'provider' is preprocess_med_host.",
+      "setup": "agent-module-documentation/evaluation/verify/preprocess-registered-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/preprocess-registered-cleanup.sh"
+    },
+    {
+      "id": "preprocess-write-plugin",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "The module 'preprocess_task_host' is enabled on this site and depends on the 'preprocess' module; it has a src/Plugin/Preprocess/ namespace but no plugins yet. Using the preprocess module's plugin type, add a Preprocess plugin in that module that preprocesses the 'page' theme hook, and make it active on the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/preprocess-write-plugin-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/preprocess-write-plugin-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/preprocess-write-plugin-cleanup.sh",
+      "expected_output": "Create a class in web/modules/custom/preprocess_task_host/src/Plugin/Preprocess/ extending PreprocessPluginBase with a preprocess(array $variables): array method, registered for hook 'page' either via a @Preprocess(id, hook = \"page\") annotation or a preprocess_task_host.preprocessors.yml entry (class + hook: page), then rebuild caches. The preprocess.plugin.manager then lists a definition from provider preprocess_task_host with hook 'page'."
+    },
+    {
+      "id": "preprocess-yaml-plugin",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "The module 'preprocess_yaml_host' is enabled and depends on the 'preprocess' module, with a src/Plugin/Preprocess/ namespace but no plugins. Register a Preprocess plugin (using a *.preprocessors.yml file) that preprocesses the 'node' theme hook, and make it active on the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/preprocess-yaml-plugin-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/preprocess-yaml-plugin-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/preprocess-yaml-plugin-cleanup.sh",
+      "expected_output": "Add web/modules/custom/preprocess_yaml_host/preprocess_yaml_host.preprocessors.yml with an entry giving a class and 'hook: node', plus the referenced class in src/Plugin/Preprocess/ extending PreprocessPluginBase (preprocess(array $variables): array), then rebuild caches. preprocess.plugin.manager then has a definition from provider preprocess_yaml_host with hook 'node'."
+    }
+  ]
+}

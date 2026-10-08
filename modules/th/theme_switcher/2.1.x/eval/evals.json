@@ -1,0 +1,97 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "theme_switcher",
+  "version": "2.1.x",
+  "note": "Theme Switcher Rules stores everything in theme_switcher_rule config entities (config prefix theme_switcher.rule.*), each with theme, admin_theme, status, weight, conjunction and a visibility map of core Condition plugin configurations. A single theme negotiator (theme.negotiator.theme_switcher_negotiator, tag priority 12) evaluates enabled rules in ascending weight order and the first match wins; admin routes use admin_theme, everything else uses theme. Introspection cases read real saved rules (including a weight-ordering pair) off the live site; execution cases build a rule with a request_path condition and add an admin theme to an existing rule. Themes used (olivero, claro) are the two enabled, non-hidden themes on this site.",
+  "evals": [
+    {
+      "id": "theme_switcher-config-entity",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "The Drupal contrib module theme_switcher (Theme Switcher Rules) stores its rules as configuration. What is the entity type id and the configuration name prefix of a saved rule, and which properties are exported with it?",
+      "must_contain_any": [
+        "theme_switcher_rule",
+        "theme_switcher.rule."
+      ],
+      "must_not_contain": [],
+      "expected_output": "The config entity type id is theme_switcher_rule with config_prefix 'rule', so a saved rule is theme_switcher.rule.<id>. Exported keys: uuid, id, label, weight, status, theme, admin_theme, conjunction, visibility."
+    },
+    {
+      "id": "theme_switcher-conditions",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "How does the Drupal theme_switcher module decide whether a rule applies to the current request? What kind of plugins does it use, and how are multiple criteria combined?",
+      "must_contain_any": [
+        "condition",
+        "Condition",
+        "visibility",
+        "conjunction"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Each rule holds a 'visibility' map of core Condition plugin configurations (the same plugins blocks use: request_path, entity_bundle:node, user_role, language, ...). The rule's 'conjunction' property is 'and' (all conditions must pass) or 'or' (at least one). ThemeSwitcherNegotiator resolves them with ConditionAccessResolverTrait::resolveConditions()."
+    },
+    {
+      "id": "theme_switcher-order-and-admin",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "On a Drupal site with several theme_switcher rules that all match the current page, which rule wins? And what decides whether a rule's 'Theme' or its 'Admin Theme' is used?",
+      "must_contain_any": [
+        "weight",
+        "first",
+        "admin route",
+        "admin_theme"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Rules are loaded sorted by weight ascending and the first enabled rule whose conditions resolve positively wins - later rules are never evaluated. Whether theme or admin_theme is applied depends on router.admin_context->isAdminRoute(): admin routes get admin_theme, all other routes get theme. If the selected value is empty the negotiator returns FALSE for that request."
+    },
+    {
+      "id": "theme_switcher-known-rule",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "This Drupal site has a Theme Switcher rule with the machine name ts_known_rule. Inspect the live configuration and tell me which theme it switches to and which paths it matches.",
+      "must_contain_any": [
+        "claro"
+      ],
+      "must_not_contain": [],
+      "expected_output": "ts_known_rule switches to the claro theme, matched by a request_path condition with pages '/ts-known' and '/ts-known/*'. `drush cget theme_switcher.rule.ts_known_rule` shows theme: claro and the visibility.request_path.pages value.",
+      "setup": "agent-module-documentation/evaluation/verify/theme_switcher-known-rule-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/theme_switcher-known-rule-cleanup.sh"
+    },
+    {
+      "id": "theme_switcher-rule-order",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "This Drupal site has two enabled Theme Switcher rules that both match the path /ts-order. Inspect the live configuration and tell me which theme a visitor to /ts-order actually gets, and why.",
+      "must_contain_any": [
+        "olivero"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Olivero. ts_order_alpha has weight -5 and theme olivero, ts_order_beta has weight 7 and theme claro; ThemeSwitcherNegotiator sorts rules by weight ascending and returns on the first match, so the lower-weight rule (ts_order_alpha, olivero) wins and ts_order_beta is never evaluated.",
+      "setup": "agent-module-documentation/evaluation/verify/theme_switcher-rule-order-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/theme_switcher-rule-order-cleanup.sh"
+    },
+    {
+      "id": "theme_switcher-create-rule",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, use the theme_switcher module to create an enabled Theme Switcher rule with the machine name ts_task_rule, labelled 'TS task rule', that applies the 'claro' theme on the paths /ts-task and /ts-task/* (a request_path visibility condition). Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/theme_switcher-create-rule-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/theme_switcher-create-rule-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/theme_switcher-create-rule-cleanup.sh",
+      "expected_output": "theme_switcher.rule.ts_task_rule exists with status: true, theme: claro and visibility.request_path.pages containing /ts-task (created at /admin/config/system/theme_switcher/add or with ThemeSwitcherRule::create()->set(...)->save())."
+    },
+    {
+      "id": "theme_switcher-admin-theme",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "site-owner",
+      "prompt": "This Drupal site already has a Theme Switcher rule called 'TS admin rule' (machine name ts_admin_rule) that gives the pages under /ts-admin the Claro look. Administrative pages under that path still use the site's normal admin theme though - I want those to use Olivero instead. Keep everything else about the rule as it is, and apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/theme_switcher-admin-theme-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/theme_switcher-admin-theme-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/theme_switcher-admin-theme-cleanup.sh",
+      "expected_output": "theme_switcher.rule.ts_admin_rule now has admin_theme: olivero while keeping theme: claro, status: true and its /ts-admin request_path condition. The negotiator picks admin_theme when router.admin_context->isAdminRoute() is TRUE."
+    }
+  ]
+}

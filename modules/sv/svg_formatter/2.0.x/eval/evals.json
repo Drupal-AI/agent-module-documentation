@@ -1,0 +1,101 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "svg_formatter",
+  "version": "2.0.x",
+  "note": "SVG Formatter ships exactly one plugin: the 'svg_formatter' field formatter for file and image fields (image only when the svg_image contrib module is enabled, per isApplicable()). It has no settings form of its own, no configure route, no permissions, no Drush, no services. Its nine settings (inline, sanitize, apply_dimensions, width, height, enable_alt, alt_string, enable_title, title_string) are validated by field.formatter.settings.svg_formatter and stored in the component of core.entity_view_display.<entity>.<bundle>.<mode>. Inline output is read from disk, optionally sanitized with enshrined/svg-sanitize, and manipulated with DOMDocument (width/height on the root element, a <title> plus aria-labelledby). Items whose MIME type is not image/svg+xml are skipped. All medium/hard cases read or write that real view-display component on node.article.default.",
+  "evals": [
+    {
+      "id": "svg_formatter-basic-setup",
+      "mode": "recipe",
+      "prompt": "Drupal core's Image field will not accept .svg uploads. The svg_formatter contrib module is installed on my Drupal 11 site. What kind of field do I create and what do I change on Manage display so that uploaded SVG files are rendered as images?",
+      "must_contain_any": [
+        "file field",
+        "File field",
+        "file_extensions",
+        "SVG Formatter",
+        "svg_formatter"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Create an ordinary core File field and add 'svg' to its allowed file extensions, then on the bundle's Manage display page set that field's format to 'SVG Formatter' (formatter id svg_formatter). The formatter can also be used on an Image field, but only when the svg_image contrib module is enabled.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "svg_formatter-inline-and-sanitize",
+      "mode": "recipe",
+      "prompt": "I want SVGs on my Drupal site to be output as inline <svg> markup so CSS and JavaScript can manipulate them. Which svg_formatter setting does that, what is the security concern, and which PHP library handles it?",
+      "must_contain_any": [
+        "inline",
+        "sanitize",
+        "svg-sanitize",
+        "enshrined"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Turn on the formatter's 'inline' setting (Output SVG inline). Because the template prints svg_data with |raw, an untrusted SVG could carry script - so also keep the 'sanitize' setting on, which runs the file through enshrined\\svgSanitize\\Sanitizer from the enshrined/svg-sanitize Composer library (a hard requirement of the module). If the library is missing the sanitize checkbox is disabled and inline output is unsanitized.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "svg_formatter-alt-title",
+      "mode": "recipe",
+      "prompt": "With Drupal's svg_formatter module, where do the alt and title attributes of a rendered SVG come from when I leave the alt/title token fields empty, and how is accessibility handled differently in inline mode?",
+      "must_contain_any": [
+        "filename",
+        "file name",
+        "aria-labelledby",
+        "title"
+      ],
+      "must_not_contain": [],
+      "expected_output": "When alt_string / title_string are empty the formatter falls back to a prettified filename (generateAltAttribute(): strips '.svg' and turns '-' and '_' into spaces, then ucfirst). If they are set they are run through the token service with the 'file' and parent-entity token contexts. In non-inline mode these become <img alt> and <img title>. In inline mode there is no <img>, so when enable_title is on the module inserts a <title id=\"...\"> element as the first child of the root <svg> and sets aria-labelledby to that id.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "svg_formatter-known-settings",
+      "mode": "introspection",
+      "prompt": "On this Drupal site the Article content type has a file field field_svgf_known that is rendered with the SVG Formatter from the svg_formatter module. Inspect the live default view display for Article and tell me whether it outputs inline SVG and what width and height it applies.",
+      "must_contain_any": [
+        "320"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Yes, inline output is on. In core.entity_view_display.node.article.default the field_svgf_known component has type svg_formatter with settings.inline: true, settings.sanitize: true, settings.apply_dimensions: true, settings.width: 320 and settings.height: 240.",
+      "setup": "agent-module-documentation/evaluation/verify/svg_formatter-known-settings-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/svg_formatter-known-settings-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "svg_formatter-alt-token",
+      "mode": "introspection",
+      "prompt": "This Drupal site has an Article field called field_svgf_alt rendered with the svg_formatter module. Inspect the running site's display configuration and tell me exactly what token string is configured for the alt attribute of that field's SVG output.",
+      "must_contain_any": [
+        "[node:title] vector mark",
+        "[node:title]"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The alt_string setting is '[node:title] vector mark'. It lives in core.entity_view_display.node.article.default under content.field_svgf_alt.settings.alt_string, with enable_alt: true, inline: false and enable_title: false.",
+      "setup": "agent-module-documentation/evaluation/verify/svg_formatter-alt-token-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/svg_formatter-alt-token-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "svg_formatter-inline-display",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "This Drupal site has the svg_formatter module installed and the Article content type has a file field field_svgf_task that accepts .svg uploads. Configure the default view display for Article so that this field is rendered by SVG Formatter as sanitized inline SVG at 48 by 48 pixels. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/svg_formatter-inline-display-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/svg_formatter-inline-display-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/svg_formatter-inline-display-cleanup.sh",
+      "expected_output": "In core.entity_view_display.node.article.default the field_svgf_task component must have type: svg_formatter with settings.inline: true, settings.sanitize: true, settings.apply_dimensions: true, settings.width: 48 and settings.height: 48."
+    },
+    {
+      "id": "svg_formatter-svg-file-field",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "site-owner-layman",
+      "prompt": "On this Drupal website I want editors to be able to upload an SVG logo on an Article and have it actually show up on the page. Please add a field called field_svgf_build to the Article content type that accepts SVG uploads, and make sure the SVG is displayed as a picture on the article rather than as a download link. Do it on the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/svg_formatter-svg-file-field-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/svg_formatter-svg-file-field-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/svg_formatter-svg-file-field-cleanup.sh",
+      "expected_output": "Article must have a field_svgf_build field of type 'file' whose file_extensions setting includes 'svg', and its component in core.entity_view_display.node.article.default must use the svg_formatter formatter (not file_default)."
+    }
+  ]
+}

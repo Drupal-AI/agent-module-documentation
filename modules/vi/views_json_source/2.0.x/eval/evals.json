@@ -1,0 +1,80 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "views_json_source",
+  "version": "2.0.x",
+  "note": "Views JSON Source adds a Views query backend (base table 'json', query plugin id views_json_source_query) that fetches a JSON document (remote URL via Guzzle, or a local /-relative path) and turns a slice of it into View rows. Per-View query options: json_file, row_apath (apath pointer to the rows), headers, request_method (get/post), request_body, single_payload, show_errors. Handlers: views_json_source_field/filter/sort/argument (+ parameter/uri_param contextual filters), all keyed by an 'apath'. The only global config is views_json_source.settings.cache_ttl (default 86400) controlling how long remote responses are cached. Medium/hard cases are grounded in that real config value and in a real View config entity using the json backend.",
+  "evals": [
+    {
+      "id": "views_json_source-how-to",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "I want a Drupal View whose rows come from an external JSON API using Views JSON Source. Which two query settings do I have to set to point it at the data?",
+      "must_contain_any": ["json_file", "row_apath", "Row Apath", "JSON File"],
+      "must_not_contain": [],
+      "expected_output": "In the View's Query settings set json_file (the URL or /-relative path to the JSON) and row_apath (the apath pointing at the array of records). You pick 'JSON' as the Show/base for the view, then add fields whose Key Chooser is an apath into each row."
+    },
+    {
+      "id": "views_json_source-apath",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "In Views JSON Source, what is the 'apath' (row_apath) syntax and how do I use a contextual filter with it?",
+      "must_contain_any": ["apath", "row_apath", "%", "data/records", "key=value"],
+      "must_not_contain": [],
+      "expected_output": "apath is a slash-separated pointer into the decoded JSON (e.g. data/records). key=value selects a matching array element (e.g. nid=2/related). A % wildcard is filled by a contextual filter (Apath Replacement for row_apath, URL Parameter for a % in the URL)."
+    },
+    {
+      "id": "views_json_source-cache-setting",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "Does Views JSON Source cache the remote JSON it fetches, and where is the cache lifetime configured?",
+      "must_contain_any": ["cache_ttl", "views_json_source.settings", "86400"],
+      "must_not_contain": [],
+      "expected_output": "Yes — remote responses are cached in the default cache bin for cache_ttl seconds (default 86400), configured in the views_json_source.settings config object (settings form at /admin/config/user-interface/views-json-source-settings). Local files are not cached."
+    },
+    {
+      "id": "views_json_source-cache-ttl",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "On this Drupal site, inspect the live Views JSON Source configuration and tell me the current cache lifetime (cache_ttl) in seconds.",
+      "must_contain_any": ["120"],
+      "must_not_contain": [],
+      "expected_output": "120 seconds. views_json_source.settings cache_ttl is set to 120.",
+      "setup": "agent-module-documentation/evaluation/verify/views_json_source-cache-ttl-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/views_json_source-cache-ttl-cleanup.sh"
+    },
+    {
+      "id": "views_json_source-view-apath",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "On this Drupal site there is a View with machine id 'vjs_known' that uses the Views JSON Source query backend. Inspect the live view configuration and tell me the row_apath its query is configured with.",
+      "must_contain_any": ["data/records"],
+      "must_not_contain": [],
+      "expected_output": "row_apath is 'data/records', found in views.view.vjs_known display.default.display_options.query.options.row_apath (query type views_json_source_query).",
+      "setup": "agent-module-documentation/evaluation/verify/views_json_source-view-apath-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/views_json_source-view-apath-cleanup.sh"
+    },
+    {
+      "id": "views_json_source-set-ttl",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, configure Views JSON Source so that fetched remote JSON responses are cached for exactly 3600 seconds (one hour). Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/views_json_source-set-ttl-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/views_json_source-set-ttl-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/views_json_source-set-ttl-cleanup.sh",
+      "expected_output": "Set views_json_source.settings cache_ttl to 3600 (e.g. drush cset views_json_source.settings cache_ttl 3600, or via the settings form)."
+    },
+    {
+      "id": "views_json_source-build-view",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, create a new View with machine id 'vjs_task' that uses the Views JSON Source query backend (base table 'json', query plugin views_json_source_query). Configure its query so json_file is https://example.com/nodes.json and row_apath is data/nodes. Apply it to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/views_json_source-build-view-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/views_json_source-build-view-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/views_json_source-build-view-cleanup.sh",
+      "expected_output": "A View config entity 'vjs_task' with base_table json and a default display whose query type is views_json_source_query and options.row_apath is 'data/nodes' (json_file https://example.com/nodes.json)."
+    }
+  ]
+}

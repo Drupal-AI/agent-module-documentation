@@ -1,0 +1,80 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "dbee",
+  "version": "3.1.x",
+  "note": "dbee (DataBase Email Encryption) transparently encrypts the users_field_data mail and init columns at rest with Encrypt + Real AES (AES-256). Install creates a Key entity 'dbee' and an EncryptionProfile 'dbee' (method real_aes), widens mail/init to text, drops the mail index, encrypts all existing emails. Encrypts on write (entity_presave/user_insert/user_update), decrypts on read (entity_load early, DbeeCookie session provider), and rewrites mail/init WHERE clauses (hook_query_alter, Drupal\\dbee\\Query) so user_load_by_mail still works over ciphertext (random IV => must decrypt in PHP). Replaces core unique-email check with UserMailUniqueDbee. configure link = entity.encryption_profile.collection; permission 'administer dbee'. Drush: dbee:verify-users-decrypt-all (dbee-verify-all), dbee:verify-users-decrypt (dbee-verify). Admin-gated at-rest encryption => no CVE. Cases use core users (no article type): introspection loads a known user's decrypted email and looks one up by email; execution creates/updates a user and checks dbee stored the email encrypted (User::load()->getEmail() is plaintext but the raw users_field_data.mail column is ciphertext).",
+  "evals": [
+    {
+      "id": "dbee-what-encrypted",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "What does the dbee (DataBase Email Encryption) module encrypt, where is it stored, and which modules does it rely on to do the encryption?",
+      "must_contain_any": ["mail", "init", "users_field_data", "email"],
+      "must_not_contain": [],
+      "expected_output": "It encrypts user email addresses at rest - the mail and init columns of users_field_data - using the Encrypt module with the Real AES (real_aes) encryption method via an EncryptionProfile named 'dbee' and a Key named 'dbee'. Login/registration UX is unchanged."
+    },
+    {
+      "id": "dbee-drush",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "Which Drush command does dbee provide to check that all users' encrypted email addresses can still be decrypted correctly?",
+      "must_contain_any": ["dbee:verify-users-decrypt-all", "dbee-verify-all", "verify-users-decrypt"],
+      "must_not_contain": [],
+      "expected_output": "drush dbee:verify-users-decrypt-all (alias dbee-verify-all) verifies decryption for all users; dbee:verify-users-decrypt <uids> (alias dbee-verify) checks specific users."
+    },
+    {
+      "id": "dbee-lookup-still-works",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "If dbee stores every user email encrypted with a random IV, how can Drupal still find an account by email address (e.g. on login or user_load_by_mail)?",
+      "must_contain_any": ["query_alter", "query alter", "user_load_by_mail", "decrypt"],
+      "must_not_contain": [],
+      "expected_output": "dbee implements hook_query_alter (Drupal\\dbee\\Query): for any dynamic query that filters on mail/init it decrypts the stored emails in PHP and rewrites the condition to match by uid, so user_load_by_mail() and login still work despite AES ciphertext not being directly searchable in SQL."
+    },
+    {
+      "id": "dbee-probe",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "This site uses dbee to encrypt user emails. A user account named 'dbee_probe' exists. Inspect the running site and tell me that user's actual (decrypted) email address.",
+      "must_contain_any": ["dbee_probe@example.com"],
+      "must_not_contain": [],
+      "expected_output": "dbee_probe@example.com - loading the user (User::load / user API) returns the decrypted email even though the raw users_field_data.mail column holds AES ciphertext.",
+      "setup": "agent-module-documentation/evaluation/verify/dbee-probe-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/dbee-probe-cleanup.sh"
+    },
+    {
+      "id": "dbee-lookup",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "On this dbee-enabled site, which user account has the email address dbee_find@example.com? Inspect the live site (the emails are stored encrypted) and give the account's username.",
+      "must_contain_any": ["dbee_finder"],
+      "must_not_contain": [],
+      "expected_output": "dbee_finder - user_load_by_mail('dbee_find@example.com') resolves to that account; dbee's query alter makes the email look-up work over encrypted storage.",
+      "setup": "agent-module-documentation/evaluation/verify/dbee-lookup-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/dbee-lookup-cleanup.sh"
+    },
+    {
+      "id": "dbee-create-encrypted",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this dbee-enabled Drupal site, create a new active user account with username 'dbee_new' and email dbee_new@example.com. dbee should store the email encrypted at rest. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/dbee-create-encrypted-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/dbee-create-encrypted-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/dbee-create-encrypted-cleanup.sh",
+      "expected_output": "User dbee_new exists; User::load()->getEmail() returns dbee_new@example.com, but the raw users_field_data.mail column is AES ciphertext (not the plaintext) because dbee encrypted it on insert. Just create the user normally (drush user:create or the user API); dbee encrypts automatically."
+    },
+    {
+      "id": "dbee-update-encrypted",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this dbee-enabled site there is a user 'dbee_upd'. Change that user's email address to dbee_upd_new@example.com and apply it to the live site; the stored email must remain encrypted at rest.",
+      "reset": "agent-module-documentation/evaluation/verify/dbee-update-encrypted-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/dbee-update-encrypted-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/dbee-update-encrypted-cleanup.sh",
+      "expected_output": "User dbee_upd now loads with email dbee_upd_new@example.com while the raw users_field_data.mail column holds ciphertext (dbee re-encrypts on user_update). Update the email via the user API / drush; encryption is automatic."
+    }
+  ]
+}

@@ -1,0 +1,92 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "eck",
+  "version": "2.1.x",
+  "note": "ECK (Entity Construction Kit) lets you create custom content entity types + bundles from UI or code. Easy cases quiz the two config entity types (eck_entity_type / eck_entity_bundle), how a type+bundle is created, and the optional base fields. Medium cases install a known type `eval_book` and ask the agent to read its live config. Hard cases have the agent actually build an ECK entity type + bundle with named machine names and selected base fields, verified against live state (config entities exist + the dynamic content entity type is registered and its table installed).",
+  "evals": [
+    {
+      "id": "eck-config-entity-types",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "In the ECK (Entity Construction Kit) Drupal module, name the two config entity types it uses — one for the entity type itself and one for its bundles. Give their machine ids.",
+      "must_contain_any": ["eck_entity_type"],
+      "must_not_contain": [],
+      "expected_output": "The entity type is the `eck_entity_type` config entity; bundles are the `eck_entity_bundle` config entity (registered per type as `{type}_type`, config `eck.eck_type.{type}.{bundle}`)."
+    },
+    {
+      "id": "eck-base-fields",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "When you create an ECK entity type, which optional base fields can you toggle on for it? List them.",
+      "must_contain_any": ["title", "created", "changed", "status", "author", "uid"],
+      "must_not_contain": [],
+      "expected_output": "The five optional base fields are title, uid (Author/owner), created, changed, and status (published flag). Each is a boolean key on the eck_entity_type config entity."
+    },
+    {
+      "id": "eck-create-type-and-bundle",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "In code, how do you create a custom ECK entity type called `event` and then a bundle `conference` inside it? Name the classes/storage you call.",
+      "must_contain_any": ["EckEntityType::create", "eck_entity_type", "event_type"],
+      "must_not_contain": [],
+      "expected_output": "Create the type with `\\Drupal\\eck\\Entity\\EckEntityType::create(['id' => 'event', 'label' => 'Event', ...])->save()` (its postSave installs the content entity type + tables), then create the bundle via the dynamic bundle storage `\\Drupal::entityTypeManager()->getStorage('event_type')->create(['type' => 'conference', 'name' => 'Conference'])->save()`."
+    },
+    {
+      "id": "eck-introspect-bundle",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "persona": "drupal-expert",
+      "prompt": "This Drupal site already has an ECK entity type `eval_book` configured. Inspect the running site (drush available) and tell me the machine name of its bundle.",
+      "setup": "agent-module-documentation/evaluation/verify/eck-book-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/eck-book-cleanup.sh",
+      "must_contain_any": ["hardcover"],
+      "must_not_contain": [],
+      "expected_output": "The `eval_book` ECK type has a single bundle with machine name `hardcover` (label \"Hardcover\"), stored in config `eck.eck_type.eval_book.hardcover`."
+    },
+    {
+      "id": "eck-introspect-base-fields",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "persona": "drupal-expert",
+      "prompt": "This Drupal site has an ECK entity type `eval_book`. Inspect the running site (drush available) and tell me which optional base fields (title, author, created, changed, status) are currently ENABLED on it, and which are off.",
+      "setup": "agent-module-documentation/evaluation/verify/eck-book-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/eck-book-cleanup.sh",
+      "must_contain_any": ["created"],
+      "must_not_contain": [],
+      "expected_output": "On `eval_book` the enabled base fields are title, created and status; author (uid) and changed are disabled. Read from the eck.eck_entity_type.eval_book config booleans."
+    },
+    {
+      "id": "eck-introspect-config-name",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "persona": "drupal-expert",
+      "prompt": "This Drupal site has an ECK entity type `eval_book`. Inspect the running site and give me the exact config object name that stores that ECK entity type.",
+      "setup": "agent-module-documentation/evaluation/verify/eck-book-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/eck-book-cleanup.sh",
+      "must_contain_any": ["eck.eck_entity_type.eval_book"],
+      "must_not_contain": [],
+      "expected_output": "The ECK entity type is stored in the config object `eck.eck_entity_type.eval_book` (discoverable via `drush config:status` / `drush config:get`)."
+    },
+    {
+      "id": "eck-create-country-type",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site (DDEV, drush available), use ECK to create a new custom content entity type with machine name `country` and label `Country`, enabling only the Title and Status (published) base fields and allowing a standalone entity URL. Then add a bundle to it with machine name `sovereign` and label `Sovereign State`. Apply it to the running site (drush/php, not just a description) and give a one-line summary of what you changed.",
+      "reset": "agent-module-documentation/evaluation/verify/eck-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/eck-country-verify.sh",
+      "expected_output": "An eck_entity_type config `country` exists with title+status base fields on, the dynamic content entity type `country` is registered and its base table installed, and a bundle config `eck.eck_type.country.sovereign` exists and is a registered bundle of `country`. Verified against live site state."
+    },
+    {
+      "id": "eck-create-venue-type",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site (drush available), use ECK to create a custom content entity type with machine name `venue` and label `Venue`, enabling the Title, Author, and Status base fields. Then create a bundle inside it with machine name `stadium` and label `Stadium`. Apply the changes to the live site (do not just describe them) and state in one line what you changed.",
+      "reset": "agent-module-documentation/evaluation/verify/eck-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/eck-venue-verify.sh",
+      "expected_output": "An eck_entity_type config `venue` exists with title+uid(author)+status base fields on, the dynamic content entity type `venue` is registered and its base table installed, and a bundle config `eck.eck_type.venue.stadium` exists and is a registered bundle of `venue`. Verified against live site state."
+    }
+  ]
+}

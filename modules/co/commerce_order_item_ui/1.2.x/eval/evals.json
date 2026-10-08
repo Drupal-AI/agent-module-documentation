@@ -1,0 +1,99 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "commerce_order_item_ui",
+  "version": "1.2.x",
+  "note": "Commerce Order Item UI adds a standalone admin UI for commerce_order_item entities, all nested under an order at /admin/commerce/orders/{commerce_order}/order-items/... It defines no config, no permissions and no config UI; it alters the commerce_order_item entity type in hook_entity_type_alter() (custom route provider, list builder, add/edit/duplicate/delete forms, link templates collection/add-page/add-form/edit-form/duplicate-form/delete-form) and gates access with the Commerce permissions administer commerce_order, access commerce_order overview and manage <type> commerce_order_item. Since the module has no config object, medium/hard cases are grounded in the module's real domain: commerce_order + commerce_order_item content entities (created/read/deleted via the entity API - router-safe on this site). Marker orders are identified by a unique customer email. NOTE: this shared site has broken contrib modules that fatal on route rebuilds and on serialization, so evals deliberately avoid creating bundles/roles or serializing entities.",
+  "evals": [
+    {
+      "id": "coiu-where-is-ui",
+      "mode": "recipe",
+      "prompt": "With commerce_order_item_ui enabled, where in the Drupal admin do I manage the individual line items (order items) of a specific commerce order, and what is the URL pattern?",
+      "must_contain_any": [
+        "/order-items",
+        "order-items",
+        "Order Items"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Under each order: an 'Order Items' local task tab at /admin/commerce/orders/{commerce_order}/order-items, with add/edit/duplicate/delete forms below it (e.g. .../order-items/add). There is also an 'Order Items' operation on each row of the order list.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "coiu-access-permission",
+      "mode": "recipe",
+      "prompt": "commerce_order_item_ui defines no permissions of its own. Which Commerce permissions allow a user to access and manage an order's order items through its UI?",
+      "must_contain_any": [
+        "administer commerce_order",
+        "access commerce_order overview",
+        "manage default commerce_order_item",
+        "commerce_order_item"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The collection access check grants access to users with administer commerce_order, access commerce_order overview, or manage <order_item_type> commerce_order_item (e.g. manage default commerce_order_item). Create access defers to the order-item entity access handler's createAccess() for the chosen type.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "coiu-add-page-behavior",
+      "mode": "recipe",
+      "prompt": "When an editor clicks 'Add order item' for an order in commerce_order_item_ui, how does the module decide whether to show a type chooser or go straight to a form, and how is the purchased_entity field constrained?",
+      "must_contain_any": [
+        "one",
+        "single",
+        "redirect",
+        "target_bundles",
+        "variation"
+      ],
+      "must_not_contain": [],
+      "expected_output": "If exactly one commerce_order_item_type exists, the add page redirects straight to that type's add form; otherwise it renders an entity_add_list chooser. The add form's purchased_entity reference is limited (via hook_entity_bundle_field_info_alter) to the product variation types mapped to that order-item type.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "coiu-count-items",
+      "mode": "introspection",
+      "prompt": "On this Drupal site there is a commerce order whose customer email is coiu-known@example.com. Using the order-item information, inspect that order and state how many order items (line items) it currently has.",
+      "must_contain_any": [
+        "2"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The order has 2 order items (titled 'COIU Known A' and 'COIU Known B').",
+      "setup": "agent-module-documentation/evaluation/verify/commerce_order_item_ui-count-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/commerce_order_item_ui-count-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "coiu-manage-url",
+      "mode": "introspection",
+      "prompt": "A commerce order on this site has the customer email coiu-url@example.com. Find that order and give the admin path (provided by commerce_order_item_ui) used to manage its order items.",
+      "must_contain_any": [
+        "/order-items"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Find the order id (e.g. via drush entity query on commerce_order filtered by mail), then the order-items collection path is /admin/commerce/orders/<id>/order-items.",
+      "setup": "agent-module-documentation/evaluation/verify/commerce_order_item_ui-url-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/commerce_order_item_ui-url-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "coiu-add-item",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site there is a draft commerce order with customer email coiu-task@example.com and no line items. Add an order item (line item) to that order and save it to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/commerce_order_item_ui-add-item-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/commerce_order_item_ui-add-item-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/commerce_order_item_ui-add-item-cleanup.sh",
+      "expected_output": "Locate the order (mail coiu-task@example.com), create a commerce_order_item (type default, a title, quantity and unit_price) and add it to the order ($order->addItem($item)) then save. This mirrors what the Add order item form does. Verified by the order having >=1 order item."
+    },
+    {
+      "id": "coiu-add-titled-item",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "site-owner",
+      "prompt": "There is an order on this site for the customer coiu-line@example.com. Add a line item called 'COIU Manual Line' to that order.",
+      "reset": "agent-module-documentation/evaluation/verify/commerce_order_item_ui-titled-item-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/commerce_order_item_ui-titled-item-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/commerce_order_item_ui-titled-item-cleanup.sh",
+      "expected_output": "Find the order (mail coiu-line@example.com) and add a commerce_order_item whose title is exactly 'COIU Manual Line' (with a quantity and unit price), then save the order. Verified by the order having an item titled 'COIU Manual Line'."
+    }
+  ]
+}

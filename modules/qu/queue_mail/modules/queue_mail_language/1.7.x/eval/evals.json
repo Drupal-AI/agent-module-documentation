@@ -1,0 +1,84 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "queue_mail_language",
+  "version": "1.7.x",
+  "note": "queue_mail_language is a glue submodule of queue_mail with no config, no UI, no permissions. Its only effects are: (1) hook_queue_info_alter swaps the 'queue_mail' queue worker class to LanguageAwareSendMailQueueWorker (extends the parent SendMailQueueWorker); (2) it registers the service queue_mail.language_negotiator (QueueMailLanguageNegotiator extends core LanguageNegotiator) so queued mail is formatted in each mail's own langcode. It requires the language module and parent queue_mail. Because it has no config, medium/hard cases are grounded in the real live effects of the module being enabled: the queue_mail worker class and the negotiator service. Hard reset scripts uninstall the submodule (worker reverts to the parent class / service disappears) so verify FAILS on that state and PASSES only after the module is enabled. Cleanup leaves it enabled (its baseline for this suite).",
+  "evals": [
+    {
+      "id": "queue_mail_language-what",
+      "mode": "recipe",
+      "prompt": "On a multilingual Drupal site using Queue Mail, queued emails are going out in the wrong language. Which submodule fixes this and what does it change?",
+      "must_contain_any": ["queue_mail_language", "Queue Mail Language", "language", "langcode"],
+      "must_not_contain": [],
+      "expected_output": "Enable Queue Mail Language (queue_mail_language). It makes the queued send use each mail's own langcode instead of the cron/default language, by swapping the queue worker to a language-aware one. It requires the language module and queue_mail; there is nothing to configure.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "queue_mail_language-how",
+      "mode": "recipe",
+      "prompt": "How does the queue_mail_language module change how the queue_mail queue is processed?",
+      "must_contain_any": ["LanguageAwareSendMailQueueWorker", "hook_queue_info_alter", "worker class", "queue worker"],
+      "must_not_contain": [],
+      "expected_output": "Its hook_queue_info_alter() sets the queue_mail queue's worker class to LanguageAwareSendMailQueueWorker (which extends the parent SendMailQueueWorker) and overrides setMailLanguage()/setActiveLanguage() to activate the mail's language during formatting.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "queue_mail_language-depends",
+      "mode": "recipe",
+      "prompt": "What does the queue_mail_language module require to work, and does it have any configuration of its own?",
+      "must_contain_any": ["language", "queue_mail"],
+      "must_not_contain": [],
+      "expected_output": "It requires the core language module and the parent queue_mail module. It has no configuration, no UI, and no permissions — enabling it is the whole setup.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "queue_mail_language-qml-worker",
+      "mode": "introspection",
+      "prompt": "On this Drupal site, inspect the running site and state which PHP class processes the 'queue_mail' queue (the queue worker class handling queued emails).",
+      "must_contain_any": ["LanguageAwareSendMailQueueWorker", "queue_mail_language"],
+      "must_not_contain": [],
+      "expected_output": "The queue_mail queue worker class is Drupal\\queue_mail_language\\Plugin\\QueueWorker\\LanguageAwareSendMailQueueWorker (because queue_mail_language is enabled and its hook_queue_info_alter swapped it from the parent SendMailQueueWorker). Read via the queue worker plugin manager getDefinition('queue_mail').",
+      "setup": "agent-module-documentation/evaluation/verify/queue_mail_language-qml-worker-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/queue_mail_language-qml-worker-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "queue_mail_language-qml-negotiator",
+      "mode": "introspection",
+      "prompt": "On this Drupal site, the queue_mail_language module registers a service used to force the mail's language during queued sending. Inspect the running site's services and give the id of that language negotiator service.",
+      "must_contain_any": ["queue_mail.language_negotiator"],
+      "must_not_contain": [],
+      "expected_output": "The service id is queue_mail.language_negotiator (class QueueMailLanguageNegotiator, extends core LanguageNegotiator).",
+      "setup": "agent-module-documentation/evaluation/verify/queue_mail_language-qml-negotiator-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/queue_mail_language-qml-negotiator-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "queue_mail_language-qml-enable-worker",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, make sure queued emails are sent in each email's own language by enabling the appropriate Queue Mail submodule. After you are done, the queue_mail queue must be processed by the language-aware queue worker. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/queue_mail_language-qml-enable-worker-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/queue_mail_language-qml-enable-worker-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/queue_mail_language-qml-enable-worker-cleanup.sh",
+      "expected_output": "queue_mail_language is enabled, so the queue_mail queue worker definition class is Drupal\\queue_mail_language\\Plugin\\QueueWorker\\LanguageAwareSendMailQueueWorker (e.g. `drush en queue_mail_language -y`).",
+      "must_contain_any": [],
+      "must_not_contain": []
+    },
+    {
+      "id": "queue_mail_language-qml-enable-negotiator",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, enable the Queue Mail Language module so that its language-negotiation service becomes available for formatting queued mail in the correct language. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/queue_mail_language-qml-enable-negotiator-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/queue_mail_language-qml-enable-negotiator-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/queue_mail_language-qml-enable-negotiator-cleanup.sh",
+      "expected_output": "queue_mail_language is enabled, so the service queue_mail.language_negotiator is registered in the container (e.g. `drush en queue_mail_language -y`).",
+      "must_contain_any": [],
+      "must_not_contain": []
+    }
+  ]
+}

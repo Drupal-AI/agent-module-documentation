@@ -1,0 +1,93 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "json_field_widget",
+  "version": "1.7.x",
+  "note": "JSON Field Widget is the json_field submodule that adds exactly one plugin: the field widget `json_editor` for the json / json_native / json_native_binary field types. Its whole persistent state is the widget component in an entity_form_display config entity: content.<field>.type = json_editor plus settings.mode, settings.modes, settings.schema and settings.schema_validate (config schema field.widget.settings.json_editor). The JS comes from /libraries/jsoneditor/dist/jsoneditor.min.js and server-side schema validation uses Swaggest\\JsonSchema. All medium/hard cases therefore read or write real widget components on core.entity_form_display.node.article.default.",
+  "evals": [
+    {
+      "id": "json_field_widget-widget-id",
+      "mode": "recipe",
+      "prompt": "I installed the json_field_widget submodule of the Drupal json_field project. What is the machine id of the field widget it provides, which field types can use it, and where do I switch a field over to it?",
+      "must_contain_any": [
+        "json_editor"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The widget plugin id is `json_editor` ('JSON-specific WYSIWYG editor'). It supports the json, json_native and json_native_binary field types. You select it on the entity bundle's Manage form display page (or by setting the component type to json_editor in core.entity_form_display.<entity>.<bundle>.<mode>).",
+      "difficulty": "easy"
+    },
+    {
+      "id": "json_field_widget-library-path",
+      "mode": "recipe",
+      "prompt": "After enabling json_field_widget on Drupal 11 the status report shows an error about the JSON Editor library. Exactly which file paths does the module expect, what is the maximum supported library version, and what happens if it is missing?",
+      "must_contain_any": [
+        "libraries/jsoneditor",
+        "jsoneditor.min.js"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The library `json_field_widget/jsoneditor` points at /libraries/jsoneditor/dist/jsoneditor.min.js and /libraries/jsoneditor/dist/jsoneditor.min.css, i.e. the josdejong/jsoneditor release unpacked into the site's libraries directory. Maximum supported version is 6.0.0. json_field_widget_requirements() reports REQUIREMENT_ERROR when it is missing; the field still renders, just as a plain textarea.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "json_field_widget-settings-keys",
+      "mode": "recipe",
+      "prompt": "List the widget settings that json_field_widget's json_editor widget exposes on a Drupal field, including the available editor modes, and explain what has to be true for a JSON Schema to actually block a save.",
+      "must_contain_any": [
+        "schema_validate",
+        "modes",
+        "tree"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Settings are `mode` (default 'code'), `modes` (checkboxes; default just 'text'), `schema` (a JSON Schema document as text, default empty) and `schema_validate` (boolean, default FALSE). Modes are text, code (ACE), tree, form and view. Server-side validation only runs when `schema` is non-empty AND `schema_validate` is TRUE - then JsonEditorWidget::validateJsonData() imports the schema with Swaggest\\JsonSchema\\Schema and fails the form with 'JSON Schema validation failed.'",
+      "difficulty": "easy"
+    },
+    {
+      "id": "json_field_widget-editor-mode",
+      "mode": "introspection",
+      "prompt": "On this Drupal site the Article content type has a JSON field field_jfw_known that uses json_field_widget's JSON editor. Inspect the live form display configuration and report which editor mode the field opens in.",
+      "must_contain_any": [
+        "tree"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The component core.entity_form_display.node.article.default -> content.field_jfw_known has type json_editor with settings.mode: tree (and settings.modes offering tree and text).",
+      "setup": "agent-module-documentation/evaluation/verify/json_field_widget-editor-mode-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/json_field_widget-editor-mode-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "json_field_widget-known-schema",
+      "mode": "introspection",
+      "prompt": "The Article content type on this Drupal site has a JSON field field_jfw_schema whose json_editor widget is configured with a JSON Schema. Inspect the running site and name the property that schema marks as required.",
+      "must_contain_any": [
+        "jfwWidgetProbe"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The schema stored in core.entity_form_display.node.article.default -> content.field_jfw_schema.settings.schema requires the property `jfwWidgetProbe` (a string), and settings.schema_validate is true, so a value without that key is rejected on save.",
+      "setup": "agent-module-documentation/evaluation/verify/json_field_widget-known-schema-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/json_field_widget-known-schema-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "json_field_widget-switch-widget",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site the Article content type has a JSON field field_jfw_task that currently uses json_field's plain textarea widget. Switch it to the json_field_widget JSON editor widget on the Article default form display: it must open in the ACE code editor mode, and editors must also be able to switch the editor into tree mode. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/json_field_widget-switch-widget-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/json_field_widget-switch-widget-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/json_field_widget-switch-widget-cleanup.sh",
+      "expected_output": "core.entity_form_display.node.article.default -> content.field_jfw_task has type: json_editor with settings.mode: code and settings.modes containing 'tree'."
+    },
+    {
+      "id": "json_field_widget-enforce-schema",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "site-owner-layman",
+      "prompt": "On this Drupal site the Article content type has a JSON field called field_jfw_valid that already uses the fancy JSON editor. Editors keep saving documents without a product code. Make the site refuse to save that field unless the JSON is an object that contains a string property named 'sku' - use the editor widget's own schema feature, and turn the enforcement on. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/json_field_widget-enforce-schema-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/json_field_widget-enforce-schema-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/json_field_widget-enforce-schema-cleanup.sh",
+      "expected_output": "core.entity_form_display.node.article.default -> content.field_jfw_valid keeps type json_editor, settings.schema holds valid JSON Schema such as {\"type\":\"object\",\"required\":[\"sku\"],\"properties\":{\"sku\":{\"type\":\"string\"}}} and settings.schema_validate is TRUE."
+    }
+  ]
+}

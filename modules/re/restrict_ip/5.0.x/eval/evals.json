@@ -1,0 +1,100 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "restrict_ip",
+  "version": "5.0.x",
+  "note": "Restrict IP gates the whole site to an IP allowlist via a kernel.request event subscriber (restrict_ip.service). Behavioural settings live in config restrict_ip.settings (enable, mail_address, dblog, allow_role_bypass, bypass_action, white_black_list, country_white_black_list, country_list); the actual allowed IP list and page white/blacklist live in DB tables via restrict_ip.mapper / restrict_ip.service, plus a settings.php-only override $config['restrict_ip.settings']['ip_whitelist']. Drush restrict_ip:disable (alias ripd) toggles enable. Permission 'administer restricted ip addresses' + a dynamic role-bypass permission. To avoid locking out other agents on this shared site, the medium/hard cases only touch NON-enabling config keys (mail_address, white_black_list, allow_role_bypass, bypass_action) and never set enable=TRUE.",
+  "evals": [
+    {
+      "id": "restrict_ip-drush-toggle",
+      "mode": "recipe",
+      "prompt": "On a Drupal site with the Restrict IP module, which Drush command enables or disables the IP restriction from the command line, and what is its alias?",
+      "must_contain_any": [
+        "restrict_ip:disable",
+        "ripd"
+      ],
+      "must_not_contain": [],
+      "expected_output": "drush restrict_ip:disable <value> (alias ripd). Passing 'enable' turns the restriction on (sets restrict_ip.settings:enable TRUE); anything else turns it off. E.g. `drush ripd enable` / `drush ripd disable`.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "restrict_ip-settings-php-unlock",
+      "mode": "recipe",
+      "prompt": "I enabled Restrict IP and locked myself out of my Drupal site. What can I add to settings.php to regain access, and how do I define an allowed IP list in settings.php?",
+      "must_contain_any": [
+        "restrict_ip.settings",
+        "ip_whitelist",
+        "'enable'"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Add $config['restrict_ip.settings']['enable'] = FALSE; to settings.php to disable the restriction. To allowlist IPs from code use $config['restrict_ip.settings']['ip_whitelist'] = ['1.2.3.4', ...];.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "restrict_ip-config-route-perm",
+      "mode": "recipe",
+      "prompt": "Where is the Restrict IP admin configuration page, and which permission controls access to it?",
+      "must_contain_any": [
+        "admin/config/people/restrict_ip",
+        "administer restricted ip addresses",
+        "restrict_ip.admin_page"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The config page is at /admin/config/people/restrict_ip (route restrict_ip.admin_page), gated by the 'administer restricted ip addresses' permission.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "restrict_ip-known-mail",
+      "mode": "introspection",
+      "prompt": "On this Drupal site, Restrict IP is configured with a contact email address to show to blocked users. Inspect the live configuration and give that email address.",
+      "must_contain_any": [
+        "ripblocked@example.com"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The email is ripblocked@example.com, stored at restrict_ip.settings:mail_address (drush cget restrict_ip.settings mail_address).",
+      "setup": "agent-module-documentation/evaluation/verify/restrict_ip-known-mail-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/restrict_ip-known-mail-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "restrict_ip-role-bypass",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, configure the Restrict IP module so that the IP restriction can be bypassed by user role, and so that a bypassing visitor who is not logged in is redirected to the login page (rather than being shown a link to it). Apply the change to the live configuration. Do not enable the restriction itself.",
+      "reset": "agent-module-documentation/evaluation/verify/restrict_ip-role-bypass-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/restrict_ip-role-bypass-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/restrict_ip-role-bypass-cleanup.sh",
+      "expected_output": "Set restrict_ip.settings:allow_role_bypass to TRUE and restrict_ip.settings:bypass_action to 'redirect_login_page' (e.g. drush cset, or the 'Allow restrict IP to be bypassed by role' checkbox + the 'Access denied action' radio on the admin form)."
+    },
+    {
+      "id": "restrict_ip-known-dblog",
+      "mode": "introspection",
+      "prompt": "On this Drupal site, does the Restrict IP module currently log blocked access attempts to the Drupal log? Inspect the live configuration and answer, naming the setting.",
+      "must_contain_any": [
+        "dblog",
+        "yes",
+        "enabled",
+        "true",
+        "logs",
+        "logging"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Yes - restrict_ip.settings:dblog is TRUE, so blocked access attempts are logged to watchdog.",
+      "setup": "agent-module-documentation/evaluation/verify/restrict_ip-known-dblog-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/restrict_ip-known-dblog-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "restrict_ip-contact-email",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, configure the Restrict IP module so that blocked users are shown the contact email address ripcontact@example.com, and so that blocked access attempts are logged to the Drupal log. Apply the change to the live configuration. Do not enable the restriction itself.",
+      "reset": "agent-module-documentation/evaluation/verify/restrict_ip-contact-email-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/restrict_ip-contact-email-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/restrict_ip-contact-email-cleanup.sh",
+      "expected_output": "Set restrict_ip.settings:mail_address to 'ripcontact@example.com' and restrict_ip.settings:dblog to TRUE (e.g. the Email Address field + 'Log access attempts to watchdog' checkbox on the admin form, or drush cset)."
+    }
+  ]
+}

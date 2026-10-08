@@ -1,0 +1,97 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "views_extras",
+  "version": "3.x",
+  "note": "Views Extras registers Views plugins only (no config UI, permissions, or Drush). Three @ViewsArgumentDefault plugins - session, cookie, tempstore - provide a contextual-filter default value from $_SESSION / $_COOKIE['Drupal_visitor_'.$key] / private TempStore, each with a token-replaced fallback_value. One @ViewsArea handler, extra_result ('Extra Result summary', added via views_extras_views_data()), renders a summary string with tokens @start @end @total @label @per_page @current_page @current_record_count @page_count @more. These live inside a view's config: display.*.display_options.arguments.<arg>.default_argument_type = session|cookie|tempstore (+ default_argument_options), and header/footer area handlers with plugin_id extra_result. Medium/hard cases build/read real views.view.* config: introspection reads a view's cookie_key/session_key; execution switches an argument to the cookie plugin and adds the extra_result area, verified against the saved view config.",
+  "evals": [
+    {
+      "id": "vex-plugin-ids",
+      "mode": "recipe",
+      "prompt": "The Drupal contrib module views_extras adds contextual-filter 'default argument' plugins to Views. Which value sources does it let a view pull a default argument from? Name the plugin ids.",
+      "must_contain_any": [
+        "session",
+        "cookie",
+        "tempstore"
+      ],
+      "must_not_contain": [],
+      "expected_output": "It provides three @ViewsArgumentDefault plugins: session (from $_SESSION), cookie (from $_COOKIE), and tempstore (from the private TempStore). Each also has a token-replaced fallback value.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "vex-cookie-prefix",
+      "mode": "recipe",
+      "prompt": "In views_extras, if I configure the 'cookie' default-argument plugin with cookie key 'mypref', which actual cookie name does it read from $_COOKIE?",
+      "must_contain_any": [
+        "Drupal_visitor_mypref",
+        "Drupal_visitor_"
+      ],
+      "must_not_contain": [],
+      "expected_output": "It reads $_COOKIE['Drupal_visitor_mypref'] - the plugin automatically prepends the Drupal_visitor_ prefix (matching Drupal's user_cookie_save()).",
+      "difficulty": "easy"
+    },
+    {
+      "id": "vex-extra-result-tokens",
+      "mode": "recipe",
+      "prompt": "views_extras provides a Views area handler called 'Extra Result summary' (extra_result). What is it for, and which replacement tokens can I use in its display string to show record/page counts?",
+      "must_contain_any": [
+        "@total",
+        "@start",
+        "@end",
+        "@page_count",
+        "@current_page"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The extra_result area (id extra_result) renders a configurable result-summary string in a view header/footer. Supported tokens: @start, @end, @total, @label, @per_page, @current_page, @current_record_count, @page_count, @more.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "vex-known-cookie-key",
+      "mode": "introspection",
+      "prompt": "On this site there is a view with machine name vex_known. One of its contextual filters uses the views_extras 'cookie' default-argument plugin. Inspect the live view configuration and report the cookie key it is configured to read.",
+      "must_contain_any": [
+        "vex_ckey"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The nid argument of vex_known uses default_argument_type: cookie with cookie_key: vex_ckey (so it reads $_COOKIE['Drupal_visitor_vex_ckey']).",
+      "setup": "agent-module-documentation/evaluation/verify/vex-known-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/vex-known-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "vex-known-session-key",
+      "mode": "introspection",
+      "prompt": "The view vex_known on this site also has a contextual filter that uses the views_extras 'session' default-argument plugin. Inspect the live view config and report the session key it reads.",
+      "must_contain_any": [
+        "vex_skey"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The uid argument of vex_known uses default_argument_type: session with session_key: vex_skey.",
+      "setup": "agent-module-documentation/evaluation/verify/vex-known-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/vex-known-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "vex-set-cookie-arg",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site there is a view vex_task with a 'nid' contextual filter that currently provides a fixed default value. Using the views_extras module, reconfigure that contextual filter so its default value comes from a cookie instead (use the cookie default-argument plugin with any non-empty cookie key). Save the change to the live view.",
+      "reset": "agent-module-documentation/evaluation/verify/vex-cookie-arg-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/vex-cookie-arg-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/vex-cookie-arg-cleanup.sh",
+      "expected_output": "vex_task's nid argument has default_argument_type: cookie and a non-empty default_argument_options.cookie_key (set the argument's default value type to 'Cookie variable from cookie' and save the view)."
+    },
+    {
+      "id": "vex-add-extra-result",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this site there is a view vex_summary with an empty footer. Using the views_extras module, add its 'Extra Result summary' (extra_result) area handler to the view's footer so it shows a result count. Save the change to the live view.",
+      "reset": "agent-module-documentation/evaluation/verify/vex-extra-result-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/vex-extra-result-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/vex-extra-result-cleanup.sh",
+      "expected_output": "vex_summary's default display footer contains an area handler with plugin_id/field 'extra_result' (e.g. add the 'Extra Result summary' Global area to the footer, optionally with a content string like 'Displaying @start - @end of @total')."
+    }
+  ]
+}

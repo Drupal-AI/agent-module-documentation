@@ -1,0 +1,58 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "message_subscribe_example",
+  "version": "2.1.x",
+  "note": "message_subscribe_example is an EXAMPLE/starter submodule (documented briefly: 3 easy / 1 medium / 1 hard). It ships message templates create_node/publish_node/update_node/create_comment/user_register (with fields field_node_reference/field_comment_reference/field_user/field_published on the message entity) and implements hook_node_insert/hook_node_update/hook_comment_insert/hook_user_insert to build a Message and call message_subscribe.subscribers::sendMessage(); hook_message_subscribe_get_subscribers_alter() forces the email notifier and adds administrators. On a shared site its hooks fire on every node/comment/user insert, so it is kept UNINSTALLED at baseline; the medium/hard scripts enable it and then uninstall it in cleanup. The hard case relies on the fact that node_insert saves a publish_node message referencing a newly published node BEFORE sendMessage, so a message exists even with no subscribers.",
+  "evals": [
+    {
+      "id": "message_subscribe_example-hooks",
+      "mode": "recipe",
+      "prompt": "What does the message_subscribe_example module demonstrate, and which entity hook shows how to build a Message and notify subscribers when content is created?",
+      "must_contain_any": ["hook_node_insert", "node_insert", "sendMessage", "comment_insert"],
+      "must_not_contain": [],
+      "expected_output": "It is a copy-and-adapt reference implementation of the full Message + Message Notify + Message Subscribe stack. hook_node_insert() builds a publish_node/create_node Message and calls message_subscribe.subscribers::sendMessage(); it also implements hook_node_update, hook_comment_insert and hook_user_insert.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "message_subscribe_example-templates",
+      "mode": "recipe",
+      "prompt": "In the message_subscribe_example module, which message template is used when a brand new node is published, and which when a comment is added?",
+      "must_contain_any": ["publish_node", "create_comment", "create_node"],
+      "must_not_contain": [],
+      "expected_output": "A newly published node uses the publish_node template (an unpublished new node uses create_node); a new comment uses the create_comment template. The example ships create_node, publish_node, update_node, create_comment and user_register templates.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "message_subscribe_example-force-email",
+      "mode": "recipe",
+      "prompt": "How does the message_subscribe_example module make sure every subscriber is notified by email and that administrators are always included?",
+      "must_contain_any": ["get_subscribers_alter", "addNotifier", "administrators", "admin"],
+      "must_not_contain": [],
+      "expected_output": "In hook_message_subscribe_get_subscribers_alter() it loops the recipients calling $candidate->addNotifier('email'), and queries active users in the administrators role, adding each as a new DeliveryCandidate with the email notifier.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "message_subscribe_example-comment-template-live",
+      "mode": "introspection",
+      "prompt": "On this Drupal site, the message_subscribe_example module is enabled. When a comment is added, which message template does it use to build the notification message? Inspect the running site to answer.",
+      "must_contain_any": ["create_comment"],
+      "must_not_contain": [],
+      "expected_output": "create_comment. message_subscribe_example_comment_insert() builds a Message with template 'create_comment' (referencing the comment via field_comment_reference) and sends it.",
+      "setup": "agent-module-documentation/evaluation/verify/msexample-comment-template-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/msexample-comment-template-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "message_subscribe_example-publish-node",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site the message_subscribe_example module is enabled. Create a new published Article node titled exactly 'MS Example Task Node'. The example module should react to this and generate its published-node notification message referencing the node.",
+      "reset": "agent-module-documentation/evaluation/verify/msexample-publish-node-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/msexample-publish-node-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/msexample-publish-node-cleanup.sh",
+      "expected_output": "Create and save a published node of type article with title 'MS Example Task Node' (e.g. Node::create(['type'=>'article','title'=>'MS Example Task Node','status'=>1])->save() or via the UI). The example's hook_node_insert() then saves a 'publish_node' Message whose field_node_reference points at that node."
+    }
+  ]
+}

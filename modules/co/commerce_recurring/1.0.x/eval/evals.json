@@ -1,0 +1,95 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "commerce_recurring",
+  "version": "1.0.x",
+  "note": "Commerce Recurring adds subscriptions and recurring billing to Drupal Commerce. Central config is the commerce_billing_schedule config entity (config prefix commerce_recurring.commerce_billing_schedule.<id>) with fields: billingType (prepaid|postpaid), plugin (fixed|rolling), configuration (interval {number,unit in day/week/month/year}, trial_interval, and for fixed start_month/start_day), prorater (proportional|full_price), proraterConfiguration, retrySchedule (dunning days, default [1,3,5]), unpaidSubscriptionState (default canceled), combineSubscriptions. Subscriptions are commerce_subscription content entities with bundle = subscription type plugin (product_variation|standalone), driven by the subscription_default state_machine workflow (pending->trial->active->expired/canceled). Renewals run via commerce_recurring_cron() into the commerce_recurring Advanced Queue (jobs recurring_order_close, recurring_order_renew, subscription_activate); there are no Drush commands. All eval cases are grounded in the billing-schedule config entity (created/read/verified with drush) so nothing requires a live payment gateway.",
+  "evals": [
+    {
+      "id": "commerce_recurring-fixed-vs-rolling",
+      "mode": "recipe",
+      "prompt": "In Commerce Recurring's billing schedules there are two schedule plugins. What are they called and what is the difference between them?",
+      "must_contain_any": [
+        "fixed",
+        "rolling"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The two billing schedule plugins are 'fixed' and 'rolling'. Fixed aligns billing to a calendar anchor (e.g. always the 1st of the month, via start_month/start_day), while rolling counts the interval from each subscription's own start date.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "commerce_recurring-billing-type",
+      "mode": "recipe",
+      "prompt": "A Commerce Recurring billing schedule has a 'billing type' setting. What are the two possible values and what do they mean?",
+      "must_contain_any": [
+        "prepaid",
+        "postpaid"
+      ],
+      "must_not_contain": [],
+      "expected_output": "billingType is either 'prepaid' (default; charge in advance for the upcoming period) or 'postpaid' (charge after the elapsed period).",
+      "difficulty": "easy"
+    },
+    {
+      "id": "commerce_recurring-how-renewals-run",
+      "mode": "recipe",
+      "prompt": "In Commerce Recurring, what actually triggers recurring orders to be created and renewed on schedule? Is there a Drush command for it?",
+      "must_contain_any": [
+        "cron",
+        "advancedqueue",
+        "Advanced Queue",
+        "queue"
+      ],
+      "must_not_contain": [],
+      "expected_output": "commerce_recurring_cron() enqueues jobs into the 'commerce_recurring' Advanced Queue (recurring_order_close, recurring_order_renew, subscription_activate) which run on cron. There are no Drush commands; renewals depend on cron and the advancedqueue processor.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "commerce_recurring-known-billing-type",
+      "mode": "introspection",
+      "prompt": "This Drupal Commerce site has a billing schedule with the machine id 'cr_known'. Inspect the live configuration and state its billing type (prepaid or postpaid) and which schedule plugin (fixed or rolling) it uses.",
+      "must_contain_any": [
+        "postpaid"
+      ],
+      "must_not_contain": [],
+      "expected_output": "cr_known uses billingType 'postpaid' and the 'fixed' schedule plugin (config commerce_recurring.commerce_billing_schedule.cr_known).",
+      "setup": "agent-module-documentation/evaluation/verify/commerce_recurring-known-schedule-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/commerce_recurring-known-schedule-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "commerce_recurring-known-unpaid-state",
+      "mode": "introspection",
+      "prompt": "This site has a Commerce Recurring billing schedule with the machine id 'cr_dunning'. Inspect the live configuration and state which subscription state a subscription is moved to once its payment retries are exhausted (the unpaid subscription state).",
+      "must_contain_any": [
+        "expired"
+      ],
+      "must_not_contain": [],
+      "expected_output": "cr_dunning has unpaidSubscriptionState = 'expired' (and a retrySchedule of [2, 4, 6]); when retries are exhausted the subscription is expired rather than the default 'canceled'.",
+      "setup": "agent-module-documentation/evaluation/verify/commerce_recurring-dunning-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/commerce_recurring-dunning-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "commerce_recurring-create-rolling",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal Commerce site, use Commerce Recurring to create a billing schedule with the machine id 'cr_task' that bills every 1 month on a rolling interval (counted from each subscription's start date) and charges prepaid. Save it to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/commerce_recurring-create-rolling-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/commerce_recurring-create-rolling-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/commerce_recurring-create-rolling-cleanup.sh",
+      "expected_output": "A commerce_billing_schedule config entity id=cr_task with plugin=rolling, configuration.interval = {number:1, unit:month}, billingType=prepaid (e.g. BillingSchedule::create([... 'plugin'=>'rolling', 'configuration'=>['interval'=>['number'=>1,'unit'=>'month'],'trial_interval'=>[]], 'billingType'=>'prepaid', 'prorater'=>'proportional'])->save())."
+    },
+    {
+      "id": "commerce_recurring-create-trial",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "site-owner",
+      "prompt": "I sell a monthly membership and want new customers to get a 14-day free trial before their first charge. Using the Commerce Recurring module, create a billing schedule with the machine id 'cr_trial' for a monthly subscription that includes a 14-day trial period, and save it on the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/commerce_recurring-create-trial-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/commerce_recurring-create-trial-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/commerce_recurring-create-trial-cleanup.sh",
+      "expected_output": "A commerce_billing_schedule config entity id=cr_trial whose plugin configuration has a non-empty trial_interval of {number:14, unit:day} on a monthly interval (e.g. configuration.interval={number:1,unit:month}, configuration.trial_interval={number:14,unit:day}); a non-empty trial_interval makes allowTrials() true so subscriptions start in the trial state."
+    }
+  ]
+}

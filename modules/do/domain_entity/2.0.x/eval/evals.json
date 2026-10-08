@@ -1,0 +1,80 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "domain_entity",
+  "version": "2.0.x",
+  "note": "Domain Access Entity adds a real entity_reference field named 'domain_access' (target type domain, cardinality unlimited) to entity types you enable, via the domain_entity.mapper service. 'Enabled' = the domain_access field storage exists for that type (getEnabledEntityTypes / loadFieldStorage). Admin UI at /admin/config/domain/entities (route domain_entity.ui, permission 'administer domains'); per-type per-bundle settings at domain_entity.settings with behavior auto|user. Global config domain_entity.settings.bypass_access_conditions (default false) disables filtering. Medium introspection enables domain access on taxonomy_term and the agent reports which entity types are enabled; hard execution enables domain access on the user entity type, verified by the field storage existing. Fixtures use their own entity types (taxonomy_term/user) to avoid touching menu_link_content, which the domain_menu_access submodule owns. Scripts delete only the domain_access storage they create — never an unscoped field sweep.",
+  "evals": [
+    {
+      "id": "domain_entity-field-name",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "The domain_entity (Domain Access Entity) module makes an entity type domain-aware by adding a field. What is the field's machine name, what type is it, and what does it reference?",
+      "must_contain_any": ["domain_access", "entity_reference", "entity reference", "domain"],
+      "must_not_contain": [],
+      "expected_output": "It adds a field named 'domain_access' (DomainEntityMapper::FIELD_NAME), an entity_reference field targeting 'domain' entities with unlimited cardinality. An entity is accessible only on the domain(s) this field references (empty = all domains)."
+    },
+    {
+      "id": "domain_entity-ui-route",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "Where do you enable domain access on an entity type with domain_entity, and what permission does that admin form require?",
+      "must_contain_any": ["/admin/config/domain/entities", "domain_entity.ui", "administer domains"],
+      "must_not_contain": [],
+      "expected_output": "At /admin/config/domain/entities (route domain_entity.ui), a tableselect of fieldable entity types; the form requires the 'administer domains' permission. Ticking a type creates its domain_access field storage."
+    },
+    {
+      "id": "domain_entity-behaviors",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "With domain_entity, what are the two per-bundle assignment 'behaviors' for the domain field, and how do they differ on the entity creation form?",
+      "must_contain_any": ["auto", "user", "BEHAVIOR_AUTO", "BEHAVIOR_USER"],
+      "must_not_contain": [],
+      "expected_output": "auto (BEHAVIOR_AUTO): a new entity is automatically affiliated to the current domain with no widget on the form. user (BEHAVIOR_USER): an options_buttons widget lets the editor choose the affiliate domain(s), with a default value. The choice is stored in the field's third_party_settings.domain_entity.behavior."
+    },
+    {
+      "id": "domain_entity-enabled-types",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "On this Drupal site, domain access has been enabled (via domain_entity) on a non-node entity type in addition to any defaults. Inspect the live site and name every entity type that currently has domain_entity domain access enabled (i.e. has the domain_access field storage).",
+      "must_contain_any": ["taxonomy_term"],
+      "must_not_contain": [],
+      "expected_output": "taxonomy_term is enabled (a field.storage.taxonomy_term.domain_access exists); menu_link_content is also enabled because the domain_menu_access submodule ships it. Use domain_entity.mapper::getEnabledEntityTypes() or list field_storage_config ids ending in .domain_access.",
+      "setup": "agent-module-documentation/evaluation/verify/domain_entity-enabled-types-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/domain_entity-enabled-types-cleanup.sh"
+    },
+    {
+      "id": "domain_entity-enable-user-type",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this site, use the domain_entity module to enable Domain Access on the 'user' entity type, so users can be affiliated to specific domains. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/domain_entity-enable-user-type-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/domain_entity-enable-user-type-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/domain_entity-enable-user-type-cleanup.sh",
+      "expected_output": "A domain_access field storage now exists for the user entity type (field.storage.user.domain_access), e.g. via domain_entity.mapper::createFieldStorage('user') or by ticking 'user' at /admin/config/domain/entities. getEnabledEntityTypes() includes 'user'."
+    },
+    {
+      "id": "domain_entity-known-bypass",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "On this site the global domain_entity access filtering has been toggled. Inspect the live configuration and state whether domain_entity's access rules are currently bypassed (disabled).",
+      "must_contain_any": ["true", "bypassed", "disabled", "bypass_access_conditions"],
+      "must_not_contain": [],
+      "expected_output": "Yes, they are bypassed: config domain_entity.settings has bypass_access_conditions = true (drush cget domain_entity.settings bypass_access_conditions), so the query alter / access filtering is disabled.",
+      "setup": "agent-module-documentation/evaluation/verify/domain_entity-known-bypass-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/domain_entity-known-bypass-cleanup.sh"
+    },
+    {
+      "id": "domain_entity-enable-term-type",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this site, use the domain_entity module to enable Domain Access on the 'taxonomy_term' entity type, so taxonomy terms can be affiliated to specific domains. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/domain_entity-enable-term-type-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/domain_entity-enable-term-type-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/domain_entity-enable-term-type-cleanup.sh",
+      "expected_output": "A domain_access field storage now exists for taxonomy_term (field.storage.taxonomy_term.domain_access), e.g. via domain_entity.mapper::createFieldStorage('taxonomy_term'). getEnabledEntityTypes() includes 'taxonomy_term'."
+    }
+  ]
+}

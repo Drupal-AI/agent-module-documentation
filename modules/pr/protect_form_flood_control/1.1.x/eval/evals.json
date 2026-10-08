@@ -1,0 +1,80 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "protect_form_flood_control",
+  "version": "1.1.x",
+  "note": "All configuration is the single config object protect_form_flood_control.settings (general.protect_all, general.window, general.threshold, general.protected_ids, general.unprotected_ids, general.whitelist, general.log, forms[], show_ids). Protection is enforced by attaching a validate callback that uses core's flood service (isAllowed/register). Medium/hard cases are grounded in that real config object; scripts write explicit values and cleanup/reset restore the shipped install defaults (protect_all false, window 86400, threshold 50, protected_ids/unprotected_ids empty, whitelist [127.0.0.1], log false, forms {}, show_ids false).",
+  "evals": [
+    {
+      "id": "pfffc-window-threshold",
+      "mode": "recipe",
+      "prompt": "In the Drupal module Protect Form Flood Control, which config object holds the settings, and which keys define the default time window and the default maximum number of submissions per window?",
+      "must_contain_any": ["general.window", "general.threshold", "protect_form_flood_control.settings"],
+      "must_not_contain": [],
+      "expected_output": "The config object is protect_form_flood_control.settings. general.window (seconds) is the default flood window and general.threshold is the default max submissions per window (shipped defaults 86400 and 50).",
+      "difficulty": "easy"
+    },
+    {
+      "id": "pfffc-flood-service",
+      "mode": "recipe",
+      "prompt": "How does Protect Form Flood Control actually enforce the limit on a protected form, and what does a user see when the limit is exceeded? Which core service does it rely on?",
+      "must_contain_any": ["flood", "isAllowed"],
+      "must_not_contain": [],
+      "expected_output": "It attaches a validate callback that calls core's flood service: flood->isAllowed(event, threshold, window). If not allowed it sets a form error ('You cannot submit the form more than N times in ...'); otherwise it registers the submission with flood->register().",
+      "difficulty": "easy"
+    },
+    {
+      "id": "pfffc-protect-all-exempt",
+      "mode": "recipe",
+      "prompt": "In Protect Form Flood Control, how do I protect every form on the site at once, and which categories of forms are always exempt from protection?",
+      "must_contain_any": ["protect_all", "system_", "views_exposed_form_", "search_"],
+      "must_not_contain": [],
+      "expected_output": "Set general.protect_all to true (protects all forms except an unprotected_ids exclusion list). Core system_*, search_* and views_exposed_form_* forms are always exempt, as is the module's own settings form.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "pfffc-threshold-read",
+      "mode": "introspection",
+      "prompt": "On this Drupal site, Protect Form Flood Control's default submission threshold has been changed from the shipped value. Inspect the live protect_form_flood_control.settings config and report the current default threshold (max submissions per window).",
+      "must_contain_any": ["7"],
+      "must_not_contain": [],
+      "expected_output": "The default threshold is 7: protect_form_flood_control.settings general.threshold = 7.",
+      "setup": "agent-module-documentation/evaluation/verify/protect_form_flood_control-threshold-read-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/protect_form_flood_control-threshold-read-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "pfffc-protected-ids-read",
+      "mode": "introspection",
+      "prompt": "On this Drupal site, Protect Form Flood Control has been configured to protect a specific form by its form ID (protect_all is off). Inspect the live protect_form_flood_control.settings config and report which form ID is in the protected list.",
+      "must_contain_any": ["user_register_form"],
+      "must_not_contain": [],
+      "expected_output": "The protected form ID is user_register_form: it is listed in protect_form_flood_control.settings general.protected_ids while general.protect_all is false.",
+      "setup": "agent-module-documentation/evaluation/verify/protect_form_flood_control-protected-ids-read-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/protect_form_flood_control-protected-ids-read-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "pfffc-enable-protect-all",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, configure Protect Form Flood Control to protect all forms site-wide. Apply the change to the live protect_form_flood_control.settings configuration.",
+      "reset": "agent-module-documentation/evaluation/verify/protect_form_flood_control-enable-protect-all-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/protect_form_flood_control-enable-protect-all-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/protect_form_flood_control-enable-protect-all-cleanup.sh",
+      "expected_output": "protect_form_flood_control.settings general.protect_all = true (e.g. drush cset protect_form_flood_control.settings general.protect_all 1, or tick 'Protect all forms' on the settings form)."
+    },
+    {
+      "id": "pfffc-protect-contact-form",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site (Protect Form Flood Control is not in protect-all mode), configure it to flood-protect the site-wide contact form, whose form ID is contact_message_feedback_form, by adding it to the protected form IDs. Apply the change to the live configuration.",
+      "reset": "agent-module-documentation/evaluation/verify/protect_form_flood_control-protect-contact-form-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/protect_form_flood_control-protect-contact-form-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/protect_form_flood_control-protect-contact-form-cleanup.sh",
+      "expected_output": "protect_form_flood_control.settings general.protected_ids contains 'contact_message_feedback_form' (with general.protect_all still false)."
+    }
+  ]
+}

@@ -1,0 +1,98 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "registration",
+  "version": "3.4.x",
+  "note": "Registration adds a `registration` field type to host bundles; the field stores a `registration_type` config entity (keys: workflow, defaultState, heldExpireTime, heldExpireState). Each host gets a per-host `registration_settings` content entity (capacity, status, open, close, maximum_spaces, multiple_registrations, reminder_*, confirmation). Global behaviour lives in the `registration.settings` config object at /admin/structure/registration-settings. Cases are grounded in this real config: introspection reads back a known registration_type / global setting; execution builds a registration_type and a registration field, verified against live config.",
+  "evals": [
+    {
+      "id": "registration-enable-on-entity",
+      "mode": "recipe",
+      "prompt": "Using the Drupal contrib Registration module, how do you make a content type such as an Event node accept registrations? What field type do you add to the bundle, and what does that field store / how do you restrict which kinds of registration it accepts?",
+      "must_contain_any": [
+        "allowed_types",
+        "registration_type",
+        "field of type",
+        "Registration field"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Add a field of type `registration` to the bundle (e.g. node.event). The field stores the id of the `registration_type` that applies; the field-storage setting `allowed_types` restricts which registration types may be selected. Once a host has a registration field it gains register / manage_registrations / registration_settings routes.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "registration-type-keys",
+      "mode": "recipe",
+      "prompt": "In the Registration module, what is a `registration_type` config entity for, and which of its properties control the workflow used, the state new registrations start in, and how long a held registration is kept before expiring (and to which state)?",
+      "must_contain_any": [
+        "defaultState",
+        "heldExpireTime",
+        "heldExpireState",
+        "workflow"
+      ],
+      "must_not_contain": [],
+      "expected_output": "A registration_type (config prefix registration.type.<id>) binds a Workflow and hold behaviour. `workflow` = the workflows.workflow id; `defaultState` = the starting state (default pending); `heldExpireTime` = hours a held registration is kept; `heldExpireState` = the state it moves to when it expires (e.g. canceled).",
+      "difficulty": "easy"
+    },
+    {
+      "id": "registration-host-limits",
+      "mode": "recipe",
+      "prompt": "In the Registration module, which per-host registration settings limit the total number of people who can register for an event and the time window during which registration is allowed? Name the relevant `registration_settings` fields.",
+      "must_contain_any": [
+        "capacity",
+        "open",
+        "close"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The per-host registration_settings entity holds `capacity` (total spaces, 0 = unlimited), and `open` / `close` datetime fields for the registration window; `status` enables registration, and `maximum_spaces` caps spaces per single registration.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "registration-known-type",
+      "mode": "introspection",
+      "prompt": "This Drupal site has a registration type with machine name `reg_known`. Inspect the live configuration and state how many hours a held registration of this type is kept before it expires (its hold expiration time).",
+      "must_contain_any": [
+        "72"
+      ],
+      "must_not_contain": [],
+      "setup": "agent-module-documentation/evaluation/verify/registration-known-type-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/registration-known-type-cleanup.sh",
+      "expected_output": "72 hours: registration.type.reg_known has heldExpireTime: 72 (and heldExpireState: canceled, defaultState: pending).",
+      "difficulty": "medium"
+    },
+    {
+      "id": "registration-global-queue-threshold",
+      "mode": "introspection",
+      "prompt": "On this site, inspect the Registration module's global settings and report the current value of the notification queue threshold (the recipient count above which registrant notifications are queued rather than sent immediately).",
+      "must_contain_any": [
+        "25"
+      ],
+      "must_not_contain": [],
+      "setup": "agent-module-documentation/evaluation/verify/registration-global-settings-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/registration-global-settings-cleanup.sh",
+      "expected_output": "25: registration.settings has queue_notifications: 25 (read via `drush cget registration.settings queue_notifications`).",
+      "difficulty": "medium"
+    },
+    {
+      "id": "registration-build-type",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, create a Registration type with machine name `reg_build` and label 'Reg Build' that uses the `registration` workflow, starts new registrations in the `pending` state, and expires held registrations after 24 hours by moving them to the `canceled` state. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/registration-build-type-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/registration-build-type-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/registration-build-type-cleanup.sh",
+      "expected_output": "A registration.type.reg_build config entity exists with workflow=registration, defaultState=pending, heldExpireTime=24, heldExpireState=canceled (e.g. RegistrationType::create([...])->save())."
+    },
+    {
+      "id": "registration-add-field",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, make the Article content type accept registrations by adding a field named `field_reg_event` of the Registration field type to node.article, and apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/registration-field-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/registration-field-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/registration-field-cleanup.sh",
+      "expected_output": "node.article has a field field_reg_event whose storage type is `registration` (FieldStorageConfig type=registration + a FieldConfig on the article bundle)."
+    }
+  ]
+}

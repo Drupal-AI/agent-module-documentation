@@ -1,0 +1,80 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "quiz",
+  "version": "7.1.x",
+  "note": "Quiz 7.x is entity-based (Drupal 10/11). Global behaviour is quiz.settings (edited at /admin/quiz/config/quiz via QuizAdminForm; keys incl. has_timer, autotitle_length, revisioning, durod, remove_invalid_quiz_record, admin_review_options_end). Per-quiz behaviour is base fields on the quiz content entity (pass_rate, takes, randomization, time_limit, backwards_navigation, allow_* ...). Question types are plugins in Plugin/quiz/QuizQuestion/ with the #[QuizQuestion] attribute plus a matching quiz.question.type.<id> config entity (bundle of quiz_question). The module ships NO Drush commands. Medium/hard cases are grounded in the real quiz.settings config and real quiz content entities (created with required fields type/title/randomization/keep_results/build_on_last/result_type).",
+  "evals": [
+    {
+      "id": "quiz-needs-question-type",
+      "mode": "recipe",
+      "prompt": "I enabled the Drupal Quiz module but I cannot create any questions. What else must be enabled, and technically how does Quiz discover a question type (where does the plugin live and what registers it)?",
+      "must_contain_any": ["question type", "QuizQuestion", "Plugin/quiz", "quiz_question_type", "quiz_multichoice"],
+      "must_not_contain": [],
+      "expected_output": "Quiz needs at least one question-type submodule enabled (quiz_multichoice, quiz_truefalse, quiz_short_answer, quiz_long_answer, quiz_matching). A question type is a plugin class in a module's Plugin/quiz/QuizQuestion/ namespace annotated with the #[QuizQuestion(id=...)] attribute (discovered by plugin.manager.quiz.question), paired with a matching quiz.question.type.<id> config entity (a bundle of quiz_question).",
+      "difficulty": "easy"
+    },
+    {
+      "id": "quiz-timer-setting",
+      "mode": "recipe",
+      "prompt": "On a Drupal site using the Quiz module, where is the global 'show a countdown timer' option stored, what is the config key, and which admin page toggles it?",
+      "must_contain_any": ["quiz.settings", "has_timer", "/admin/quiz/config/quiz", "QuizAdminForm"],
+      "must_not_contain": [],
+      "expected_output": "It is the has_timer key in the quiz.settings config object (with timer_format for the display). Toggle it on the global Quiz settings form at /admin/quiz/config/quiz (route quiz.admin.settings, QuizAdminForm), which needs the 'administer quiz configuration' permission.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "quiz-limit-attempts",
+      "mode": "recipe",
+      "prompt": "Using the Quiz module, how do I limit how many times a user can take a specific quiz and set the grade needed to pass? Are these global settings or per-quiz?",
+      "must_contain_any": ["takes", "pass_rate", "pass rate", "attempts", "per-quiz", "base field"],
+      "must_not_contain": [],
+      "expected_output": "These are per-quiz base fields on the quiz entity, set on the quiz add/edit form: 'takes' (allowed number of attempts, 0 = unlimited) and 'pass_rate' (grade required to pass, with use_passfail enabled globally). They are not in quiz.settings.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "quiz-read-autotitle",
+      "mode": "introspection",
+      "prompt": "On this Drupal site, the Quiz module's global settings have a non-default auto-title length configured. Inspect the live configuration and report the current autotitle_length value.",
+      "must_contain_any": ["77"],
+      "must_not_contain": [],
+      "expected_output": "quiz.settings autotitle_length is 77 (drush cget quiz.settings autotitle_length). The shipped default is 128.",
+      "setup": "agent-module-documentation/evaluation/verify/quiz-autotitle-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/quiz-autotitle-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "quiz-read-passrate",
+      "mode": "introspection",
+      "prompt": "This site has a quiz titled 'quiz_probe'. Inspect the live quiz entity and report the grade percentage required to pass it (its pass rate).",
+      "must_contain_any": ["63"],
+      "must_not_contain": [],
+      "expected_output": "The quiz_probe quiz entity has pass_rate = 63 (its 'Grade required to pass' base field).",
+      "setup": "agent-module-documentation/evaluation/verify/quiz-passrate-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/quiz-passrate-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "quiz-create-quiz",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, create a Quiz (a quiz content entity of type 'quiz') titled exactly 'quiz_task' with a pass rate of 80 and unlimited attempts. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/quiz-make-quiz-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/quiz-make-quiz-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/quiz-make-quiz-reset.sh",
+      "expected_output": "A quiz entity (type quiz) titled quiz_task exists with pass_rate=80 and takes=0 (unlimited). Required fields on create: type, title, randomization, keep_results, build_on_last, result_type=quiz_result."
+    },
+    {
+      "id": "quiz-enable-timer",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, enable the Quiz module's global countdown timer so that quizzes can show a timer. Apply the change to the live site's configuration.",
+      "reset": "agent-module-documentation/evaluation/verify/quiz-enable-timer-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/quiz-enable-timer-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/quiz-enable-timer-reset.sh",
+      "expected_output": "quiz.settings has_timer is set to TRUE (drush cset quiz.settings has_timer 1), enabling the global quiz timer."
+    }
+  ]
+}

@@ -1,0 +1,97 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "ga4_google_analytics",
+  "version": "1.1.x",
+  "note": "GA4 Google Analytics injects the gtag.js snippet site-wide from a single Measurement ID. All persistent state is the simple config object ga4_google_analytics.config (keys: measurement_id, scripts_custom_attributes, ga4_access_roles [sequence of role IDs], ga4_access_pages [core request_path condition: id/negate/pages]). The module ships NO config/install default, so the object does not exist on a fresh install. Config route ga4_google_analytics.configure at /admin/config/services/ga4-google-analytics, gated by the misspelled permission 'ga4 configre'. It defines no plugins, services, or Drush commands. GA4 itself is an external service, so all eval cases are grounded in the local Drupal config only (never on live analytics traffic): introspection reads back the configured Measurement ID / scope; execution writes the config and is verified against the live config object.",
+  "evals": [
+    {
+      "id": "ga4-config-object",
+      "mode": "recipe",
+      "prompt": "In the Drupal contrib module ga4_google_analytics, which configuration object stores the GA4 settings, and what is the name of the key that holds the GA4 Measurement ID (the G-XXXXXXXXXX value)?",
+      "must_contain_any": [
+        "ga4_google_analytics.config",
+        "measurement_id"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Settings live in the simple config object ga4_google_analytics.config, and the Measurement ID is stored under the key measurement_id (other keys: scripts_custom_attributes, ga4_access_roles, ga4_access_pages).",
+      "difficulty": "easy"
+    },
+    {
+      "id": "ga4-visibility-controls",
+      "mode": "recipe",
+      "prompt": "With the ga4_google_analytics module, how do I limit GA4 tracking to only certain pages or only certain user roles? Name the config keys involved and how the page condition decides which pages are tracked.",
+      "must_contain_any": [
+        "ga4_access_pages",
+        "ga4_access_roles",
+        "request_path",
+        "negate"
+      ],
+      "must_not_contain": [],
+      "expected_output": "ga4_access_roles is a list of role IDs (empty => all users). ga4_access_pages is a core request_path condition config (id/negate/pages): with negate false only the listed pages are tracked, with negate true every page except the listed ones is tracked. Tracking only fires when both the role and page conditions pass.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "ga4-klaro-attributes",
+      "mode": "recipe",
+      "prompt": "I use the Klaro cookie-consent module and need the ga4_google_analytics gtag.js script to be blocked until the visitor consents. Which setting on the GA4 settings form do I use, and what kind of attribute values are allowed there?",
+      "must_contain_any": [
+        "scripts_custom_attributes",
+        "Custom Attributes",
+        "type=\"text/plain\"",
+        "data-name"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Use the GA4 Scripts Custom Attributes field (config key scripts_custom_attributes), e.g. type=\"text/plain\" data-type=\"application/javascript\" data-name=\"ga\". Only async, type=\"…\", data-*=\"…\", and crossorigin=\"anonymous\" pass the form's allow-list validation; Klaro then blocks the tagged script until consent.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "ga4-known-id",
+      "mode": "introspection",
+      "prompt": "On this Drupal site, the ga4_google_analytics module has already been configured with a GA4 Measurement ID. Inspect the live configuration and report the exact Measurement ID that is set.",
+      "must_contain_any": [
+        "G-DEMO7A4B2C"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The Measurement ID is G-DEMO7A4B2C, stored at ga4_google_analytics.config -> measurement_id (readable with `drush cget ga4_google_analytics.config measurement_id`).",
+      "setup": "agent-module-documentation/evaluation/verify/ga4_google_analytics-known-id-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/ga4_google_analytics-known-id-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "ga4-known-scope",
+      "mode": "introspection",
+      "prompt": "The ga4_google_analytics module on this site restricts GA4 tracking to a single user role. Inspect the live configuration and state which role the tracking is limited to.",
+      "must_contain_any": [
+        "administrator"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Tracking is limited to the administrator role: ga4_google_analytics.config -> ga4_access_roles is ['administrator'] (and ga4_access_pages excludes /admin/* and /user/* with negate true).",
+      "setup": "agent-module-documentation/evaluation/verify/ga4_google_analytics-known-scope-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/ga4_google_analytics-known-scope-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "ga4-set-id",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, configure the ga4_google_analytics module to track with the GA4 Measurement ID G-EXEC55TEST. Apply the change to the live site so the tracking snippet would use that ID.",
+      "reset": "agent-module-documentation/evaluation/verify/ga4_google_analytics-set-id-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/ga4_google_analytics-set-id-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/ga4_google_analytics-set-id-cleanup.sh",
+      "expected_output": "Set ga4_google_analytics.config -> measurement_id to G-EXEC55TEST (e.g. `drush cset ga4_google_analytics.config measurement_id G-EXEC55TEST -y`, or via the settings form / configFactory)."
+    },
+    {
+      "id": "ga4-restrict-pages",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-layman",
+      "prompt": "GA4 tracking is currently running on every page of my site. I only want it to run on my blog — the /blog page and anything under /blog/. Change the ga4_google_analytics settings so analytics only fires on those blog pages.",
+      "reset": "agent-module-documentation/evaluation/verify/ga4_google_analytics-restrict-pages-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/ga4_google_analytics-restrict-pages-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/ga4_google_analytics-restrict-pages-cleanup.sh",
+      "expected_output": "In ga4_google_analytics.config set ga4_access_pages to a request_path condition with negate FALSE (track only listed pages) and pages containing /blog and /blog/* (one per line). Because negate is false, only the listed blog paths are tracked."
+    }
+  ]
+}

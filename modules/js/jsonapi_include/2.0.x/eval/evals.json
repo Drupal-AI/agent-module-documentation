@@ -1,0 +1,99 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "jsonapi_include",
+  "version": "2.0.x",
+  "note": "JSON:API Include flattens include-d related entities into the parent's fields via a RESPONSE subscriber (jsonapi_include.response) running the jsonapi_include.parse service (JsonapiParse). Its entire persistent config is one boolean, jsonapi_include.settings:use_include_query (default false = flatten every JSON:API response; true = opt-in, only flatten requests carrying ?jsonapi_include=1). Configure form route jsonapi_include.settings at /admin/config/services/jsonapi/include. Medium/hard cases are grounded in that real config key; hard cases toggle it and verify the live value strictly.",
+  "evals": [
+    {
+      "id": "jsonapi_include-default-behavior",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "On a Drupal site with the jsonapi_include module enabled and default settings, does it flatten every JSON:API response or only some? If I want it to flatten only when the client explicitly asks, what setting do I change and what does the client then send?",
+      "must_contain_any": [
+        "use_include_query",
+        "jsonapi_include=1"
+      ],
+      "must_not_contain": [],
+      "expected_output": "By default (use_include_query=false) it flattens EVERY JSON:API response. Enable 'use_include_query' (jsonapi_include.settings) to switch to opt-in mode, where only requests with jsonapi_include=1 in the query string (e.g. ?include=field_tags&jsonapi_include=1) are flattened."
+    },
+    {
+      "id": "jsonapi_include-what-it-does",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "What does the jsonapi_include module change about a JSON:API response, compared to core JSON:API's output for an included entity reference?",
+      "must_contain_any": [
+        "flatten",
+        "merge",
+        "inline",
+        "included",
+        "relationships"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Core JSON:API returns a compound document: references appear as {type,id} linkage under 'relationships' and the full resources sit in a top-level 'included' array. jsonapi_include merges/flattens each included resource directly into the parent entity's field, so the client reads the referenced data inline instead of stitching the 'included' array."
+    },
+    {
+      "id": "jsonapi_include-customize-service",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "I need to customize how jsonapi_include parses/reshapes the JSON:API response. Which service is responsible and how do I override it?",
+      "must_contain_any": [
+        "jsonapi_include.parse",
+        "JsonapiParse"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The parsing is done by the jsonapi_include.parse service (class Drupal\\jsonapi_include\\JsonapiParse, implementing JsonapiParseInterface). Override it with a ServiceProvider that swaps the class for a subclass of JsonapiParse, or otherwise decorate/replace the service."
+    },
+    {
+      "id": "jsonapi_include-current-mode",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "On this Drupal site, is jsonapi_include currently flattening every JSON:API response, or only requests that opt in? Inspect the live configuration and state which mode is active and the config key that controls it.",
+      "must_contain_any": [
+        "opt-in",
+        "opt in",
+        "jsonapi_include=1",
+        "use_include_query"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Opt-in mode is active: jsonapi_include.settings use_include_query is true, so only requests with ?jsonapi_include=1 are flattened. (drush cget jsonapi_include.settings use_include_query -> true).",
+      "setup": "agent-module-documentation/evaluation/verify/jsonapi_include-optin-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/jsonapi_include-optin-cleanup.sh"
+    },
+    {
+      "id": "jsonapi_include-required-query-arg",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "A developer wants a JSON:API request against this site to come back with related entities flattened into the fields. Given the site's current jsonapi_include configuration, what exactly must they add to the request URL (if anything) for that to happen?",
+      "must_contain_any": [
+        "jsonapi_include=1"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Because use_include_query is currently true (opt-in mode), the request must include the query parameter jsonapi_include=1, e.g. /jsonapi/node/article?include=field_tags&jsonapi_include=1. Without it the response is the raw compound document.",
+      "setup": "agent-module-documentation/evaluation/verify/jsonapi_include-optin-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/jsonapi_include-optin-cleanup.sh"
+    },
+    {
+      "id": "jsonapi_include-enable-optin",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "This site currently flattens every JSON:API response. Existing API consumers depend on the raw compound format, so reconfigure jsonapi_include so it only flattens responses when the client explicitly requests it with jsonapi_include=1. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/jsonapi_include-set-optin-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/jsonapi_include-set-optin-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/jsonapi_include-set-optin-cleanup.sh",
+      "expected_output": "jsonapi_include.settings use_include_query is set to true (e.g. drush cset jsonapi_include.settings use_include_query true, or tick 'Use jsonapi_include query in url' on the settings form)."
+    },
+    {
+      "id": "jsonapi_include-flatten-all",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "This site's jsonapi_include is in opt-in mode (clients must send jsonapi_include=1). The team now wants every JSON:API response flattened automatically, with no query parameter required. Reconfigure jsonapi_include accordingly on the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/jsonapi_include-flatten-all-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/jsonapi_include-flatten-all-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/jsonapi_include-flatten-all-cleanup.sh",
+      "expected_output": "jsonapi_include.settings use_include_query is set to false (e.g. drush cset jsonapi_include.settings use_include_query false, or untick 'Use jsonapi_include query in url'), so all JSON:API responses are flattened."
+    }
+  ]
+}

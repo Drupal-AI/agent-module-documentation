@@ -1,0 +1,102 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "cloudflare",
+  "version": "2.0.x",
+  "note": "Cloudflare integrates Drupal with the Cloudflare CDN. Config object cloudflare.settings: auth_using ('token' -> api_token, Authorization: Bearer; or 'key' -> apikey + email, X-Auth-Key/X-Auth-Email), zones, valid_credentials, client_ip_restore_enabled, remote_addr_validate, bypass_host. Config UI is a CTools wizard at /admin/config/services/cloudflare (route cloudflare.admin_settings_form, permission 'administer cloudflare'). Services: cloudflare.api_client (CloudflareApiClient), cloudflare.state (State), http_middleware.cloudflare (CloudFlareMiddleware, restores the visitor IP from CF-Connecting-IP/CF-Visitor). Purging is in the cloudflarepurger submodule. Requires ctools. Evals are grounded ONLY in local config (no external Cloudflare API calls): reset/cleanup restore the shipped cloudflare.settings defaults explicitly (client_ip_restore_enabled false, remote_addr_validate true, bypass_host '', valid_credentials false, zones {}, auth_using token, api_token '', apikey '', email '').",
+  "evals": [
+    {
+      "id": "cloudflare-auth-methods",
+      "mode": "recipe",
+      "prompt": "What authentication methods does the Drupal cloudflare module support for the Cloudflare API, which config keys hold the credentials, and where do I configure them?",
+      "must_contain_any": [
+        "token",
+        "api_token",
+        "apikey",
+        "auth_using",
+        "/admin/config/services/cloudflare"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Two methods, selected by auth_using: 'token' uses api_token (sent as Authorization: Bearer) and 'key' uses apikey + email (sent as X-Auth-Key / X-Auth-Email). Configure them in the wizard at /admin/config/services/cloudflare (route cloudflare.admin_settings_form, permission 'administer cloudflare'), stored in cloudflare.settings.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "cloudflare-client-ip",
+      "mode": "recipe",
+      "prompt": "How does the cloudflare module make Drupal see a visitor's real IP address instead of Cloudflare's, and which config keys control that behavior?",
+      "must_contain_any": [
+        "client_ip_restore_enabled",
+        "CF-Connecting-IP",
+        "CF_CONNECTING_IP",
+        "bypass_host",
+        "remote_addr_validate",
+        "middleware"
+      ],
+      "must_not_contain": [],
+      "expected_output": "An HTTP middleware (http_middleware.cloudflare / CloudFlareMiddleware) reads Cloudflare's CF-Connecting-IP / CF-Visitor headers and rewrites the request client IP when client_ip_restore_enabled is true. remote_addr_validate makes it verify the incoming IP is a real Cloudflare edge IP, and bypass_host names an origin host allowed to bypass Cloudflare.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "cloudflare-purging-location",
+      "mode": "recipe",
+      "prompt": "Does the base cloudflare module clear the Cloudflare CDN cache itself? If not, what do I need to enable to purge the Cloudflare cache from Drupal?",
+      "must_contain_any": [
+        "cloudflarepurger",
+        "Purge",
+        "purge"
+      ],
+      "must_not_contain": [],
+      "expected_output": "No; the base module handles API auth and client-IP restoration. Cache purging (by tag, URL, or everything) is provided by the cloudflarepurger submodule, which requires the Purge module.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "cloudflare-known-auth",
+      "mode": "introspection",
+      "prompt": "On this Drupal site, inspect the live cloudflare configuration and tell me which authentication method (token or key) is configured, and the email address it is set to use.",
+      "must_contain_any": [
+        "key",
+        "cf-admin@example.com"
+      ],
+      "must_not_contain": [],
+      "expected_output": "cloudflare.settings has auth_using: key (API key + email authentication) with email cf-admin@example.com.",
+      "setup": "agent-module-documentation/evaluation/verify/cloudflare-known-auth-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/cloudflare-known-auth-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "cloudflare-known-ipbypass",
+      "mode": "introspection",
+      "prompt": "Inspect this site's live cloudflare configuration: is client IP restoration enabled, and which host (if any) is configured to bypass Cloudflare?",
+      "must_contain_any": [
+        "backend.internal.example"
+      ],
+      "must_not_contain": [],
+      "expected_output": "client_ip_restore_enabled is true and bypass_host is backend.internal.example in cloudflare.settings.",
+      "setup": "agent-module-documentation/evaluation/verify/cloudflare-known-ipbypass-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/cloudflare-known-ipbypass-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "cloudflare-set-keyauth",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, configure the cloudflare module to authenticate against the Cloudflare API using the legacy API key method: set the authentication method to key, the API key to ABC123KEY, and the account email to api-admin@example.com. Apply the change to the live site's cloudflare.settings.",
+      "reset": "agent-module-documentation/evaluation/verify/cloudflare-set-keyauth-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/cloudflare-set-keyauth-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/cloudflare-set-keyauth-cleanup.sh",
+      "expected_output": "cloudflare.settings has auth_using: key, apikey: ABC123KEY, and email: api-admin@example.com (set via the settings wizard or the config factory)."
+    },
+    {
+      "id": "cloudflare-set-iprestore",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, turn on the cloudflare module's client IP restoration so Drupal sees visitors' real IP addresses, and set the bypass host to origin.example.com. Apply the change to the live site's cloudflare.settings.",
+      "reset": "agent-module-documentation/evaluation/verify/cloudflare-set-iprestore-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/cloudflare-set-iprestore-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/cloudflare-set-iprestore-cleanup.sh",
+      "expected_output": "cloudflare.settings has client_ip_restore_enabled: true and bypass_host: origin.example.com."
+    }
+  ]
+}

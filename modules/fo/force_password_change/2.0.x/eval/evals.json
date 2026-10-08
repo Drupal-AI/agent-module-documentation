@@ -1,0 +1,105 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "force_password_change",
+  "version": "2.0.x",
+  "note": "Force Password Change stores site settings in the config object force_password_change.settings (keys enabled, check_login_only, first_time_login_password_change, expire_password, installation_date) and stores an individual user's pending force in core user.data under module 'force_password_change' key 'pending_force' (=1). Settings form at /admin/config/people/force_password_change (route force_password_change.admin, permission 'administer force password change'). The service force_password_change.service forces changes: forceUserPasswordChange($uid) writes user.data pending_force=1. Medium/hard cases are grounded in that real config and user.data state; execution cases mutate config or a namespaced test user (fpc_*).",
+  "evals": [
+    {
+      "id": "force_password_change-settings-location",
+      "mode": "recipe",
+      "prompt": "On a Drupal 11 site with the force_password_change module, where is its administration settings form, and which config object stores its site-wide settings? Also: how can I disable the module's enforcement from settings.php if it locks me out, without uninstalling it?",
+      "must_contain_any": [
+        "force_password_change.settings",
+        "/admin/config/people/force_password_change",
+        "force_password_change.admin"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Settings form is at /admin/config/people/force_password_change (route force_password_change.admin, permission 'administer force password change'). Settings live in the force_password_change.settings config object. Emergency disable: add $config['force_password_change.settings']['enabled'] = FALSE; to settings.php.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "force_password_change-check-mode",
+      "mode": "recipe",
+      "prompt": "In the force_password_change module, what does the check_login_only setting control, and what is the practical difference between its two values?",
+      "must_contain_any": [
+        "check_login_only",
+        "every page load",
+        "on login only",
+        "login only"
+      ],
+      "must_not_contain": [],
+      "expected_output": "check_login_only chooses when a pending forced password change is detected. FALSE = check on every page load (an event subscriber/http middleware redirects the user to their edit form immediately; most secure, small per-request overhead). TRUE = check only when the user logs in (hook_user_login), so a change may not be enforced until the next login.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "force_password_change-force-from-code",
+      "mode": "recipe",
+      "prompt": "Using the force_password_change module's service, how do I programmatically force specific users to change their password, and where does the module record that a given user has a pending forced change?",
+      "must_contain_any": [
+        "force_password_change.service",
+        "forceUsersPasswordChange",
+        "forceUserPasswordChange",
+        "pending_force",
+        "user.data"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Call \\Drupal::service('force_password_change.service')->forceUsersPasswordChange([$uids]) (empty array forces all active users), or forceUserPasswordChange($uid) for one. Internally it sets core user.data: module 'force_password_change', key 'pending_force' = 1 for that uid. Check it with \\Drupal::service('user.data')->get('force_password_change', $uid, 'pending_force').",
+      "difficulty": "easy"
+    },
+    {
+      "id": "force_password_change-settings-introspect",
+      "mode": "introspection",
+      "prompt": "On this Drupal site the force_password_change module has been configured. Inspect the live configuration and report: (a) is 'force password change on first-time login' enabled, and (b) is the pending-change check set to happen on every page load or on login only?",
+      "must_contain_any": [
+        "login only",
+        "on login only",
+        "check_login_only",
+        "first-time login",
+        "first_time_login_password_change"
+      ],
+      "must_not_contain": [],
+      "expected_output": "In force_password_change.settings, first_time_login_password_change is TRUE (first-time-login forcing is enabled) and check_login_only is TRUE (the check runs on login only, not on every page load).",
+      "setup": "agent-module-documentation/evaluation/verify/force_password_change-settings-introspect-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/force_password_change-settings-introspect-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "force_password_change-pending-user-introspect",
+      "mode": "introspection",
+      "prompt": "This site has a user account whose email is fpc_known@example.com. Determine, by inspecting the live site, whether that user currently has a pending forced password change from the force_password_change module, and answer yes or no.",
+      "must_contain_any": [
+        "yes",
+        "pending_force",
+        "pending"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Yes. The user (email fpc_known@example.com) has a pending forced password change: core user.data for module 'force_password_change', key 'pending_force', is 1 for that user's uid (set via the force_password_change.service).",
+      "setup": "agent-module-documentation/evaluation/verify/force_password_change-pending-user-introspect-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/force_password_change-pending-user-introspect-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "force_password_change-enable-first-login",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, configure the force_password_change module so that ALL newly created users are forced to change their password on their first login. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/force_password_change-enable-first-login-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/force_password_change-enable-first-login-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/force_password_change-enable-first-login-cleanup.sh",
+      "expected_output": "Set force_password_change.settings first_time_login_password_change to TRUE (e.g. drush cset force_password_change.settings first_time_login_password_change 1 -y, or tick 'Force password change on first-time login' on the settings form)."
+    },
+    {
+      "id": "force_password_change-force-user",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "This site has a user account whose email is fpc_task@example.com. Using the force_password_change module, force that specific user to change their password on their next visit, and apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/force_password_change-force-user-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/force_password_change-force-user-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/force_password_change-force-user-cleanup.sh",
+      "expected_output": "Flag fpc_task's account for a forced change, e.g. \\Drupal::service('force_password_change.service')->forceUsersPasswordChange([$uid]); this sets core user.data module 'force_password_change' key 'pending_force' = 1 for that uid."
+    }
+  ]
+}

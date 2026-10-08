@@ -1,0 +1,80 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "hook_post_action",
+  "version": "2.0.x",
+  "note": "hook_post_action provides 8 hooks (hook_entity_post{save,insert,update,delete} and hook_ENTITY_TYPE_post{save,insert,update,delete}) fired from a shutdown function via moduleHandler()->invokeAll() after an entity write. No config/permissions/schema/Drush. Grounding note: under drush php:eval Drupal's shutdown handlers do not fire, and dblog writes are unreliable, so the execution VERIFY simulates hook_post_action's dispatch with \\Drupal::moduleHandler()->invokeAll('entity_postinsert'|'node_postupdate', [$entity]) and checks a Drupal STATE value written by the agent's hook implementation. Introspection cases discover live hook implementers via moduleHandler()->invokeAllWith(). The bundled hook_post_action_example (enabled) implements every hook and logs to channel hook_post_action_test.",
+  "evals": [
+    {
+      "id": "hook-post-action-hooks-list",
+      "mode": "recipe",
+      "prompt": "What new hooks does the hook_post_action module provide, and how do they differ from core's hook_entity_insert/update/delete?",
+      "must_contain_any": ["hook_entity_postinsert", "hook_entity_postsave", "postsave", "postinsert", "hook_node_postinsert"],
+      "must_not_contain": [],
+      "expected_output": "It provides hook_entity_postinsert/postupdate/postdelete/postsave and the hook_ENTITY_TYPE_ variants (e.g. hook_node_postinsert/postupdate/postdelete/postsave). Unlike core hook_entity_insert/update/delete which run during the save flow, these fire after the write is committed (dispatched from a shutdown function).",
+      "difficulty": "easy"
+    },
+    {
+      "id": "hook-post-action-mechanism",
+      "mode": "recipe",
+      "prompt": "Technically, how does hook_post_action make its post-save hooks run after an entity write is finished rather than during it?",
+      "must_contain_any": ["shutdown", "drupal_register_shutdown_function", "invokeAll"],
+      "must_not_contain": [],
+      "expected_output": "It implements core hook_entity_insert/update/delete and, in each, calls drupal_register_shutdown_function('_hook_post_action_post_save', $entity, $op). On shutdown the callback confirms the write (re-loading the entity for delete) and dispatches the post hooks with \\Drupal::moduleHandler()->invokeAll(), so they run after the request/DB write completes.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "hook-post-action-signatures",
+      "mode": "recipe",
+      "prompt": "For hook_post_action, what is the difference between hook_entity_postsave and hook_entity_postinsert in terms of arguments, and what is the $op argument?",
+      "must_contain_any": ["$op", "insert", "postsave"],
+      "must_not_contain": [],
+      "expected_output": "hook_entity_postsave($entity, $op) receives a second argument $op which is 'insert', 'update', or 'delete', so one handler can react to all operations. The operation-specific hooks like hook_entity_postinsert($entity) receive only the entity. The same pattern applies to hook_ENTITY_TYPE_postsave vs hook_ENTITY_TYPE_postinsert.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "hook-post-action-implementers",
+      "mode": "introspection",
+      "prompt": "On this live Drupal site, which enabled module(s) implement the hook_entity_postinsert hook provided by hook_post_action? Inspect the running site to find out.",
+      "must_contain_any": ["hook_post_action_example"],
+      "must_not_contain": [],
+      "expected_output": "hook_post_action_example implements hook_entity_postinsert (discoverable via \\Drupal::moduleHandler()->invokeAllWith('entity_postinsert', ...) or by scanning enabled modules). It is the bundled example that logs on each entity event.",
+      "setup": "agent-module-documentation/evaluation/verify/hook_post_action-implementers-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/hook_post_action-implementers-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "hook-post-action-example-channel",
+      "mode": "introspection",
+      "prompt": "This site has the hook_post_action example handler enabled. When content is created/updated/deleted, which logger channel does that handler write its messages to? Inspect the live site to determine the module and its log channel.",
+      "must_contain_any": ["hook_post_action_test"],
+      "must_not_contain": [],
+      "expected_output": "The enabled hook_post_action_example module implements the post hooks and logs via \\Drupal::logger('hook_post_action_test'), so its watchdog/dblog messages use the channel (type) 'hook_post_action_test'.",
+      "setup": "agent-module-documentation/evaluation/verify/hook_post_action-example-channel-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/hook_post_action-example-channel-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "hook-post-action-implement-postinsert",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "Using the hook_entity_postinsert hook provided by hook_post_action, create and enable a custom module named hpa_probe that, whenever ANY entity is inserted, records the inserted entity's type and id into Drupal state under the key 'hpa_probe_last_insert' in the format '<entity_type_id>:<id>'.",
+      "reset": "agent-module-documentation/evaluation/verify/hook_post_action-implement-postinsert-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/hook_post_action-implement-postinsert-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/hook_post_action-implement-postinsert-cleanup.sh",
+      "expected_output": "A module hpa_probe is enabled with hpa_probe_entity_postinsert(EntityInterface $entity) that calls \\Drupal::state()->set('hpa_probe_last_insert', $entity->getEntityTypeId() . ':' . $entity->id()). Verify inserts a node, dispatches hook_post_action's post hook via \\Drupal::moduleHandler()->invokeAll('entity_postinsert', [$node]) and confirms the state equals 'node:<nid>'."
+    },
+    {
+      "id": "hook-post-action-implement-node-postupdate",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "Using the entity-type-specific hook_node_postupdate hook from hook_post_action, create and enable a custom module named hpa_probe2 that records the id of any updated node into Drupal state under the key 'hpa_probe2_last_update'.",
+      "reset": "agent-module-documentation/evaluation/verify/hook_post_action-implement-node-postupdate-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/hook_post_action-implement-node-postupdate-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/hook_post_action-implement-node-postupdate-cleanup.sh",
+      "expected_output": "A module hpa_probe2 is enabled with hpa_probe2_node_postupdate(EntityInterface $entity) that calls \\Drupal::state()->set('hpa_probe2_last_update', $entity->id()). Verify saves/updates a node and dispatches \\Drupal::moduleHandler()->invokeAll('node_postupdate', [$node]) then confirms the state equals the node id."
+    }
+  ]
+}

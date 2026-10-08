@@ -1,0 +1,94 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "event_log_track_config",
+  "version": "5.0.x",
+  "note": "event_log_track_config is a submodule of Events Log Track that logs config events under handler type 'config' (operations save, delete) via an event subscriber / entity hooks calling event_log_track.manager->insert(). Medium cases insert a known sentinel row (ref_char ELT_CONFIG_MED) into the event_log_track table and read it back; hard cases require writing a 'config' row (ref_char ELT_CONFIG_HA/ELT_CONFIG_HB) to the live table, grounded in this submodule's real type/operation vocabulary and the base logging API. ",
+  "evals": [
+    {
+      "id": "event_log_track_config-what",
+      "mode": "recipe",
+      "prompt": "On a Drupal site, what does the event_log_track_config submodule of Events Log Track log, and what handler type and operations does it register?",
+      "must_contain_any": [
+        "config",
+        "save",
+        "delete"
+      ],
+      "must_not_contain": [],
+      "expected_output": "It logs config events, registering the handler type 'config' with operations [save, delete] via hook_event_log_track_handlers(); rows are written to the event_log_track table.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "event_log_track_config-how",
+      "mode": "recipe",
+      "prompt": "How does event_log_track_config hook into Drupal to capture config events, and what does it depend on?",
+      "must_contain_any": [
+        "config",
+        "event_log_track"
+      ],
+      "must_not_contain": [],
+      "expected_output": "A `ConfigCrudEvent` subscriber on `ConfigEvents::SAVE` / `DELETE` logs `save`/`delete`; on save it builds a concise human diff of the changed keys (ignoring dependencies, uuid, _core, langcode, third_party_settings). It depends on the base event_log_track module, calling event_log_track.manager->insert() with type 'config'.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "event_log_track_config-refs",
+      "mode": "recipe",
+      "prompt": "For a 'config' event logged by event_log_track_config, what is stored in the ref_numeric and ref_char columns of the event_log_track table?",
+      "must_contain_any": [
+        "ref_numeric",
+        "ref_char"
+      ],
+      "must_not_contain": [],
+      "expected_output": "`ref_char` = the config object name; description is the diff (or 'Config added' / 'Config removed').",
+      "difficulty": "easy"
+    },
+    {
+      "id": "event_log_track_config-known-op",
+      "mode": "introspection",
+      "prompt": "This site's Events Log Track log contains one 'config' row with the distinctive ref_char 'ELT_CONFIG_MED'. Inspect the event_log_track table and report the operation recorded on that row.",
+      "must_contain_any": [
+        "save"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The row with ref_char='ELT_CONFIG_MED' has operation='save' (SELECT operation FROM event_log_track WHERE ref_char='ELT_CONFIG_MED').",
+      "setup": "agent-module-documentation/evaluation/verify/event_log_track_config-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/event_log_track_config-clear.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "event_log_track_config-known-desc",
+      "mode": "introspection",
+      "prompt": "In this site's event_log_track log there is a 'config' row whose ref_char is 'ELT_CONFIG_MED'. Report the exact description text stored on that row.",
+      "must_contain_any": [
+        "ELT_CONFIG_DESC"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The description of the ref_char='ELT_CONFIG_MED' row is 'ELT_CONFIG_DESC'.",
+      "setup": "agent-module-documentation/evaluation/verify/event_log_track_config-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/event_log_track_config-clear.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "event_log_track_config-log-a",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "Record a 'config' event (operation 'save') in the Events Log Track log on this site, using ref_char 'ELT_CONFIG_HA'. Use the module's logging service (event_log_track.manager->insert(); if you run it from the CLI, first enable the log_cli setting) or otherwise persist the row. Apply it to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/event_log_track_config-clear.sh",
+      "verify": "agent-module-documentation/evaluation/verify/event_log_track_config-verifya.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/event_log_track_config-clear.sh",
+      "expected_output": "A row exists in event_log_track with type='config' and ref_char='ELT_CONFIG_HA' (e.g. via event_log_track.manager->insert(['type'=>'config','operation'=>'save','description'=>'...','ref_char'=>'ELT_CONFIG_HA']))."
+    },
+    {
+      "id": "event_log_track_config-log-b",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "Record a 'config' event for the 'delete' operation in Events Log Track using ref_char 'ELT_CONFIG_HB'. Apply it to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/event_log_track_config-clear.sh",
+      "verify": "agent-module-documentation/evaluation/verify/event_log_track_config-verifyb.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/event_log_track_config-clear.sh",
+      "expected_output": "A row exists in event_log_track with type='config', operation='delete' and ref_char='ELT_CONFIG_HB'."
+    }
+  ]
+}

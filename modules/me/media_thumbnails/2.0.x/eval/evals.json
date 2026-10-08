@@ -1,0 +1,98 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "media_thumbnails",
+  "version": "2.0.x",
+  "note": "Media Thumbnails ships no generators of its own - it is a plugin manager. Real surface: the media_thumbnail plugin type (@MediaThumbnail annotation with id/label/mime, directory Plugin/MediaThumbnail, interface MediaThumbnailInterface, base MediaThumbnailBase, manager service plugin.manager.media_thumbnail), the config object media_thumbnails.settings (width, bgcolor_active, bgcolor_value, no_thumbnail_update, allow_thumbnail_edit), the routes /admin/config/media/thumbnails and .../refresh behind the permission 'manage media thumbnails settings', and the Drush command thumbnails:refresh (aliases thref, thumbnails-refresh). Introspection cases read the live settings object back; the execution cases change that config and write an actual @MediaThumbnail plugin in a throwaway module. The plugin reset/cleanup scripts uninstall the module BEFORE deleting its directory, which is required on a shared site.",
+  "evals": [
+    {
+      "id": "media_thumbnails-plugin-contract",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "I want to add PDF thumbnail generation to a Drupal 11 site using the media_thumbnails module's plugin system. What annotation and method does a custom thumbnail plugin need, and where in my module does the class live?",
+      "must_contain_any": [
+        "@MediaThumbnail",
+        "createThumbnail",
+        "Plugin/MediaThumbnail"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Put the class in src/Plugin/MediaThumbnail/, annotate it with @MediaThumbnail (id, label, and a mime array such as {\"application/pdf\"}), extend Drupal\\media_thumbnails\\Plugin\\MediaThumbnailBase (or implement MediaThumbnailInterface) and implement createThumbnail($sourceUri), returning a saved managed File entity (or NULL). The manager plugin.manager.media_thumbnail handles the rest."
+    },
+    {
+      "id": "media_thumbnails-drush-refresh",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "After changing the thumbnail width in the Drupal media_thumbnails module, existing media entities still show old thumbnails. Which Drush command regenerates them all, and how does it actually cause regeneration?",
+      "must_contain_any": [
+        "thumbnails:refresh",
+        "thumbnails-refresh",
+        "thref"
+      ],
+      "must_not_contain": [],
+      "expected_output": "`drush thumbnails:refresh` (aliases thref / thumbnails-refresh). It sets the RefreshBatch batch, forces $batch['progressive'] = FALSE and runs drush_backend_batch_process(); the batch simply re-saves every media entity, and hook_media_presave() regenerates the thumbnail on each save. The same batch is behind the confirm form at /admin/config/media/thumbnails/refresh."
+    },
+    {
+      "id": "media_thumbnails-settings-keys",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "Which configuration object holds the Drupal media_thumbnails module's global settings, and what are its keys?",
+      "must_contain_any": [
+        "media_thumbnails.settings",
+        "no_thumbnail_update",
+        "allow_thumbnail_edit",
+        "bgcolor_active"
+      ],
+      "must_not_contain": [],
+      "expected_output": "media_thumbnails.settings, with width (default 500), bgcolor_active (false), bgcolor_value ('#eeeeee'), no_thumbnail_update (false) and allow_thumbnail_edit (false). Edited at /admin/config/media/thumbnails behind the permission 'manage media thumbnails settings'. The whole array is passed to each plugin as its configuration."
+    },
+    {
+      "id": "media_thumbnails-known-width",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "Inspect this Drupal site's live media_thumbnails configuration and tell me the thumbnail width it is set to generate, and whether a custom background colour is being applied.",
+      "must_contain_any": [
+        "321"
+      ],
+      "must_not_contain": [],
+      "expected_output": "width is 321 px and a custom background colour IS active (bgcolor_active: true, bgcolor_value: '#abcdef'). `drush cget media_thumbnails.settings` shows all five keys.",
+      "setup": "agent-module-documentation/evaluation/verify/media_thumbnails-known-width-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/media_thumbnails-known-width-cleanup.sh"
+    },
+    {
+      "id": "media_thumbnails-no-update",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "On this Drupal site, look at the current media_thumbnails settings and tell me whether saving a media entity will overwrite an existing custom thumbnail, and whether editors are able to add the thumbnail field to a media type's edit form.",
+      "must_contain_any": [
+        "no_thumbnail_update",
+        "allow_thumbnail_edit"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Both protections are on: no_thumbnail_update is TRUE (so a save does not overwrite an existing thumbnail unless it is still a generic icon under media.settings:icon_base_uri) and allow_thumbnail_edit is TRUE (so the thumbnail base field is display-configurable and can be added to a media type's form display). width is 640.",
+      "setup": "agent-module-documentation/evaluation/verify/media_thumbnails-no-update-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/media_thumbnails-no-update-cleanup.sh"
+    },
+    {
+      "id": "media_thumbnails-configure",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "site-owner",
+      "prompt": "Our generated media thumbnails are too big and the transparent ones look messy on our grey listing pages. On this Drupal site, make Media Thumbnails generate thumbnails 250 pixels wide, and give transparent thumbnails a solid background colour of #123456. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/media_thumbnails-configure-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/media_thumbnails-configure-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/media_thumbnails-configure-cleanup.sh",
+      "expected_output": "media_thumbnails.settings now has width: 250, bgcolor_active: true and bgcolor_value: '#123456' (set on /admin/config/media/thumbnails or with `drush cset media_thumbnails.settings ...`)."
+    },
+    {
+      "id": "media_thumbnails-plugin",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, create a custom module named mt_probe in web/modules/custom/mt_probe that provides a media_thumbnails thumbnail plugin. The plugin id must be mt_probe_thumbnail, its label 'MT probe thumbnail', and it must declare that it handles the MIME type application/x-mt-probe. Its createThumbnail() implementation may simply return NULL. Enable the module so the plugin is discoverable on the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/media_thumbnails-plugin-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/media_thumbnails-plugin-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/media_thumbnails-plugin-cleanup.sh",
+      "expected_output": "web/modules/custom/mt_probe with an info.yml and src/Plugin/MediaThumbnail/MtProbeThumbnail.php annotated @MediaThumbnail(id = \"mt_probe_thumbnail\", label = @Translation(\"MT probe thumbnail\"), mime = {\"application/x-mt-probe\"}) extending MediaThumbnailBase; after `drush en mt_probe -y` the plugin manager plugin.manager.media_thumbnail returns that definition."
+    }
+  ]
+}

@@ -1,0 +1,93 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "bp_webform",
+  "version": "5.0.x",
+  "note": "bp_webform is the thinnest bootstrap_paragraphs submodule: no templates, no CSS, no library, no plugins, no services, no permissions, no Drush, no config schema; its entire PHP is hook_help(). It installs one paragraph type bp_webform (label 'Webform') with three fields — its own bp_webform (field type `webform`, cardinality 1, handler 'default:webform', target_bundles null, status open) plus the shared bootstrap_paragraphs bp_width and bp_background list_string fields. Form display uses the webform_entity_reference_select widget; view display uses webform_entity_reference_entity_view with source_entity: false. Crucially its config ships in config/install (not config/optional like its siblings), so it IS removed on uninstall. The webform field item carries its own target_id/default_data/status/open/close columns, so one embed can be closed while the same webform stays open elsewhere — which the second medium case exercises against live content.",
+  "evals": [
+    {
+      "id": "bp_webform-widget-formatter",
+      "mode": "recipe",
+      "prompt": "On a Drupal 11 site with the Bootstrap Paragraphs Webform (bp_webform) module installed, which form widget and which display formatter does the Webform paragraph bundle use for its webform reference field?",
+      "must_contain_any": [
+        "webform_entity_reference_select",
+        "webform_entity_reference_entity_view"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The default form display uses the webform_entity_reference_select widget (a select list of available webforms) and the default view display uses the webform_entity_reference_entity_view formatter with settings source_entity: false, which renders the actual form without treating the host node as the submission's source entity.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "bp_webform-bundle-fields",
+      "mode": "recipe",
+      "prompt": "What fields does the bp_webform paragraph bundle have on a Drupal 11 site, and which of them come from the parent Bootstrap Paragraphs module rather than from bp_webform itself?",
+      "must_contain_any": [
+        "bp_background",
+        "bp_width"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Three fields: bp_webform (its own storage, field type `webform`, cardinality 1) plus bp_width and bp_background, which are list_string fields reusing the field storages installed by the parent bootstrap_paragraphs module (so they share the same allowed values as every other bp_* bundle).",
+      "difficulty": "easy"
+    },
+    {
+      "id": "bp_webform-expose-bundle",
+      "mode": "recipe",
+      "prompt": "I enabled bp_webform on a Drupal 11 site but editors still cannot add a Webform component to an Article, and the module has no settings page. What do I have to do to make the Webform paragraph available on a content type?",
+      "must_contain_any": [
+        "entity_reference_revisions",
+        "target_bundles",
+        "Paragraphs field"
+      ],
+      "must_not_contain": [],
+      "expected_output": "bp_webform only installs the paragraph type; it attaches nothing to a content type. Add an Entity reference revisions (Paragraphs) field to the content type whose settings.handler_settings.target_bundles includes bp_webform, then place that field on the node's form display and view display.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "bp_webform-known-webform",
+      "mode": "introspection",
+      "prompt": "This Drupal site has an article titled 'BP Webform Eval Node' containing a Bootstrap Paragraphs Webform component. Inspect the live site and give the machine name of the webform that this paragraph actually references.",
+      "must_contain_any": [
+        "bpwf_eval_contact"
+      ],
+      "must_not_contain": [],
+      "expected_output": "bpwf_eval_contact. The node's field_bpwf_form references a bp_webform paragraph whose bp_webform field item has target_id bpwf_eval_contact (title 'BP Webform Eval Contact').",
+      "setup": "agent-module-documentation/evaluation/verify/bp_webform-known-webform-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/bp_webform-known-webform-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "bp_webform-known-status",
+      "mode": "introspection",
+      "prompt": "On this Drupal site the article 'BP Webform Status Node' embeds a Bootstrap Paragraphs Webform component. The webform reference field stores a per-embed status alongside the target webform. Inspect the live site and tell me what that stored status value is for this particular paragraph.",
+      "must_contain_any": [
+        "closed"
+      ],
+      "must_not_contain": [],
+      "expected_output": "closed. The bp_webform field item on that paragraph stores target_id bpwf_status_form with status 'closed' — the webform field type carries its own target_id/default_data/status/open/close columns per reference, so this embed is closed even though the webform entity itself is not.",
+      "setup": "agent-module-documentation/evaluation/verify/bp_webform-known-status-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/bp_webform-known-status-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "bp_webform-attach-field",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, add a Paragraphs field named field_bpwf_block to the Article content type so editors can embed a Bootstrap Paragraphs Webform component. It must be an entity_reference_revisions field targeting paragraphs with cardinality 1, and it must allow ONLY the bp_webform bundle. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/bp_webform-attach-field-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/bp_webform-attach-field-verify.sh",
+      "expected_output": "field.storage.node.field_bpwf_block is entity_reference_revisions with target_type paragraph and cardinality 1, and field.field.node.article.field_bpwf_block has handler 'default:paragraph' with handler_settings.target_bundles == {bp_webform: bp_webform}."
+    },
+    {
+      "id": "bp_webform-build-paragraph",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "site-builder",
+      "prompt": "This Drupal site already has a webform with the machine name 'bpwf_task_form' and an Article Paragraphs field field_bpwf_slot that accepts Bootstrap Paragraphs Webform components. Create a published Article titled exactly 'BP Webform Task' containing one Webform paragraph that embeds the bpwf_task_form webform, with its width set to the Bootstrap Paragraphs 'Medium' option and its background set to the 'Brand Info Color' option. Save it to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/bp_webform-build-paragraph-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/bp_webform-build-paragraph-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/bp_webform-build-paragraph-cleanup.sh",
+      "expected_output": "An article 'BP Webform Task' whose field_bpwf_slot references a bp_webform paragraph with bp_webform target_id 'bpwf_task_form', bp_width 'paragraph--width--medium' and bp_background 'paragraph--color paragraph--color--info'."
+    }
+  ]
+}

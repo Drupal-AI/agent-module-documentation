@@ -1,0 +1,97 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "salesforce_mapping",
+  "version": "5.1.x",
+  "note": "Salesforce Mapping provides the salesforce_mapping config entity (maps a Drupal entity type/bundle to a Salesforce object, with sync_triggers push_create/push_update/push_delete/pull_create/pull_update/pull_delete and a field_mappings array of SalesforceMappingField plugin instances), the salesforce_mapped_object content entity, and the salesforce_mapping_field plugin type (properties, properties_extended, record_type, broken). Mapping is pure config and needs no Salesforce connection, so all medium/hard cases are grounded in real salesforce_mapping config entities created/read/modified locally, verified by pure entity reads. Cleanup deletes the namespaced sfm_* mappings.",
+  "evals": [
+    {
+      "id": "salesforce_mapping-entity",
+      "mode": "recipe",
+      "prompt": "In the Salesforce suite, what config entity defines the mapping between a Drupal entity and a Salesforce object, and what does it record about which events sync?",
+      "must_contain_any": [
+        "salesforce_mapping",
+        "sync_triggers",
+        "salesforce_object_type"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The salesforce_mapping config entity maps a drupal_entity_type/drupal_bundle to a salesforce_object_type. Its sync_triggers control which events sync: push_create/push_update/push_delete (Drupal->SF) and pull_create/pull_update/pull_delete (SF->Drupal).",
+      "difficulty": "easy"
+    },
+    {
+      "id": "salesforce_mapping-field-plugins",
+      "mode": "recipe",
+      "prompt": "How are individual field mappings represented in the Salesforce Mapping module, and what are the built-in field-mapping plugin types?",
+      "must_contain_any": [
+        "salesforce_mapping_field",
+        "properties",
+        "record_type",
+        "field_mappings"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Each field mapping is a SalesforceMappingField plugin instance in the mapping's field_mappings array (plugin type salesforce_mapping_field). Built-in plugins: properties and properties_extended (map a Drupal field/property to a Salesforce field), record_type (map the SF record type), and broken (placeholder for an unavailable field).",
+      "difficulty": "easy"
+    },
+    {
+      "id": "salesforce_mapping-mapped-object",
+      "mode": "recipe",
+      "prompt": "In the Salesforce suite, what entity tracks the link between a specific Drupal entity and its corresponding Salesforce record (its Salesforce Id)?",
+      "must_contain_any": [
+        "salesforce_mapped_object",
+        "mapped object"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The salesforce_mapped_object content entity records the link between a specific Drupal entity and its Salesforce record (SFID). It is revisioned (capped by salesforce.settings.limit_mapped_object_revisions) and created/updated by push/pull.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "salesforce_mapping-known-object",
+      "mode": "introspection",
+      "prompt": "On this Drupal site there is a Salesforce mapping named sfm_known. Inspect its live configuration and state which Salesforce object type it maps to.",
+      "must_contain_any": [
+        "Contact"
+      ],
+      "must_not_contain": [],
+      "expected_output": "It maps to the Contact object: salesforce_mapping sfm_known has salesforce_object_type = Contact (mapping the Drupal user entity to Salesforce Contact).",
+      "setup": "agent-module-documentation/evaluation/verify/salesforce_mapping-known-obj-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/salesforce_mapping-known-obj-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "salesforce_mapping-known-triggers",
+      "mode": "introspection",
+      "prompt": "On this Drupal site there is a Salesforce mapping named sfm_trig. Inspect its live configuration and state which sync triggers are enabled.",
+      "must_contain_any": [
+        "push_create",
+        "push_update"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Only the push_create and push_update sync triggers are enabled on sfm_trig (all pull_* and push_delete are false), so it pushes on Drupal entity create and update.",
+      "setup": "agent-module-documentation/evaluation/verify/salesforce_mapping-known-triggers-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/salesforce_mapping-known-triggers-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "salesforce_mapping-create",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, create a Salesforce mapping with machine name sfm_task that maps the Drupal user entity (bundle user) to the Salesforce Lead object. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/salesforce_mapping-create-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/salesforce_mapping-create-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/salesforce_mapping-create-cleanup.sh",
+      "expected_output": "A salesforce_mapping config entity sfm_task exists with salesforce_object_type = Lead, drupal_entity_type = user, drupal_bundle = user (created via the mapping UI or the salesforce_mapping storage)."
+    },
+    {
+      "id": "salesforce_mapping-set-triggers",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site there is a Salesforce mapping sfm_ttask with all sync triggers disabled. Configure it to push to Salesforce whenever the Drupal entity is created or updated (enable the push-on-create and push-on-update triggers). Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/salesforce_mapping-set-triggers-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/salesforce_mapping-set-triggers-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/salesforce_mapping-set-triggers-cleanup.sh",
+      "expected_output": "salesforce_mapping sfm_ttask has sync_triggers.push_create = true and sync_triggers.push_update = true."
+    }
+  ]
+}

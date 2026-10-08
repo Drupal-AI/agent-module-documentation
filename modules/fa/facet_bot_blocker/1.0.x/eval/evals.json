@@ -1,0 +1,82 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "facet_bot_blocker",
+  "version": "1.0.x",
+  "note": "Facet Bot Blocker is a kernel REQUEST subscriber (priority 101) that blocks a request when isset($_GET['f'][$limit]) — i.e. the f[] facet query array reaches the configured depth — returning 403 (or 410 Gone if facet_bot_blocker_return_gone). Config object facet_bot_blocker.settings has keys facets_bot_blocker_limit (int, default 1), facet_bot_blocker_return_gone (bool), facet_bot_blocker_html (string). NO config ships by default and there is no schema, so get() is null until saved. Three permissions: administer facet bot blocker, access facet bot blocker dashboard, bypass facet bot blocker. Dashboard counters only populate with Memcache/Redis. Cases are grounded in that config object and behaviour.",
+  "evals": [
+    {
+      "id": "facet_bot_blocker-what-blocks",
+      "mode": "recipe",
+      "prompt": "How does the facet_bot_blocker module decide to block a request, which query parameter does it look at, and what HTTP status codes can it return?",
+      "must_contain_any": ["f[", "facet", "403", "410", "Gone"],
+      "must_not_contain": [],
+      "expected_output": "A kernel REQUEST subscriber blocks when the request's f[] facet query array reaches the configured depth (isset($_GET['f'][$limit])). It returns HTTP 403 Forbidden by default, or 410 Gone when facet_bot_blocker_return_gone is enabled.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "facet_bot_blocker-config-key",
+      "mode": "recipe",
+      "prompt": "In facet_bot_blocker, what is the config object and the setting key that controls how deep the facet parameters can go before a request is blocked, and at what admin path is it configured?",
+      "must_contain_any": ["facets_bot_blocker_limit", "facet_bot_blocker.settings", "/admin/config/system/facet-bot-blocker"],
+      "must_not_contain": [],
+      "expected_output": "The config object is facet_bot_blocker.settings and the key is facets_bot_blocker_limit (integer, default 1). It is configured at /admin/config/system/facet-bot-blocker (route facet_bot_blocker.settings_form).",
+      "difficulty": "easy"
+    },
+    {
+      "id": "facet_bot_blocker-bypass-perm",
+      "mode": "recipe",
+      "prompt": "Which facet_bot_blocker permission lets a user keep browsing deep faceted URLs without ever being blocked?",
+      "must_contain_any": ["bypass facet bot blocker"],
+      "must_not_contain": [],
+      "expected_output": "The 'bypass facet bot blocker' permission — a user who has it is returned early from the event subscriber and is never blocked, whatever the facet depth.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "facet_bot_blocker-current-limit",
+      "mode": "introspection",
+      "prompt": "On this Drupal site, facet_bot_blocker has been configured. Inspect the live configuration and state the facet parameter depth limit that is currently set.",
+      "must_contain_any": ["3"],
+      "must_not_contain": [],
+      "expected_output": "facet_bot_blocker.settings.facets_bot_blocker_limit is 3 on this site, so a request is blocked once it carries f[3].",
+      "setup": "agent-module-documentation/evaluation/verify/facet_bot_blocker-current-limit-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/facet_bot_blocker-current-limit-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "facet_bot_blocker-response-code",
+      "mode": "introspection",
+      "prompt": "On this Drupal site, when facet_bot_blocker blocks an over-limit facet request, what HTTP status code does it return? Inspect the live configuration to answer.",
+      "must_contain_any": ["410", "Gone"],
+      "must_not_contain": [],
+      "expected_output": "facet_bot_blocker.settings.facet_bot_blocker_return_gone is TRUE on this site, so blocked requests return HTTP 410 Gone (not the default 403 Forbidden).",
+      "setup": "agent-module-documentation/evaluation/verify/facet_bot_blocker-response-code-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/facet_bot_blocker-response-code-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "facet_bot_blocker-build-limit-gone",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "Configure facet_bot_blocker on this site so that a request is blocked once it reaches the third facet parameter (f[2]) and so that blocked requests return HTTP 410 Gone instead of 403. Apply the change to the live configuration.",
+      "reset": "agent-module-documentation/evaluation/verify/facet_bot_blocker-build-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/facet_bot_blocker-build-limit-gone-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/facet_bot_blocker-build-reset.sh",
+      "expected_output": "facet_bot_blocker.settings has facets_bot_blocker_limit = 2 and facet_bot_blocker_return_gone = true (e.g. via drush cset facet_bot_blocker.settings facets_bot_blocker_limit 2 and facet_bot_blocker_return_gone 1).",
+      "difficulty": "hard"
+    },
+    {
+      "id": "facet_bot_blocker-build-message",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-layman",
+      "prompt": "I run a Drupal site with the Facet Bot Blocker module. When it blocks a bot I want the page to say exactly 'FBB blocked you' instead of the default text. Please set that up.",
+      "reset": "agent-module-documentation/evaluation/verify/facet_bot_blocker-build-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/facet_bot_blocker-build-message-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/facet_bot_blocker-build-reset.sh",
+      "expected_output": "facet_bot_blocker.settings.facet_bot_blocker_html is set to a value containing 'FBB blocked you' (the custom blocked message key).",
+      "difficulty": "hard"
+    }
+  ]
+}

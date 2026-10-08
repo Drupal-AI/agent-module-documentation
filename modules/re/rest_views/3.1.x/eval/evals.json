@@ -1,0 +1,96 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "rest_views",
+  "version": "3.1.x",
+  "note": "REST Views makes Views REST Export displays serialize fields as real JSON. hook_views_data_alter() adds, for every core 'field' handler, a '<field> (serializable)' handler with plugin_id 'field_export' (class EntityFieldExport, @ViewsField('field_export')), exposed as <field>_export. Output is wrapped in SerializedData (MarkupInterface) and unwrapped by the DataNormalizer (serializer.normalizer.serialized); RenderableData is rendered by RenderNormalizer (serializer.normalizer.render). Export formatters (only work with field_export): boolean_export, number_export, entity_reference_export (opt extra), entity_reference_entity_id_export, entity_path (opt absolute), file_export, image_export (opt export_alt/export_title), link_export, list_export. No settings form, configure route, permissions, Drush, plugin types. Submodules: rest_views_geo, rest_views_revisions, rest_views_search_api. Medium/hard cases are grounded in real REST Export view config (display_options.fields.<f>.plugin_id / type).",
+  "evals": [
+    {
+      "id": "rest_views-handler-name",
+      "mode": "recipe",
+      "prompt": "After enabling rest_views, how do I get a Views REST Export field to serialize as proper JSON (e.g. a multi-value field as an array) instead of a flattened string? What is the field handler called?",
+      "must_contain_any": [
+        "serializable",
+        "field_export",
+        "Field (serializable)"
+      ],
+      "must_not_contain": [],
+      "expected_output": "In the view, add the field using its '(serializable)' variant (Views handler plugin_id field_export, exposed as <field>_export). That handler wraps values in SerializedData so they serialize as real data, and automatically exports multi-value fields as arrays based on cardinality.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "rest_views-formatters",
+      "mode": "recipe",
+      "prompt": "Which rest_views field formatters export a boolean as a real JSON boolean and a numeric field as a JSON number, and what handler must the field use for them to work?",
+      "must_contain_any": [
+        "boolean_export",
+        "number_export"
+      ],
+      "must_not_contain": [],
+      "expected_output": "boolean_export exports a boolean as JSON true/false and number_export exports a numeric field as a JSON number. They only work when the field uses the serializable handler (plugin_id field_export).",
+      "difficulty": "easy"
+    },
+    {
+      "id": "rest_views-nested-reference",
+      "mode": "recipe",
+      "prompt": "With rest_views, how can I export an entity reference field as a nested object (or just the referenced entity's id) in a REST Export view rather than a rendered HTML string?",
+      "must_contain_any": [
+        "entity_reference_export",
+        "entity_reference_entity_id_export",
+        "entity_path"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Use an export formatter on the serializable field: entity_reference_export outputs a nested entity structure (with an optional 'extra' metadata list), entity_reference_entity_id_export outputs just the target id, and entity_path outputs the referenced entity's path/URL.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "rest_views-known-handler",
+      "mode": "introspection",
+      "prompt": "This Drupal site has a REST Export view with machine name rv_known. Inspect its live configuration and report which Views field handler (plugin id) and which formatter its 'nid' field uses.",
+      "must_contain_any": [
+        "field_export",
+        "number_export"
+      ],
+      "must_not_contain": [],
+      "expected_output": "In view rv_known the nid field uses plugin_id field_export (the serializable handler) with the number_export formatter.",
+      "setup": "agent-module-documentation/evaluation/verify/rest_views-known-handler-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/rest_views-known-handler-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "rest_views-known-boolean",
+      "mode": "introspection",
+      "prompt": "The REST Export view rv_bool on this site exports the node 'status' (published) field. Inspect the live view config and state which rest_views formatter it uses to output that field as a real JSON boolean.",
+      "must_contain_any": [
+        "boolean_export"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The rv_bool view's status field uses the boolean_export formatter (with the field_export serializable handler), so it serializes as a JSON true/false.",
+      "setup": "agent-module-documentation/evaluation/verify/rest_views-known-boolean-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/rest_views-known-boolean-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "rest_views-serializable",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "This site has a REST Export view rv_task whose 'title' field currently uses the standard Views field handler. Using rest_views, change that field so it uses the serializable handler (so it will serialize properly for the REST feed). Apply the change to the live view.",
+      "reset": "agent-module-documentation/evaluation/verify/rest_views-serializable-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/rest_views-serializable-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/rest_views-serializable-cleanup.sh",
+      "expected_output": "In views.view.rv_task the default display's title field has plugin_id changed from 'field' to 'field_export' (the serializable handler)."
+    },
+    {
+      "id": "rest_views-number-formatter",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "The REST Export view rv_num on this site already exports the node id (nid) with the serializable handler, but it is using a plain integer formatter, so the value comes out as a string. Using rest_views, set that field's formatter to the one that outputs a real JSON number. Apply the change to the live view.",
+      "reset": "agent-module-documentation/evaluation/verify/rest_views-number-formatter-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/rest_views-number-formatter-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/rest_views-number-formatter-cleanup.sh",
+      "expected_output": "In views.view.rv_num the nid field keeps plugin_id field_export and its 'type' (formatter) is set to number_export."
+    }
+  ]
+}

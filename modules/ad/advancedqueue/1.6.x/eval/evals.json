@@ -1,0 +1,96 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "advancedqueue",
+  "version": "1.6.x",
+  "note": "Advanced Queue models a queue as an advancedqueue_queue config entity (backend, backend_configuration.lease_time, processor 'cron'|'daemon', processing_time, locked, stop_when_empty, threshold{type,limit,state}); the collection route entity.advancedqueue_queue.collection at /admin/config/system/queues is the configure route. It declares two plugin types in advancedqueue.plugin_type.yml - advancedqueue.backend (manager plugin.manager.advancedqueue_backend, attribute AdvancedQueueBackend, dir src/Plugin/AdvancedQueue/Backend, database + null ship) and advancedqueue.job_type (manager plugin.manager.advancedqueue_job_type, attribute AdvancedQueueJobType with id/label/max_retries/retry_delay/allow_duplicates, dir src/Plugin/AdvancedQueue/JobType, base class JobTypeBase whose only abstract method is process(Job): JobResult). Jobs are Job::create($type, $payload) enqueued with Queue::enqueueJob($job, $delay) and stored in the 'advancedqueue' database table. Drush adds advancedqueue:queue:process <id> --timeout=N and advancedqueue:queue:list. The single permission is 'administer advancedqueue'. Recipe cases probe those APIs; introspection cases read a real queue entity and real seeded job rows; execution cases build a real queue entity and a real job type plugin module, both verified against live state.",
+  "evals": [
+    {
+      "id": "advancedqueue-enqueue-a-job",
+      "mode": "recipe",
+      "prompt": "On a Drupal 11 site with the advancedqueue module, how do I push a job onto the 'default' queue from PHP so that it becomes available for processing in one hour? Show the classes and calls.",
+      "must_contain_any": [
+        "Job::create",
+        "enqueueJob",
+        "Drupal\\advancedqueue\\Job"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Use Drupal\\advancedqueue\\Job and Drupal\\advancedqueue\\Entity\\Queue: $job = Job::create('my_job_type', ['id' => 42]); Queue::load('default')->enqueueJob($job, 3600); The second argument is the delay in seconds. enqueueJobs() takes an array for bulk enqueueing.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "advancedqueue-drush-process",
+      "mode": "recipe",
+      "prompt": "Which Drush commands does the Drupal advancedqueue module add, and how do I run a specific queue from the command line with a 60 second time budget?",
+      "must_contain_any": [
+        "advancedqueue:queue:process",
+        "advancedqueue:queue:list"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Two commands: advancedqueue:queue:process <queue_id> (option --timeout, default 90) and advancedqueue:queue:list. Run drush advancedqueue:queue:process myqueue --timeout=60. The process command sets the queue's processing time in memory, and installs SIGTERM/SIGINT handlers when pcntl is available so the worker stops gracefully.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "advancedqueue-job-type-plugin-shape",
+      "mode": "recipe",
+      "prompt": "I want to write a custom job type for the Drupal advancedqueue module. Which PHP attribute and base class do I use, in which directory does the class live, and which method must I implement? How do I make the job retry three times with a 60 second delay?",
+      "must_contain_any": [
+        "AdvancedQueueJobType",
+        "JobTypeBase",
+        "max_retries",
+        "Plugin/AdvancedQueue/JobType"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Put the class in src/Plugin/AdvancedQueue/JobType/, extend Drupal\\advancedqueue\\Plugin\\AdvancedQueue\\JobType\\JobTypeBase and annotate it with the #[AdvancedQueueJobType(id: ..., label: ..., max_retries: 3, retry_delay: 60)] attribute from Drupal\\advancedqueue\\Attribute. The only abstract method is process(Job $job) which must return a JobResult (JobResult::success() / JobResult::failure()).",
+      "difficulty": "easy"
+    },
+    {
+      "id": "advancedqueue-known-queue",
+      "mode": "introspection",
+      "prompt": "This Drupal site has an Advanced Queue queue labelled 'AQ Reports'. Inspect the live configuration and tell me which processor it uses, how long a claimed job is leased for, and whether the queue can be deleted from the admin UI.",
+      "must_contain_any": [
+        "daemon"
+      ],
+      "must_not_contain": [],
+      "expected_output": "advancedqueue.advancedqueue_queue.advancedqueue_aq_reports uses processor: daemon (so hook_cron does not process it - you run drush advancedqueue:queue:process), backend_configuration.lease_time is 600 seconds, and locked is true so QueueAccessControlHandler forbids the delete operation even for users with 'administer advancedqueue'.",
+      "setup": "agent-module-documentation/evaluation/verify/advancedqueue-known-queue-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/advancedqueue-known-queue-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "advancedqueue-failed-job",
+      "mode": "introspection",
+      "prompt": "The Advanced Queue queue 'AQ Audit' on this Drupal site has processed some jobs. Inspect the live site and tell me how many of its jobs are in the failure state and what message is stored on the failed job.",
+      "must_contain_any": [
+        "AQ payment gateway timed out"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The advancedqueue_aq_audit queue has 2 success jobs and 1 failure job; the failed job's stored message is 'AQ payment gateway timed out'. Discoverable via drush advancedqueue:queue:list for the counts and the advancedqueue database table (or the queue backend's countJobs()/loadJob()) for the message.",
+      "setup": "agent-module-documentation/evaluation/verify/advancedqueue-failed-job-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/advancedqueue-failed-job-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "advancedqueue-create-queue",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, use the advancedqueue module to create a queue with the machine name advancedqueue_nightly and the label 'Nightly'. It must use the database backend with a lease time of 600 seconds, be processed by a long-running worker rather than cron, allow up to 300 seconds of processing time, keep running even when the queue is momentarily empty, be locked so it cannot be deleted, and automatically discard successful jobs older than 30 days. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/advancedqueue-create-queue-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/advancedqueue-create-queue-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/advancedqueue-create-queue-cleanup.sh",
+      "expected_output": "An advancedqueue_queue config entity advancedqueue_nightly with backend: database, backend_configuration.lease_time: 600, processor: daemon, processing_time: 300, stop_when_empty: false, locked: true and threshold: {type: 2 (days), limit: 30, state: success}."
+    },
+    {
+      "id": "advancedqueue-job-type-plugin",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, create and enable a custom module named advancedqueue_eval in web/modules/custom that provides an Advanced Queue job type plugin with the ID advancedqueue_eval_uppercase, the label 'AQ Uppercase', max_retries 2 and retry_delay 30. Its process() method must read the payload key 'text' and return a successful JobResult whose message is that text upper-cased. Then create an advancedqueue queue with the machine name advancedqueue_eval_queue using the database backend, enqueue one job of that type with the payload {\"text\": \"hello queue\"}, and process the queue so that the job ends up in the success state.",
+      "reset": "agent-module-documentation/evaluation/verify/advancedqueue-job-type-plugin-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/advancedqueue-job-type-plugin-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/advancedqueue-job-type-plugin-cleanup.sh",
+      "expected_output": "A module advancedqueue_eval whose src/Plugin/AdvancedQueue/JobType/ class extends JobTypeBase and carries #[AdvancedQueueJobType(id: 'advancedqueue_eval_uppercase', label: ..., max_retries: 2, retry_delay: 30)]; a database-backed advancedqueue_eval_queue queue; and one row in the advancedqueue table for that queue with type advancedqueue_eval_uppercase, state 'success' and message 'HELLO QUEUE' (produced by running \\Drupal::service('advancedqueue.processor')->processQueue($queue) or drush advancedqueue:queue:process advancedqueue_eval_queue)."
+    }
+  ]
+}

@@ -1,0 +1,78 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "advanced_text_formatter",
+  "version": "3.0.x",
+  "note": "Advanced Text Formatter provides a single field formatter, 'Advanced Text' (plugin id `advanced_text`), for the string, string_long, text, text_long and text_with_summary field types. It has no admin form, permissions, services, or Drush commands (configure is null); it is configured per field on Manage display and its settings live in the entity_view_display component's `settings` array. Settings keys (defaults): trim_length (600), ellipsis (1), word_boundary (1), use_summary (0), token_replace (0), link_to_entity (false), filter ('input'; one of none/input/limit_html/drupal/php), format ('plain_text', used only when filter=drupal), allowed_html (a tag list, used only when filter=limit_html), autop (0). Easy cases are response-graded documented facts. Medium cases set node.article.default's body display to `advanced_text` with known settings and require live drush introspection of the entity_view_display component. Hard cases (persona drupal-expert) reset the body display to the core text_default formatter, the agent switches it to `advanced_text` with specific settings, and a verify script checks the real entity_view_display component (exit 0 = pass). Installed release is 3.0.0-rc2 (release candidate).",
+  "evals": [
+    {
+      "id": "atf-formatter-id",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "On a Drupal 11 site I want to truncate a text field's output to a fixed length when it displays, without writing a custom formatter. Which contrib module gives me an 'Advanced Text' field formatter, what is that formatter's machine (plugin) id, and which field types can it be applied to?",
+      "must_contain_any": ["advanced_text", "Advanced Text Formatter", "advanced_text_formatter"],
+      "must_not_contain": [],
+      "expected_output": "The Advanced Text Formatter module. Its formatter is 'Advanced Text', plugin id `advanced_text`, applicable to the string, string_long, text, text_long, and text_with_summary field types. Configure it per field on Manage display."
+    },
+    {
+      "id": "atf-trim-settings",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "For the Advanced Text formatter (advanced_text), which settings control trimming the output, and what are their default values? How do I turn trimming off entirely?",
+      "must_contain_any": ["trim_length", "ellipsis", "word_boundary"],
+      "must_not_contain": [],
+      "expected_output": "trim_length (default 600) sets the max characters; ellipsis (default 1) appends '...' when trimmed; word_boundary (default 1) trims only on a word boundary. Set trim_length to 0 to disable trimming (ellipsis and word_boundary then do not apply)."
+    },
+    {
+      "id": "atf-filter-options",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "The Advanced Text formatter has a 'Filter' setting controlling how markup is handled. What are the possible values of its `filter` setting, and what do the `allowed_html` and `format` settings do?",
+      "must_contain_any": ["limit_html", "input", "none", "drupal"],
+      "must_not_contain": [],
+      "expected_output": "filter is one of: none (raw), input (the item's own selected text format), limit_html (Xss::filter to the allowed_html tag list, with optional autop), drupal (run through the named text format in `format`), or php (deprecated). `allowed_html` is the whitelist of tags used when filter=limit_html; `format` is the text format id used only when filter=drupal (default plain_text)."
+    },
+    {
+      "id": "atf-known-body-trim",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "The Article content type's default display has had its Body field's display formatter changed. Inspect the live entity_view_display configuration and tell me which field formatter the Body field now uses, what its trim length is, and which markup filter mode it applies.",
+      "setup": "agent-module-documentation/evaluation/verify/advanced_text_formatter-body-trim-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/advanced_text_formatter-body-trim-cleanup.sh",
+      "must_contain_any": ["advanced_text", "200", "limit_html"],
+      "must_not_contain": [],
+      "expected_output": "On core.entity_view_display.node.article.default the body component's type is `advanced_text` (Advanced Text formatter) with settings.trim_length = 200 (ellipsis and word_boundary on) and settings.filter = limit_html (allowed_html '<a> <b> <em> <strong> <p>')."
+    },
+    {
+      "id": "atf-known-body-summary",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "This site's Article default display uses the Advanced Text formatter on the Body field, configured to show something other than the full body value and to process the text before display. Inspect the live entity_view_display config for that field and tell me whether it shows the summary, whether token replacement is on, and whether trimming is enabled.",
+      "setup": "agent-module-documentation/evaluation/verify/advanced_text_formatter-body-summary-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/advanced_text_formatter-body-summary-cleanup.sh",
+      "must_contain_any": ["use_summary", "token_replace", "summary"],
+      "must_not_contain": [],
+      "expected_output": "On core.entity_view_display.node.article.default the body component uses the `advanced_text` formatter with settings.use_summary = 1 (renders the field summary when present), settings.token_replace = 1 (runs token replacement), and settings.trim_length = 0 (trimming disabled); filter = none."
+    },
+    {
+      "id": "atf-configure-trim",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, change the Article content type's DEFAULT view display for the Body field to use the Advanced Text formatter (plugin id advanced_text) and trim its output to 300 characters, with the ellipsis and word-boundary options enabled. Apply it live so the entity_view_display reflects it.",
+      "reset": "agent-module-documentation/evaluation/verify/advanced_text_formatter-body-trim-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/advanced_text_formatter-body-trim-verify.sh",
+      "expected_output": "core.entity_view_display.node.article.default body component has type = advanced_text with settings.trim_length = 300, settings.ellipsis truthy, and settings.word_boundary truthy."
+    },
+    {
+      "id": "atf-configure-limithtml",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, configure the Article content type's DEFAULT view display so the Body field uses the Advanced Text formatter (advanced_text) with its Filter set to 'Limit allowed HTML tags' (filter = limit_html) and the allowed HTML restricted to just <a>, <em> and <strong>. Save it to the live entity_view_display.",
+      "reset": "agent-module-documentation/evaluation/verify/advanced_text_formatter-body-limithtml-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/advanced_text_formatter-body-limithtml-verify.sh",
+      "expected_output": "core.entity_view_display.node.article.default body component has type = advanced_text with settings.filter = limit_html and settings.allowed_html permitting <a>, <em>, <strong> (and not <script>)."
+    }
+  ]
+}

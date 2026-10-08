@@ -1,0 +1,20 @@
+#!/usr/bin/env bash
+# Introspection CLEANUP: restore gin_lb.settings from the snapshot taken by the matching setup
+# (falling back to the module's shipped defaults if no snapshot exists) and drop the state key.
+# Idempotent. Exit 0.
+set -uo pipefail
+cd /var/www/html
+drush php:eval '
+  $state = \Drupal::state();
+  $backup = $state->get("gin_lb_eval.known_settings_backup");
+  if (!\is_array($backup) || empty($backup)) {
+    $path = \Drupal::service("extension.list.module")->getPath("gin_lb") . "/config/install/gin_lb.settings.yml";
+    $backup = \Symfony\Component\Yaml\Yaml::parse(\file_get_contents($path));
+  }
+  $c = \Drupal::configFactory()->getEditable("gin_lb.settings");
+  foreach ($backup as $k => $v) { $c->set($k, $v); }
+  $c->save();
+  $state->delete("gin_lb_eval.known_settings_backup");
+' >/dev/null 2>&1
+drush cr >/dev/null 2>&1
+echo "cleanup: gin_lb.settings restored from snapshot"

@@ -1,0 +1,107 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "similarterms",
+  "version": "2.0.x",
+  "note": "Similar By Terms exposes three Views handlers via hook_views_data_alter: a contextual filter 'Similar by terms: Nid' (argument handler id similar_terms_arg, key node.similar_nid), a sort 'Similar by terms: Similarity' (similar_terms_sort), and a field 'Similar by terms: Similarity' (similar_terms_field, key node.similarterms). No admin UI, configure=null, no permissions, no Drush, no plugin type of its own. Similarity is computed from core taxonomy_index (published nodes) or taxonomy_entity_index (all content entity types, when that module is enabled). All state is per view. Option keys: argument {vocabularies, include_args, min_match_percentage(0/25/50/75/100)}; sort {sort_method count|weight, order}; field {count_type 0=count/1=percent/2=weight-sum, percent_suffix, weight_suffix}. Medium/hard cases are grounded in real view config: introspection reads configured options from a view; execution adds a similarterms handler to a view and is verified against the live view config.",
+  "evals": [
+    {
+      "id": "similarterms-related-block",
+      "mode": "recipe",
+      "prompt": "I have a Drupal 11 site with the similarterms (Similar By Terms) module. I want a block on each article page listing other articles that share the most taxonomy terms with it. Which Views handlers does the module provide and how would I wire the view?",
+      "must_contain_any": [
+        "Similar by terms",
+        "contextual filter",
+        "similar_nid",
+        "similar_terms_arg",
+        "sort",
+        "Similarity"
+      ],
+      "must_not_contain": [],
+      "expected_output": "similarterms adds a 'Similar by terms: Nid' contextual filter (argument), a 'Similar by terms: Similarity' sort, and a 'Similar by terms: Similarity' field. Build a node view (block), add the contextual filter and default it to the current node id (Content ID from URL), add the Similarity sort DESC, optionally add the Similarity field, then place the block on the node page.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "similarterms-min-match",
+      "mode": "recipe",
+      "prompt": "In the similarterms 'Similar by terms: Nid' contextual filter, what does the 'Minimum similarity match' option do and what does choosing 100% mean?",
+      "must_contain_any": [
+        "min_match_percentage",
+        "percentage",
+        "100%",
+        "exact",
+        "all the same terms",
+        "HAVING"
+      ],
+      "must_not_contain": [],
+      "expected_output": "min_match_percentage filters results to those sharing at least that share of the source node's terms (0/25/50/75/100). 100% means an exact match — only nodes sharing all of the source's terms. It is implemented with a HAVING clause on the count of matching terms.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "similarterms-weights-and-entity-index",
+      "mode": "recipe",
+      "prompt": "Two questions about similarterms: (1) how can I make some taxonomy terms count more than others when ranking similar content, and (2) how do I make similarity work for entity types other than nodes (e.g. media)?",
+      "must_contain_any": [
+        "weight",
+        "term weight",
+        "sum of term weights",
+        "taxonomy_entity_index",
+        "Taxonomy Entity Index"
+      ],
+      "must_not_contain": [],
+      "expected_output": "(1) Use weight-based similarity: set taxonomy term weights and configure the sort's sort_method to 'weight' (and/or the field's count_type to 2, sum of term weights) so higher-weight matching terms rank higher. (2) Enable the Taxonomy Entity Index module and re-index; the Similar by terms handlers then appear on every content entity type (media, users, terms, custom entities), using taxonomy_entity_index instead of core taxonomy_index.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "similarterms-inspect-min-match",
+      "mode": "introspection",
+      "prompt": "This site has a view 'st_related' that uses the similarterms 'Similar by terms: Nid' contextual filter. Inspect the live view configuration and state the configured minimum similarity match percentage for that filter.",
+      "must_contain_any": [
+        "75"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The minimum match is 75%: in views.view.st_related the similar_nid contextual filter (plugin_id similar_terms_arg) has min_match_percentage: 75.",
+      "setup": "agent-module-documentation/evaluation/verify/similarterms-related-view-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/similarterms-related-view-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "similarterms-inspect-field-display",
+      "mode": "introspection",
+      "prompt": "The view 'st_related' also has a 'Similar by terms: Similarity' field. Inspect the live configuration: is that field configured to show the count of common terms, a percentage, or the sum of matching term weights?",
+      "must_contain_any": [
+        "weight",
+        "sum of",
+        "count_type",
+        "2"
+      ],
+      "must_not_contain": [],
+      "expected_output": "It shows the sum of matching term weights: in views.view.st_related the similarterms field (similar_terms_field) has count_type: 2 (sum of term weights).",
+      "setup": "agent-module-documentation/evaluation/verify/similarterms-related-view-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/similarterms-related-view-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "similarterms-add-argument",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "The node view 'st_task' on this site has no similarity handling yet. Using the similarterms module, add a 'Similar by terms: Nid' contextual filter to its default display, configured so results must match at least 50% of the source node's terms. Apply the change to the live view configuration.",
+      "reset": "agent-module-documentation/evaluation/verify/similarterms-add-argument-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/similarterms-add-argument-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/similarterms-add-argument-cleanup.sh",
+      "expected_output": "views.view.st_task default display gains an argument using plugin_id similar_terms_arg (the node.similar_nid handler) with min_match_percentage: 50."
+    },
+    {
+      "id": "similarterms-add-weight-sort",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "The node view 'st_sort' already has the 'Similar by terms: Nid' contextual filter but no sort. Using similarterms, add the 'Similar by terms: Similarity' sort to its default display and configure it to order by the SUM of matching term weights (not the plain count). Apply it to the live view configuration.",
+      "reset": "agent-module-documentation/evaluation/verify/similarterms-add-weight-sort-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/similarterms-add-weight-sort-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/similarterms-add-weight-sort-cleanup.sh",
+      "expected_output": "views.view.st_sort default display gains a sort using plugin_id similar_terms_sort with sort_method: weight."
+    }
+  ]
+}

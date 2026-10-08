@@ -1,0 +1,97 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "webform_xlsx_export",
+  "version": "1.6.x",
+  "note": "Webform XLSX Export contributes exactly one plugin: @WebformExporter(id = \"xlsx\", label = \"XLSX\") in Drupal\\webform_xlsx_export\\Plugin\\WebformExporter\\XlsxExporter, extending Webform's TabularBaseWebformExporter and writing real Office Open XML via phpoffice/phpspreadsheet. It has no configure route (configure: null), no permissions, no config object, no config schema and no Drush commands of its own -- it is used through Webform's Results->Download form and Webform's own `drush webform:export --exporter=xlsx`. Per-webform saved export settings live in webform *state* under the key 'results.export' ($webform->getState('results.export')), not in config. hook_requirements() reports whether PhpSpreadsheet is installed. Medium cases read back that real webform state; hard cases produce a real .xlsx file and a real saved export setting.",
+  "evals": [
+    {
+      "id": "webform_xlsx_export-plugin-id",
+      "mode": "recipe",
+      "prompt": "On a Drupal 11 site with the webform_xlsx_export module, what is the machine id of the exporter plugin it adds, which Webform base class does it extend, and which PHP library does it need?",
+      "must_contain_any": [
+        "xlsx",
+        "PhpSpreadsheet",
+        "TabularBaseWebformExporter"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The plugin is @WebformExporter(id = \"xlsx\", label = \"XLSX\"), class Drupal\\webform_xlsx_export\\Plugin\\WebformExporter\\XlsxExporter, extending Drupal\\webform\\Plugin\\WebformExporter\\TabularBaseWebformExporter. It requires phpoffice/phpspreadsheet (^3.5), which hook_requirements() checks on the status report.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "webform_xlsx_export-drush-usage",
+      "mode": "recipe",
+      "prompt": "How do I export the submissions of a webform called 'contact' to a real Excel .xlsx file from the command line on a Drupal site that has webform_xlsx_export installed? Does the module add its own Drush command?",
+      "must_contain_any": [
+        "webform:export",
+        "--exporter=xlsx",
+        "exporter=xlsx"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The module adds no Drush command of its own; it plugs into Webform's own command: drush webform:export contact --exporter=xlsx --destination=/tmp/contact.xlsx (alias wfx). --destination is effectively required because the default is to print the export to stdout.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "webform_xlsx_export-why-and-quirks",
+      "mode": "recipe",
+      "prompt": "Why would I use the Drupal webform_xlsx_export module instead of the 'table' export that Webform already provides? And how does the module make sure a submitted answer that starts with '=' does not end up as a spreadsheet formula?",
+      "must_contain_any": [
+        "StringValueBinder",
+        "formula",
+        "not real Excel",
+        "Office Open XML"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Webform's table exporter writes an HTML table with an .xls extension, which recent Excel versions warn about because it is not a real Excel file; this module writes genuine Office Open XML with PhpSpreadsheet. In writeSubmission(), any string value longer than one character that begins with '=' is written using a PhpOffice\\PhpSpreadsheet\\Cell\\StringValueBinder so it is stored as text and not evaluated as a formula.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "webform_xlsx_export-known-default",
+      "mode": "introspection",
+      "prompt": "This Drupal site has the webform_xlsx_export module enabled and a webform whose machine name is wfx_known. Someone already saved that webform's results-download settings. Inspect the live site and tell me which export format (exporter plugin) those saved settings use.",
+      "must_contain_any": [
+        "xlsx"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The saved export settings for wfx_known use the xlsx exporter. They live in webform state, not config: Webform::load('wfx_known')->getState('results.export')['exporter'] === 'xlsx' (with header_format 'key' and file_name 'wfx-known-report').",
+      "setup": "agent-module-documentation/evaluation/verify/webform_xlsx_export-known-default-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/webform_xlsx_export-known-default-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "webform_xlsx_export-which-webform",
+      "mode": "introspection",
+      "prompt": "This Drupal site has two webforms, wfx_pair_a and wfx_pair_b, and each has saved results-download settings. Exactly one of them is set up to download as a real Excel workbook using webform_xlsx_export. Inspect the running site and tell me which one.",
+      "must_contain_any": [
+        "wfx_pair_a"
+      ],
+      "must_not_contain": [],
+      "expected_output": "wfx_pair_a: its webform state results.export has exporter 'xlsx' (the plugin from webform_xlsx_export), while wfx_pair_b uses Webform core's 'delimited' (CSV) exporter.",
+      "setup": "agent-module-documentation/evaluation/verify/webform_xlsx_export-which-webform-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/webform_xlsx_export-which-webform-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "webform_xlsx_export-export-file",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "This Drupal site has the webform_xlsx_export module enabled and a webform with machine name wfx_task that already has submissions. Export all of its submissions as a real Office Open XML workbook to the absolute path /tmp/wfx_task_export.xlsx on this server. Actually run the export.",
+      "reset": "agent-module-documentation/evaluation/verify/webform_xlsx_export-export-file-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/webform_xlsx_export-export-file-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/webform_xlsx_export-export-file-cleanup.sh",
+      "expected_output": "Run: drush webform:export wfx_task --exporter=xlsx --destination=/tmp/wfx_task_export.xlsx . The result must be identified by PhpSpreadsheet's IOFactory::identify() as 'Xlsx' and contain a header row plus the two submission rows (Alice/red and Bob/blue)."
+    },
+    {
+      "id": "webform_xlsx_export-default-format",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "site-owner",
+      "prompt": "On this Drupal site there is a webform with machine name wfx_pref. Whenever anyone downloads its results, the download should default to a real Excel file rather than CSV, and the first row of the file should show the raw element machine names instead of the human labels. Save that as the webform's stored download settings on the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/webform_xlsx_export-default-format-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/webform_xlsx_export-default-format-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/webform_xlsx_export-default-format-cleanup.sh",
+      "expected_output": "Save the webform's export settings with exporter 'xlsx' and header_format 'key' -- either via /admin/structure/webform/manage/wfx_pref/results/download ('Save settings'), or in code: $options = \\Drupal::service('webform_submission.exporter')->getDefaultExportOptions(); $options['exporter'] = 'xlsx'; $options['header_format'] = 'key'; Webform::load('wfx_pref')->setState('results.export', $options);"
+    }
+  ]
+}

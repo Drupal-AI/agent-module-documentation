@@ -1,0 +1,80 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "config_merge",
+  "version": "2.0.x",
+  "note": "Config Merge is one stateless class, Drupal\\config_merge\\ConfigMerger, whose static mergeConfigItemStates($previous, $current, $active) does a git-style three-way merge of a config item: it adopts an upstream change only when active === previous (uncustomized) else keeps the customized active value; associative arrays diff additions/removals/changes recursively, indexed arrays are substituted only when unchanged. Decisions are logged via getLogs() keyed update/ignore/substitute. It defines ConfigMergeEvents::POST_MERGE + ConfigMergeEvent for consumers (not dispatched by the module). No configure route, no permissions, no Drush, no config entity, no plugin types (the config_merge_filter submodule provides the config_filter plugin). Medium cases store a 3-way scenario in Drupal State and require the agent to run ConfigMerger and report the merged value; hard cases require the agent to compute the full merge and store the result array in State, verified live. Merge outcomes were confirmed against the running site.",
+  "evals": [
+    {
+      "id": "config_merge-what-it-does",
+      "mode": "recipe",
+      "prompt": "What does the Drupal contrib module config_merge do, and which class/method performs the merge? What are the three inputs to that merge?",
+      "must_contain_any": ["ConfigMerger", "mergeConfigItemStates", "three-way", "3-way", "previous"],
+      "must_not_contain": [],
+      "expected_output": "It performs a git-style three-way merge of a configuration item so upstream updates apply while local customizations are kept. The merge is ConfigMerger::mergeConfigItemStates($previous, $current, $active): previous = last snapshot provided by the extension, current = the new incoming version, active = what's in the site's active storage.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "config_merge-operations",
+      "mode": "recipe",
+      "prompt": "config_merge logs each decision it makes during a three-way merge. What are the possible operations it records, and what does each mean?",
+      "must_contain_any": ["update", "ignore", "substitute"],
+      "must_not_contain": [],
+      "expected_output": "The merge log (ConfigMerger::getLogs()) keys entries by operation: update (an incoming change was merged in because the value was uncustomized), ignore (a local customization was retained, so the change was not applied), and substitute (an indexed/list value was replaced because the site had not altered it).",
+      "difficulty": "easy"
+    },
+    {
+      "id": "config_merge-customization-rule",
+      "mode": "recipe",
+      "prompt": "In config_merge's three-way merge, when does it accept an upstream change to a value versus keep the site's existing value?",
+      "must_contain_any": ["active", "previous", "customiz", "unchanged"],
+      "must_not_contain": [],
+      "expected_output": "It accepts the new (current) value only when the active value still equals the previous value, i.e. the site never customized it (operation update). If the active value differs from previous (the site customized it), it keeps the active value (operation ignore). For indexed arrays it substitutes the new value only when previous === active.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "config_merge-keep-customization",
+      "mode": "introspection",
+      "prompt": "On this Drupal site, Drupal State key 'config_merge_eval_keep' holds a three-way merge scenario with 'previous', 'current' and 'active' versions of a config item that has a 'timeout' value. Using config_merge's ConfigMerger, compute the merge and report the resulting value of 'timeout'.",
+      "must_contain_any": ["90"],
+      "must_not_contain": [],
+      "expected_output": "previous timeout is 30, current is 60, active is 90. Because the site customized the value (active 90 != previous 30), ConfigMerger keeps the customization: merged timeout is 90 (operation ignore).",
+      "setup": "agent-module-documentation/evaluation/verify/config_merge-keep-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/config_merge-keep-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "config_merge-accept-update",
+      "mode": "introspection",
+      "prompt": "Drupal State key 'config_merge_eval_update' holds a three-way merge scenario (previous/current/active) for a config item with a 'timeout' value. Run config_merge's ConfigMerger on it and report the merged value of 'timeout'.",
+      "must_contain_any": ["60"],
+      "must_not_contain": [],
+      "expected_output": "previous timeout 30, current 60, active 30. The site did not customize the value (active 30 == previous 30), so ConfigMerger adopts the upstream change: merged timeout is 60 (operation update).",
+      "setup": "agent-module-documentation/evaluation/verify/config_merge-update-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/config_merge-update-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "config_merge-merge-rich",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "Drupal State key 'config_merge_eval_h1' holds a three-way merge scenario with keys 'previous', 'current' and 'active' (each an array). Using config_merge's ConfigMerger, compute the three-way merge of those states and store the resulting merged array into Drupal State under the key 'config_merge_eval_h1_result'. Apply it to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/config_merge-merge-rich-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/config_merge-merge-rich-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/config_merge-merge-rich-cleanup.sh",
+      "expected_output": "$s = \\Drupal::state()->get('config_merge_eval_h1'); \\Drupal::state()->set('config_merge_eval_h1_result', \\Drupal\\config_merge\\ConfigMerger::mergeConfigItemStates($s['previous'], $s['current'], $s['active'])); — the merged result is slogan=new (update), color=green (customization kept), added=yes (addition), tags=[a,b,c] (indexed substitute)."
+    },
+    {
+      "id": "config_merge-merge-remove",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "Drupal State key 'config_merge_eval_h2' holds a three-way merge scenario (previous/current/active arrays) where the upstream update both removed a key and changed a value, and the site is uncustomized. Use config_merge's ConfigMerger to merge the states and store the merged array into Drupal State key 'config_merge_eval_h2_result'. Apply it to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/config_merge-merge-remove-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/config_merge-merge-remove-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/config_merge-merge-remove-cleanup.sh",
+      "expected_output": "Merging previous {keep:1,drop:2,mod:3}, current {keep:1,mod:4}, active {keep:1,drop:2,mod:3} yields {keep:1, mod:4}: 'drop' is removed (uncustomized removal) and 'mod' updated to 4. Store that array in state key config_merge_eval_h2_result."
+    }
+  ]
+}

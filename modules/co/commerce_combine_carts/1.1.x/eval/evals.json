@@ -1,0 +1,89 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "commerce_combine_carts",
+  "version": "1.1.x",
+  "note": "Commerce Combine Carts keeps a Commerce customer to one cart per order type by merging extra carts automatically. It has NO config, UI, permissions, Drush, or plugins: the whole module is the commerce_combine_carts.cart_unifier service (CartUnifier) plus two triggers - hook_user_login -> combineUserCarts(), and an event subscriber on OrderEvents::ORDER_ASSIGN -> assignCart(). Merging is per order type (bundle); getMainCarts() returns one main cart per bundle, combineCarts() moves order items in a DB transaction and deletes/empties the other cart; like items combine per the product variations display 'combine' setting; a cart on the commerce_checkout.form route is kept as the destination. Requires commerce_cart. Because there is no config, medium/hard cases are grounded in real Commerce cart state: the scripts create a namespaced store (ccc_eval_store) and users with multiple draft carts; introspection counts a user's carts; execution requires combining a user's two same-type carts into one, verified against live cart state (commerce_cart.cart_provider).",
+  "evals": [
+    {
+      "id": "ccc-what-and-when",
+      "mode": "recipe",
+      "prompt": "What does the Drupal Commerce 'Commerce Combine Carts' module do, and what events cause it to merge a customer's carts?",
+      "must_contain_any": [
+        "one cart",
+        "single cart",
+        "merge",
+        "combine",
+        "login",
+        "assign"
+      ],
+      "must_not_contain": [],
+      "expected_output": "It keeps a customer to a single active cart per order type by automatically merging their other carts. It triggers on user login (hook_user_login -> CartUnifier::combineUserCarts) and when a cart order is assigned to a customer (OrderEvents::ORDER_ASSIGN -> CartUnifier::assignCart), e.g. adopting an anonymous cart at login.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "ccc-service",
+      "mode": "recipe",
+      "prompt": "In Commerce Combine Carts, which service and method would I call from custom code to consolidate all of a given user's carts into one, and is there any configuration to set up first?",
+      "must_contain_any": [
+        "cart_unifier",
+        "combineUserCarts",
+        "CartUnifier",
+        "commerce_combine_carts.cart_unifier"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Call \\Drupal::service('commerce_combine_carts.cart_unifier')->combineUserCarts($user) (Drupal\\commerce_combine_carts\\CartUnifier). There is no configuration - the module works automatically once enabled; you can also use combineCarts($main, $other, $delete) to merge two specific carts.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "ccc-per-type",
+      "mode": "recipe",
+      "prompt": "When Commerce Combine Carts merges carts, does it merge across all of a user's carts regardless of order type, and how does it handle a cart that the customer is currently checking out?",
+      "must_contain_any": [
+        "order type",
+        "per type",
+        "bundle",
+        "checkout"
+      ],
+      "must_not_contain": [],
+      "expected_output": "It merges per order type (bundle) only - carts of different order types are never combined; getMainCarts() returns one main cart per type. A cart that is the order currently on the commerce_checkout.form route is treated as the surviving destination so the customer keeps checking out the cart they are on.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "ccc-count-carts",
+      "mode": "introspection",
+      "prompt": "On this Drupal Commerce site there is a customer account with the email address ccc_known_user@example.com (on this site the account username is the email). Inspect the live cart state and report how many active shopping carts that user currently has.",
+      "must_contain_any": [
+        "2",
+        "two"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The account ccc_known_user@example.com currently has 2 active carts (two draft cart orders of the 'default' order type), which is exactly the situation Commerce Combine Carts consolidates on login/assignment.",
+      "setup": "agent-module-documentation/evaluation/verify/commerce_combine_carts-two-carts-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/commerce_combine_carts-two-carts-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "ccc-combine-carts",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal Commerce site, the customer account ccc_task_user@example.com currently has two separate active carts of the same order type. Using the Commerce Combine Carts module, consolidate this account's carts so they end up with a single cart. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/commerce_combine_carts-combine-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/commerce_combine_carts-combine-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/commerce_combine_carts-combine-cleanup.sh",
+      "expected_output": "Call the cart unifier for the ccc_task_user@example.com account, e.g. \\Drupal::service('commerce_combine_carts.cart_unifier')->combineUserCarts($user), so the two same-type carts are merged into one and the emptied cart deleted. Afterwards commerce_cart.cart_provider->getCarts($user) returns exactly one cart."
+    },
+    {
+      "id": "ccc-combine-carts-layman",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "site-owner",
+      "prompt": "One of my shoppers (account email ccc_task_user@example.com) somehow ended up with two shopping carts on my store. I want them to have just one cart with everything together. I have the Commerce Combine Carts module installed. Please fix it so they only have one cart.",
+      "reset": "agent-module-documentation/evaluation/verify/commerce_combine_carts-combine-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/commerce_combine_carts-combine-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/commerce_combine_carts-combine-cleanup.sh",
+      "expected_output": "Same end state as the expert phrasing: run Commerce Combine Carts' unifier for the ccc_task_user@example.com account (combineUserCarts) so the two same-type carts merge into one; commerce_cart.cart_provider->getCarts($user) then returns a single cart."
+    }
+  ]
+}

@@ -1,0 +1,104 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "comments_order",
+  "version": "3.0.x",
+  "note": "Comments Order has no configure route (configure=null), no permissions, no Drush, and no plugins. Its entire persistent state is up to three third-party settings on a comment-type field's field.field.* config: comments_order.order (ASC|DESC), comments_order.children_natural_order (1|0), comments_order.created_order (1|0). The extra fields appear on field_config_edit_form only when the field type is 'comment'. At display time comments_order_query_comment_filter_alter() rewrites the comment_filter query ORDER BY, and a CommentsOrderStorage handler keeps pager ordinals consistent. All medium/hard cases are grounded in that real third-party-setting config on namespaced comment fields (field_co_*) on node.article.",
+  "evals": [
+    {
+      "id": "comments_order-how-to-newest-first",
+      "mode": "recipe",
+      "prompt": "On a Drupal 11 site with the comments_order module enabled, how do I make comments on Article nodes display newest-first instead of oldest-first? There is no settings page for the module — where do I set it and where is that choice stored?",
+      "must_contain_any": [
+        "DESC",
+        "Newest first",
+        "descending",
+        "Manage fields",
+        "third_party_settings",
+        "comments_order"
+      ],
+      "must_not_contain": [],
+      "expected_output": "There is no configure route. Edit the comment field on the bundle's Manage fields page and set 'Comments order' to 'Newest first (descending order)'. It is stored as a third-party setting on that field: field.field.node.article.<comment_field> -> third_party_settings.comments_order.order: DESC.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "comments_order-setting-keys",
+      "mode": "recipe",
+      "prompt": "What are the three per-field settings that the comments_order module adds to a comment field, and what does each control?",
+      "must_contain_any": [
+        "children_natural_order",
+        "created_order",
+        "order"
+      ],
+      "must_not_contain": [],
+      "expected_output": "order (ASC/DESC — oldest vs newest first); children_natural_order (1/0 — with DESC+threaded, keep reply chains chronological vs reverse them too); created_order (1/0 — for flat lists, sort by the 'Authored On' created timestamp instead of comment id). Stored under third_party_settings.comments_order on the field.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "comments_order-natural-children",
+      "mode": "recipe",
+      "prompt": "With comments_order set to newest-first on a threaded comment field, what does the 'Natural order for children' option do, and which stored key controls it?",
+      "must_contain_any": [
+        "children_natural_order",
+        "natural",
+        "children",
+        "reply"
+      ],
+      "must_not_contain": [],
+      "expected_output": "children_natural_order = 1 reverses only the top-level (parent) threads while keeping each reply chain in natural chronological order; children_natural_order = 0 reverses the children too. It only applies with DESC order on a threaded display.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "comments_order-configured-order",
+      "mode": "introspection",
+      "prompt": "This Drupal site has a comment field named field_co_known on the Article content type, configured with comments_order. Inspect the live field configuration and state which direction (oldest-first or newest-first) its comments are ordered.",
+      "must_contain_any": [
+        "DESC",
+        "newest",
+        "descending"
+      ],
+      "must_not_contain": [],
+      "expected_output": "field_co_known is set to newest-first: field.field.node.article.field_co_known third_party_settings.comments_order.order is DESC.",
+      "setup": "agent-module-documentation/evaluation/verify/comments_order-configured-order-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/comments_order-configured-order-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "comments_order-created-order",
+      "mode": "introspection",
+      "prompt": "On this site the Article content type has a comment field field_co_created configured with comments_order. Inspect its live configuration: is it ordering comments by the comment id or by the 'Authored On' (created) timestamp? Name the third-party setting that decides this.",
+      "must_contain_any": [
+        "created_order",
+        "created",
+        "Authored"
+      ],
+      "must_not_contain": [],
+      "expected_output": "It orders by the 'Authored On' created timestamp because third_party_settings.comments_order.created_order is 1 on field.field.node.article.field_co_created (order is DESC).",
+      "setup": "agent-module-documentation/evaluation/verify/comments_order-created-order-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/comments_order-created-order-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "comments_order-set-desc",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site the Article content type has a comment field field_co_task whose comments currently display oldest-first. Using the comments_order module, configure this field so its comments display newest-first, and apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/comments_order-set-desc-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/comments_order-set-desc-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/comments_order-set-desc-cleanup.sh",
+      "expected_output": "Set the comments_order.order third-party setting on field.field.node.article.field_co_task to DESC (e.g. FieldConfig::loadByName('node','article','field_co_task')->setThirdPartySetting('comments_order','order','DESC')->save(), or tick 'Newest first' on the field edit form)."
+    },
+    {
+      "id": "comments_order-reverse-children",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "The Article content type on this site has a threaded comment field field_co_thread already set to newest-first, but replies within a thread still read in natural (chronological) order. Using comments_order, configure the field so the child replies are reversed as well (disable 'Natural order for children'), keeping the newest-first ordering. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/comments_order-reverse-children-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/comments_order-reverse-children-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/comments_order-reverse-children-cleanup.sh",
+      "expected_output": "On field.field.node.article.field_co_thread keep third_party_settings.comments_order.order = DESC and set comments_order.children_natural_order = 0 (turn off 'Natural order for children'), then save."
+    }
+  ]
+}

@@ -1,0 +1,138 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "search_api",
+  "version": "1.41.x",
+  "note": "Search API is a framework module; the load-bearing facts are its two config entities (server/index), its plugin type ids + namespaces, the search_api_db backend id, drush command names, and the admin permission. Cases span three difficulty tiers: `recipe` (easy, response-graded), `introspection` (medium, a setup script installs a known eval_intro_* config and the agent reads it back live), and `execution` (hard, the agent builds config that is graded against live site state). Introspection and execution cases only ever touch eval_intro_* / eval_* entities — never the site's existing Solr/Pantheon search config.",
+  "evals": [
+    {
+      "id": "search_api-build-db-index",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site (drush available), stand up a working Search API setup backed by the database. Create a Search API server named `eval_db_server` using the Database backend, and an index named `eval_index` that indexes Article nodes (the node datasource for the article bundle) with at least the node title added as an indexed field. Apply it live and index the content; don't just describe it. One-line summary.",
+      "reset": "agent-module-documentation/evaluation/verify/search_api-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/search_api-db-index.sh",
+      "expected_output": "A search_api_server `eval_db_server` (backend search_api_db) and an enabled search_api_index `eval_index` exist, the index writes to that server, uses the entity:node datasource, and has the node title added as an indexed field (property path title, type text/string). Verified against live site state."
+    },
+    {
+      "id": "search_api-index2-title-body",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site (drush available), stand up a fresh database-backed Search API setup: create a server named `eval_server2` (Database backend) and an index named `eval_index2` on the node datasource that indexes BOTH the Article title AND the Article body (the rendered/body field) as indexed fields. Apply it live and index the content so items are actually indexed; don't just describe it. One-line summary.",
+      "reset": "agent-module-documentation/evaluation/verify/search_api-index2-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/search_api-index2-verify.sh",
+      "expected_output": "A search_api_server `eval_server2` (backend search_api_db) and an enabled search_api_index `eval_index2` exist; the index uses the entity:node datasource and has indexed fields for both the node title (property path title) and the body (property path body, or a rendered_item), and at least one item is indexed. Verified against live site state."
+    },
+    {
+      "id": "search_api-processor-html-filter",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site (drush available), create a database-backed Search API server named `eval_server3` (Database backend) and an index named `eval_index3` on the node datasource, and enable the HTML filter processor (plugin id `html_filter`) on that index. Apply it live; don't just describe it. One-line summary.",
+      "reset": "agent-module-documentation/evaluation/verify/search_api-processor-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/search_api-processor-verify.sh",
+      "expected_output": "A search_api_server `eval_server3` (backend search_api_db) and an enabled search_api_index `eval_index3` exist; the index uses the entity:node datasource and has the html_filter processor enabled in its processor pipeline. Verified against live site state."
+    },
+    {
+      "id": "search_api-intro-server-backend",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site (drush available), a Search API server named `eval_intro_server` already exists. Inspect the running site and tell me which backend plugin it uses.",
+      "setup": "agent-module-documentation/evaluation/verify/search_api-intro-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/search_api-intro-cleanup.sh",
+      "must_contain_any": ["search_api_db", "Database"],
+      "must_not_contain": [],
+      "expected_output": "The server eval_intro_server uses the Database backend, plugin id search_api_db (read live via the search_api_server config entity's backend id)."
+    },
+    {
+      "id": "search_api-intro-index-fields",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site (drush available), a Search API index named `eval_intro_index` already exists. Inspect the running site and tell me which fields are indexed on it.",
+      "setup": "agent-module-documentation/evaluation/verify/search_api-intro-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/search_api-intro-cleanup.sh",
+      "must_contain_any": ["title", "body"],
+      "must_not_contain": [],
+      "expected_output": "The index eval_intro_index has two indexed fields: title and body (read live via the search_api_index config entity's field settings / getFields())."
+    },
+    {
+      "id": "search_api-intro-index-datasource",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site (drush available), a Search API index named `eval_intro_index` already exists. Inspect the running site and tell me which datasource(s) it uses.",
+      "setup": "agent-module-documentation/evaluation/verify/search_api-intro-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/search_api-intro-cleanup.sh",
+      "must_contain_any": ["entity:node"],
+      "must_not_contain": [],
+      "expected_output": "The index eval_intro_index uses the Content (node) datasource, id entity:node (read live via the search_api_index config entity's datasource settings / getDatasourceIds())."
+    },
+    {
+      "id": "searchapi-config-entities",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "In Search API on Drupal 11, which two config entity types tie a search setup together, and what does each one hold? Name the entity type machine ids.",
+      "must_contain_any": ["search_api_server", "search_api_index"],
+      "must_not_contain": [],
+      "expected_output": "The Server config entity (search_api_server) chooses a backend plugin + connection settings; the Index config entity (search_api_index) chooses datasource(s), the server to write to, a tracker, fields, and the processor pipeline."
+    },
+    {
+      "id": "searchapi-backend-plugin",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "I want to write a custom Search API backend for a new search engine. What is the plugin type id, the base class I extend, and which directory / namespace does the plugin class live in?",
+      "must_contain_any": ["search_api_backend", "BackendPluginBase", "Plugin/search_api/backend"],
+      "must_not_contain": [],
+      "expected_output": "Plugin type id search_api_backend, extend BackendPluginBase (attribute #[SearchApiBackend]), placed in Plugin/search_api/backend/ of the module (namespace Drupal\\<module>\\Plugin\\search_api\\backend)."
+    },
+    {
+      "id": "searchapi-plugin-types",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "Besides backends, name the Search API plugin types used to (a) provide the source of indexable items, (b) transform data at index/search time, and (c) queue which items still need indexing. Give the plugin type ids.",
+      "must_contain_any": ["search_api_datasource", "search_api_processor", "search_api_tracker"],
+      "must_not_contain": [],
+      "expected_output": "Datasources (search_api_datasource), processors (search_api_processor), and trackers (search_api_tracker)."
+    },
+    {
+      "id": "searchapi-db-backend-id",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "I want a search server that stores its index in the site's database using the submodule that ships with Search API, without installing Solr. Which submodule do I enable and what is its backend plugin id that I select on the server?",
+      "must_contain_any": ["search_api_db"],
+      "must_not_contain": [],
+      "expected_output": "Enable the search_api_db submodule and choose the search_api_db backend on the Server."
+    },
+    {
+      "id": "searchapi-drush-index-clear",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "On this Drupal site, give the drush commands to (1) index all tracked items for an index and (2) delete/wipe all indexed data for an index.",
+      "must_contain_any": ["search-api:index", "search-api:clear"],
+      "must_not_contain": [],
+      "expected_output": "drush search-api:index [INDEX] to index tracked items, and drush search-api:clear [INDEX] to delete all indexed data for the index."
+    },
+    {
+      "id": "searchapi-permission",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "Which single permission gates the entire Search API admin UI (creating/configuring servers, indexes, fields, processors, trackers)? Give its machine name.",
+      "must_contain_any": ["administer search_api"],
+      "must_not_contain": [],
+      "expected_output": "The 'administer search_api' permission (defined in search_api.permissions.yml) gates the whole admin UI at /admin/config/search/search-api."
+    },
+    {
+      "id": "searchapi-run-query",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "In PHP on a Drupal 11 site, how do I build and run a Search API keyword search against an index config entity named 'default_index' and get the result items? Show the key calls.",
+      "must_contain_any": ["->query()", "->execute()", "getResultItems"],
+      "must_not_contain": [],
+      "expected_output": "Load the search_api_index entity, call $index->query() to get a QueryInterface, chain keys()/addCondition()/sort()/range(), then $query->execute() returns a ResultSetInterface whose getResultItems() you iterate."
+    }
+  ]
+}

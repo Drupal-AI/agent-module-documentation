@@ -1,0 +1,90 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "admin_audit_trail",
+  "version": "1.0.x",
+  "note": "Admin Audit Trail stores log rows in a plain `admin_audit_trail` DB table (no Drupal entity, no plugin manager). Event *types* (node, user, ...) are registered via hook_admin_audit_trail_handlers() in the 16 admin_audit_trail_* submodules; each submodule calls the logger admin_audit_trail_insert() from entity hooks. IMPORTANT: admin_audit_trail_insert() returns early under PHP_SAPI=cli, so it is a no-op under drush/php:eval -- setup and hard-build steps therefore write straight to the admin_audit_trail table (the same row shape the logger produces). Introspection cases seed known rows and read them back; execution cases write a row and verify it against live table state. admin_audit_trail_node and admin_audit_trail_user are enabled on this site.",
+  "evals": [
+    {
+      "id": "aat-log-storage",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "In the admin_audit_trail module, where are logged audit-trail events stored (an entity or a plain table?), what is the name of that store, and what is its primary key column?",
+      "must_contain_any": ["admin_audit_trail", "lid"],
+      "must_not_contain": [],
+      "expected_output": "They are stored in a plain database table named `admin_audit_trail` (defined by hook_schema in admin_audit_trail.install) -- not a Drupal entity. Its primary key column is `lid` (a serial)."
+    },
+    {
+      "id": "aat-event-type-hook",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "Admin Audit Trail has no plugin manager. Which hook does a submodule implement to register a new audit-trail event type (e.g. `node` or `user`) so it shows up in the report's type filter, and what does that hook return?",
+      "must_contain_any": ["hook_admin_audit_trail_handlers"],
+      "must_not_contain": [],
+      "expected_output": "It implements hook_admin_audit_trail_handlers(), returning an array keyed by event type whose value carries a `title` (and optionally form_ids / form_ids_regexp / form_submit_callback). E.g. ['node' => ['title' => t('Node')]]."
+    },
+    {
+      "id": "aat-query-trail",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "In admin_audit_trail, which function writes a row into the audit trail, and at what admin path (route) is the audit-trail report shown? Note any caveat about calling the logger from Drush/CLI.",
+      "must_contain_any": ["admin_audit_trail_insert", "/admin/reports/audit-trail"],
+      "must_not_contain": [],
+      "expected_output": "admin_audit_trail_insert(array &$log) writes a row; the report is a View at /admin/reports/audit-trail. Caveat: admin_audit_trail_insert() returns early when PHP_SAPI == 'cli', so it is a no-op under Drush -- to seed rows from the CLI you insert into the admin_audit_trail table directly."
+    },
+    {
+      "id": "aat-recent-node-event-introspect",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "persona": "drupal-expert",
+      "prompt": "This site's audit trail already contains recent events. Inspect the live admin_audit_trail log and tell me, for the most recent event of type `node`: what operation was performed, on what content (the description), and from which IP address.",
+      "setup": "agent-module-documentation/evaluation/verify/admin_audit_trail-recent-events-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/admin_audit_trail-recent-events-cleanup.sh",
+      "must_contain_any": ["Eval Quarterly Report", "203.0.113.5"],
+      "must_not_contain": [],
+      "expected_output": "The most recent type=node row is a `delete` of 'article: Eval Quarterly Report' (ref_numeric 999) from IP 203.0.113.5 -- read from the live admin_audit_trail table."
+    },
+    {
+      "id": "aat-count-user-events-introspect",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "persona": "drupal-expert",
+      "prompt": "Inspect the running site's admin_audit_trail log and tell me how many audit-trail events of type `user` are currently recorded, and which operations they represent.",
+      "setup": "agent-module-documentation/evaluation/verify/admin_audit_trail-recent-events-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/admin_audit_trail-recent-events-cleanup.sh",
+      "must_contain_any": ["2"],
+      "must_not_contain": [],
+      "expected_output": "There are 2 type=user rows: one `insert` and one `update` (both for 'Eval Tester (uid 77)') -- counted from the live admin_audit_trail table."
+    },
+    {
+      "id": "aat-write-marker-entry-expert",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site (DDEV, drush available), write a single entry into the Admin Audit Trail log with type `eval`, operation `insert`, and a description containing the exact text `AUDIT MARKER OK`. Apply it to the live site (drush/code, not just described). Note: admin_audit_trail_insert() is CLI-guarded, so account for that. Give a one-line summary of what you did.",
+      "reset": "agent-module-documentation/evaluation/verify/admin_audit_trail-marker-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/admin_audit_trail-marker-verify.sh",
+      "expected_output": "A row exists in the admin_audit_trail table with type='eval' and a description containing 'AUDIT MARKER OK'. Because admin_audit_trail_insert() no-ops under CLI, the correct approach is a direct DB insert into the admin_audit_trail table (the same row shape the logger writes). Verified against live table state."
+    },
+    {
+      "id": "aat-write-marker-entry-layman",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "layman",
+      "prompt": "I want a note added to my site's admin activity log so I can confirm the logging works. Please add one log entry whose message includes the words `AUDIT MARKER OK`, and make it actually appear in the audit trail on the site. Tell me in one line what you did.",
+      "reset": "agent-module-documentation/evaluation/verify/admin_audit_trail-marker-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/admin_audit_trail-marker-verify.sh",
+      "expected_output": "Same end state as the expert variant: a row in the admin_audit_trail log whose description contains 'AUDIT MARKER OK' (type 'eval'). The agent must discover that logging lives in the admin_audit_trail table and that the logger no-ops under CLI, then insert the row. Verified against live table state."
+    },
+    {
+      "id": "aat-log-node-delete-expert",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site (drush available), record an Admin Audit Trail event that captures the deletion of a node whose id is 4242: type `node`, operation `delete`, with the node id stored in the entry's numeric reference field. Apply it to the live site. Summarize in one line.",
+      "reset": "agent-module-documentation/evaluation/verify/admin_audit_trail-node-entry-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/admin_audit_trail-node-entry-verify.sh",
+      "expected_output": "A row exists in admin_audit_trail with type='node', operation='delete', ref_numeric=4242. Written via a direct DB insert (logger is CLI-guarded), matching the row shape admin_audit_trail_node produces. Verified against live table state."
+    }
+  ]
+}

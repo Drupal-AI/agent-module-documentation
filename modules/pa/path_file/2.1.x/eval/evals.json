@@ -1,0 +1,98 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "path_file",
+  "version": "2.1.x",
+  "note": "Path File defines a single content entity type path_file_entity (base fields name, path [a 'path' alias field with custom storage], fid [file], status). Its canonical route /path-file/{path_file_entity} streams the referenced file via PathFileController::file() as a BinaryFileResponse; the entity's path alias points at that canonical route, giving a stable download URL that survives replacing the file. The only config object is path_file.settings.allowed_extensions (space-separated) which drives the fid field's file_extensions and is edited at /admin/structure/path_file_entity/settings. Install grants 'view published path file entity entities' to anonymous+authenticated. Medium cases read back a known allowed_extensions value and a known Path File's alias from the live site; hard cases add an extension to config and build a published Path File entity with a file + alias, verified against live state.",
+  "evals": [
+    {
+      "id": "path_file-change-extensions",
+      "mode": "recipe",
+      "prompt": "On a Drupal site with the Path File (path_file) module, how do I change which file extensions can be uploaded to a Path File, and where is that value stored?",
+      "must_contain_any": [
+        "allowed_extensions",
+        "path_file.settings",
+        "/admin/structure/path_file_entity/settings",
+        "settings form"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Edit the allowed_extensions value in the path_file.settings config (space-separated list) via the settings form at /admin/structure/path_file_entity/settings, or drush cset path_file.settings allowed_extensions '...'. It drives the fid file field's file_extensions.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "path_file-download-url",
+      "mode": "recipe",
+      "prompt": "How does the Path File module serve a Path File's uploaded file, and at what URL? What makes the download URL stay stable when the file is replaced?",
+      "must_contain_any": [
+        "/path-file/",
+        "BinaryFileResponse",
+        "canonical",
+        "path alias"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The canonical route /path-file/{path_file_entity} runs PathFileController::file(), which loads the referenced file and returns a BinaryFileResponse. The entity's editable 'path' alias points at that canonical route, so editing the Path File to upload a new file keeps the same alias/URL.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "path_file-default-view-permission",
+      "mode": "recipe",
+      "prompt": "In the Path File module, which permission lets anonymous visitors download (view) a published Path File, and is it granted by default?",
+      "must_contain_any": [
+        "view published path file entity entities"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The 'view published path file entity entities' permission. path_file_install() grants it to both the anonymous and authenticated roles by default, so published downloads work out of the box.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "path_file-known-allowed-extensions",
+      "mode": "introspection",
+      "prompt": "On this Drupal site, the Path File module's allowed upload extensions have been customized. Inspect the live configuration and list exactly which file extensions are currently allowed for Path File uploads.",
+      "must_contain_any": [
+        "pf_eval_marker",
+        "md",
+        "svg"
+      ],
+      "must_not_contain": [],
+      "expected_output": "path_file.settings allowed_extensions is 'pf_eval_marker txt md svg' (read via drush cget path_file.settings allowed_extensions).",
+      "setup": "agent-module-documentation/evaluation/verify/path_file-allowed-ext-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/path_file-allowed-ext-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "path_file-known-alias",
+      "mode": "introspection",
+      "prompt": "A Path File entity named 'PF Eval Doc' exists on this site. Inspect the live site and state the URL alias at which its file is served.",
+      "must_contain_any": [
+        "/pf-eval-doc"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The Path File 'PF Eval Doc' has the path alias /pf-eval-doc (pointing at its canonical /path-file/<id> route). Found by loading the path_file_entity and reading its 'path' field alias, or the path_alias table.",
+      "setup": "agent-module-documentation/evaluation/verify/path_file-known-alias-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/path_file-known-alias-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "path_file-add-extension",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, configure the Path File module so that SVG files (extension 'svg') are allowed to be uploaded to Path File entities. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/path_file-add-extension-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/path_file-add-extension-verify.sh",
+      "expected_output": "Add 'svg' to path_file.settings allowed_extensions (e.g. drush cset path_file.settings allowed_extensions 'pdf jpg png txt svg', or via the settings form at /admin/structure/path_file_entity/settings).",
+      "cleanup": "agent-module-documentation/evaluation/verify/path_file-add-extension-reset.sh"
+    },
+    {
+      "id": "path_file-create-download",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, use the Path File module to create a published Path File entity named 'PF Task Doc' that serves an uploaded file at the URL alias /pf-task-doc. Create any file needed and apply everything to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/path_file-create-download-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/path_file-create-download-verify.sh",
+      "expected_output": "Create a managed file, then a published path_file_entity with name 'PF Task Doc', fid set to that file, and path alias '/pf-task-doc' (which creates a path_alias pointing at /path-file/<id>). Verified by loading the entity: published, has an fid, and the /pf-task-doc alias points at its canonical route.",
+      "cleanup": "agent-module-documentation/evaluation/verify/path_file-create-download-reset.sh"
+    }
+  ]
+}

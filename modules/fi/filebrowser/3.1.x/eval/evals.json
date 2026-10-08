@@ -1,0 +1,80 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "filebrowser",
+  "version": "3.1.x",
+  "note": "Filebrowser renders server directories as FTP-like listings. Each listing is a node of type dir_listing whose folder URI + per-node rights are stored in the module's own filebrowser_nodes table (via the filebrowser.storage service and the Drupal\\filebrowser\\Filebrowser value object), NOT in Fields; the file listing is cached in filebrowser_content. Global defaults for new listings live in the filebrowser.settings config object (configure route filebrowser.settings, /admin/config/system/filebrowser). Medium/hard cases are grounded in that real state: introspection reads a known folder_path off a dir_listing node and known global rights; execution creates a dir_listing node (attaching a Filebrowser object so hook_node_insert persists it) and toggles global rights, both verified against live state. NOTE: on this site the shipped field.field.node.dir_listing.body instance is missing — cases avoid relying on a Body field.",
+  "evals": [
+    {
+      "id": "filebrowser-listing-basics",
+      "mode": "recipe",
+      "prompt": "In the Drupal Filebrowser module, what kind of Drupal entity represents a single browsable directory listing, and where does the module store that listing's exposed folder path?",
+      "must_contain_any": ["dir_listing", "filebrowser_nodes", "folder_path", "folder path"],
+      "must_not_contain": [],
+      "expected_output": "A listing is a node of the dir_listing content type. Its exposed folder URI (folder_path) plus serialized per-node rights are stored in the module's own filebrowser_nodes database table (accessed via the filebrowser.storage service and the Drupal\\filebrowser\\Filebrowser value object), not as Fields.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "filebrowser-config-route",
+      "mode": "recipe",
+      "prompt": "Where do I configure the global/default Filebrowser settings that new directory listings inherit, and what config object holds them?",
+      "must_contain_any": ["filebrowser.settings", "/admin/config/system/filebrowser", "admin/config/system/filebrowser"],
+      "must_not_contain": [],
+      "expected_output": "The settings form is at /admin/config/system/filebrowser (route filebrowser.settings, permission 'administer site configuration') and the values live in the filebrowser.settings config object under the top-level 'filebrowser' key (rights, uploads, presentation, adhocsetting).",
+      "difficulty": "easy"
+    },
+    {
+      "id": "filebrowser-permissions",
+      "mode": "recipe",
+      "prompt": "Which Filebrowser permissions control viewing a listing, downloading individual files, uploading files, and downloading a whole folder as a zip archive?",
+      "must_contain_any": ["view listings", "download files", "upload files", "download archive"],
+      "must_not_contain": [],
+      "expected_output": "view listings, download files, upload files and download archive (plus create listings, rename files, delete files, create folders, edit description). They are dynamic permissions defined by FilebrowserPermissions; none is granted by default.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "filebrowser-known-folder",
+      "mode": "introspection",
+      "prompt": "This Drupal site has a Filebrowser directory-listing node titled 'FB Known Listing'. Inspect the live site and report the folder URI (folder path) that this listing exposes.",
+      "must_contain_any": ["public://fb_eval_docs"],
+      "must_not_contain": [],
+      "expected_output": "public://fb_eval_docs — read from the filebrowser_nodes row for that node, e.g. \\Drupal::service('filebrowser.storage')->loadNodeRecord($nid)['folder_path'], or $node->filebrowser->folderPath.",
+      "setup": "agent-module-documentation/evaluation/verify/filebrowser-known-folder-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/filebrowser-known-folder-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "filebrowser-global-download",
+      "mode": "introspection",
+      "prompt": "On this site, inspect the global Filebrowser settings and report the current download method (download manager) and whether downloading a folder as a zip archive is enabled by default.",
+      "must_contain_any": ["public"],
+      "must_not_contain": [],
+      "expected_output": "download_manager is 'public' and download_archive is 1 (enabled) — read from config filebrowser.settings under filebrowser.rights.download_manager and filebrowser.rights.download_archive.",
+      "setup": "agent-module-documentation/evaluation/verify/filebrowser-global-download-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/filebrowser-global-download-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "filebrowser-create-listing",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, create a Filebrowser directory listing titled 'Filebrowser Eval Share' that exposes the folder public://fb_hard. Apply it to the live site so the listing's folder is persisted.",
+      "reset": "agent-module-documentation/evaluation/verify/filebrowser-create-listing-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/filebrowser-create-listing-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/filebrowser-create-listing-cleanup.sh",
+      "expected_output": "Create a node of type dir_listing titled 'Filebrowser Eval Share', attach a Drupal\\filebrowser\\Filebrowser object with folder_path 'public://fb_hard' (and the rights/uploads/presentation arrays) before save so hook_node_insert() writes the filebrowser_nodes row. Verified: the filebrowser_nodes row for that node has folder_path == public://fb_hard."
+    },
+    {
+      "id": "filebrowser-enable-archive",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "Change the global Filebrowser defaults on this site so that new directory listings offer a 'download all as a zip archive' option and allow exploring sub-directories. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/filebrowser-enable-archive-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/filebrowser-enable-archive-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/filebrowser-enable-archive-cleanup.sh",
+      "expected_output": "In config filebrowser.settings set filebrowser.rights.download_archive = 1 and filebrowser.rights.explore_subdirs = 1 and save. Verified against live config."
+    }
+  ]
+}

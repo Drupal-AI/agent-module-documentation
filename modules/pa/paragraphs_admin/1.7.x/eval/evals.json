@@ -1,0 +1,80 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "paragraphs_admin",
+  "version": "1.7.x",
+  "note": "Paragraphs Admin is a companion to the contrib Paragraphs module. It has no settings form, no configure route (configure=null), no Drush, no config schema, and defines no plugin TYPES. It provides: a shipped View 'paragraphs' at /admin/content/paragraphs (base table paragraphs_item_field_data) gated by the module's single permission 'administer paragraphs' (restrict access); a custom Views field 'paragraphs_host_entity' ('Host Entity', handler ParagraphsHostEntity) registered via hook_views_data_alter that links to the top-level host entity (and flags orphans); and a per-paragraph delete route paragraphs_admin.delete_form at /paragraph/{paragraph}/delete. Medium/hard cases are grounded in real live state: introspection reads back which custom role holds 'administer paragraphs' and which view uses the paragraphs_host_entity field; execution grants the permission to a namespaced role and adds the Host Entity field to a namespaced view, verified against live config. (Note: on this shared site the shipped 'paragraphs' view may be absent, so cases build their own namespaced role/view instead of depending on it.)",
+  "evals": [
+    {
+      "id": "paragraphs_admin-listing",
+      "mode": "recipe",
+      "prompt": "I installed the paragraphs_admin module. Where can I see a list of all Paragraph entities on the site, and which permission does a user need to access that screen?",
+      "must_contain_any": ["/admin/content/paragraphs", "admin/content/paragraphs", "administer paragraphs"],
+      "must_not_contain": [],
+      "expected_output": "Paragraphs Admin ships a View at /admin/content/paragraphs listing every paragraph entity. Access is gated by the module's 'administer paragraphs' permission (a restricted-access permission).",
+      "difficulty": "easy"
+    },
+    {
+      "id": "paragraphs_admin-host-entity-field",
+      "mode": "recipe",
+      "prompt": "The paragraphs_admin listing shows a 'Host Entity' column. What is the machine name / id of that Views field, and what does it display for a given paragraph?",
+      "must_contain_any": ["paragraphs_host_entity", "Host Entity", "host entity"],
+      "must_not_contain": [],
+      "expected_output": "It is the Views field 'paragraphs_host_entity' (handler ParagraphsHostEntity), registered on paragraphs_item_field_data via hook_views_data_alter. It walks up the paragraph's parent chain to the top-level host entity and renders a link to it (or an unlinked label when the top parent is itself a Paragraph, indicating a likely orphan).",
+      "difficulty": "easy"
+    },
+    {
+      "id": "paragraphs_admin-delete-route",
+      "mode": "recipe",
+      "prompt": "Using paragraphs_admin, how do I delete a single Paragraph entity? Give the URL/route pattern the module adds for that.",
+      "must_contain_any": ["/paragraph/{paragraph}/delete", "paragraph/{paragraph}/delete", "paragraphs_admin.delete_form", "/paragraph/", "/delete"],
+      "must_not_contain": [],
+      "expected_output": "The module adds route paragraphs_admin.delete_form at /paragraph/{paragraph}/delete (a confirm-delete form, ParagraphDeleteForm, access requirement paragraph.delete). Visit /paragraph/<id>/delete to remove a single paragraph.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "paragraphs_admin-role-with-perm",
+      "mode": "introspection",
+      "prompt": "On this Drupal site a custom user role has been granted the paragraphs_admin 'administer paragraphs' permission. Inspect the live site and give the machine name of that custom role.",
+      "must_contain_any": ["paragraphs_admin_viewer"],
+      "must_not_contain": [],
+      "expected_output": "The custom role paragraphs_admin_viewer holds the 'administer paragraphs' permission (check user.role.* config or drush role:list / hasPermission).",
+      "setup": "agent-module-documentation/evaluation/verify/paragraphs_admin-role-with-perm-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/paragraphs_admin-role-with-perm-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "paragraphs_admin-view-field",
+      "mode": "introspection",
+      "prompt": "On this Drupal site there is a View with machine id 'paragraphs_admin_intro' built on the paragraphs base table. Inspect the live view configuration and name the paragraphs_admin-provided Views field it includes.",
+      "must_contain_any": ["paragraphs_host_entity"],
+      "must_not_contain": [],
+      "expected_output": "views.view.paragraphs_admin_intro includes the paragraphs_host_entity ('Host Entity') field provided by paragraphs_admin.",
+      "setup": "agent-module-documentation/evaluation/verify/paragraphs_admin-view-field-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/paragraphs_admin-view-field-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "paragraphs_admin-grant-perm",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site there is a role with machine name 'paragraphs_admin_editor' that currently cannot manage paragraphs. Grant this role the paragraphs_admin permission that allows viewing and deleting paragraphs from the admin screen, and apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/paragraphs_admin-grant-perm-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/paragraphs_admin-grant-perm-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/paragraphs_admin-grant-perm-cleanup.sh",
+      "expected_output": "The role paragraphs_admin_editor is granted 'administer paragraphs' (e.g. drush role:perm:add paragraphs_admin_editor 'administer paragraphs', or grantPermission + save)."
+    },
+    {
+      "id": "paragraphs_admin-add-host-field",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site there is a View with machine id 'paragraphs_admin_task' built on the paragraphs base table (paragraphs_item_field_data) that currently only shows the paragraph id. Using the paragraphs_admin module, add its 'Host Entity' Views field to this view's default display so each row links to the paragraph's top-level host entity. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/paragraphs_admin-add-host-field-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/paragraphs_admin-add-host-field-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/paragraphs_admin-add-host-field-cleanup.sh",
+      "expected_output": "The default display of views.view.paragraphs_admin_task gains a field handler using the paragraphs_host_entity plugin (table paragraphs_item_field_data, field/id paragraphs_host_entity)."
+    }
+  ]
+}

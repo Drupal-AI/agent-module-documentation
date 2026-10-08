@@ -1,0 +1,99 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "advban",
+  "version": "1.9.x",
+  "note": "Advanced Ban keeps its bans in its own advban_ip DB table (iid, ip, ip_end, expiry_date, reason) and its options in advban.settings - a config object the module does NOT ship in config/install, so it does not exist until something writes it. Enforcement is an http_middleware (advban.middleware, priority 250, before page cache) that checks isProtected() then isBanned() and returns a plain 403. Range bans are IPv4-only and are stored as ip2long() integers in ip/ip_end. There is exactly one permission ('advanced ban IP addresses'), no Drush commands, no plugin types and no entities. Medium cases read live table rows and live config; hard cases require a correctly-stored range ban (verified functionally through advban.ip_manager::isBanned so dotted-quad storage fails) and a real settings change. All test addresses are RFC 5737 documentation ranges (203.0.113.0/24, 198.51.100.0/24) so nothing real is affected.",
+  "evals": [
+    {
+      "id": "advban-storage-and-service",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "On a Drupal 11 site using the advban (Advanced Ban) contrib module, how do I ban an IP address from custom PHP code? Name the service and the method, and say where the ban is stored.",
+      "must_contain_any": [
+        "advban.ip_manager",
+        "banIp",
+        "advban_ip"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Call the advban.ip_manager service (Drupal\\advban\\AdvbanIpManager): \\Drupal::service('advban.ip_manager')->banIp($ip, $ip_end, $reason, $expiry_date). Bans are rows in the module's own advban_ip database table (iid, ip, ip_end, expiry_date, reason); expiry_date 0 means never."
+    },
+    {
+      "id": "advban-range-limitation",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "The advban module for Drupal advertises IP range bans. How does it store and match a range, and does that work for IPv6 addresses?",
+      "must_contain_any": [
+        "ip2long",
+        "IPv4",
+        "IPv4 only",
+        "integer"
+      ],
+      "must_not_contain": [],
+      "expected_output": "A range ban stores the start and end addresses converted with ip2long() (sprintf('%u', ip2long($ip))) into the ip and ip_end columns and matches with a numeric comparison (ip <= $ip_long AND ip_end >= $ip_long). Because ip2long() is IPv4-only, range bans are IPv4 only - the admin form rejects an IPv6 address with 'Only IPv4 is available for IP range.'"
+    },
+    {
+      "id": "advban-protected-precedence",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "In the Drupal advban module, what is the 'Protected IPs' list for, what syntax does it accept, and what happens if an IP appears both in the protected list and in the banned list?",
+      "must_contain_any": [
+        "protected",
+        "advban_protected_ips",
+        "CIDR",
+        "override"
+      ],
+      "must_not_contain": [],
+      "expected_output": "advban.settings.advban_protected_ips is a newline-separated allow list checked before every ban. It accepts a plain IPv4 address, a CIDR block (198.51.100.0/24), a reverse-DNS host suffix (googlebot.com), and # comments (whole-line or inline). Protected always wins: AdvbanMiddleware calls isProtected() first and skips the ban check, and the admin form refuses to ban a protected address."
+    },
+    {
+      "id": "advban-known-ban",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "This Drupal site uses the advban module and the IP address 203.0.113.45 is currently banned. Inspect the running site and tell me the ban reason that was recorded for it.",
+      "must_contain_any": [
+        "4711",
+        "scraping incident"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The reason stored in the advban_ip row for 203.0.113.45 is 'advban-eval: scraping incident 4711' (visible via drush sql:query 'SELECT ip, reason, expiry_date FROM advban_ip', the /admin/config/people/advban list, or advban.ip_manager::isBannedByReason()).",
+      "setup": "agent-module-documentation/evaluation/verify/advban-known-ban-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/advban-known-ban-cleanup.sh"
+    },
+    {
+      "id": "advban-protected-list",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "This Drupal site has the advban module configured. Inspect its live configuration and tell me which IP network is on the protected (never-bannable) list, and what the default ban expiry duration is set to.",
+      "must_contain_any": [
+        "198.51.100.0/24",
+        "198.51.100.0"
+      ],
+      "must_not_contain": [],
+      "expected_output": "advban.settings.advban_protected_ips contains the CIDR block 198.51.100.0/24 (plus the crawler suffix googlebot.com and a # comment line), and advban.settings.default_expiry_duration is '+3 days'.",
+      "setup": "agent-module-documentation/evaluation/verify/advban-protected-ips-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/advban-protected-ips-cleanup.sh"
+    },
+    {
+      "id": "advban-range-ban",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, use the advban module to ban the entire IPv4 range from 203.0.113.0 to 203.0.113.255 (inclusive), with the ban reason 'subnet abuse' and no expiry date, so that any address in that range is refused. Apply the change to the live site. Do not ban anything outside that range.",
+      "reset": "agent-module-documentation/evaluation/verify/advban-range-ban-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/advban-range-ban-verify.sh",
+      "expected_output": "A single advban_ip row with ip = 3405803776 and ip_end = 3405804031 (the ip2long values of 203.0.113.0 and 203.0.113.255), expiry_date 0 and reason 'subnet abuse' - e.g. \\Drupal::service('advban.ip_manager')->banIp('203.0.113.0', '203.0.113.255', 'subnet abuse', 0). Afterwards advban.ip_manager::isBanned('203.0.113.128') returns TRUE and 198.51.100.7 is still unbanned."
+    },
+    {
+      "id": "advban-settings-defaults",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "site-owner",
+      "prompt": "On this Drupal site the Advanced Ban module is installed but has never been configured. Set it up so that whenever someone bans an IP address the ban lasts two hours by default, and so the network 198.51.100.0/24 can never be banned. Make the change on the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/advban-settings-defaults-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/advban-settings-defaults-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/advban-settings-defaults-reset.sh",
+      "expected_output": "advban.settings must have default_expiry_duration '+2 hours', that same string present as one of the newline-separated entries in expiry_durations (the default must be one of the offered durations), and advban_protected_ips containing 198.51.100.0/24. Done via /admin/config/people/advban/settings or drush cset advban.settings ..."
+    }
+  ]
+}

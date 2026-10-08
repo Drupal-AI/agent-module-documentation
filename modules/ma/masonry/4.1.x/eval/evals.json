@@ -1,0 +1,94 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "masonry",
+  "version": "4.1.x",
+  "note": "Masonry API is a pure developer API: one service (masonry.service -> Drupal\\masonry\\Services\\MasonryService), three alter hooks documented in masonry.api.php, and three asset libraries. It has NO settings form, no configure route, no permissions, no config objects, no plugin types and no Views style - the UI comes from consuming modules such as masonry_views. The entry point is applyMasonryDisplay(&$form, $container, $item_selector, $options, $masonry_ids), which normalises option units, renames the camelCase options to the snake_case keys the JS expects, runs hook_masonry_script_alter() for modules AND themes, attaches masonry/masonry.layout and merges the payload into drupalSettings.masonry[<container>]. The Masonry and imagesLoaded JS libraries are NOT bundled; isMasonryInstalled()/isImagesloadedInstalled() look for /libraries/masonry/dist/masonry.pkgd.min.js and /libraries/imagesloaded/imagesloaded.pkgd.min.js and hook_requirements() reports them on the status report. Because the module stores nothing in config, the medium cases introspect live service output and library presence, and the hard cases require writing real code that calls the service (verified by executing the service and inspecting the resulting render array / drupalSettings).",
+  "evals": [
+    {
+      "id": "masonry-service-entrypoint",
+      "mode": "recipe",
+      "prompt": "I have the Drupal 'masonry' (Masonry API) module installed and a render array with a container div. There is no settings page. Which service and which method do I call to apply a Masonry layout to that container, and what are the method's arguments?",
+      "must_contain_any": [
+        "masonry.service",
+        "applyMasonryDisplay"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Call \\Drupal::service('masonry.service')->applyMasonryDisplay($build, $container_selector, $item_selector, $options, $masonry_ids). $build is the render array (the library and drupalSettings are added to its #attached), $container is the CSS selector of the grid container, $item_selector the selector of the items, $options an associative array merged over getMasonryDefaultOptions(), and $masonry_ids an array of ids (default ['masonry_default']) used to identify the display in hook_masonry_script_alter().",
+      "difficulty": "easy"
+    },
+    {
+      "id": "masonry-libraries-required",
+      "mode": "recipe",
+      "prompt": "The Drupal Masonry API module does not ship the JavaScript it needs. Which two third-party libraries are required, at which exact paths does the module look for them, and how can I see whether they are present?",
+      "must_contain_any": [
+        "imagesloaded",
+        "imagesLoaded",
+        "libraries/masonry"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Masonry itself at /libraries/masonry/dist/masonry.pkgd.min.js and imagesLoaded at /libraries/imagesloaded/imagesloaded.pkgd.min.js. MasonryService::isMasonryInstalled() and isImagesloadedInstalled() resolve them (via core's library.libraries_directory_file_finder, then the libraries module, then the literal path) and return the path or NULL. masonry_requirements() surfaces both on /admin/reports/status as REQUIREMENT_ERROR when missing. They can be installed with the module's bundled composer.libraries.json plus the wikimedia/composer-merge-plugin, or manually.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "masonry-alter-hooks",
+      "mode": "recipe",
+      "prompt": "Which alter hooks does the Drupal Masonry API module provide, and which one should I implement if I want to add a raw Masonry option such as horizontalOrder that the module does not expose in its settings form? Can a theme implement them?",
+      "must_contain_any": [
+        "hook_masonry_script_alter",
+        "masonry_script_alter"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Three: hook_masonry_default_options_alter(), hook_masonry_options_form_alter() and hook_masonry_script_alter(). For a raw option like horizontalOrder implement hook_masonry_script_alter() and set $masonry['masonry'][$context['container']]['extra_options']['horizontalOrder'] = TRUE. Yes - MasonryService runs both the module handler alter and the theme manager alter, so a theme can implement all three in its .theme file.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "masonry-library-state",
+      "mode": "introspection",
+      "prompt": "On this running Drupal site, exactly one of the two JavaScript libraries the Masonry API module needs is actually present. Use the module's own detection against the live site and tell me which one it found, the exact file path it reports for it, and which one is still missing.",
+      "must_contain_any": [
+        "libraries/masonry/dist/masonry.pkgd.min.js"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Masonry itself is present: \\Drupal::service('masonry.service')->isMasonryInstalled() returns web/libraries/masonry/dist/masonry.pkgd.min.js. imagesLoaded is still missing - isImagesloadedInstalled() returns NULL and masonry_requirements('runtime') reports 'ImagesLoaded not found' with REQUIREMENT_ERROR for /libraries/imagesloaded/imagesloaded.pkgd.min.js.",
+      "setup": "agent-module-documentation/evaluation/verify/masonry-library-state-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/masonry-library-state-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "masonry-default-options",
+      "mode": "introspection",
+      "prompt": "On this live Drupal site, ask the Masonry API module for its default options and tell me the current default value of gutterWidth, layoutAnimationDuration and imageLazyloadSelector.",
+      "must_contain_any": [
+        "500"
+      ],
+      "must_not_contain": [],
+      "expected_output": "From \\Drupal::service('masonry.service')->getMasonryDefaultOptions(): gutterWidth is '0', layoutAnimationDuration is 500 (milliseconds) and imageLazyloadSelector is 'lazyload' (it would be taken from lazy.settings lazysizes.lazyClass if the Lazy module were installed).",
+      "setup": "agent-module-documentation/evaluation/verify/masonry-default-options-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/masonry-default-options-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "masonry-apply-display",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site with the Masonry API module installed, write a PHP snippet to the file web/sites/default/files/masonry_eval/apply.php that returns a render array. The snippet must use the masonry.service to apply a Masonry layout to the container selector '.masonry-eval-grid' with the item selector '.masonry-eval-item', a column width of 250px, a gutter width of 10px, and the masonry id 'masonry_eval_case'. The file must be plain PHP that ends with `return $build;` and must not open a Drupal bootstrap of its own - it will be included from a drush php:eval that already has Drupal running.",
+      "reset": "agent-module-documentation/evaluation/verify/masonry-apply-display-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/masonry-apply-display-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/masonry-apply-display-cleanup.sh",
+      "expected_output": "The included file must return a render array whose #attached.library contains 'masonry/masonry.layout' and whose #attached.drupalSettings.masonry['.masonry-eval-grid'] has item_selector '.masonry-eval-item', column_width '250' with column_width_units 'px', gutter_width '10' with gutter_width_units 'px', and masonry_ids containing 'masonry_eval_case'."
+    },
+    {
+      "id": "masonry-script-alter",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, create a custom module named masonry_eval_alter in web/modules/custom/masonry_eval_alter and enable it. It must implement the Masonry API module's script alter hook so that, for any Masonry display whose masonry_ids include 'masonry_eval_target', the extra option 'horizontalOrder' is set to TRUE in the settings sent to the Masonry JavaScript. Leave the module enabled.",
+      "reset": "agent-module-documentation/evaluation/verify/masonry-script-alter-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/masonry-script-alter-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/masonry-script-alter-cleanup.sh",
+      "expected_output": "An enabled module masonry_eval_alter implementing hook_masonry_script_alter(array &$masonry, array $context) that, when $masonry['masonry'][$context['container']]['masonry_ids'] contains 'masonry_eval_target', sets ['extra_options']['horizontalOrder'] = TRUE. Verified by calling masonry.service->applyMasonryDisplay() with that id and checking the resulting drupalSettings."
+    }
+  ]
+}

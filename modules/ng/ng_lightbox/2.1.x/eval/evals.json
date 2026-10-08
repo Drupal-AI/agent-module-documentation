@@ -1,0 +1,93 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "ng_lightbox",
+  "version": "2.1.x",
+  "note": "All of NG Lightbox's state is the config object ng_lightbox.settings (patterns, default_width, lightbox_class, skip_admin_paths, renderer) edited at /admin/config/media/ng-lightbox behind the 'administer ng lightbox' permission. hook_link_alter() passes every link through the ng_lightbox service, which matches the path (and its alias) against the patterns and then adds class use-ajax, data-dialog-type (renderer minus the drupal_ prefix) and data-dialog-options {width,dialogClass}. Medium cases save real non-default config for the agent to read; hard cases are verified both against config and behaviourally by calling the live service (isNgLightboxEnabledPath / addLightbox). Shipped defaults, restored by every cleanup/reset: patterns '', default_width 700, lightbox_class '', skip_admin_paths TRUE, renderer drupal_modal.",
+  "evals": [
+    {
+      "id": "ng_lightbox-patterns-config",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "Which Drupal configuration object and key does the ng_lightbox module use to decide which paths open in a lightbox, and what is the required format for those paths?",
+      "must_contain_any": [
+        "ng_lightbox.settings",
+        "patterns"
+      ],
+      "must_not_contain": [],
+      "expected_output": "ng_lightbox.settings, key 'patterns' — a newline-separated list of paths that must start with a leading slash, with * as the wildcard (e.g. /comment/*/reply). It is edited at /admin/config/media/ng-lightbox (permission 'administer ng lightbox') and defaults to an empty string, so nothing is lightboxed until it is set."
+    },
+    {
+      "id": "ng_lightbox-manual-class",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "With the Drupal ng_lightbox module, how do I make one specific link open in the lightbox without adding its path to the module's settings?",
+      "must_contain_any": [
+        "ng-lightbox"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Add the CSS class 'ng-lightbox' to the anchor (e.g. '#options' => ['attributes' => ['class' => ['ng-lightbox']]]). ng_lightbox_link_alter() checks for that class as well as the configured patterns and calls NgLightbox::addLightbox() either way."
+    },
+    {
+      "id": "ng_lightbox-attributes-added",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "What exactly does the Drupal ng_lightbox module add to a link's markup when that link matches its configuration? Name the class and the data attributes.",
+      "must_contain_any": [
+        "use-ajax",
+        "data-dialog-type",
+        "data-dialog-options"
+      ],
+      "must_not_contain": [],
+      "expected_output": "NgLightbox::addLightbox() adds the core class 'use-ajax', sets data-dialog-type to the configured renderer with the 'drupal_' prefix stripped (so 'modal' or 'dialog'), and sets data-dialog-options to a JSON object {\"width\": default_width, \"dialogClass\": lightbox_class}. The module also attaches its library (core/drupal.ajax) on every page."
+    },
+    {
+      "id": "ng_lightbox-known-paths",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "Inspect this running Drupal site: which paths does ng_lightbox currently open in a lightbox, how wide is the dialog, and are admin paths excluded?",
+      "must_contain_any": [
+        "900"
+      ],
+      "must_not_contain": [],
+      "expected_output": "ng_lightbox.settings has patterns \"/contact\" and \"/node/*\", default_width 900, lightbox_class empty, skip_admin_paths FALSE (so admin paths are NOT excluded) and renderer drupal_modal.",
+      "setup": "agent-module-documentation/evaluation/verify/ng_lightbox-known-paths-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/ng_lightbox-known-paths-cleanup.sh"
+    },
+    {
+      "id": "ng_lightbox-dialog-options",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "On this Drupal site, when ng_lightbox decorates a matching link, what exact value ends up in the link's data-dialog-options attribute, and what value does data-dialog-type get? Base your answer on the site's live configuration.",
+      "must_contain_any": [
+        "eval-dialog-class"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The site is configured with renderer drupal_dialog, default_width 640 and lightbox_class 'eval-dialog-class', so a lightboxed link gets data-dialog-type=\"dialog\" (the drupal_ prefix is stripped) and data-dialog-options='{\"width\":640,\"dialogClass\":\"eval-dialog-class\"}'.",
+      "setup": "agent-module-documentation/evaluation/verify/ng_lightbox-dialog-options-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/ng_lightbox-dialog-options-cleanup.sh"
+    },
+    {
+      "id": "ng_lightbox-promo-paths",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "site-builder",
+      "prompt": "On this Drupal site, configure NG Lightbox so that the contact page (/contact) and every page under /about/ open in a lightbox that is 1000 pixels wide and carries the CSS class promo-lightbox. Admin pages must no longer be excluded from the lightbox. Apply the settings to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/ng_lightbox-promo-paths-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/ng_lightbox-promo-paths-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/ng_lightbox-promo-paths-reset.sh",
+      "expected_output": "ng_lightbox.settings: patterns = \"/contact\\n/about/*\", default_width = 1000, lightbox_class = 'promo-lightbox', skip_admin_paths = FALSE. Verified in config and by asking the live ng_lightbox service whether /contact is a lightboxed path."
+    },
+    {
+      "id": "ng_lightbox-dialog-renderer",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "This Drupal site uses NG Lightbox with the default modal overlay. Switch it to the non-modal Core Dialog renderer and make the dialogs 500 pixels wide, so that links the module decorates carry data-dialog-type=\"dialog\" and a width of 500. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/ng_lightbox-dialog-renderer-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/ng_lightbox-dialog-renderer-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/ng_lightbox-dialog-renderer-reset.sh",
+      "expected_output": "ng_lightbox.settings: renderer = 'drupal_dialog' (the 'Core Dialog' option, from the ng_lightbox_renderers container parameter) and default_width = 500. Verified behaviourally: NgLightbox::addLightbox() then yields class use-ajax, data-dialog-type 'dialog' and data-dialog-options {\"width\":500,...}."
+    }
+  ]
+}

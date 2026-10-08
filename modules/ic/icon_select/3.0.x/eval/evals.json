@@ -1,0 +1,96 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "icon_select",
+  "version": "3.0.x",
+  "note": "Icon Select stores SVG icons as terms in the 'icons' taxonomy vocabulary (each term has field_symbol_id: required unique string, and field_svg_file: public file), generates a sanitized SVG sprite at public://icons/icon_select_map.svg (path in icon_select.settings:path), and exposes icons via the entity_reference field widget icon_select_widget_default ('Icon Select') + formatter icon_select_formatter_default ('SVG Icon') and the Twig function svg_icon(symbol_id, classes). Drush: generate-sprites (alias gens). No configure route, no permissions, no config schema. IMPORTANT: on this shared site the module's install config (icons vocabulary + fields) had been wiped; the medium/hard setup+reset scripts therefore self-heal by recreating the vocabulary + fields idempotently before grounding each case in real config entities (a known sprite path, a known icon term, a field's widget/formatter). Note the module's SvgSpriteGenerator throws a (post-response, harmless) shutdown error for icon terms saved without an SVG file.",
+  "evals": [
+    {
+      "id": "icon_select-twig-render",
+      "mode": "recipe",
+      "prompt": "Using the Drupal icon_select module, how do I render one of my managed SVG icons inline in a Twig template, and how do I add a CSS class to it?",
+      "must_contain_any": [
+        "svg_icon"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Use the Twig function provided by icon_select: {{ svg_icon('symbol-id') }} to render the icon by its symbol id, and pass classes as the optional second argument, e.g. {{ svg_icon('ui-check', 'icon--large') }}. It renders via the icon_select_svg_icon theme hook and always adds the classes 'icon' and 'icon--<symbol-id>'.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "icon_select-field-wiring",
+      "mode": "recipe",
+      "prompt": "How do I let editors pick an icon on a content type with the Drupal icon_select module — which vocabulary, field type, widget and formatter do I use?",
+      "must_contain_any": [
+        "icon_select_widget_default",
+        "icon_select_formatter_default",
+        "Icon Select",
+        "SVG Icon",
+        "entity reference",
+        "entity_reference"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Add an entity reference field targeting the 'icons' taxonomy vocabulary, then set its form-display widget to 'Icon Select' (icon_select_widget_default) and its view-display formatter to 'SVG Icon' (icon_select_formatter_default). Icons themselves are terms in the icons vocabulary, each with a unique field_symbol_id and an uploaded field_svg_file.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "icon_select-drush-sprite",
+      "mode": "recipe",
+      "prompt": "In the Drupal icon_select module, which drush command regenerates the SVG sprite sheet from the icon terms?",
+      "must_contain_any": [
+        "generate-sprites",
+        "gens"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Run `drush generate-sprites` (alias `drush gens`). It rebuilds the sanitized sprite from every term in the 'icons' vocabulary and writes it to public://icons/icon_select_map.svg (the term forms also regenerate it automatically on insert/update/delete).",
+      "difficulty": "easy"
+    },
+    {
+      "id": "icon_select-known-sprite-path",
+      "mode": "introspection",
+      "prompt": "On this Drupal site, where does the icon_select module write its generated SVG sprite file? Give the configured path. Inspect the live configuration to answer.",
+      "must_contain_any": [
+        "is_probe_map"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The path is configured in icon_select.settings:path as icons/is_probe_map.svg (relative to the public files folder, so public://icons/is_probe_map.svg). Read it with `drush cget icon_select.settings path`.",
+      "setup": "agent-module-documentation/evaluation/verify/icon_select-sprite-path-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/icon_select-sprite-path-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "icon_select-known-icon",
+      "mode": "introspection",
+      "prompt": "On this Drupal site, an icon has been added to the icon_select 'icons' vocabulary. Inspect the live taxonomy and give the Symbol ID (field_symbol_id) of that icon term.",
+      "must_contain_any": [
+        "is_probe_star"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The icon term in the 'icons' vocabulary has field_symbol_id = is_probe_star (name 'Probe Star'). Find it by loading terms of vid 'icons' and reading field_symbol_id.",
+      "setup": "agent-module-documentation/evaluation/verify/icon_select-known-icon-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/icon_select-known-icon-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "icon_select-create-icon",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, add a new icon to the icon_select 'icons' vocabulary with the Symbol ID 'is_task_heart' (name it 'Task Heart'). Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/icon_select-create-icon-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/icon_select-create-icon-verify.sh",
+      "expected_output": "Create a taxonomy term in the 'icons' vocabulary with field_symbol_id 'is_task_heart' (e.g. Term::create(['vid'=>'icons','name'=>'Task Heart','field_symbol_id'=>'is_task_heart'])->save(), or via Add term on the icons vocabulary). Symbol IDs must be unique within the vocabulary.",
+      "cleanup": "agent-module-documentation/evaluation/verify/icon_select-create-icon-cleanup.sh"
+    },
+    {
+      "id": "icon_select-wire-field",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, the Article content type has an entity-reference field field_is_task_icon that points at the icon_select 'icons' vocabulary. Configure it so editors get the visual icon picker on the edit form and the icon renders as an SVG on display. Apply the change to the live default form and view displays.",
+      "reset": "agent-module-documentation/evaluation/verify/icon_select-wire-field-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/icon_select-wire-field-verify.sh",
+      "expected_output": "In node.article default form display set field_is_task_icon's widget type to icon_select_widget_default (Icon Select); in the default view display set its formatter type to icon_select_formatter_default (SVG Icon). Both via the Manage form display / Manage display UIs or setComponent() on the displays.",
+      "cleanup": "agent-module-documentation/evaluation/verify/icon_select-wire-field-cleanup.sh"
+    }
+  ]
+}

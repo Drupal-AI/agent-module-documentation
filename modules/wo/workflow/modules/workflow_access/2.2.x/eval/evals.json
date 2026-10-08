@@ -1,0 +1,99 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "workflow_access",
+  "version": "2.2.x",
+  "note": "Workflow Access (submodule of Workflow) controls node access per workflow state and role via core's node grant system (node-only). Per-state grants live in config workflow_access.role keyed by state id (sid) -> role => {grant_view, grant_update, grant_delete}. Conflict priority is workflow_access.settings:workflow_access_priority (default 0). Fixtures build a namespaced workflow 'wa_wf' (raw config, integer weights) and read/write workflow_access.role for its states; content_editor and anonymous are real roles on this site. All fixtures are torn down and the priority restored to 0.",
+  "evals": [
+    {
+      "id": "workflow_access-what-and-limit",
+      "mode": "recipe",
+      "prompt": "What does the Workflow Access submodule do, and what is its major limitation regarding entity types?",
+      "must_contain_any": [
+        "node",
+        "node access",
+        "node_access",
+        "view",
+        "update"
+      ],
+      "must_not_contain": [],
+      "expected_output": "It controls access to content per workflow state and role (view/update/delete) through Drupal's node grant system. Because it uses node_access, it only works for node entities (one workflow per entity type).",
+      "difficulty": "easy"
+    },
+    {
+      "id": "workflow_access-where-stored",
+      "mode": "recipe",
+      "prompt": "In Workflow Access, where do I set which roles can view/update/delete content in each workflow state, and in which config object are those grants stored?",
+      "must_contain_any": [
+        "workflow_access.role",
+        "Access tab",
+        "grant_view",
+        "access_form",
+        "per state"
+      ],
+      "must_not_contain": [],
+      "expected_output": "On each workflow's Access tab (/admin/config/workflow/workflow/{workflow_type}/access) you tick view/update/delete per state and role. Grants are stored in the config object workflow_access.role, keyed by state id, as role => {grant_view, grant_update, grant_delete}.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "workflow_access-priority",
+      "mode": "recipe",
+      "prompt": "Other node access modules conflict with Workflow Access on my site. Which setting does Workflow Access provide to resolve that, and where is it?",
+      "must_contain_any": [
+        "workflow_access_priority",
+        "priority"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The workflow_access_priority setting (config workflow_access.settings), set at /admin/config/workflow/workflow/access, controls the node-grant priority so Workflow Access can win or yield against other node-access modules.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "workflow_access-known-grant",
+      "mode": "introspection",
+      "prompt": "On this Drupal site, the workflow 'wa_wf' has a 'Needs Review' state (wa_wf_review) with Workflow Access grants configured. Inspect the live configuration and state which role is allowed to edit (update) content in that state.",
+      "must_contain_any": [
+        "content_editor"
+      ],
+      "must_not_contain": [],
+      "expected_output": "In workflow_access.role, the wa_wf_review key grants the content_editor role grant_view and grant_update, so content_editor can edit content in the Needs Review state.",
+      "setup": "agent-module-documentation/evaluation/verify/workflow_access-known-grant-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/workflow_access-known-grant-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "workflow_access-known-priority",
+      "mode": "introspection",
+      "prompt": "On this Drupal site, inspect the Workflow Access configuration and report the current node-grant priority value it is set to.",
+      "must_contain_any": [
+        "7"
+      ],
+      "must_not_contain": [],
+      "expected_output": "workflow_access.settings workflow_access_priority is 7.",
+      "setup": "agent-module-documentation/evaluation/verify/workflow_access-known-priority-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/workflow_access-known-priority-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "workflow_access-grant-editor",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site there is a workflow 'wa_wf' with a 'Needs Review' state (state id wa_wf_review). Using Workflow Access, grant the 'content_editor' role both view and update access to content in that state, and apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/workflow_access-grant-editor-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/workflow_access-grant-editor-verify.sh",
+      "expected_output": "In config workflow_access.role, the wa_wf_review key grants content_editor grant_view=1 and grant_update=1 (e.g. via the workflow's Access tab, or WorkflowAccessState('wa_wf_review')->insertAccess(['content_editor'=>['grant_view'=>1,'grant_update'=>1,'grant_delete'=>0]])).",
+      "cleanup": "agent-module-documentation/evaluation/verify/workflow_access-grant-editor-cleanup.sh"
+    },
+    {
+      "id": "workflow_access-grant-anon",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "site-owner",
+      "prompt": "On this site there is a workflow 'wa_wf' with a Published state (state id wa_wf_published). I want anonymous visitors to be able to view content once it reaches the Published state. Set that up with Workflow Access on the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/workflow_access-grant-anon-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/workflow_access-grant-anon-verify.sh",
+      "expected_output": "In config workflow_access.role, the wa_wf_published key grants the anonymous role grant_view (via the workflow's Access tab or WorkflowAccessState('wa_wf_published')->insertAccess(['anonymous'=>['grant_view'=>1,...]])).",
+      "cleanup": "agent-module-documentation/evaluation/verify/workflow_access-grant-anon-cleanup.sh"
+    }
+  ]
+}

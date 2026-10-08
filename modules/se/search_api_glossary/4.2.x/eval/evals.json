@@ -1,0 +1,97 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "search_api_glossary",
+  "version": "4.2.x",
+  "note": "Search API AZ Glossary adds an A-Z first-letter glossary facet to Search API. Its Search API processor (id 'glossary') exposes hidden computed fields glossaryaz_<field> (prefix glossaryaz_) holding the first letter/group of a source field, computed by the search_api_glossary.helper service; group labels are in config search_api_glossary.settings -> group_prefix (alpha 'A-Z', numeric '0-9', special '#'). It also provides Facets plugins: widget 'glossaryaz' and processors glossaryaz_all_items_processor / glossaryaz_pad_items_processor / glossaryaz_widget_order, plus hook_search_api_glossary_source_alter(). Depends on search_api + facets. Medium/hard cases are grounded in (a) the group_prefix config object (plain config, route-neutral, reliable) and (b) a namespaced Search API index 'sag_glossary_index' (db backend, node datasource) on which the glossary processor is enabled - no live index server/query is required, only the index+processor config, per the campaign brief.",
+  "evals": [
+    {
+      "id": "search_api_glossary-processor-field",
+      "mode": "recipe",
+      "prompt": "How does the search_api_glossary module make an A-Z glossary value available to Search API, and what is the id of the Search API processor and the naming of the computed field it creates?",
+      "must_contain_any": [
+        "glossary",
+        "glossaryaz_",
+        "processor"
+      ],
+      "must_not_contain": [],
+      "expected_output": "It provides a Search API processor with id 'glossary' (Glossary processor). For each source field you flag as 'glossary' it exposes a hidden computed field named glossaryaz_<field> (prefix glossaryaz_) whose value is the uppercased first letter or group of the source value.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "search_api_glossary-group-prefix",
+      "mode": "recipe",
+      "prompt": "In the search_api_glossary module, which config object holds the glossary group labels, and what are the default labels for alphabetic, numeric and other first characters?",
+      "must_contain_any": [
+        "search_api_glossary.settings",
+        "group_prefix",
+        "A-Z",
+        "0-9"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The search_api_glossary.settings config object holds group_prefix with defaults alpha: 'A-Z', numeric: '0-9', special: '#'. These labels are used when alpha/numeric/other grouping is enabled.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "search_api_glossary-facets-and-hook",
+      "mode": "recipe",
+      "prompt": "What Facets widget does search_api_glossary provide for rendering the A-Z bar, and which hook lets me normalise accented first letters (e.g. so À groups under A)?",
+      "must_contain_any": [
+        "glossaryaz",
+        "Glossary AZ",
+        "hook_search_api_glossary_source_alter"
+      ],
+      "must_not_contain": [],
+      "expected_output": "It provides the Facets widget 'glossaryaz' (Glossary AZ), plus facet processors glossaryaz_all_items_processor, glossaryaz_pad_items_processor and glossaryaz_widget_order. Accent/first-letter normalisation is done by implementing hook_search_api_glossary_source_alter(&$source_value).",
+      "difficulty": "easy"
+    },
+    {
+      "id": "search_api_glossary-introspect-prefix",
+      "mode": "introspection",
+      "prompt": "On this Drupal site, the search_api_glossary group labels have been customised. Inspect the live configuration and report the label currently used for the alphabetic group.",
+      "must_contain_any": [
+        "Alphabet"
+      ],
+      "must_not_contain": [],
+      "expected_output": "In search_api_glossary.settings, group_prefix.alpha is 'Alphabet' (the label shown for alphabetic first letters).",
+      "setup": "agent-module-documentation/evaluation/verify/search_api_glossary-introspect-prefix-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/search_api_glossary-introspect-prefix-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "search_api_glossary-introspect-index",
+      "mode": "introspection",
+      "prompt": "This site has a Search API index that uses the search_api_glossary 'glossary' processor. Inspect the live Search API configuration and give the machine id of the index whose enabled processors include the glossary processor.",
+      "must_contain_any": [
+        "sag_glossary_index"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The index sag_glossary_index has the 'glossary' processor enabled (its config search_api.index.sag_glossary_index processor_settings contains 'glossary').",
+      "setup": "agent-module-documentation/evaluation/verify/search_api_glossary-introspect-index-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/search_api_glossary-introspect-index-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "search_api_glossary-enable-processor",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site there is a Search API index with id 'sag_glossary_index'. Using the search_api_glossary module, enable its 'glossary' (Glossary processor) on that index and save the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/search_api_glossary-enable-processor-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/search_api_glossary-enable-processor-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/search_api_glossary-enable-processor-cleanup.sh",
+      "expected_output": "Enable the 'glossary' processor on the sag_glossary_index Search API index, e.g. $i=Index::load('sag_glossary_index'); $p=\\Drupal::service('plugin.manager.search_api.processor')->createInstance('glossary',['#index'=>$i]); $i->addProcessor($p); $i->save(); so search_api.index.sag_glossary_index processor_settings contains 'glossary'."
+    },
+    {
+      "id": "search_api_glossary-localise-prefix",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-layman",
+      "prompt": "On my Drupal site I want the A-Z glossary's group labels changed so the alphabetic group reads 'Letters', the numeric group reads 'Numbers', and the other/symbols group reads 'Symbols'. Change the search_api_glossary settings accordingly and save them.",
+      "reset": "agent-module-documentation/evaluation/verify/search_api_glossary-localise-prefix-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/search_api_glossary-localise-prefix-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/search_api_glossary-localise-prefix-cleanup.sh",
+      "expected_output": "Set search_api_glossary.settings group_prefix to alpha 'Letters', numeric 'Numbers', special 'Symbols' (e.g. via \\Drupal::configFactory()->getEditable('search_api_glossary.settings')->set('group_prefix', [...])->save())."
+    }
+  ]
+}

@@ -1,0 +1,65 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "svg_image",
+  "version": "3.2.x",
+  "note": "SVG Image overrides the core Image widget/formatters via alter hooks; it has no settings page (configure is null) and no plugin types, so all cases are `recipe` (response-graded), not `execution` (live-state).",
+  "evals": [
+    {
+      "id": "svgimage-allow-uploads",
+      "mode": "recipe",
+      "prompt": "On a Drupal 11 site with the SVG Image module enabled, I have an existing core Image field that currently rejects .svg uploads. What is the single configuration change I make to let editors upload SVGs into that field? Be specific about where.",
+      "must_contain_any": ["allowed file extensions", "allowed extensions", "add svg", "svg extension"],
+      "must_not_contain": [],
+      "expected_output": "Add `svg` to the field's Allowed file extensions on the field settings form (Manage fields -> settings), e.g. `png gif jpg jpeg svg`. No separate field or media type is needed; the overridden widget then permits the upload."
+    },
+    {
+      "id": "svgimage-inline-vs-img",
+      "mode": "recipe",
+      "prompt": "Using SVG Image's `image` formatter on a Drupal Manage display, which formatter setting controls whether an SVG renders as an `<img>` tag versus inline `<svg>` markup, and what value gives inline output?",
+      "must_contain_any": ["svg_render_as_image"],
+      "must_not_contain": [],
+      "expected_output": "The `svg_render_as_image` setting (default TRUE = render as `<img>`). Set it to FALSE to output inline, sanitized `<svg>` markup."
+    },
+    {
+      "id": "svgimage-sanitizer-dependency",
+      "mode": "recipe",
+      "prompt": "How does the SVG Image module protect a Drupal site from XSS in uploaded SVG files, and which PHP library does it rely on for that? Name the library.",
+      "must_contain_any": ["enshrined/svg-sanitize", "enshrined\\svgSanitize", "svg-sanitize", "Sanitizer"],
+      "must_not_contain": [],
+      "expected_output": "Inline SVG output is passed through the `enshrined/svg-sanitize` library (Sanitizer::sanitize()), stripping scripts/unsafe nodes before the markup is printed."
+    },
+    {
+      "id": "svgimage-overridden-classes",
+      "mode": "recipe",
+      "prompt": "SVG Image does not register new field plugins. Which core Image plugin IDs does it override, and via which alter hooks? Name the hooks.",
+      "must_contain_any": ["hook_field_widget_info_alter", "hook_field_formatter_info_alter", "field_widget_info_alter", "field_formatter_info_alter"],
+      "must_not_contain": [],
+      "expected_output": "It swaps the class behind the `image_image` widget (via hook_field_widget_info_alter) and the `image` and `image_url` formatters (via hook_field_formatter_info_alter), keeping the original plugin IDs/labels."
+    },
+    {
+      "id": "svgimage-dimensions-helper",
+      "mode": "recipe",
+      "prompt": "In a Drupal theme I need best-effort width/height for an uploaded SVG File entity. Which procedural helper does the SVG Image module provide, and what does it fall back to when the SVG has no dimensions?",
+      "must_contain_any": ["svg_image_get_image_file_dimensions"],
+      "must_not_contain": [],
+      "expected_output": "svg_image_get_image_file_dimensions(File $file) reads the SVG's width/height attributes and falls back to 64x64, returning ['width' => int, 'height' => int]."
+    },
+    {
+      "id": "svgimage-image-style-fallback",
+      "mode": "recipe",
+      "prompt": "Image styles can't resize an SVG on the server. What does the SVG Image module do so an SVG still renders when a raster-only image style is applied, and what CSS class does it add?",
+      "must_contain_any": ["no-image-style", "svg_image_preprocess_image_style"],
+      "must_not_contain": [],
+      "expected_output": "svg_image_preprocess_image_style() forces access and adds a `no-image-style` class so the SVG still renders instead of being hidden by the image style. The image_url formatter also returns the raw SVG URL when a style is set."
+    },
+    {
+      "id": "svgimage-uninstall-cleanup",
+      "mode": "recipe",
+      "prompt": "What does the SVG Image module clean up when it is uninstalled from a Drupal site?",
+      "must_contain_any": ["removes", "svg", "restores", "hook_uninstall"],
+      "must_not_contain": [],
+      "expected_output": "hook_uninstall removes the `svg` extension it added to every image field, drops the `svg_render_as_image` / `svg_attributes` display settings, and restores the core `image` module dependency."
+    }
+  ]
+}

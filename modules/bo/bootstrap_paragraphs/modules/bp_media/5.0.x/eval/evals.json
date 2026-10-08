@@ -1,0 +1,98 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "bp_media",
+  "version": "5.0.x",
+  "note": "bp_media is a submodule of bootstrap_paragraphs 5.0.x. It is config plus one Twig template: no services, plugins, permissions, Drush commands, config schema or CSS library of its own, and configure=null. It imports paragraphs.paragraphs_type.bp_media plus seven field instances. Only bp_media has its own storage: an entity_reference (cardinality 1) to the media entity type, with handler 'default:media' and handler_settings.target_bundles restricted to exactly image and remote_video, auto_create false. The other six fields (bp_header, bp_link, bp_width, bp_background, bp_margin, bp_padding) reuse the parent module's storages; bp_background/bp_margin/bp_padding/bp_width are collected into a collapsed field_group 'Styles' details group on the form display. The form display uses core's media_library_widget for the media reference, and the view display renders it with entity_reference_entity_view in the default view mode while the list fields use the list_key formatter so raw class strings reach the template. The template wraps the rendered media in an <a> when bp_link is set. Cases are grounded in that config: easy cases ask about the real media-type restriction, the real widget and the real link behaviour; medium cases read back a live paragraph's referenced media and its shared styling values; hard cases require building a real paragraphs field that accepts bp_media and a real media section referencing a specific media entity.",
+  "evals": [
+    {
+      "id": "bp_media-allowed-media-types",
+      "mode": "recipe",
+      "prompt": "On a Drupal 11 site using the bp_media submodule of Bootstrap Paragraphs, which media types can an editor pick in a Media paragraph out of the box, and where is that restriction configured?",
+      "must_contain_any": [
+        "remote_video",
+        "image"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Only Image and Remote video. The bp_media field is an entity_reference to the media entity type; field.field.paragraph.bp_media.bp_media sets settings.handler to 'default:media' and settings.handler_settings.target_bundles to {image: image, remote_video: remote_video} with auto_create false. Widen it by adding bundles to that handler_settings map.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "bp_media-widget",
+      "mode": "recipe",
+      "prompt": "Which widget does the bp_media Bootstrap Paragraphs bundle use for choosing the media item, and which extra core modules does bp_media require compared with its sibling bundles like bp_callout?",
+      "must_contain_any": [
+        "media_library_widget",
+        "media_library"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The form display uses core's media_library_widget, so editors pick from the Media library modal. bp_media.info.yml adds drupal:media and drupal:media_library to the dependencies, which its sibling bundles (bp_callout, bp_card) do not require.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "bp_media-link-behaviour",
+      "mode": "recipe",
+      "prompt": "In the bp_media Bootstrap Paragraphs bundle there is a Link field. What does the template do with it, and why can't an editor enter link text for it?",
+      "must_contain_any": [
+        "bp_link",
+        "wraps",
+        "anchor",
+        "<a"
+      ],
+      "must_not_contain": [],
+      "expected_output": "When bp_link is set, paragraph--bp-media.html.twig wraps the rendered media in an <a href=\"{{ content.bp_link.0['#url'] }}\"> so the image or video becomes clickable. Link text is unavailable because the field instance sets title: 0 (link text disabled) - only the URL is used.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "bp_media-known-media",
+      "mode": "introspection",
+      "prompt": "This Drupal site has an article node titled 'BP Media Known Section' containing a Bootstrap Paragraphs Media paragraph. Inspect the running site and tell me the name of the media entity that paragraph references and the value stored in its Width field.",
+      "must_contain_any": [
+        "BP Media Known Image",
+        "paragraph--width--wide"
+      ],
+      "must_not_contain": [],
+      "expected_output": "It references the Image media entity named 'BP Media Known Image', and bp_width is 'paragraph--width--wide'. The paragraph also has bp_header = 'Known Media Section' and bp_margin = 'mt-5 mb-5'.",
+      "setup": "agent-module-documentation/evaluation/verify/bp_media-known-media-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/bp_media-known-media-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "bp_media-styles-group",
+      "mode": "introspection",
+      "prompt": "This Drupal site has an article node titled 'BP Media Styled Section' with a Bootstrap Paragraphs Media paragraph on it. Inspect the live site and report the exact values stored in that paragraph's Width, Margin and Padding fields.",
+      "must_contain_any": [
+        "paragraph--width--tiny",
+        "mt-1 mb-1",
+        "pt-5 pb-5"
+      ],
+      "must_not_contain": [],
+      "expected_output": "bp_width = 'paragraph--width--tiny', bp_margin = 'mt-1 mb-1', bp_padding = 'pt-5 pb-5'. These are shared list_string fields whose storages belong to the parent bootstrap_paragraphs module, and whose stored values are literal Bootstrap/BP CSS classes.",
+      "setup": "agent-module-documentation/evaluation/verify/bp_media-styles-group-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/bp_media-styles-group-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "bp_media-attach-field",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, add a Paragraphs field named field_bpmedia_task to the Article content type so editors can add Bootstrap Paragraphs Media sections to articles. It must be an entity_reference_revisions field targeting paragraphs, allow unlimited values, and accept the bp_media bundle. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/bp_media-attach-field-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/bp_media-attach-field-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/bp_media-attach-field-reset.sh",
+      "expected_output": "node.article gains field_bpmedia_task: a FieldStorageConfig of type entity_reference_revisions with settings.target_type = paragraph and cardinality -1, plus a FieldConfig whose settings.handler is 'default:paragraph' and whose settings.handler_settings.target_bundles contains bp_media."
+    },
+    {
+      "id": "bp_media-build-section",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "site-owner",
+      "prompt": "This site already has an Article field called field_bpmedia_build that accepts Bootstrap Paragraphs Media sections, and a media item in the library called 'BP Media Build Image'. Create a published article titled exactly 'BP Media Build Target' with one Media section in that field. It must show that 'BP Media Build Image' media item, its heading must read exactly 'Product Gallery', and it should be set to the full-width option. Save it on the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/bp_media-build-section-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/bp_media-build-section-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/bp_media-build-section-cleanup.sh",
+      "expected_output": "An article titled 'BP Media Build Target' whose field_bpmedia_build references a bp_media paragraph whose bp_media points at the media entity named 'BP Media Build Image', with bp_header = 'Product Gallery' and bp_width = 'paragraph--width--full'."
+    }
+  ]
+}

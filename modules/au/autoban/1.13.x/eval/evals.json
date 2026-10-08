@@ -1,0 +1,102 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "autoban",
+  "version": "1.13.x",
+  "note": "Autoban bans IPs by scanning the dblog/watchdog table for matching log entries and, when a rule's threshold is exceeded within its time window, banning the IP via a ban provider (core Ban by default). Its persistent state is pure config: the autoban.settings object plus one autoban.autoban.<id> config entity per rule. The autoban config entity's config_export keys are id, type (dblog log type/channel), message (pattern), referer, threshold (int), window (relative time), provider (ban-provider id such as 'ban'), user_type (0 any / 1 anonymous / 2 authenticated / 3 anon-strict / 4 auth-strict) and rule_type (1 manual / 2 auto). Ban providers are services whose id ends in '.ban_provider', tagged ban_providers, implementing AutobanProviderInterface; submodule autoban_ban supplies id 'ban'. The Drush command is autoban:ban [rule]. Medium cases install a known rule and read a field back; hard cases build a rule (and, for one case, also set the global autoban_query_mode) verified against the live config. All grounded in the real config-entity keys and the real settings keys.",
+  "evals": [
+    {
+      "id": "autoban-what-is-a-rule",
+      "mode": "recipe",
+      "prompt": "In the Drupal Autoban module, how is a ban rule stored, and what are the main fields of a rule that decide which IPs get banned?",
+      "must_contain_any": [
+        "autoban.autoban",
+        "config entity",
+        "threshold",
+        "provider",
+        "message"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Each rule is an `autoban` config entity stored as autoban.autoban.<id>. Its fields: type (the dblog log type/channel to scan, e.g. 'page not found'), message (pattern the log message must match), referer (optional), threshold (how many matching entries before banning), window (relative time window like '1 hour'), provider (ban-provider id, e.g. 'ban'), user_type (any/anonymous/authenticated) and rule_type (manual/auto).",
+      "difficulty": "easy"
+    },
+    {
+      "id": "autoban-how-rules-match",
+      "mode": "recipe",
+      "prompt": "How does Autoban decide when to ban an IP, and what log source does it read? Where do you control whether rule patterns match with LIKE or regular expressions?",
+      "must_contain_any": [
+        "dblog",
+        "watchdog",
+        "threshold",
+        "autoban_query_mode",
+        "REGEXP"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Autoban scans Drupal's dblog/watchdog log table for entries whose type and message match a rule, within the rule's time window; when an IP reaches the rule's threshold it is banned via the rule's provider. Pattern matching mode is the global setting autoban.settings:autoban_query_mode ('LIKE' or 'REGEXP'). Rules run on cron (autoban_cron), on every request in force mode (autoban_force_mode), from the UI, or via drush autoban:ban.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "autoban-drush-and-providers",
+      "mode": "recipe",
+      "prompt": "Which Drush command triggers Autoban to process its rules and ban IPs, and how does Autoban know how to actually ban an IP (what is a ban provider)?",
+      "must_contain_any": [
+        "autoban:ban",
+        "ban_providers",
+        "AutobanProviderInterface",
+        "provider"
+      ],
+      "must_not_contain": [],
+      "expected_output": "`drush autoban:ban [rule]` processes one rule (or all rules if omitted), banning matched IPs — the same work cron does. Banning is delegated to a ban provider: a service whose id ends in '.ban_provider', tagged ban_providers, implementing AutobanProviderInterface. The rule's `provider` field stores the provider id; the autoban_ban submodule supplies 'ban' (core Ban), autoban_advban supplies 'advban'/'advban_range'.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "autoban-known-rule-threshold",
+      "mode": "introspection",
+      "prompt": "This Drupal site has an Autoban rule with machine id `ab_test_m1`. Inspect the live configuration and report its ban threshold and which ban provider it uses.",
+      "must_contain_any": [
+        "7"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Rule ab_test_m1 has threshold 7 and provider 'ban' (core Ban); it scans the 'page not found' log type for 'wp-login'. Read it with `drush cget autoban.autoban.ab_test_m1`.",
+      "setup": "agent-module-documentation/evaluation/verify/autoban-known-rule-m1-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/autoban-known-rule-m1-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "autoban-known-rule-logtype",
+      "mode": "introspection",
+      "prompt": "An Autoban rule `ab_test_m2` exists on this site. Inspect the live configuration and report which dblog log type it scans and over what time window.",
+      "must_contain_any": [
+        "access denied",
+        "1 day"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Rule ab_test_m2 scans the 'access denied' log type over a '1 day' window (threshold 4, provider 'ban', anonymous users). Read it with `drush cget autoban.autoban.ab_test_m2`.",
+      "setup": "agent-module-documentation/evaluation/verify/autoban-known-rule-m2-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/autoban-known-rule-m2-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "autoban-create-rule",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, using Autoban, create a ban rule with machine id `autoban_test_404` that scans the `page not found` log type for messages matching `phpmyadmin`, and bans an anonymous visitor's IP once it has 10 such entries within a `6 hours` window, using the core Ban provider (`ban`). Apply it to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/autoban-create-rule-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/autoban-create-rule-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/autoban-create-rule-cleanup.sh",
+      "expected_output": "An autoban config entity autoban.autoban.autoban_test_404 exists with type='page not found', message='phpmyadmin', threshold=10, window='6 hours', provider='ban', user_type=1 (anonymous). Create it via the Add rule UI (/admin/config/people/autoban/add) or getStorage('autoban')->create([...])->save()."
+    },
+    {
+      "id": "autoban-regexp-rule",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "Configure Autoban so that rule patterns are matched using regular expressions (set the query mode to REGEXP), and create a ban rule with machine id `autoban_test_403` that bans anonymous IPs through the core Ban provider after 3 `access denied` log entries. Apply both changes to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/autoban-regexp-rule-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/autoban-regexp-rule-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/autoban-regexp-rule-cleanup.sh",
+      "expected_output": "autoban.settings:autoban_query_mode is set to 'REGEXP' (Settings form or `drush cset autoban.settings autoban_query_mode REGEXP`), AND an autoban rule autoban_test_403 exists with type='access denied', threshold=3, provider='ban', user_type=1 (anonymous)."
+    }
+  ]
+}

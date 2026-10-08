@@ -1,0 +1,96 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "cookiepro",
+  "version": "2.2.x",
+  "note": "CookiePro by OneTrust injects a cookie-consent script into the page <head>. The actual consent logic is an EXTERNAL OneTrust/CookiePro service (needs a CookiePro account); this module only stores and emits the script. All evals are grounded in LOCAL config, not the external service. Single settings form at /admin/config/development/cookiepro (route cookiepro.admin.header, configure route, form id hfs_header_settings). Config object cookiepro.header.settings with one key 'scripts' (text); the config object does not exist until the form is saved (no install default) and is deleted on uninstall. Form access is gated by permission cookiepro_settings. Injection is via hook_page_attachments_alter() which parses the raw scripts value and emits each <script>/<noscript> into html_head. No plugins, no Drush, no fields. Medium/hard cases read/write cookiepro.header.settings.scripts.",
+  "evals": [
+    {
+      "id": "cookiepro-where-paste",
+      "mode": "recipe",
+      "prompt": "I have my OneTrust/CookiePro cookie-banner script tag. On a Drupal site with the cookiepro module, where do I paste it, what is the admin route, and in which config object/key is it stored?",
+      "must_contain_any": [
+        "cookiepro.header.settings",
+        "/admin/config/development/cookiepro",
+        "cookiepro.admin.header",
+        "scripts"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Paste it into the Scripts textarea on the CookiePro settings form at /admin/config/development/cookiepro (route cookiepro.admin.header). It is stored in the config object cookiepro.header.settings under the key 'scripts', and emitted into the page <head> on every request.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "cookiepro-permission",
+      "mode": "recipe",
+      "prompt": "Which permission does the cookiepro module define to control access to its settings form?",
+      "must_contain_any": [
+        "cookiepro_settings"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The permission is cookiepro_settings (labelled 'CookiePro by OneTrust', restrict access: TRUE), required by the cookiepro.admin.header route.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "cookiepro-how-injected",
+      "mode": "recipe",
+      "prompt": "Technically, how does the cookiepro module get the configured script onto the site's pages? Which hook does it implement and where does it put the script?",
+      "must_contain_any": [
+        "hook_page_attachments_alter",
+        "page_attachments_alter",
+        "html_head",
+        "head"
+      ],
+      "must_not_contain": [],
+      "expected_output": "cookiepro_page_attachments_alter() (hook_page_attachments_alter) reads cookiepro.header.settings.scripts, strips comments, splits it into its <script>/<noscript> tags and appends each to $attachments['#attached']['html_head'], so it renders into the page <head> on every request.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "cookiepro-configured-id",
+      "mode": "introspection",
+      "prompt": "On this Drupal site, CookiePro is already configured with a OneTrust consent script. Inspect the live configuration and report the data-domain-script id it is set to.",
+      "must_contain_any": [
+        "cp-eval-7788"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The configured OneTrust data-domain-script id is cp-eval-7788, found in cookiepro.header.settings.scripts.",
+      "setup": "agent-module-documentation/evaluation/verify/cookiepro-configured-id-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/cookiepro-configured-id-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "cookiepro-configured-src",
+      "mode": "introspection",
+      "prompt": "On this site the cookiepro module is configured to load an external consent script. Inspect the live config and give the src URL (or its filename) of the script that CookiePro will inject.",
+      "must_contain_any": [
+        "cpeval-src-4521"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The configured script src is https://cdn.example.test/cpeval-src-4521.js (stored in cookiepro.header.settings.scripts).",
+      "setup": "agent-module-documentation/evaluation/verify/cookiepro-configured-src-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/cookiepro-configured-src-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "cookiepro-inject-script",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, configure the cookiepro module so that the OneTrust consent script `<script src=\"https://cdn.cookielaw.org/scripttemplates/otSDKStub.js\" type=\"text/javascript\" charset=\"UTF-8\" data-domain-script=\"cp-task-9911\"></script>` is injected into the page head on every request. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/cookiepro-inject-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/cookiepro-inject-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/cookiepro-inject-cleanup.sh",
+      "expected_output": "Save the script into the 'scripts' key of cookiepro.header.settings (via the CookiePro settings form, drush cset, or \\Drupal::configFactory()->getEditable('cookiepro.header.settings')->set('scripts', '<script ... data-domain-script=\"cp-task-9911\"></script>')->save()). The stored scripts value must contain cp-task-9911."
+    },
+    {
+      "id": "cookiepro-inject-layman",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "site-owner-layman",
+      "prompt": "I signed up for CookiePro and they gave me this cookie-banner code to put on my whole website: <script src=\"https://cdn.cookielaw.org/scripttemplates/otSDKStub.js\" data-domain-script=\"cp-task2-3344\"></script>. Please make it show on every page of my Drupal site.",
+      "reset": "agent-module-documentation/evaluation/verify/cookiepro-inject-layman-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/cookiepro-inject-layman-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/cookiepro-inject-layman-cleanup.sh",
+      "expected_output": "Use the CookiePro module: paste the tag into the Scripts field at /admin/config/development/cookiepro (or set cookiepro.header.settings.scripts). The stored scripts value must contain cp-task2-3344 so the banner is injected site-wide."
+    }
+  ]
+}

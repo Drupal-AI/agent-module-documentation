@@ -1,0 +1,98 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "symfony_mailer_log",
+  "version": "1.2.x",
+  "note": "Mailer Plus log records emails sent through Symfony Mailer as symfony_mailer_log content entities. Logging happens only when (a) symfony_mailer_log.settings:enable is TRUE (default) AND (b) the 'Log email' EmailAdjuster (plugin id symfony_mailer_log) is added to a Mailer policy. Settings config object symfony_mailer_log.settings has keys enable (bool, default TRUE), log_expiry.max_age (ISO-8601 duration string, default null), log_expiry.batch_size (int, default 100); cron deletes entries older than max_age, batch_size per run. Settings route symfony_mailer_log.settings at /admin/config/system/mailer/symfony_mailer_log/settings. Entity collection /admin/reports/symfony_mailer_log. Permissions: view/delete/administer. On this site symfony_mailer 2.0.2 is installed but the mailer_policy entity type is NOT available, so all eval cases are grounded in the log settings config and the symfony_mailer_log entity only (no policy/config-entity or real SMTP send required).",
+  "evals": [
+    {
+      "id": "sml-settings-keys",
+      "mode": "recipe",
+      "prompt": "In the Drupal symfony_mailer_log module, which configuration object and keys control (a) whether email logging is on and (b) how long log entries are kept before being deleted on cron? What format does the retention value use?",
+      "must_contain_any": [
+        "symfony_mailer_log.settings",
+        "log_expiry",
+        "max_age"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Config object symfony_mailer_log.settings. enable (boolean) is the master on/off switch; log_expiry.max_age is an ISO 8601 duration string (e.g. P1W, P1M) after which entries are deleted on cron, and log_expiry.batch_size caps how many are deleted per cron run. max_age null means never expire.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "sml-how-to-log",
+      "mode": "recipe",
+      "prompt": "I enabled the symfony_mailer_log module but no emails are appearing in the mail log even though 'Enable logging' is checked. What extra step is required for a given email to actually be logged?",
+      "must_contain_any": [
+        "Log email",
+        "adjuster",
+        "policy",
+        "mailer policy",
+        "EmailAdjuster"
+      ],
+      "must_not_contain": [],
+      "expected_output": "You must add the 'Log email' EmailAdjuster (plugin id symfony_mailer_log) to the relevant Mailer policy at /admin/config/system/mailer — either a specific mail type or the catch-all *All* policy. Enabling the module and the global switch is not enough; the adjuster has to be on the policy that handles the mail.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "sml-entity-and-report",
+      "mode": "recipe",
+      "prompt": "Where can I view logged emails in the symfony_mailer_log module, what is the machine name of the entity type used to store them, and which permission lets a non-admin user view them?",
+      "must_contain_any": [
+        "symfony_mailer_log",
+        "/admin/reports/symfony_mailer_log",
+        "view symfony mailer log entries"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Logged emails are stored as symfony_mailer_log content entities and listed at Admin » Reports » Mail log (/admin/reports/symfony_mailer_log). The 'view symfony mailer log entries' permission grants view access without full admin.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "sml-known-maxage",
+      "mode": "introspection",
+      "prompt": "On this Drupal site, the symfony_mailer_log module is configured to automatically delete old log entries after a certain age. Inspect the live configuration and report the exact retention (max age) value that is set.",
+      "must_contain_any": [
+        "P2W"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The retention is P2W (two weeks): symfony_mailer_log.settings -> log_expiry.max_age is 'P2W' (readable with `drush cget symfony_mailer_log.settings log_expiry.max_age`).",
+      "setup": "agent-module-documentation/evaluation/verify/symfony_mailer_log-known-maxage-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/symfony_mailer_log-known-maxage-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "sml-known-entry",
+      "mode": "introspection",
+      "prompt": "This site has one email logged by the symfony_mailer_log module. Inspect the mail log (the symfony_mailer_log entities) and report the exact subject line of that logged email.",
+      "must_contain_any": [
+        "SMLOG Known Subject 7F3"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The logged email's subject is 'SMLOG Known Subject 7F3' (a symfony_mailer_log entity; query the storage or view /admin/reports/symfony_mailer_log).",
+      "setup": "agent-module-documentation/evaluation/verify/symfony_mailer_log-known-entry-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/symfony_mailer_log-known-entry-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "sml-enable-logging",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this site, email logging via the symfony_mailer_log module is currently switched off in its settings. Turn email logging back on and apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/symfony_mailer_log-enable-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/symfony_mailer_log-enable-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/symfony_mailer_log-enable-cleanup.sh",
+      "expected_output": "Set symfony_mailer_log.settings -> enable to TRUE (e.g. `drush cset symfony_mailer_log.settings enable true -y`, or tick 'Enable logging' on the settings form)."
+    },
+    {
+      "id": "sml-purge-policy",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-layman",
+      "prompt": "My mail log is growing forever. Using the symfony_mailer_log module's settings, make it automatically delete logged emails once they are older than 30 days, removing at most 25 of them each time cron runs. Apply the change to the site.",
+      "reset": "agent-module-documentation/evaluation/verify/symfony_mailer_log-purge-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/symfony_mailer_log-purge-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/symfony_mailer_log-purge-cleanup.sh",
+      "expected_output": "In symfony_mailer_log.settings set log_expiry.max_age to the ISO 8601 duration P30D and log_expiry.batch_size to 25 (e.g. `drush cset symfony_mailer_log.settings log_expiry.max_age P30D -y` and `... log_expiry.batch_size 25 -y`). Cron then deletes entries older than 30 days, 25 per run."
+    }
+  ]
+}

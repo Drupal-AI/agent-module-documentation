@@ -1,0 +1,96 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "lightning_media",
+  "version": "5.1.x",
+  "note": "Lightning Media defines no plugin type, no permission and no Drush command. Its configure route is lightning_media.settings at /admin/config/system/lightning/media, backed by exactly two config keys: entity_embed.choose_display and revision_ui (the latter is consumed in hook_entity_type_alter() via $entity_types['media']->set('show_revision_ui', ...), so cached entity type definitions must be cleared after changing it). It ships the media view modes 'embedded' and 'thumbnail', the field storages media.embed_code and media.field_media_in_library, and optional config for the rich_text format, a media pathauto pattern and the media_creator / media_manager roles (which require lightning_roles). hook_ENTITY_TYPE_insert() on media_type attaches field_media_in_library (default TRUE) plus a boolean_checkbox widget to every newly created media type, and hook_views_pre_view() filters the media_library widget displays to field_media_in_library = 1. The API surface is the lightning.media_helper service (MediaHelper: getFileExtensions/getBundlesFromInput/getBundleFromInput/createFromInput, statics getSourceField/isPreviewable/useFile) driven by Drupal\\lightning_media\\InputMatchInterface. Cases are grounded in exactly those facts.",
+  "evals": [
+    {
+      "id": "lightning_media-settings-location",
+      "mode": "recipe",
+      "prompt": "I have installed the Drupal contrib module lightning_media on a Drupal 11 site. Where is its settings page, what is the configuration object called, and which settings does it actually expose?",
+      "must_contain_any": [
+        "lightning_media.settings",
+        "/admin/config/system/lightning/media",
+        "revision_ui",
+        "choose_display"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The configure route is lightning_media.settings at /admin/config/system/lightning/media (permission: administer site configuration). The config object lightning_media.settings has exactly two keys: entity_embed.choose_display ('Allow users to choose how to display embedded media') and revision_ui ('Show revision UI on media forms'), both FALSE by default.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "lightning_media-in-library-field",
+      "mode": "recipe",
+      "prompt": "On a site with the Drupal lightning_media module, every media type seems to have an extra 'Show in media library' checkbox. Which field is that, where does it come from, and what does turning it off actually do?",
+      "must_contain_any": [
+        "field_media_in_library"
+      ],
+      "must_not_contain": [],
+      "expected_output": "It is the boolean field field_media_in_library, whose storage ships in lightning_media's config/install and which lightning_media_media_type_insert() attaches (with a boolean_checkbox widget and a TRUE default) to every media type created while the module is enabled. lightning_media_views_pre_view() adds a field_media_in_library_value = 1 filter to the media_library view's widget displays, so an item with the box unticked is hidden from the media library widget.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "lightning_media-input-match",
+      "mode": "recipe",
+      "prompt": "The Drupal lightning_media module can work out which media type should handle an arbitrary uploaded file or pasted URL. Which interface and which service implement that, and what happens when the input matches more than one media type?",
+      "must_contain_any": [
+        "InputMatchInterface",
+        "MediaHelper",
+        "lightning.media_helper",
+        "IndeterminateBundleException"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Media source plugins implement Drupal\\lightning_media\\InputMatchInterface::appliesTo($value, $media_type) (usually via FileInputExtensionMatchTrait or ValidationConstraintMatchTrait). The lightning.media_helper service (MediaHelper) uses it: getBundlesFromInput() returns all matching types, getBundleFromInput() returns the single match and otherwise throws Drupal\\lightning_media\\Exception\\IndeterminateBundleException, and createFromInput() returns an unsaved media entity of the matched bundle with its source field set.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "lightning_media-hidden-asset",
+      "mode": "introspection",
+      "prompt": "This Drupal site has two Document media items whose names start with 'LM'. One of them has been configured so it does not appear in the media library. Inspect the live site and tell me which one it is, and which field records that.",
+      "must_contain_any": [
+        "LM Hidden Asset"
+      ],
+      "must_not_contain": [],
+      "expected_output": "'LM Hidden Asset' has field_media_in_library set to FALSE (0) while 'LM Visible Asset' has it TRUE, so only the hidden one is filtered out of the media_library widget view by lightning_media_views_pre_view().",
+      "setup": "agent-module-documentation/evaluation/verify/lightning_media-hidden-asset-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/lightning_media-hidden-asset-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "lightning_media-auto-field",
+      "mode": "introspection",
+      "prompt": "A brand new media type with the machine name lm_probe has just been created on this Drupal site. Lightning Media added a field to it automatically. Inspect the live configuration and tell me the machine name of that field, its label, its default value, and which form widget was configured for it.",
+      "must_contain_any": [
+        "field_media_in_library"
+      ],
+      "must_not_contain": [],
+      "expected_output": "field_media_in_library, label 'Show in media library', default value 1 (TRUE), with a boolean_checkbox widget on core.entity_form_display.media.lm_probe.default - all added by lightning_media_media_type_insert().",
+      "setup": "agent-module-documentation/evaluation/verify/lightning_media-auto-field-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/lightning_media-auto-field-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "lightning_media-settings",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, configure Lightning Media so that editors see the revision UI on media forms and are allowed to choose how embedded media is displayed. Make sure the change actually takes effect on the running site, including the media entity type's revision UI.",
+      "reset": "agent-module-documentation/evaluation/verify/lightning_media-settings-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/lightning_media-settings-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/lightning_media-settings-cleanup.sh",
+      "expected_output": "lightning_media.settings with revision_ui: true and entity_embed.choose_display: true, plus cleared entity type definitions (the settings form calls entityTypeManager->clearCachedDefinitions(); from the CLI use drush cr) so the live media entity type definition has show_revision_ui TRUE."
+    },
+    {
+      "id": "lightning_media-new-media-type",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, create a new media type with the machine name lm_gallery and the label 'LM Gallery' that uses the core Image media source (create its source field too). Then make sure that media items of this type are hidden from the media library by default, using the field Lightning Media attaches to new media types.",
+      "reset": "agent-module-documentation/evaluation/verify/lightning_media-new-media-type-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/lightning_media-new-media-type-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/lightning_media-new-media-type-cleanup.sh",
+      "expected_output": "A media.type.lm_gallery config entity whose source is 'image' with a created source field; lightning_media_media_type_insert() then attaches field_media_in_library with a boolean_checkbox widget on media.lm_gallery.default, and its FieldConfig default value must be changed to 0/FALSE so new items start hidden from the library."
+    }
+  ]
+}

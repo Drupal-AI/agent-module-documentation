@@ -1,0 +1,80 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "views_arg_order_sort",
+  "version": "2.0.x",
+  "note": "Views Arg Order Sort adds a Views sort handler (UI label 'Multi-item Argument Order', plugin id views_arg_order_sort_default, declared via hook_views_data as a #global sort on table views_arg_order_sort field weight) that orders rows to match the order of values in a chosen multi-item contextual filter by building a CASE ... WHEN ... THEN <pos> expression. Options: argument_number (0-indexed contextual filter), inherit_type (derive column from that argument), field_type (table::field like node::nid when not inheriting), null_below, and standard order (DESC reverses). No configure route, permission, Drush; all state lives in a view config entity's display sorts. Medium/hard cases are grounded in real view config: introspection reads the sort's plugin id / field_type; execution adds the sort to a view's display with a given argument_number or explicit field_type, verified against the live views.view config.",
+  "evals": [
+    {
+      "id": "vaos-sort-name",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "In Views, I pass a list of node IDs like 5,3,9 into a contextual filter and want the results returned in that exact order using the views_arg_order_sort module. Which Views sort do I add (its UI label or plugin id)?",
+      "must_contain_any": ["Multi-item Argument Order", "views_arg_order_sort_default"],
+      "must_not_contain": [],
+      "expected_output": "Add the 'Multi-item Argument Order' sort criterion (plugin id views_arg_order_sort_default). It builds a CASE expression so rows sort by their position in the argument values."
+    },
+    {
+      "id": "vaos-options",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "For the views_arg_order_sort 'Multi-item Argument Order' sort, how do I tell it which contextual filter to read, and how does it know which database column to sort on?",
+      "must_contain_any": ["argument_number", "inherit_type", "field_type"],
+      "must_not_contain": [],
+      "expected_output": "argument_number (0-indexed) selects which contextual filter's values to use. With inherit_type on (default) it derives the sort column from that argument's own handler; turn inherit_type off to set an explicit field_type like node::nid. null_below places non-matching rows at the end, and a DESC order reverses the argument sequence."
+    },
+    {
+      "id": "vaos-how-order",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "How does views_arg_order_sort actually make the query return rows in the order of the passed argument values?",
+      "must_contain_any": ["CASE", "ORDER BY", "position", "argument order"],
+      "must_not_contain": [],
+      "expected_output": "Its query() splits the chosen argument's values (on + or ,) and emits an ORDER BY CASE <col> WHEN <val0> THEN 0 WHEN <val1> THEN 1 ... ELSE <null_o> END, so each row sorts by its position in the argument list; non-matching rows go first or last depending on null_below and direction."
+    },
+    {
+      "id": "vaos-which-plugin",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "On this Drupal site the view with machine id 'vaos_intro_view' has a sort added by the views_arg_order_sort module. Inspect the live view configuration and give the sort plugin id it uses.",
+      "must_contain_any": ["views_arg_order_sort_default"],
+      "must_not_contain": [],
+      "expected_output": "views_arg_order_sort_default (the 'Multi-item Argument Order' sort), in vaos_intro_view's display sorts.",
+      "setup": "agent-module-documentation/evaluation/verify/views_arg_order_sort-intro-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/views_arg_order_sort-intro-cleanup.sh"
+    },
+    {
+      "id": "vaos-field-type",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "The view 'vaos_intro_view' on this site has a Multi-item Argument Order sort configured with 'inherit type' turned off and an explicit argument field type. Inspect the live view configuration and give that field_type value.",
+      "must_contain_any": ["node::nid"],
+      "must_not_contain": [],
+      "expected_output": "field_type is 'node::nid' (inherit_type: false) on the views_arg_order_sort_default sort in vaos_intro_view.",
+      "setup": "agent-module-documentation/evaluation/verify/views_arg_order_sort-intro-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/views_arg_order_sort-intro-cleanup.sh"
+    },
+    {
+      "id": "vaos-add-sort-inherit",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "The view with machine id 'vaos_task_view' on this site has a Content: ID contextual filter (the first argument). Using the views_arg_order_sort module, add a 'Multi-item Argument Order' sort to its default display that orders results by the values of that first contextual filter (argument_number 1), inheriting the field type from the argument. Apply the change to the live view.",
+      "reset": "agent-module-documentation/evaluation/verify/views_arg_order_sort-configure-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/views_arg_order_sort-argnum-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/views_arg_order_sort-configure-cleanup.sh",
+      "expected_output": "views.view.vaos_task_view default display sorts contains a handler with plugin_id: views_arg_order_sort_default (table views_arg_order_sort, field weight) and argument_number: 1 (inherit_type on)."
+    },
+    {
+      "id": "vaos-add-sort-fieldtype",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On the view with machine id 'vaos_task_view', add a views_arg_order_sort 'Multi-item Argument Order' sort to the default display, but with 'inherit type of field from argument' turned OFF and the explicit argument field type set to node::nid. Apply the change to the live view.",
+      "reset": "agent-module-documentation/evaluation/verify/views_arg_order_sort-configure-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/views_arg_order_sort-fieldtype-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/views_arg_order_sort-configure-cleanup.sh",
+      "expected_output": "views.view.vaos_task_view default display sorts contains a handler with plugin_id: views_arg_order_sort_default, inherit_type: false, field_type: 'node::nid'."
+    }
+  ]
+}

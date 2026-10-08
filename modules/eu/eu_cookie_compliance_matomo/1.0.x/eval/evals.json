@@ -1,0 +1,80 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "eu_cookie_compliance_matomo",
+  "version": "1.0.x",
+  "note": "Glue module between EU Cookie Compliance and Matomo. It injects a JS snippet driving Matomo's _paq consent API (requireConsent/disableCookies/setConsentGiven) based on the EU Cookie Compliance consent cookie. Its ONLY config is eu_cookie_compliance_matomo.settings.categories (array of cookie-category machine names required for Matomo consent; shipped default []). Because the banner and tracking belong to the other two modules and involve a hosted-analytics setup, all medium/hard cases are grounded in this LOCAL config object only (no live tracking calls). Configure route eu_cookie_compliance_matomo.settings -> /admin/config/system/eu-cookie-compliance/matomo (permission 'administer eu cookie compliance popup' from EU Cookie Compliance). Verify reads categories the way the module does (truthy values), so indexed or checkbox-array storage both pass.",
+  "evals": [
+    {
+      "id": "eu_cookie_compliance_matomo-purpose",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "What does the eu_cookie_compliance_matomo Drupal module do, and which two modules does it require?",
+      "must_contain_any": ["Matomo", "consent"],
+      "must_not_contain": [],
+      "expected_output": "It bridges EU Cookie Compliance and Matomo so Matomo only tracks after cookie consent, using Matomo's _paq consent API (requireConsent / setConsentGiven). It requires the eu_cookie_compliance and matomo modules."
+    },
+    {
+      "id": "eu_cookie_compliance_matomo-mechanism",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "How does eu_cookie_compliance_matomo stop Matomo from tracking before the visitor consents? Name the Matomo _paq command it pushes.",
+      "must_contain_any": ["requireConsent", "_paq", "disableCookies"],
+      "must_not_contain": [],
+      "expected_output": "It injects JS that, when the EU Cookie Compliance consent cookie shows no consent, calls _paq.push(['requireConsent']) (and _paq.push(['disableCookies']) unless Matomo already disables cookies). On agreeing it calls _paq.push(['setConsentGiven'])."
+    },
+    {
+      "id": "eu_cookie_compliance_matomo-setting",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "Where is eu_cookie_compliance_matomo configured, and what is the single setting it exposes?",
+      "must_contain_any": ["categories", "eu-cookie-compliance/matomo", "eu_cookie_compliance_matomo.settings"],
+      "must_not_contain": [],
+      "expected_output": "At /admin/config/system/eu-cookie-compliance/matomo. Its only setting is 'categories' (eu_cookie_compliance_matomo.settings.categories) - the cookie categories that must be agreed for Matomo consent in opt-in-with-categories mode."
+    },
+    {
+      "id": "eu_cookie_compliance_matomo-read-cats",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "This Drupal site has eu_cookie_compliance_matomo configured. Inspect the live configuration and tell me which cookie categories must be agreed before Matomo is given consent.",
+      "must_contain_any": ["statistics", "marketing"],
+      "must_not_contain": [],
+      "expected_output": "eu_cookie_compliance_matomo.settings.categories is ['statistics','marketing']. Read via `drush cget eu_cookie_compliance_matomo.settings`.",
+      "setup": "agent-module-documentation/evaluation/verify/eu_cookie_compliance_matomo-cats-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/eu_cookie_compliance_matomo-restore-defaults.sh"
+    },
+    {
+      "id": "eu_cookie_compliance_matomo-read-single",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "Inspect this site's eu_cookie_compliance_matomo configuration and state exactly which cookie category (or categories) it requires for Matomo consent.",
+      "must_contain_any": ["ecc_social_media"],
+      "must_not_contain": [],
+      "expected_output": "The categories setting is ['ecc_social_media'] - a single required category.",
+      "setup": "agent-module-documentation/evaluation/verify/eu_cookie_compliance_matomo-single-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/eu_cookie_compliance_matomo-restore-defaults.sh"
+    },
+    {
+      "id": "eu_cookie_compliance_matomo-set-cats",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, configure the eu_cookie_compliance_matomo module so that Matomo consent requires the visitor to have agreed to BOTH the 'analytics' and 'marketing' cookie categories. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/eu_cookie_compliance_matomo-restore-defaults.sh",
+      "verify": "agent-module-documentation/evaluation/verify/eu_cookie_compliance_matomo-set-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/eu_cookie_compliance_matomo-restore-defaults.sh",
+      "expected_output": "Set eu_cookie_compliance_matomo.settings.categories to include 'analytics' and 'marketing' (e.g. via the form checkboxes at /admin/config/system/eu-cookie-compliance/matomo, or by writing the categories array in config)."
+    },
+    {
+      "id": "eu_cookie_compliance_matomo-replace-cats",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "site-owner",
+      "prompt": "This site's eu_cookie_compliance_matomo module currently requires an outdated cookie category ('legacy_cat') for Matomo consent. Change it so Matomo consent instead requires only the 'analytics' category, and the old one is no longer required. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/eu_cookie_compliance_matomo-replace-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/eu_cookie_compliance_matomo-replace-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/eu_cookie_compliance_matomo-restore-defaults.sh",
+      "expected_output": "Replace the categories value so it contains 'analytics' and no longer 'legacy_cat' (set eu_cookie_compliance_matomo.settings.categories to ['analytics'])."
+    }
+  ]
+}

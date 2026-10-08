@@ -1,0 +1,78 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "disable_messages",
+  "version": "2.1.x",
+  "note": "disable_messages hides specific Drupal status/warning/error messages from end users. All state is one config object, disable_messages.settings; there are no entities, plugins, services, or drush commands. Admins type messages (one regex per line) in the 'Messages to be disabled' textarea (config key disable_messages_ignore_patterns) at /admin/config/development/disable-messages (route disable_messages.settings_form). On save the form COMPILES each line into /^PATTERN$/ (+ 'i' when Ignore case is on) and stores the compiled array in disable_messages_ignore_regex, which is what the runtime hook_preprocess_status_messages() filter actually matches on. Easy recipe cases probe where patterns go, the config keys, and the full-match/wildcard rule (response-graded). Medium introspection cases load a KNOWN configuration (specific suppression patterns; a page-scoped filter) and ask the agent to read live config and report it (setup/cleanup restore baseline). Hard execution cases (persona drupal-expert) have the agent configure suppression so a target message is actually filtered; reset->build->verify checks compiled disable_messages_ignore_regex against real message strings (a control message must still pass, guarding against catch-alls).",
+  "evals": [
+    {
+      "id": "dm-where-patterns",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "On a Drupal 11 site with the disable_messages module, where do I put the text of a status message I want to hide from end users, and how does the module make sure it only matches the whole message? Name the config object and the setting.",
+      "must_contain_any": ["Messages to be disabled", "disable_messages_ignore_patterns", "disable_messages.settings"],
+      "must_not_contain": [],
+      "expected_output": "Enter one message per line (as a regular expression) in the 'Messages to be disabled' textarea on the settings form (/admin/config/development/disable-messages). It is stored in the disable_messages.settings config object under disable_messages_ignore_patterns, and on save the module wraps each line as /^PATTERN$/ (anchored) so it must match the entire message; that compiled list is saved to disable_messages_ignore_regex."
+    },
+    {
+      "id": "dm-wildcard",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "With disable_messages on Drupal 11, I want to hide every message of the form 'Article <something> has been created.' regardless of the article title. What single pattern do I enter in the 'Messages to be disabled' box, and why does it work?",
+      "must_contain_any": [".*", "has been created", "wildcard"],
+      "must_not_contain": [],
+      "expected_output": "Enter `Article .* has been created.` on one line. Each line is treated as a regex anchored to a full match (/^ ... $/), and `.*` acts as a wildcard for the variable title, so it matches any 'Article X has been created.' message. (Enable 'Ignore case' if you also want case-insensitive matching.)"
+    },
+    {
+      "id": "dm-config-keys",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "In disable_messages, which config key does the runtime filter actually use to decide whether to hide a message, and how is it different from the textarea key? Also: what is the route/path of the settings form and the permission that guards it?",
+      "must_contain_any": ["disable_messages_ignore_regex", "disable_messages.settings_form"],
+      "must_not_contain": [],
+      "expected_output": "The runtime hook_preprocess_status_messages() filter matches against disable_messages_ignore_regex (the COMPILED /^PATTERN$/ list), not the raw disable_messages_ignore_patterns textarea. The form at route disable_messages.settings_form (path /admin/config/development/disable-messages) compiles patterns into that key on save; the settings form is guarded by the 'administer disable messages' permission."
+    },
+    {
+      "id": "dm-known-patterns",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "On this Drupal site the disable_messages module is configured to hide some messages from end users. Inspect the live configuration and tell me exactly which messages (patterns) are currently being suppressed.",
+      "must_contain_any": ["has been created", "has been deleted", "The item has been deleted", "Article"],
+      "must_not_contain": [],
+      "setup": "agent-module-documentation/evaluation/verify/disable_messages-suppressed-patterns-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/disable_messages-suppressed-patterns-cleanup.sh",
+      "expected_output": "Reading disable_messages.settings (e.g. `drush config:get disable_messages.settings`): disable_messages_ignore_patterns is `The item has been deleted.` and `Article .* has been created.` (compiled in disable_messages_ignore_regex to /^The item has been deleted.$/i and /^Article .* has been created.$/i). So the site currently suppresses the item-deleted confirmation and every 'Article ... has been created.' message."
+    },
+    {
+      "id": "dm-page-scope",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "Is disable_messages filtering messages on every page of this site, or only on certain pages? Inspect the live configuration and tell me the exact scope (mode and paths).",
+      "must_contain_any": ["/checkout", "only on the listed", "only on", "listed pages"],
+      "must_not_contain": [],
+      "setup": "agent-module-documentation/evaluation/verify/disable_messages-page-scope-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/disable_messages-page-scope-cleanup.sh",
+      "expected_output": "Reading disable_messages.settings: disable_messages_filter_by_page is 2 ('apply filters only on the listed pages') and disable_messages_page_filter_paths is `/checkout` and `/checkout/*`. So filtering is NOT sitewide — it is applied only on the checkout pages."
+    },
+    {
+      "id": "dm-suppress-saved",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site (disable_messages is enabled), configure the module so that the exact status message `The changes have been saved.` is filtered out and never shown to end users, while other messages (e.g. `Your comment has been posted.`) still appear. Apply it to the live site so the filter actually takes effect.",
+      "reset": "agent-module-documentation/evaluation/verify/disable_messages-suppress-saved-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/disable_messages-suppress-saved-verify.sh",
+      "expected_output": "In disable_messages.settings, add `The changes have been saved.` to disable_messages_ignore_patterns AND write the compiled anchored regex to disable_messages_ignore_regex (e.g. /^The changes have been saved.$/i) with disable_messages_enable on. Saving through the settings form compiles it automatically; setting config directly requires writing both keys. The compiled regex must match 'The changes have been saved.' but not 'Your comment has been posted.'."
+    },
+    {
+      "id": "dm-suppress-created-wildcard",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, configure disable_messages so that EVERY entity-creation confirmation ending in ` has been created.` is suppressed for end users — for example both `Article Foo has been created.` and `Basic page Bar has been created.` must be hidden — using a wildcard pattern. Update confirmations like `Article Foo has been updated.` must still be shown. Make the filter live.",
+      "reset": "agent-module-documentation/evaluation/verify/disable_messages-suppress-created-wildcard-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/disable_messages-suppress-created-wildcard-verify.sh",
+      "expected_output": "In disable_messages.settings add a wildcard line `.* has been created.` to disable_messages_ignore_patterns and write its compiled anchored form to disable_messages_ignore_regex (e.g. /^.* has been created.$/i), with disable_messages_enable on. The compiled regex must match both 'Article Foo has been created.' and 'Basic page Bar has been created.' but NOT 'Article Foo has been updated.'."
+    }
+  ]
+}

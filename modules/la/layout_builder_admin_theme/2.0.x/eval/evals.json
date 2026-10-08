@@ -1,0 +1,101 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "layout_builder_admin_theme",
+  "version": "2.0.x",
+  "note": "Layout Builder Admin Theme forces Layout Builder editing screens to use the site's admin theme. It works via a theme negotiator, Drupal\\layout_builder_admin_theme\\Theme\\LBATAdminNegotiator (tagged theme_negotiator priority 501), whose applies() returns TRUE only when config layout_builder_admin_theme.config:lbat_enable_admin_theme is truthy AND the current route is a Layout Builder form (core RevertOverridesForm, DiscardLayoutChangesForm, or a form id ending in '.layout_builder'); determineActiveTheme() returns system.theme:admin. The only persistent state is the single boolean lbat_enable_admin_theme (default TRUE) in config object layout_builder_admin_theme.config, toggled at /admin/config/content/lbat (route layout_builder_admin_theme.lbat_config_form, permission 'administer site configuration'). No config schema, no permissions of its own, no Drush, no plugins. Mediums read back the live value of that flag and the admin theme the negotiator would use (system.theme:admin = claro on this site); the hard cases flip the flag and verify the live config value.",
+  "evals": [
+    {
+      "id": "layout_builder_admin_theme-toggle",
+      "mode": "recipe",
+      "prompt": "On a Drupal site with the layout_builder_admin_theme module, how do I turn the admin-theme-for-Layout-Builder behaviour on or off? Give the config object and key, and the admin page where it is toggled.",
+      "must_contain_any": [
+        "lbat_enable_admin_theme",
+        "/admin/config/content/lbat",
+        "layout_builder_admin_theme.config"
+      ],
+      "must_not_contain": [],
+      "expected_output": "It is a single boolean setting lbat_enable_admin_theme in the config object layout_builder_admin_theme.config (default true). Toggle it at /admin/config/content/lbat (route layout_builder_admin_theme.lbat_config_form, permission 'administer site configuration'), or via drush config:set layout_builder_admin_theme.config lbat_enable_admin_theme false.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "layout_builder_admin_theme-which-routes",
+      "mode": "recipe",
+      "prompt": "Which pages/forms does layout_builder_admin_theme switch to the admin theme? Does it apply the admin theme to the whole site or just certain routes?",
+      "must_contain_any": [
+        "layout_builder",
+        "RevertOverridesForm",
+        "DiscardLayoutChangesForm",
+        ".layout_builder"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Only Layout Builder editing form routes. Its theme negotiator's applies() returns TRUE when the route's form is core's RevertOverridesForm or DiscardLayoutChangesForm, or when the form id ends with '.layout_builder' (the main Layout Builder editing UI). Other routes and the rest of the site are unaffected.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "layout_builder_admin_theme-which-theme",
+      "mode": "recipe",
+      "prompt": "When layout_builder_admin_theme applies, which theme does it switch Layout Builder editing to, and is that theme configurable in the module? How would I change it?",
+      "must_contain_any": [
+        "admin theme",
+        "system.theme",
+        "admin"
+      ],
+      "must_not_contain": [],
+      "expected_output": "It uses the site's configured admin theme - its negotiator's determineActiveTheme() returns system.theme:admin. It is not configurable in the module; change the theme Layout Builder editing uses by changing the site's admin theme at /admin/appearance (or drush config:set system.theme admin <theme>).",
+      "difficulty": "easy"
+    },
+    {
+      "id": "layout_builder_admin_theme-current-flag",
+      "mode": "introspection",
+      "prompt": "On this Drupal site, is Layout Builder currently being forced to use the admin theme by the layout_builder_admin_theme module? Inspect the live configuration and answer with the current on/off value.",
+      "must_contain_any": [
+        "false",
+        "off",
+        "disabled",
+        "not enabled",
+        "not forced"
+      ],
+      "must_not_contain": [],
+      "expected_output": "No - it is currently OFF. layout_builder_admin_theme.config:lbat_enable_admin_theme is false (readable via drush config:get layout_builder_admin_theme.config lbat_enable_admin_theme), so the negotiator's applies() returns early and Layout Builder keeps the front-end theme.",
+      "setup": "agent-module-documentation/evaluation/verify/layout_builder_admin_theme-flag-off-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/layout_builder_admin_theme-flag-off-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "layout_builder_admin_theme-which-theme-live",
+      "mode": "introspection",
+      "prompt": "layout_builder_admin_theme is enabled on this site and its override is turned on. If I open a Layout Builder editing screen, which theme (by machine name) will it actually render in? Inspect the live site configuration to determine this.",
+      "must_contain_any": [
+        "claro"
+      ],
+      "must_not_contain": [],
+      "expected_output": "claro. The negotiator returns the site's admin theme (system.theme:admin), which on this site is 'claro' (drush config:get system.theme admin). The override flag lbat_enable_admin_theme is true, so it applies.",
+      "setup": "agent-module-documentation/evaluation/verify/layout_builder_admin_theme-admin-theme-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/layout_builder_admin_theme-admin-theme-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "layout_builder_admin_theme-enable",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site the layout_builder_admin_theme override is currently turned off. Using the module's configuration, turn it ON so that Layout Builder editing screens render in the site's admin theme. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/layout_builder_admin_theme-enable-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/layout_builder_admin_theme-enable-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/layout_builder_admin_theme-enable-cleanup.sh",
+      "expected_output": "layout_builder_admin_theme.config:lbat_enable_admin_theme is set to true (via the checkbox at /admin/config/content/lbat, drush config:set layout_builder_admin_theme.config lbat_enable_admin_theme true, or configFactory getEditable)."
+    },
+    {
+      "id": "layout_builder_admin_theme-disable",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "site-owner-layman",
+      "prompt": "My Layout Builder pages keep switching to the plain grey admin look while I'm editing them, and I'd rather they stay in my normal site theme. I have the Layout Builder Admin Theme module installed. Please turn off that admin-theme switching for Layout Builder.",
+      "reset": "agent-module-documentation/evaluation/verify/layout_builder_admin_theme-disable-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/layout_builder_admin_theme-disable-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/layout_builder_admin_theme-disable-cleanup.sh",
+      "expected_output": "layout_builder_admin_theme.config:lbat_enable_admin_theme is set to false (untick 'Enable admin theme for layout builder' at /admin/config/content/lbat, or drush config:set layout_builder_admin_theme.config lbat_enable_admin_theme false), so the negotiator no longer applies and Layout Builder keeps the front-end theme."
+    }
+  ]
+}

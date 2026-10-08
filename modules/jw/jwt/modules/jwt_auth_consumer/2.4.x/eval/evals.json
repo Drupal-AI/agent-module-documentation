@@ -1,0 +1,80 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "jwt_auth_consumer",
+  "version": "2.4.x",
+  "note": "jwt_auth_consumer is a thin event subscriber (service jwt_auth_consumer.subscriber / JwtAuthConsumerSubscriber) on the base module's JwtAuthEvents::VALIDATE and ::VALID. It resolves the acting user from a validated token's nested drupal.uid -> drupal.uuid -> drupal.name claim (first populated wins), and invalidates the token if the user is missing or blocked. No config, no schema, no permissions, no routes. Medium cases are grounded in the real validate() behaviour (a blocked vs active namespaced user); hard cases in buildable live state (module enablement in core.extension, and an account's blocked status). None require an external token round-trip.",
+  "evals": [
+    {
+      "id": "jwt_auth_consumer-claim-order",
+      "mode": "recipe",
+      "prompt": "With the Drupal jwt_auth_consumer module enabled, which claim(s) in a JWT payload determine which Drupal user a request authenticates as, and in what order are they checked?",
+      "must_contain_any": ["drupal.uid", "uuid", "uid", "name"],
+      "must_not_contain": [],
+      "expected_output": "JwtAuthConsumerSubscriber reads the nested claim drupal.uid first, then drupal.uuid, then drupal.name (first populated wins). uid loads the user by id; uuid/name load by that property.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "jwt_auth_consumer-events",
+      "mode": "recipe",
+      "prompt": "How does the jwt_auth_consumer module hook into the base JWT module to authenticate a token — what mechanism does it use?",
+      "must_contain_any": ["event subscriber", "VALIDATE", "VALID", "jwt.validate", "jwt.valid", "JwtAuthEvents"],
+      "must_not_contain": [],
+      "expected_output": "It registers an event subscriber (jwt_auth_consumer.subscriber / JwtAuthConsumerSubscriber) on JwtAuthEvents::VALIDATE (validate the user + back-fill drupal.uid) and JwtAuthEvents::VALID (load and set the account).",
+      "difficulty": "easy"
+    },
+    {
+      "id": "jwt_auth_consumer-rejects",
+      "mode": "recipe",
+      "prompt": "Under what conditions will jwt_auth_consumer refuse to authenticate an otherwise correctly-signed JWT?",
+      "must_contain_any": ["blocked", "does not exist", "no user", "invalidate", "no Drupal uid"],
+      "must_not_contain": [],
+      "expected_output": "validate() invalidates the token when no drupal.uid/uuid/name claim is present, when the named user does not exist, or when that user is blocked.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "jwt_auth_consumer-blocked-user",
+      "mode": "introspection",
+      "prompt": "This Drupal site has a user account named jwtcons_blocked. If a validly-signed JWT presented a drupal.name claim of 'jwtcons_blocked', would jwt_auth_consumer authenticate the request? Inspect the live account and explain why or why not.",
+      "must_contain_any": ["blocked"],
+      "must_not_contain": [],
+      "expected_output": "No. The account jwtcons_blocked has status 0 (blocked), and JwtAuthConsumerSubscriber::validate() invalidates the token for a blocked user, so authentication fails.",
+      "setup": "agent-module-documentation/evaluation/verify/jwt_auth_consumer-m1-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/jwt_auth_consumer-m1-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "jwt_auth_consumer-active-user",
+      "mode": "introspection",
+      "prompt": "This Drupal site has a user account named jwtcons_active. Inspect the live account and state whether jwt_auth_consumer would authenticate a validly-signed JWT naming this user, based on its status.",
+      "must_contain_any": ["active", "not blocked", "would authenticate", "accepted", "yes"],
+      "must_not_contain": [],
+      "expected_output": "Yes. jwtcons_active has status 1 (active / not blocked) and exists, which is exactly what validate() requires, so a token naming it (by uid/uuid/name) would authenticate.",
+      "setup": "agent-module-documentation/evaluation/verify/jwt_auth_consumer-m2-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/jwt_auth_consumer-m2-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "jwt_auth_consumer-enable",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "This Drupal site issues JWTs but does not authenticate them, because the module that consumes issuer tokens and logs the user in is currently disabled. Enable the correct module so the site accepts and authenticates those JWTs. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/jwt_auth_consumer-h1-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/jwt_auth_consumer-h1-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/jwt_auth_consumer-h1-cleanup.sh",
+      "expected_output": "Enable jwt_auth_consumer (e.g. `drush en jwt_auth_consumer -y`). Verify passes when core.extension lists jwt_auth_consumer and the jwt_auth_consumer.subscriber service is present."
+    },
+    {
+      "id": "jwt_auth_consumer-unblock-user",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "The account jwtcons_task on this site cannot authenticate via JWT: jwt_auth_consumer rejects any token naming it. Without renaming or deleting the account, change it so that jwt_auth_consumer would accept a validly-signed JWT for this user. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/jwt_auth_consumer-h2-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/jwt_auth_consumer-h2-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/jwt_auth_consumer-h2-cleanup.sh",
+      "expected_output": "The account is blocked; unblock (activate) it (e.g. `drush user:unblock jwtcons_task` or set status to 1). Verify passes when the user jwtcons_task exists and is not blocked."
+    }
+  ]
+}

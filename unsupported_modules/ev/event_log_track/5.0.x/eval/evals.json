@@ -1,0 +1,80 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "event_log_track",
+  "version": "5.0.x",
+  "note": "Base Events Log Track module: storage table event_log_track, report View at /admin/reports/events-track (perm 'access event log track'), settings form at /admin/config/system/events-log-track (route event_log_track.settings_form, config event_log_track.settings with enable_log_deletion/timespan_limit/batch_size/disable_db_logs/log_cli/skip_patterns). Logging via EventLogTrackManager::insert() (service event_log_track.manager); CLI events dropped unless log_cli. Extension via hook_event_log_track_handlers/_alter/_log_alternative; no plugin type. Medium cases insert a known sentinel row (ref_char ELT_MED_SENTINEL) into the event_log_track table and read it back. Hard cases are config builds on event_log_track.settings (log deletion + skip patterns), verified against live config.",
+  "evals": [
+    {
+      "id": "event_log_track-where",
+      "mode": "recipe",
+      "prompt": "On a Drupal site with events_log_track enabled, where do I view the logged events, where are the module's settings, and what database table stores the logs?",
+      "must_contain_any": ["/admin/reports/events-track", "admin/config/system/events-log-track", "event_log_track"],
+      "must_not_contain": [],
+      "expected_output": "Logged events are shown as a View at /admin/reports/events-track (permission 'access event log track'). Settings are at /admin/config/system/events-log-track (route event_log_track.settings_form). Logs are stored in the custom event_log_track database table (columns type, operation, description, ref_numeric, ref_char, uid, ip, path, created).",
+      "difficulty": "easy"
+    },
+    {
+      "id": "event_log_track-auto-delete",
+      "mode": "recipe",
+      "prompt": "How do I make events_log_track automatically delete log entries older than a set number of days?",
+      "must_contain_any": ["enable_log_deletion", "timespan_limit", "cron"],
+      "must_not_contain": [],
+      "expected_output": "Turn on 'Enable log deletion' (config enable_log_deletion = true) and set 'Timespan Limit' (timespan_limit) to the number of days to keep. On cron, the module batch-deletes rows older than timespan_limit days (batch_size per chunk). Configure at /admin/config/system/events-log-track.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "event_log_track-custom-log",
+      "mode": "recipe",
+      "prompt": "From custom code, how do I record my own event in Events Log Track, and what fields does a log entry have? Also, why might a log written from a Drush command not appear?",
+      "must_contain_any": ["event_log_track.manager", "insert", "log_cli"],
+      "must_not_contain": [],
+      "expected_output": "Call \\Drupal::service('event_log_track.manager')->insert($log) with at least type, operation and description (optional ref_numeric/ref_char; uid/ip/path/created are auto-filled). To register a new type for the report filters implement hook_event_log_track_handlers(). A log written under CLI/Drush is skipped unless the log_cli setting is TRUE.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "event_log_track-known-type",
+      "mode": "introspection",
+      "prompt": "A single event has been logged in this site's Events Log Track table with the distinctive ref_char value 'ELT_MED_SENTINEL'. Inspect the event_log_track table and report the event 'type' recorded for that row.",
+      "must_contain_any": ["taxonomy"],
+      "must_not_contain": [],
+      "expected_output": "The row with ref_char = 'ELT_MED_SENTINEL' has type = 'taxonomy' (query the event_log_track table, e.g. drush sqlq \"SELECT type FROM event_log_track WHERE ref_char='ELT_MED_SENTINEL'\").",
+      "setup": "agent-module-documentation/evaluation/verify/event_log_track-med-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/event_log_track-med-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "event_log_track-known-desc",
+      "mode": "introspection",
+      "prompt": "In this site's Events Log Track log, there is a row whose ref_char is 'ELT_MED_SENTINEL'. Inspect the live log and report the exact description text stored on that row.",
+      "must_contain_any": ["SENTINEL_DESC_42"],
+      "must_not_contain": [],
+      "expected_output": "The description of the row with ref_char = 'ELT_MED_SENTINEL' is 'SENTINEL_DESC_42' (from the event_log_track table).",
+      "setup": "agent-module-documentation/evaluation/verify/event_log_track-med-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/event_log_track-med-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "event_log_track-configure-deletion",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "layman",
+      "prompt": "On this site, set up Events Log Track so it automatically removes any log entries older than 7 days. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/event_log_track-deletion-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/event_log_track-deletion-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/event_log_track-deletion-reset.sh",
+      "expected_output": "In event_log_track.settings, enable_log_deletion = true and timespan_limit = 7 (via the settings form or drush config:set event_log_track.settings enable_log_deletion true / timespan_limit 7)."
+    },
+    {
+      "id": "event_log_track-skip-pattern",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "Configure Events Log Track so that any event whose ref_char matches 'system.*' is not logged. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/event_log_track-skip-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/event_log_track-skip-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/event_log_track-skip-reset.sh",
+      "expected_output": "In event_log_track.settings, skip_patterns contains a line 'system.*' (drush config:set event_log_track.settings skip_patterns 'system.*'). The manager's shouldSkip() then drops any log whose ref_char matches that glob."
+    }
+  ]
+}

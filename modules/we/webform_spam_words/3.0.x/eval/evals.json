@@ -1,0 +1,90 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "webform_spam_words",
+  "version": "3.0.x",
+  "note": "Webform Spam Words has two independent, easily-conflated pieces: a global settings form (config object webform_spam_words.settings) that is never read by anything except itself, and a per-webform WebformHandler plugin (id webform_spam_words) whose defaultConfiguration() ships spam_words as a bare string ('SEO') rather than an array -- because validateSpam() does foreach($spam_words as $word), an untouched default handler silently blocks nothing (verified: PHP emits a foreach-on-scalar warning and skips the loop body). Easy cases probe the config keys/route/permission and the handler's real behavior. Medium cases write two distinct known global configs and ask the agent to read back a field, an error message. Hard cases are (1) build the global settings config to a specific spam_words+spam_field_name combination (reset restores shipped defaults, which correctly fails verify), and (2) attach a real webform_spam_words handler (as an array, per the footgun above) to a namespaced webform wsw_test.",
+  "evals": [
+    {
+      "id": "wsw-global-config-keys",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "The Drupal contrib module webform_spam_words has a global settings config object. Give its machine name, its three configuration keys, the default value of the field-name key, and one or two of the default spam words it ships with.",
+      "must_contain_any": [
+        "webform_spam_words.settings"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Config object `webform_spam_words.settings` with keys `spam_words` (sequence, defaults SEO, Digital Marketing, Click Here, unsubscribe, FREE, trial), `spam_text_message` (string), and `spam_field_name` (string, default `message`)."
+    },
+    {
+      "id": "wsw-configure-route-permission",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "What is the admin path and route name for webform_spam_words' global settings form, and which permission(s) let a user access it?",
+      "must_contain_any": [
+        "edit webform spam words"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Route `webform_spam_words.config` at `/admin/config/webform/webform-spam-words`; access requires EITHER `administer webform` OR the module's own `edit webform spam words` permission (the routing.yml uses `_permission: 'administer webform+edit webform spam words'`, and `+` is Drupal's OR syntax for route permissions)."
+      },
+    {
+      "id": "wsw-handler-plugin-id",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "webform_spam_words provides a Webform submission handler. What is its plugin id, and what does it actually do when a submission is validated?",
+      "must_contain_any": [
+        "webform_spam_words"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Plugin id `webform_spam_words` (class BlockWordsWebformHandler). On validateForm() it splits its configured spam_field_name on commas, and for each named field checks the (lowercased) submitted value for any configured spam word as a substring; a match calls setErrorByName() with the configured spam_text_message, blocking the submission. Attaching this handler to a webform is required -- the module's global settings form alone blocks nothing."
+    },
+    {
+      "id": "wsw-known-config-field",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "This Drupal site's webform_spam_words global settings (webform_spam_words.settings) have already been configured with a specific field name to check. Inspect the live config and tell me which single field name is currently set as spam_field_name.",
+      "must_contain_any": [
+        "subject"
+      ],
+      "must_not_contain": [],
+      "expected_output": "spam_field_name is `subject` (spam_words also includes `casino`, spam_text_message is `Blocked: spam detected`).",
+      "setup": "agent-module-documentation/evaluation/verify/webform_spam_words-known-config-field-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/webform_spam_words-known-config-field-cleanup.sh"
+    },
+    {
+      "id": "wsw-known-config-message",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "This Drupal site's webform_spam_words global settings (webform_spam_words.settings) have already been configured with a custom error message. Inspect the live config and give me the exact spam_text_message text that would be shown to a blocked submitter.",
+      "must_contain_any": [
+        "Your submission was rejected due to prohibited content"
+      ],
+      "must_not_contain": [],
+      "expected_output": "spam_text_message is `Your submission was rejected due to prohibited content.` (spam_field_name is `email,phone`, spam_words includes `lottery` and `inheritance`).",
+      "setup": "agent-module-documentation/evaluation/verify/webform_spam_words-known-config-message-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/webform_spam_words-known-config-message-cleanup.sh"
+    },
+    {
+      "id": "wsw-global-config-build",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, configure webform_spam_words' global settings (webform_spam_words.settings) so that the spam word list includes 'viagra' and the field name being checked is exactly 'email'. Apply the change to the live site's configuration.",
+      "reset": "agent-module-documentation/evaluation/verify/webform_spam_words-global-config-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/webform_spam_words-global-config-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/webform_spam_words-global-config-reset.sh",
+      "expected_output": "webform_spam_words.settings has spam_words containing `viagra` and spam_field_name exactly `email`, e.g. via `drush config:set webform_spam_words.settings spam_field_name email` and adding `viagra` to the spam_words sequence, or by saving the settings form at /admin/config/webform/webform-spam-words."
+    },
+    {
+      "id": "wsw-handler-attach",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site there is a webform 'wsw_test' with a 'message' textarea element but no spam protection. Attach the webform_spam_words handler (plugin id webform_spam_words) to this webform so it checks the 'message' field, giving it at least one spam word. Remember spam_words must be configured as an array, not a bare string, or the handler silently does nothing. Apply the change to the live webform.",
+      "reset": "agent-module-documentation/evaluation/verify/webform_spam_words-handler-build-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/webform_spam_words-handler-build-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/webform_spam_words-handler-build-cleanup.sh",
+      "expected_output": "The wsw_test webform's `handlers` config gains an entry with `id: webform_spam_words`, `settings.spam_field_name` including `message`, and `settings.spam_words` as a non-empty array of one or more words, e.g. via Webform::load('wsw_test')->addWebformHandler() with a handler instance from plugin.manager.webform.handler, or by writing the handler block directly into the webform's config and saving."
+    }
+  ]
+}

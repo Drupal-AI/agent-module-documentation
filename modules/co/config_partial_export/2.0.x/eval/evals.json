@@ -1,0 +1,80 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "config_partial_export",
+  "version": "2.0.x",
+  "note": "Configuration Partial Export exports a subset of Drupal config. It has no settings, no configure route (configure=null), no config schema, and no plugins. Its two capabilities are (1) a Drush command config-partial-export (alias cpex) that writes named active config objects — comma-separated, with * wildcards — as .yml files into Settings::get('config_sync_directory') (and cpex --changelist to print active-vs-sync diffs), and (2) a 'Partial Export' UI tab at /admin/config/development/configuration/single/config-partial-export gated by core's 'export configuration' permission. Medium/hard cases are grounded in the module's real export behaviour: setup creates namespaced active config objects (config_partial_export.cpex_*) and, for introspection, exports them with cpex so the agent can read them back out of the sync directory; execution cases require the agent to run the module's drush command to export one object, or several via a wildcard, verified by the resulting .yml files in the live sync directory. The sync directory path is resolved with drush at runtime (config_sync_directory realpath).",
+  "evals": [
+    {
+      "id": "config_partial_export-drush-command",
+      "mode": "recipe",
+      "prompt": "Using the config_partial_export module, how do I export a single named configuration object (for example views.view.frontpage) into the site's configuration sync directory from the command line? Give the Drush command and its short alias.",
+      "must_contain_any": ["config-partial-export", "cpex"],
+      "must_not_contain": [],
+      "expected_output": "Run `drush config-partial-export views.view.frontpage` (short alias `drush cpex views.view.frontpage`). It reads the object from active config storage and writes views.view.frontpage.yml into Settings::get('config_sync_directory').",
+      "difficulty": "easy"
+    },
+    {
+      "id": "config_partial_export-wildcard",
+      "mode": "recipe",
+      "prompt": "With the config_partial_export module's Drush command, how can I export ALL of a module's configuration objects at once — for example every webform config — without listing each one? And how would I just preview which config has changed without exporting?",
+      "must_contain_any": ["*", "wildcard", "webform.webform.*", "--changelist", "changelist"],
+      "must_not_contain": [],
+      "expected_output": "Pass a shell-style wildcard (quote it), e.g. `drush cpex \"webform.webform.*\"`; you can also give a comma-separated list. To preview differences without exporting, run `drush cpex --changelist`, which prints active config that differs from the sync storage grouped by create/update/delete.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "config_partial_export-ui-access",
+      "mode": "recipe",
+      "prompt": "After enabling config_partial_export, where in the Drupal admin UI do I go to pick specific configuration items and download them as a tarball, and what permission controls access to that screen?",
+      "must_contain_any": ["export configuration", "configuration synchronization", "single/config-partial-export", "Partial Export", "development/configuration"],
+      "must_not_contain": [],
+      "expected_output": "It adds a 'Partial Export' / 'Multiple items' tab under Configuration > Development > Configuration synchronization > Export, at /admin/config/development/configuration/single/config-partial-export. Access is controlled by core's 'export configuration' permission (the module defines none of its own). You tick items and Export to download a tarball.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "config_partial_export-exported-name",
+      "mode": "introspection",
+      "prompt": "On this Drupal site, the config_partial_export module was used to export exactly one configuration object (whose name starts with 'config_partial_export.') into the site's configuration sync directory. Inspect the sync directory on the live site and tell me the full machine name of that exported configuration object.",
+      "must_contain_any": ["config_partial_export.cpex_intro"],
+      "must_not_contain": [],
+      "expected_output": "The exported object is config_partial_export.cpex_intro — its file config_partial_export.cpex_intro.yml is present in the config sync directory (Settings::get('config_sync_directory'), e.g. sites/default/files/sync).",
+      "setup": "agent-module-documentation/evaluation/verify/config_partial_export-exported-name-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/config_partial_export-exported-name-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "config_partial_export-exported-value",
+      "mode": "introspection",
+      "prompt": "On this Drupal site, config_partial_export exported the configuration object 'config_partial_export.cpex_meta' into the configuration sync directory. Inspect the exported YAML file on the live site and tell me the value stored under its 'answer' key.",
+      "must_contain_any": ["42"],
+      "must_not_contain": [],
+      "expected_output": "In the exported file config_partial_export.cpex_meta.yml in the config sync directory, the key 'answer' holds 42.",
+      "setup": "agent-module-documentation/evaluation/verify/config_partial_export-exported-value-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/config_partial_export-exported-value-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "config_partial_export-export-single",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site there is an active configuration object named 'config_partial_export.cpex_task' that is not yet present in the configuration sync directory. Using the config_partial_export module, export just this one configuration object into the site's configuration sync directory. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/config_partial_export-export-single-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/config_partial_export-export-single-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/config_partial_export-export-single-cleanup.sh",
+      "expected_output": "Running `drush cpex config_partial_export.cpex_task` (or `drush config-partial-export config_partial_export.cpex_task`) writes config_partial_export.cpex_task.yml into the config sync directory with its marker value."
+    },
+    {
+      "id": "config_partial_export-export-wildcard",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site there are two active configuration objects, 'config_partial_export.cpex_wca' and 'config_partial_export.cpex_wcb', neither of which is in the configuration sync directory yet. Using the config_partial_export module's wildcard support, export BOTH of them in a single command into the sync directory. Apply the change to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/config_partial_export-export-wildcard-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/config_partial_export-export-wildcard-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/config_partial_export-export-wildcard-cleanup.sh",
+      "expected_output": "Running a single wildcard export such as `drush cpex \"config_partial_export.cpex_wc*\"` writes both config_partial_export.cpex_wca.yml and config_partial_export.cpex_wcb.yml into the config sync directory."
+    }
+  ]
+}

@@ -1,0 +1,100 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "views_menu_children_filter",
+  "version": "4.0.x",
+  "note": "views_menu_children_filter implements four Views plugins (no plugin type of its own): an argument (contextual filter) plugin_id=menu_children attached to Views-data key node.menu_children_filter, a sort plugin_id=menu_children attached to node.menu_children_sort, a filter plugin_id=menu_children_enabled attached to node.menu_children_enabled, and an internal join plugin_id=menu_children_node_join (menu_link_content_data <-> node_field_data, matched on entity:node/<nid> == link__uri) that the other three apply automatically. It has no configure route, no settings form, no permissions, no Drush commands. All state lives in a View's own config entity (views.view.<id> -> display.<display>.display_options.arguments|sorts|filters.<handler_id>.plugin_id). Medium/hard cases in this file build or inspect a namespaced View (vmcf_test / vmcf_task / vmcf_task_sort) that carries the module's real argument or sort handler and grades against the exact table/field/plugin_id from views_menu_children_filter.views.inc. The filter handler (menu_children_enabled) is documented but intentionally NOT used in a live-execution case: this shared dev site currently has an unrelated, pre-existing bug (an incompatible method signature in the contrib module search_api_taxonomy_machine_name) that causes a PHP fatal error whenever ANY Views filter plugin is discovered while saving a View with a filters section -- reproduced even with core's own 'status' boolean filter -- so filter-bearing View saves are unusable site-wide right now and were avoided rather than worked around.",
+  "evals": [
+    {
+      "id": "views_menu_children_filter-plugin-ids",
+      "mode": "recipe",
+      "prompt": "The Drupal contrib module views_menu_children_filter adds Views handlers for listing a node's child menu items. What is the exact Views plugin id shared by its contextual-filter (argument) handler and its sort handler, and which Views-data table are both attached to?",
+      "must_contain_any": [
+        "menu_children",
+        "plugin_id: menu_children",
+        "\"menu_children\""
+      ],
+      "must_not_contain": [],
+      "expected_output": "Both the argument handler (class MenuChildren, argument type) and the sort handler (class MenuChildren, sort type) use the Views plugin id `menu_children`. They are attached to the `node` Views-data table, as fields `menu_children_filter` (argument) and `menu_children_sort` (sort) respectively, registered via hook_views_data_alter() in views_menu_children_filter.views.inc.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "views_menu_children_filter-purpose",
+      "mode": "recipe",
+      "prompt": "What does the Drupal contrib module views_menu_children_filter let a View do with a node, and what entity type does it support?",
+      "must_contain_any": [
+        "menu children",
+        "child nodes",
+        "children of a node",
+        "child menu items"
+      ],
+      "must_not_contain": [],
+      "expected_output": "It adds Views handlers (a contextual filter/argument, a sort, and a filter, plus a supporting join) that let a View list the direct child menu items -- and the nodes behind them -- of a given parent node, based on the site's menu hierarchy (menu link parent/child relationships). It only supports node entities.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "views_menu_children_filter-join",
+      "mode": "recipe",
+      "prompt": "How does views_menu_children_filter's internal join match a node to its menu link in the database query? Name the table it joins to node_field_data and the URI pattern it matches on.",
+      "must_contain_any": [
+        "menu_link_content_data",
+        "entity:node/",
+        "link__uri"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The MenuChildrenNodeJoin plugin (plugin_id menu_children_node_join) joins menu_link_content_data to node_field_data with the condition CONCAT('entity:node/', node_field_data.nid) = menu_link_content_data.link__uri -- so it only matches menu links whose link URI is exactly entity:node/<nid>; internal: links are not matched. It is applied automatically by the argument/sort/filter handlers, not selectable as a Views UI relationship.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "views_menu_children_filter-argument-config",
+      "mode": "introspection",
+      "prompt": "On this Drupal site there is a View named vmcf_test. Inspect its live configuration and tell me which of views_menu_children_filter's Views handlers its default display uses, including the exact plugin id and which Views-data table/field it is attached to.",
+      "must_contain_any": [
+        "menu_children_filter",
+        "argument",
+        "contextual filter"
+      ],
+      "must_not_contain": [],
+      "expected_output": "views.view.vmcf_test's default display has a contextual filter (argument) handler with id menu_children_filter, table node, field menu_children_filter, and plugin_id menu_children -- the module's menu-children argument handler.",
+      "setup": "agent-module-documentation/evaluation/verify/views_menu_children_filter-argument-config-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/views_menu_children_filter-argument-config-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "views_menu_children_filter-sort-config",
+      "mode": "introspection",
+      "prompt": "On this Drupal site there is a View named vmcf_test. Inspect its live configuration and tell me which of views_menu_children_filter's Views handlers its default display uses, including the exact plugin id and which Views-data table/field it is attached to.",
+      "must_contain_any": [
+        "menu_children_sort",
+        "sort"
+      ],
+      "must_not_contain": [],
+      "expected_output": "views.view.vmcf_test's default display has a sort handler with id menu_children_sort, table node, field menu_children_sort, and plugin_id menu_children -- the module's menu-children sort handler (orders by menu link weight, then node title, then link id).",
+      "setup": "agent-module-documentation/evaluation/verify/views_menu_children_filter-sort-config-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/views_menu_children_filter-sort-config-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "views_menu_children_filter-build-argument",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, build a View named vmcf_task with base table 'Content' (node_field_data) whose default display uses the views_menu_children_filter module's menu-children contextual filter (argument) handler, attached to the node.menu_children_filter Views-data field. Save it to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/views_menu_children_filter-build-argument-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/views_menu_children_filter-build-argument-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/views_menu_children_filter-build-argument-cleanup.sh",
+      "expected_output": "views.view.vmcf_task's default display has an argument whose plugin_id is menu_children, table node, field menu_children_filter (e.g. via the Views UI 'Add contextual filter' -> 'Content: Menu children', or by saving a View config entity with a matching arguments entry)."
+    },
+    {
+      "id": "views_menu_children_filter-build-sort",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, build a View named vmcf_task_sort with base table 'Content' (node_field_data) whose default display uses the views_menu_children_filter module's menu-children sort handler, attached to the node.menu_children_sort Views-data field, ordered ascending. Save it to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/views_menu_children_filter-build-sort-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/views_menu_children_filter-build-sort-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/views_menu_children_filter-build-sort-cleanup.sh",
+      "expected_output": "views.view.vmcf_task_sort's default display has a sort whose plugin_id is menu_children, table node, field menu_children_sort (e.g. via the Views UI 'Add sort criterion' -> 'Content: Menu children weight', or by saving a View config entity with a matching sorts entry)."
+    }
+  ]
+}

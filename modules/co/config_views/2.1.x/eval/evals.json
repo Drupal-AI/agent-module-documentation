@@ -1,0 +1,80 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "config_views",
+  "version": "2.1.x",
+  "note": "config_views (Configuration Entity View) exposes a Views base table per config-entity type named config_<prefix with . as _> (node.type -> config_node_type, user.role -> config_user_role, image.style -> config_image_style, system.menu -> config_system_menu, views.view -> config_views_view), backed by the views_config_entity_query query plugin (Entity Query API). It ships ~14 default Views (some enabled e.g. content_types at admin/structure/types, some disabled e.g. user_roles) and an EntityReferenceSelection plugin config_views. No settings form, permissions, or Drush. Medium/hard cases create/inspect namespaced cv_* Views on those config base tables via drush; verify checks the View's base_table.",
+  "evals": [
+    {
+      "id": "cv-base-tables",
+      "mode": "recipe",
+      "prompt": "Using the config_views (Configuration Entity View) Drupal module, I want to build a View that lists user roles. What Views base table would that View use, and how is that base-table name derived from the config entity type?",
+      "must_contain_any": ["config_user_role"],
+      "must_not_contain": [],
+      "expected_output": "config_user_role. config_views names each base table config_ + the config entity type's config prefix with dots replaced by underscores; user.role -> config_user_role (likewise node.type -> config_node_type, image.style -> config_image_style).",
+      "difficulty": "easy"
+    },
+    {
+      "id": "cv-query-plugin",
+      "mode": "recipe",
+      "prompt": "How does config_views let Views query configuration entities that have no SQL content table? Name the Views query plugin it uses and what API that plugin runs.",
+      "must_contain_any": ["views_config_entity_query", "Entity Query", "EntityQuery", "entity query"],
+      "must_not_contain": [],
+      "expected_output": "It provides a Views query plugin views_config_entity_query (ConfigEntityQuery) that extends the SQL query plugin but executes the Entity Query API against config entity storage instead of SQL.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "cv-default-views",
+      "mode": "recipe",
+      "prompt": "Out of the box, config_views can replace some core admin listing pages with Views. Which shipped View takes over the Content types listing at admin/structure/types, and how do you opt into the ones that ship disabled (like User roles)?",
+      "must_contain_any": ["content_types", "admin/structure/types"],
+      "must_not_contain": [],
+      "expected_output": "The content_types View provides admin/structure/types. Some default Views ship disabled (e.g. user_roles, text_formats, view_modes, views_list); enable them at Structure > Views (or drush views:enable) to have them take over the corresponding admin list.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "cv-known-basetable",
+      "mode": "introspection",
+      "prompt": "This site has a View with machine id cv_known created with config_views. Inspect the live View configuration and state which Views base table it is built on (and therefore which kind of configuration entity it lists).",
+      "must_contain_any": ["config_image_style"],
+      "must_not_contain": [],
+      "expected_output": "cv_known is built on the config_image_style base table, so it lists image style configuration entities. (drush cget views.view.cv_known base_table)",
+      "setup": "agent-module-documentation/evaluation/verify/config_views-known-basetable-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/config_views-known-basetable-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "cv-known-roles",
+      "mode": "introspection",
+      "prompt": "A View with id cv_roles_known exists on this site (built with config_views). Inspect the live configuration and determine which configuration entity type it lists.",
+      "must_contain_any": ["config_user_role", "user role", "role"],
+      "must_not_contain": [],
+      "expected_output": "It lists user roles: views.view.cv_roles_known has base_table config_user_role.",
+      "setup": "agent-module-documentation/evaluation/verify/config_views-known-roles-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/config_views-known-roles-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "cv-build-roles",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this site, use config_views to create a View with machine id cv_roles that lists all User role configuration entities (base table config_user_role, query plugin views_config_entity_query). A single default display listing the roles is enough. Save it to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/config_views-build-roles-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/config_views-build-roles-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/config_views-build-roles-reset.sh",
+      "expected_output": "views.view.cv_roles exists with base_table config_user_role (a config_views base table)."
+    },
+    {
+      "id": "cv-build-imagestyles",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "site-builder",
+      "prompt": "Using config_views on this Drupal site, build a View named cv_styles that lists the site's image styles as configuration entities (it should use the config_views image-style base table). Save it to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/config_views-build-imagestyles-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/config_views-build-imagestyles-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/config_views-build-imagestyles-reset.sh",
+      "expected_output": "views.view.cv_styles exists with base_table config_image_style."
+    }
+  ]
+}

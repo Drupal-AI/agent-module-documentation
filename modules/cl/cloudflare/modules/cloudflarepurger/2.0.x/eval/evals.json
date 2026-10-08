@@ -1,0 +1,102 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "cloudflarepurger",
+  "version": "2.0.x",
+  "note": "Cloudflare Purger is a submodule of cloudflare that clears the Cloudflare CDN cache via the Purge module. It provides a Purge purger plugin @PurgePurger(id='cloudflare', types={tag,url,everything}) (class CloudFlarePurger, manager plugin.manager.purge.purgers). An event subscriber CloudFlareCacheTagHeaderGenerator (service cloudflarepurger.cache_tags.surrogate_key_generator) rewrites Drupal cache tags into a Cloudflare Cache-Tag header, hashing them, respecting the byte limit param cloudflarepurger.cache_tag_header_limit (255) and the config cloudflarepurger.settings.cache_tag_excludelist (sequence of tag prefixes). Three Purge diagnostic checks: cloudflare_creds, cloudflare_api_rate_limit_check, cloudflare_daily_limit_check. Settings form /admin/config/services/cloudflare/purger (permission 'administer cloudflare'). Requires cloudflare + purge. Evals grounded ONLY in local config/plugin state (no external Cloudflare API): config default is cache_tag_excludelist {} (empty); reset/cleanup restore that.",
+  "evals": [
+    {
+      "id": "cloudflarepurger-purger-plugin",
+      "mode": "recipe",
+      "prompt": "The cloudflarepurger submodule provides a Purge purger. What is the purger plugin's id, and which invalidation types does it support?",
+      "must_contain_any": [
+        "cloudflare",
+        "tag",
+        "url",
+        "everything"
+      ],
+      "must_not_contain": [],
+      "expected_output": "It provides a Purge purger plugin with id 'cloudflare' (class CloudFlarePurger) supporting the invalidation types tag, url, and everything.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "cloudflarepurger-cache-tag-header",
+      "mode": "recipe",
+      "prompt": "How does cloudflarepurger make Drupal's cache tags work with Cloudflare's Cache-Tag header, and how can I stop certain cache tags from being included?",
+      "must_contain_any": [
+        "cache_tag_excludelist",
+        "Cache-Tag",
+        "hash",
+        "surrogate"
+      ],
+      "must_not_contain": [],
+      "expected_output": "An event subscriber (CloudFlareCacheTagHeaderGenerator) rewrites Drupal's cache tags into a Cloudflare Cache-Tag response header, hashing them and honoring a byte limit (255). Add tag prefixes to cloudflarepurger.settings.cache_tag_excludelist to exclude them from the header/purge.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "cloudflarepurger-diagnostics",
+      "mode": "recipe",
+      "prompt": "What Purge diagnostic checks does cloudflarepurger add to report Cloudflare purge readiness?",
+      "must_contain_any": [
+        "cloudflare_creds",
+        "cloudflare_api_rate_limit_check",
+        "cloudflare_daily_limit_check",
+        "credential",
+        "rate limit",
+        "daily"
+      ],
+      "must_not_contain": [],
+      "expected_output": "Three checks: cloudflare_creds (credentials valid), cloudflare_api_rate_limit_check (API rate-limit usage), and cloudflare_daily_limit_check (daily tag-purge count). They appear on the Purge status page.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "cloudflarepurger-purger-id",
+      "mode": "introspection",
+      "prompt": "On this Drupal site, inspect the registered Purge purger plugins and give the id of the purger that the cloudflarepurger module provides, along with the invalidation types it supports.",
+      "must_contain_any": [
+        "cloudflare"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The cloudflarepurger module provides the Purge purger plugin 'cloudflare' (provider cloudflarepurger), supporting types tag, url and everything.",
+      "setup": "agent-module-documentation/evaluation/verify/cloudflarepurger-purger-id-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/cloudflarepurger-purger-id-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "cloudflarepurger-known-excludelist",
+      "mode": "introspection",
+      "prompt": "This site has configured cloudflarepurger to keep some cache-tag prefixes out of the Cloudflare Cache-Tag header. Inspect the live configuration and list the excluded tag prefixes.",
+      "must_contain_any": [
+        "config:",
+        "user:"
+      ],
+      "must_not_contain": [],
+      "expected_output": "cloudflarepurger.settings.cache_tag_excludelist contains the prefixes 'config:' and 'user:'.",
+      "setup": "agent-module-documentation/evaluation/verify/cloudflarepurger-known-excludelist-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/cloudflarepurger-known-excludelist-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "cloudflarepurger-set-excludelist",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, configure cloudflarepurger so that cache tags starting with 'user:' are excluded from the Cloudflare Cache-Tag header (added to the cache tag exclude-list). Apply the change to the live cloudflarepurger.settings.",
+      "reset": "agent-module-documentation/evaluation/verify/cloudflarepurger-set-excludelist-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/cloudflarepurger-set-excludelist-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/cloudflarepurger-set-excludelist-cleanup.sh",
+      "expected_output": "cloudflarepurger.settings.cache_tag_excludelist includes the 'user:' prefix (set via the purger settings form or the config factory)."
+    },
+    {
+      "id": "cloudflarepurger-enable",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site, make the Cloudflare purger available to the Purge module (so Drupal can clear the Cloudflare CDN cache by tag, URL or everything) by enabling the appropriate submodule. Apply it to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/cloudflarepurger-enable-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/cloudflarepurger-enable-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/cloudflarepurger-enable-cleanup.sh",
+      "expected_output": "The cloudflarepurger module is enabled (e.g. drush en cloudflarepurger), so the Purge purger plugin 'cloudflare' (types tag/url/everything) is registered in plugin.manager.purge.purgers."
+    }
+  ]
+}

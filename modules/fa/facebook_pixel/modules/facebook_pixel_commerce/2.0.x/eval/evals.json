@@ -1,0 +1,95 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "facebook_pixel_commerce",
+  "version": "2.0.x",
+  "note": "Facebook Pixel Commerce is the facebook_pixel submodule that bridges Drupal Commerce. It ships no config object: its only site-visible state is whether the checkout pane plugin `facebook_checkout` (default_step order_information) is placed in a commerce_checkout_flow config entity, plus the two services facebook_pixel_commerce.facebook_commerce (getOrderData / getOrderItemData) and facebook_pixel_commerce.cart_subscriber (CartEvents::CART_ENTITY_ADD -> AddToCart with a forced session, commerce_order.place.post_transition -> Purchase). hook_ENTITY_TYPE_view() fires ViewContent for commerce_product in the full view mode with content_type product or product_group. Medium/hard cases therefore read and write commerce_checkout.commerce_checkout_flow.* on the live site.",
+  "evals": [
+    {
+      "id": "facebook_pixel_commerce-events",
+      "mode": "recipe",
+      "prompt": "Which Facebook Pixel events does the Drupal facebook_pixel_commerce submodule add on top of the base facebook_pixel module, and what triggers each of them?",
+      "must_contain_any": [
+        "AddToCart",
+        "InitiateCheckout",
+        "Purchase",
+        "ViewContent"
+      ],
+      "must_not_contain": [],
+      "expected_output": "ViewContent - hook_ENTITY_TYPE_view() for a commerce_product in the 'full' view mode; AddToCart - CartSubscriber on CartEvents::CART_ENTITY_ADD (queued with $start_session TRUE so it survives the redirect); InitiateCheckout - the facebook_checkout checkout pane's buildPaneForm(), skipped on XHR requests; Purchase - CartSubscriber on the commerce_order.place.post_transition workflow event.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "facebook_pixel_commerce-checkout-pane",
+      "mode": "recipe",
+      "prompt": "I enabled facebook_pixel_commerce on my Drupal Commerce site. Which checkout pane plugin is responsible for the InitiateCheckout event, which checkout step does it default to, and how do I actually turn it off for a flow?",
+      "must_contain_any": [
+        "facebook_checkout",
+        "order_information"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The checkout pane plugin facebook_checkout ('Facebook Pixel Commerce: Trigger InitiateCheckout Event'), whose default_step is order_information. Place or move it at /admin/commerce/config/checkout-flows, or set configuration.panes.facebook_checkout.step in commerce_checkout.commerce_checkout_flow.<id>. Note that simply omitting the pane from configuration.panes does NOT disable it - CheckoutPaneBase::defaultConfiguration() falls back to the plugin's default_step - so to switch it off you must set its step to _disabled.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "facebook_pixel_commerce-order-data",
+      "mode": "recipe",
+      "prompt": "In the Drupal facebook_pixel_commerce module, which service builds the data array sent with the Purchase event, which method does it expose, and what keys does the resulting payload contain?",
+      "must_contain_any": [
+        "facebook_pixel_commerce.facebook_commerce",
+        "getOrderData"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The service facebook_pixel_commerce.facebook_commerce (Drupal\\facebook_pixel_commerce\\FacebookCommerce, injected with commerce_price.rounder) exposes getOrderData(OrderInterface $order) and getOrderItemData(OrderItemInterface $order_item). getOrderData returns value (rounded total as a string), currency, num_items, content_name 'order', content_type 'product' and, when items exist, contents ([{id: sku, quantity}]) and content_ids.",
+      "difficulty": "easy"
+    },
+    {
+      "id": "facebook_pixel_commerce-pane-step",
+      "mode": "introspection",
+      "prompt": "On this Drupal Commerce site, facebook_pixel_commerce's InitiateCheckout pane has been placed in the default checkout flow. Inspect the live configuration and say which checkout step it is on and what weight it has.",
+      "must_contain_any": [
+        "review"
+      ],
+      "must_not_contain": [],
+      "expected_output": "In commerce_checkout.commerce_checkout_flow.default the pane facebook_checkout is configured with step: review and weight: 11 (rather than its default order_information step).",
+      "setup": "agent-module-documentation/evaluation/verify/facebook_pixel_commerce-pane-step-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/facebook_pixel_commerce-pane-step-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "facebook_pixel_commerce-known-flow",
+      "mode": "introspection",
+      "prompt": "This Drupal Commerce site has more than one checkout flow. Inspect the running site and name the checkout flow whose customers will trigger the Facebook Pixel InitiateCheckout event.",
+      "must_contain_any": [
+        "fbpc_known_flow"
+      ],
+      "must_not_contain": [],
+      "expected_output": "fbpc_known_flow - commerce_checkout.commerce_checkout_flow.fbpc_known_flow runs the facebook_checkout pane on the order_information step. In the 'default' flow that pane is explicitly set to step _disabled, so checkouts using it fire no InitiateCheckout event.",
+      "setup": "agent-module-documentation/evaluation/verify/facebook_pixel_commerce-known-flow-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/facebook_pixel_commerce-known-flow-cleanup.sh",
+      "difficulty": "medium"
+    },
+    {
+      "id": "facebook_pixel_commerce-default-flow",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "site-owner-layman",
+      "prompt": "Our Drupal Commerce shop reports purchases to Facebook but the 'started checkout' event never shows up in Meta Events Manager - someone disabled the Facebook Pixel Commerce checkout pane in our normal (default) checkout flow. Put it back so the event is triggered as soon as customers reach the order information step, and save it to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/facebook_pixel_commerce-default-flow-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/facebook_pixel_commerce-default-flow-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/facebook_pixel_commerce-default-flow-cleanup.sh",
+      "expected_output": "facebook_pixel_commerce is installed and commerce_checkout.commerce_checkout_flow.default has configuration.panes.facebook_checkout with step: order_information (moved out of the _disabled region the reset put it in)."
+    },
+    {
+      "id": "facebook_pixel_commerce-new-flow",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal Commerce site, create a new checkout flow config entity with the id `fbpc_eval_flow` (label 'FBPC eval flow', multistep_default plugin) that includes facebook_pixel_commerce's InitiateCheckout checkout pane on the order_information step, alongside the usual login and review panes. Save it to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/facebook_pixel_commerce-new-flow-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/facebook_pixel_commerce-new-flow-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/facebook_pixel_commerce-new-flow-cleanup.sh",
+      "expected_output": "commerce_checkout.commerce_checkout_flow.fbpc_eval_flow exists and its configuration.panes contains facebook_checkout with step: order_information."
+    }
+  ]
+}

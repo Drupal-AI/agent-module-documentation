@@ -1,0 +1,117 @@
+{
+  "skill_name": "drupal-module-docs",
+  "skill_file": ".agents/skills/drupal-module-docs/SKILL.md",
+  "module": "date_filter",
+  "version": "1.0.x",
+  "note": "date_filter (project 'Views Date Filter') is plug-and-play: no settings form, no configure route (configure=null), no permissions, no Drush, no config entities and no new Views plugin ids. Its entire implementation is one hook_views_plugins_filter_alter() in date_filter.module that swaps the class of the existing core Views filter plugins `date` -> Drupal\\date_filter\\Plugin\\views\\filter\\DateTimestamp and `datetime` -> Drupal\\date_filter\\Plugin\\views\\filter\\DateTime (both extend the abstract DateBase, a NumericFilter). The only persistent trace it leaves in configuration is a TOP-LEVEL `type` option on a views filter ('date' | 'datetime', the module's 'Filter type: Date / Date and time' radios) which is a different key from core's `value.type` ('date' | 'offset'). All medium/hard cases are therefore grounded in real views config: introspection reads back the exposed identifier / filtered field / which filter carries type=datetime, and execution makes the agent write that exact key plus operator/exposed settings into a live view, verified against views.view.* config. Note for maintainers: on the documentation site views_year_filter also alters the same two plugin definitions and, sorting later, wins the class swap -- so no case asserts the runtime class, only the config the module's UI produces.",
+  "evals": [
+    {
+      "id": "date_filter-alter-hook",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "I enabled the Drupal contrib module date_filter (project 'Views Date Filter') on a Drupal 11 site, but no new filter shows up in the Views 'Add filter criteria' list and there is no settings page. How does this module actually take effect? Name the hook it implements and say exactly what it changes about the core `date` and `datetime` Views filter plugin definitions.",
+      "must_contain_any": [
+        "hook_views_plugins_filter_alter",
+        "views_plugins_filter_alter"
+      ],
+      "must_not_contain": [],
+      "expected_output": "date_filter.module implements hook_views_plugins_filter_alter(): it leaves the plugin ids alone and only rewrites their `class` — `date` becomes Drupal\\date_filter\\Plugin\\views\\filter\\DateTimestamp and `datetime` becomes Drupal\\date_filter\\Plugin\\views\\filter\\DateTime, both extending the abstract DateBase (a NumericFilter). There is no configure route, no permission and no new plugin id, which is why nothing new appears in the filter list."
+    },
+    {
+      "id": "date_filter-filter-type-option",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "Core's Views date filter offers 'Value type: A date in any machine readable format' vs 'An offset from the current time'. The date_filter module replaces those radios with something else. What are the new radio options called, what are their stored values, and in which key of the exported views YAML does the choice end up (relative to `operator:` and `value:`)?",
+      "must_contain_any": [
+        "Date and time",
+        "datetime"
+      ],
+      "must_not_contain": [],
+      "expected_output": "DateBase::buildOptionsForm() adds a 'Filter type' radio set with options Date ('date') and Date and time ('datetime'). defineOptions() declares it as $options['type'], so it is saved as a TOP-LEVEL `type:` key on the filter — a sibling of `operator:` and `value:` in views.view.<id>:display.<d>.display_options.filters.<f> — not inside `value` where core keeps its own `value.type: date|offset`. It defaults to 'date' and is disabled (forced to 'date') on a date-only Date/time field."
+    },
+    {
+      "id": "date_filter-whole-day-semantics",
+      "mode": "recipe",
+      "difficulty": "easy",
+      "prompt": "On a Drupal view using the date_filter module, a date-only filter (Filter type: Date) is set to the operator '=' with the value 2026-07-24. Core would compare against a single instant and match nothing. What does date_filter do instead? Also say which time-of-day it forces onto the value for the '>=' and '<=' operators.",
+      "must_contain_any": [
+        "23:59:59",
+        "00:00:00"
+      ],
+      "must_not_contain": [],
+      "expected_output": "DateBase::opSimple() rewrites '=' on a date-only filter into a 'between' with min = max = the value (and '!=' into 'not between'), so the whole chosen day matches. DateBase::resetTimes() then pads: '>' / '>=' get 00:00:00, '<' / '<=' get 23:59:59, and for between/not between the min gets 00:00:00 and the max 23:59:59. No padding happens when Filter type is 'Date and time'."
+    },
+    {
+      "id": "date_filter-known-identifier",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "This Drupal site has a view with the machine name `date_filter_known`. Its single date filter was configured with the date_filter module. Inspect the live configuration of that view and tell me the exposed filter's identifier (the query-string key visitors will use) and the operator it uses.",
+      "must_contain_any": [
+        "df_created_range"
+      ],
+      "must_not_contain": [],
+      "expected_output": "drush config:get views.view.date_filter_known display.default.display_options.filters.created shows plugin_id: date, operator: between, exposed: true, expose.identifier: df_created_range, and date_filter's own top-level `type: datetime`.",
+      "setup": "agent-module-documentation/evaluation/verify/date_filter-known-identifier-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/date_filter-known-identifier-cleanup.sh"
+    },
+    {
+      "id": "date_filter-known-field",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "On this Drupal site the view `date_filter_field` exposes exactly one date_filter-improved Views filter, and it filters on a Date/time field of the Article content type rather than on a node timestamp. Inspect the running site and give the machine name of that field.",
+      "must_contain_any": [
+        "field_df_known"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The filter is field_df_known_value on table node__field_df_known with plugin_id: datetime, so the field is field_df_known (label 'Known moment') on node.article. Its date_filter options are operator '>=' and type: datetime, exposed as df_known_from.",
+      "setup": "agent-module-documentation/evaluation/verify/date_filter-known-field-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/date_filter-known-field-cleanup.sh"
+    },
+    {
+      "id": "date_filter-mixed-types",
+      "mode": "introspection",
+      "difficulty": "medium",
+      "prompt": "The view `date_filter_mixed` on this Drupal site has two exposed date filters that were both set up with the date_filter module. Only one of them also asks the visitor for a time of day; the other one only offers a date. Inspect the live views configuration and tell me which of the two that is (name the field it filters on) and which stored option told you.",
+      "must_contain_any": [
+        "field_df_moment"
+      ],
+      "must_not_contain": [],
+      "expected_output": "The field_df_moment_value filter (Article Date/time field field_df_moment, plugin_id datetime) carries date_filter's top-level `type: datetime`, so DateBase::valueForm() renders an <input type=\"time\" step=\"1\"> next to the date input. The `created` filter has `type: date`, so it only renders <input type=\"date\">.",
+      "setup": "agent-module-documentation/evaluation/verify/date_filter-mixed-types-setup.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/date_filter-mixed-types-cleanup.sh"
+    },
+    {
+      "id": "date_filter-expose-created-expert",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site the view `date_filter_task` has a filter on the node `created` column (Views filter plugin id `date`, operator `between`) that is currently NOT exposed and has no date_filter 'Filter type' set. Using the date_filter module, change that filter on the live site so that it is exposed to visitors and uses date_filter's 'Date and time' filter type (so the exposed form renders a date AND a time input). Keep the `between` operator. Apply the change to the running site.",
+      "reset": "agent-module-documentation/evaluation/verify/date_filter-expose-created-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/date_filter-expose-created-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/date_filter-expose-created-cleanup.sh",
+      "expected_output": "In views.view.date_filter_task, display.default.display_options.filters.created must end up with plugin_id: date, operator: between, exposed: true and date_filter's top-level `type: datetime` (a sibling of operator/value, NOT value.type). Easiest via drush php:eval on the view entity: load the view, take $view->get('display'), set the created filter's exposed/type/expose keys, set it back and save."
+    },
+    {
+      "id": "date_filter-expose-created-layman",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "layman",
+      "prompt": "My Drupal site has a listing called `date_filter_task`. It already filters by the date a post was created, but only I can set that date — visitors can't. Please make it something visitors can set themselves on the page, as a 'from' and 'to' pair, and I want them to be able to pick the time of day as well, not just the day. The Views Date Filter (date_filter) module is already installed. Please make the change on the site.",
+      "reset": "agent-module-documentation/evaluation/verify/date_filter-expose-created-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/date_filter-expose-created-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/date_filter-expose-created-cleanup.sh",
+      "expected_output": "Same end state as date_filter-expose-created-expert: views.view.date_filter_task's `created` filter exposed: true, operator: between (the from/to pair) and date_filter's top-level `type: datetime` so the exposed form gains a time input alongside the date input."
+    },
+    {
+      "id": "date_filter-datetime-between",
+      "mode": "execution",
+      "difficulty": "hard",
+      "persona": "drupal-expert",
+      "prompt": "On this Drupal site the Article content type has a Date/time field `field_df_build` and there is an empty view with the machine name `date_filter_build` (base table node_field_data) that currently has no filter criteria at all. Add a Views filter on that Date/time field to the view's default display, set up the date_filter way: Views filter plugin id `datetime` on table `node__field_df_build` / field `field_df_build_value`, operator `between`, exposed to visitors with the exposed identifier `df_build_range`, and date_filter's 'Filter type' set to Date and time. Apply it to the live site.",
+      "reset": "agent-module-documentation/evaluation/verify/date_filter-datetime-between-reset.sh",
+      "verify": "agent-module-documentation/evaluation/verify/date_filter-datetime-between-verify.sh",
+      "cleanup": "agent-module-documentation/evaluation/verify/date_filter-datetime-between-cleanup.sh",
+      "expected_output": "views.view.date_filter_build display.default.display_options.filters gains an entry (key field_df_build_value) with id/field field_df_build_value, table node__field_df_build, plugin_id datetime, operator between, exposed true, expose.identifier df_build_range and top-level type: datetime. date_filter's DateTime handler then renders a from/to pair of date+time inputs on the exposed form."
+    }
+  ]
+}
