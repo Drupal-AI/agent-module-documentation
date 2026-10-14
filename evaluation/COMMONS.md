@@ -1,0 +1,41 @@
+# Eval Commons format
+
+`to_commons.py` writes an `eval/evals.json` as `dataset.yaml` and
+`rubrics.yaml`, the Drupal Eval Commons format that `drupal/ai_best_practices`
+uses. `evals.json` stays the source. No existing file changes.
+
+| `evals.json` | Eval Commons |
+|---|---|
+| `prompt`, `expected_output` | question `input`, `criteria` |
+| `must_contain_any`, `must_not_contain` | rubric checks |
+| `verify` (execution) | command check: `bash {{ metadata.verify }}`, passes on exit 0 |
+| `mode`, `difficulty` | question `tags` |
+| `persona`, `setup`, `reset`, `cleanup`, `verify`, notes | question `metadata` |
+| `module`, `version`, `skill_*`, other top-level keys | dataset `metadata` |
+
+Unknown keys stop the conversion with an error, so nothing is dropped silently.
+
+## Run
+
+```bash
+python3 evaluation/to_commons.py modules/ac/account_field_split/2.1.x/eval/evals.json
+python3 evaluation/to_commons.py --all --check
+python3 evaluation/commons_parity.py --all
+```
+
+The schemas and scorer come from `vendor/drupal/ai_best_practices/evals`.
+Command checks need ai_best_practices MR !112. Set `ABP_EVALS` to use another copy.
+
+`commons_parity.py` grades made-up answers with `grade_recipe` and with the
+Eval Commons scorer, and lists every case where they disagree. It calls no
+model and runs no site.
+
+## Known differences
+
+- `must_not_contain` is case-sensitive here and not in Eval Commons. It is the
+  only grading difference found.
+- These files do not convert. 8 use an older `cases` shape that
+  `run-matrix.py` cannot grade either: views_aggregator (2),
+  paragraphs_browser (2), devel_php, block_visibility_conditions (3).
+  `commerce_cart_redirection/3.3.x` uses the id
+  `commerce_cart_redirection-clear-cart` twice.
