@@ -3,8 +3,8 @@
 
 Reuses drupal/ai_best_practices' eval harness for the model-call + metrics layer
 (evals/providers.py: token/cost/elapsed capture, codex/gemini runners), its Eval
-Commons case format (eval/dataset.yaml + rubrics.yaml, generated from evals.json by
-to_commons.py) and its grader (evals/scoring.py). Adds two things that harness does
+Commons case format (eval/dataset.yaml + rubrics.yaml, see COMMONS.md) and its
+grader (evals/scoring.py). Adds two things that harness does
 not have:
 
   1. A claude runner that executes tools unattended (--dangerously-skip-permissions,
@@ -136,7 +136,7 @@ def run_model(provider: str, prompt: str, model: str | None, execution: bool,
 def load_spec(eval_dir: Path) -> dict:
     """Read eval/dataset.yaml + rubrics.yaml into {<dataset metadata>, evals: [case]}.
 
-    Each case keeps the evals.json field names the loop below uses (id, prompt, mode,
+    Each case is flattened to the fields the loop below uses (id, prompt, mode,
     difficulty, persona, setup, reset, verify, cleanup) plus its rubric's checks.
     """
     dataset = yaml.safe_load((eval_dir / "dataset.yaml").read_text())
