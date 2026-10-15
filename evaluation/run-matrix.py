@@ -197,6 +197,17 @@ def main() -> int:
         sys.exit(f"needs {VENDOR_EVALS}/scoring.py with command checks "
                  "(drupal/ai_best_practices MR !112)")
     eval_dir = DOCS_ROOT / "modules" / a.module / a.version / "eval"
+    if not a.dry_run:
+        # Fail before any model call, not when results are written.
+        try:
+            import check_evals
+        except ImportError as exc:
+            print(f"warning: skipping eval checks ({exc})", file=sys.stderr)
+        else:
+            _, problems = check_evals.check(eval_dir)
+            if problems:
+                sys.exit("eval files have problems, see check_evals.py:\n  "
+                         + "\n  ".join(problems))
     spec = load_spec(eval_dir)
     cases = [c for c in spec["evals"] if not a.only or c["id"] in a.only]
     rows = []  # (case_id, provider, arm, correct, in_tok, out_tok, secs, cost)
