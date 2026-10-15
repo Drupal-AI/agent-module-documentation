@@ -202,12 +202,11 @@ def main() -> int:
         try:
             import check_evals
         except ImportError as exc:
-            print(f"warning: skipping eval checks ({exc})", file=sys.stderr)
-        else:
-            _, problems = check_evals.check(eval_dir)
-            if problems:
-                sys.exit("eval files have problems, see check_evals.py:\n  "
-                         + "\n  ".join(problems))
+            sys.exit(f"cannot check the eval files ({exc}); see evaluation/COMMONS.md")
+        _, problems = check_evals.check(eval_dir)
+        if problems:
+            sys.exit("eval files have problems, see check_evals.py:\n  "
+                     + "\n  ".join(problems))
     spec = load_spec(eval_dir)
     cases = [c for c in spec["evals"] if not a.only or c["id"] in a.only]
     rows = []  # (case_id, provider, arm, correct, in_tok, out_tok, secs, cost)

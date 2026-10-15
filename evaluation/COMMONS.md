@@ -7,9 +7,9 @@ Each module's evals live in two files, in the Drupal Eval Commons format that
 - `eval/rubrics.yaml`: one rubric per question, saying how to grade it.
 
 `run-matrix.py` and the site build (`site/scripts/build-data.mjs`) read them.
-`run-matrix.py` runs inside the ddev web container and needs PyYAML there
-(jsonschema too, for the pre-run check; without it the check is skipped with a
-warning). Add them to `.ddev/config.yaml` and run `ddev restart`:
+`run-matrix.py` runs inside the ddev web container and needs PyYAML and
+jsonschema there (jsonschema for the check it runs before any model call). Add
+them to `.ddev/config.yaml` and run `ddev restart`:
 
 ```yaml
 webimage_extra_packages: [python3-yaml, python3-jsonschema]

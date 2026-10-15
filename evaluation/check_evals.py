@@ -138,6 +138,8 @@ def check(eval_dir: Path) -> tuple[int, list[str]]:
             problems.append(f"{qid}: scoring.combine must be all_pass or any_pass")
         if commands and mode != "execution":
             problems.append(f"{qid}: command checks belong to mode:execution cases")
+        if "verify" in meta and mode != "execution":
+            problems.append(f"{qid}: verify belongs to mode:execution cases")
         if mode == "execution":
             if not commands or "verify" not in meta:
                 problems.append(f"{qid}: execution cases need metadata.verify and a command check")
