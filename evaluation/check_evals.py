@@ -1,10 +1,12 @@
 #!/usr/bin/env python3
 """Check eval/dataset.yaml + rubrics.yaml (Eval Commons) before committing them.
 
-Validates both files against the Eval Commons schemas and checks what the schemas
-cannot: unique question ids, every rubric_ref resolves, every rubric is used, valid
-mode/difficulty tags, verify only on execution cases, and that the scripts named in
-setup/reset/verify/cleanup exist. Calls no model and runs no site.
+Validates both files against the Eval Commons schemas, then checks what the schemas
+cannot but run-matrix.py needs: module/version metadata, unique question ids, every
+rubric_ref resolves and every rubric is used, a valid mode tag on every question, the
+check kinds and options the runner supports, execution cases graded by their verify
+script, and that the scripts named in setup/reset/verify/cleanup exist. Calls no model
+and runs no site.
 """
 from __future__ import annotations
 
@@ -13,6 +15,7 @@ from functools import lru_cache
 import json
 import os
 from pathlib import Path
+import re
 import sys
 
 sys.dont_write_bytecode = True
@@ -30,6 +33,11 @@ TAGS = {
     "difficulty": {"easy", "medium", "hard"},
 }
 SCRIPT_KEYS = ("setup", "reset", "verify", "cleanup")
+# What evals/scoring.py grades and run-matrix.py can run.
+TEXT_KINDS = {"must_contain_any", "must_not_contain", "php_lint", "markdown_structure"}
+COMBINES = {"all_pass", "any_pass"}
+PLACEHOLDER = re.compile(r"\{\{\s*metadata\.([A-Za-z0-9_]+)\s*\}\}")
+EVAL_ROOTS = ("modules", "unsupported_modules")
 # Script paths are relative to the project root, which holds this repo as
 # agent-module-documentation/.
 REPO_PREFIX = "agent-module-documentation/"
@@ -66,6 +74,10 @@ def check(eval_dir: Path) -> tuple[int, list[str]]:
         return 0, ["dataset.yaml and rubrics.yaml must each hold a mapping"]
     dataset_validator, rubric_validator = validators()
     problems = [f"dataset.yaml {e}" for e in schema_errors(dataset_validator, dataset)]
+    for key in ("module", "version"):
+        value = (dataset.get("metadata") or {}).get(key)
+        if not isinstance(value, str) or not value:
+            problems.append(f"dataset.yaml metadata.{key} must be a nonempty string")
     rubrics = {}
     for rubric in rubric_doc.get("rubrics") or []:
         problems += [f"rubric {rubric.get('id')!r}: {e}"
@@ -88,19 +100,49 @@ def check(eval_dir: Path) -> tuple[int, list[str]]:
         if rubric is None:
             problems.append(f"{qid}: rubric_ref {q.get('rubric_ref')!r} not in rubrics.yaml")
         used.add(q.get("rubric_ref"))
-        tags = dict(t.split(":", 1) for t in q.get("tags", []) if ":" in t)
+        pairs = [t.split(":", 1) for t in q.get("tags", []) if ":" in t]
+        tags = dict(pairs)
         for name, allowed in TAGS.items():
+            values = [v for k, v in pairs if k == name]
+            if len(values) > 1:
+                problems.append(f"{qid}: more than one {name} tag")
             if name in tags and tags[name] not in allowed:
                 problems.append(f"{qid}: unknown {name} {tags[name]!r}")
+        mode = tags.get("mode")
+        if mode is None:
+            problems.append(f"{qid}: needs a mode: tag (recipe, introspection or execution)")
         meta = q.get("metadata") or {}
         for key in SCRIPT_KEYS:
             if key in meta and not script_exists(meta[key]):
                 problems.append(f"{qid}: {key} script not found: {meta[key]}")
-        commands = [c for c in (rubric or {}).get("checks", []) if c.get("kind") == "command"]
-        if commands and tags.get("mode") != "execution":
+        if "setup" in meta and "cleanup" not in meta:
+            problems.append(f"{qid}: has setup but no cleanup to restore the site")
+        if rubric is None:
+            continue
+        checks = rubric.get("checks") or []
+        commands = [c for c in checks if c.get("kind") == "command"]
+        if commands and len(commands) != len(checks):
+            problems.append(f"{qid}: a rubric cannot mix command and text checks")
+        for c in checks:
+            if c.get("kind") != "command" and c.get("kind") not in TEXT_KINDS:
+                problems.append(f"{qid}: check kind {c.get('kind')!r} is not supported here")
+        for c in commands:
+            if c.get("sandbox", "ddev") != "ddev":
+                problems.append(f"{qid}: command sandbox must be ddev")
+            if c.get("expect", "exit_zero") != "exit_zero" or c.get("setup", "none") != "none":
+                problems.append(f"{qid}: command checks here support expect: exit_zero only")
+            for key in PLACEHOLDER.findall(c.get("command", "")):
+                if key not in meta:
+                    problems.append(f"{qid}: command uses metadata.{key}, which is missing")
+        if (rubric.get("scoring") or {}).get("combine") not in COMBINES:
+            problems.append(f"{qid}: scoring.combine must be all_pass or any_pass")
+        if commands and mode != "execution":
             problems.append(f"{qid}: command checks belong to mode:execution cases")
-        if meta.get("verify") and not commands:
-            problems.append(f"{qid}: has verify but its rubric has no command check")
+        if mode == "execution":
+            if not commands or "verify" not in meta:
+                problems.append(f"{qid}: execution cases need metadata.verify and a command check")
+            if "reset" not in meta:
+                problems.append(f"{qid}: execution cases need metadata.reset")
     for key in sorted(set(rubrics) - used):
         problems.append(f"rubric {key} is not used by any question")
     return len(questions), problems
@@ -115,7 +157,8 @@ def main() -> int:
     if args.all == bool(args.paths):
         parser.error("provide eval dirs or --all")
     if args.all:
-        dirs = sorted(p.parent for p in (REPO / "modules").glob("**/eval/dataset.yaml"))
+        dirs = sorted(p.parent for root in EVAL_ROOTS
+                      for p in (REPO / root).glob("**/eval/dataset.yaml"))
     else:
         dirs = [p.parent if p.name == "dataset.yaml" else p for p in args.paths]
 

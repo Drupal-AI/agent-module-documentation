@@ -88,6 +88,7 @@ Recipe and introspection cases use text checks: `must_contain_any` (passes if
 any value appears) and `must_not_contain` (fails if any value appears). Both
 ignore case unless the check sets `case_sensitive: true`. Execution cases use
 the one `command` check above, which passes when the `verify` script exits 0.
+A `verify` script that runs longer than 30 minutes counts as a fail.
 Every rubric needs at least one check.
 
 ## Check before committing
@@ -97,9 +98,12 @@ python3 evaluation/check_evals.py modules/ac/account_field_split/2.1.x/eval
 python3 evaluation/check_evals.py --all
 ```
 
-It validates both files against the Eval Commons schemas, then checks unique
-ids, that every `rubric_ref` resolves and every rubric is used, the tags, and
-that each script path exists. The schemas come from
+It validates both files against the Eval Commons schemas, then checks what
+`run-matrix.py` needs: `module` and `version` in the dataset metadata, unique
+ids, every `rubric_ref` resolves and every rubric is used, one `mode:` tag per
+question, supported check kinds, execution cases with `reset`, `verify` and the
+command check, `cleanup` wherever there is a `setup`, and that each script path
+exists. `run-matrix.py` runs the same check before it calls any model. The schemas come from
 `vendor/drupal/ai_best_practices/evals`; set `ABP_EVALS` to use another copy.
 Command checks need ai_best_practices MR !112.
 
@@ -112,6 +116,7 @@ history. The comparison matched the old grader on 101,250 of 101,332 checks.
 All 82 differences came from one rule: the old grader matched
 `must_not_contain` case-sensitively.
 
-These 8 files still use an older `cases` shape with no checks, so they were not
+The 27 files under `unsupported_modules/` were converted the same way. These 8
+files still use an older `cases` shape with no checks, so they were not
 converted and nothing reads them: views_aggregator (2), paragraphs_browser (2),
 devel_php, block_visibility_conditions (3).
