@@ -135,7 +135,9 @@ modules/{ab}/{machine_name}/{major.minor.x}/
 │   ├── {section}/index.md          # installation, configuration, ... one dir per topic
 │   └── images/*.png                # committed screenshots referenced from the pages
 └── eval/
-    └── evals.json     # easy + medium + hard eval cases (see the Evals section below)
+    ├── evals.json     # easy + medium + hard eval cases (see the Evals section below)
+    ├── dataset.yaml   # generated from evals.json by evaluation/to_commons.py, do not edit
+    └── rubrics.yaml   # generated from evals.json by evaluation/to_commons.py, do not edit
 ```
 
 e.g. `modules/ac/access_unpublished/1.9.x/`, `modules/to/token/1.17.x/`. The two-letter
@@ -268,6 +270,21 @@ case (paths relative to the project root). Every script must be smoke-tested: a 
 FAIL on empty state, PASS after a correct build, and leave the site clean. Tag every case
 with `difficulty` (`easy` | `medium` | `hard`). Do **not** run the eval harness as part of
 documenting a module — authoring the cases is enough; runs are a separate step.
+
+**Eval Commons copy.** Every `evals.json` also ships as `dataset.yaml` + `rubrics.yaml`,
+the Eval Commons format that `drupal/ai_best_practices` reads. `evals.json` stays the
+source; the YAML is generated from it. After writing or changing an `evals.json`:
+
+```
+python3 evaluation/to_commons.py modules/{ab}/{machine_name}/{version}/eval/evals.json
+python3 evaluation/to_commons.py --check modules/{ab}/{machine_name}/{version}/eval/evals.json
+```
+
+The first command writes the two YAML files next to `evals.json`; the second must print
+`failures=0`. Commit all three files together. Never edit the YAML by hand: change
+`evals.json` and rerun. Use only the case keys listed in
+[`evaluation/COMMONS.md`](evaluation/COMMONS.md) (any other key stops the conversion), and
+keep every case `id` unique within the file.
 
 ## Pipeline (summary)
 
