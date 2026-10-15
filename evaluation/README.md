@@ -13,7 +13,9 @@ ships a solid harness, and we reuse it rather than reinventing:
   the hard part (token/cost/time capture) and we import it directly.
 - **`evals.json` format** — each case has `prompt`, `expected_output`, and text assertions
   (`must_contain_any`, `must_not_contain`, `check_php_lint`). Our per-module `eval/evals.json`
-  files use this shape.
+  files use this shape. `to_commons.py` writes each one as `dataset.yaml` + `rubrics.yaml`
+  (the Eval Commons format, see [`COMMONS.md`](COMMONS.md)); `run-matrix.py` reads those
+  and grades with the vendor `evals/scoring.py`.
 - **`evals/compare.py` A/B method** — baseline vs skill by prepending the skill text to the
   prompt, identical flags per arm. We follow the same design.
 
@@ -70,7 +72,9 @@ evaluation/
     ├── pathauto-blog-pattern.sh
     └── pathauto-reset.sh
 modules/<name>/<version>/eval/
-├── evals.json           # suggested tasks for this module (recipe + execution)
+├── evals.json           # suggested tasks for this module (recipe + execution); the source
+├── dataset.yaml         # generated from evals.json by to_commons.py; run-matrix.py reads it
+├── rubrics.yaml         # generated from evals.json by to_commons.py; run-matrix.py reads it
 └── results.json         # accumulated results, all runs (written by run-matrix.py)
 ```
 

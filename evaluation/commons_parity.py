@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import argparse
 from collections import defaultdict
-from contextlib import contextmanager
 import importlib.util
 from pathlib import Path
 import shlex
@@ -12,22 +11,18 @@ import sys
 
 sys.dont_write_bytecode = True
 
-from to_commons import COMMONS, REPO, convert, source_paths
+from to_commons import COMMONS, convert, source_paths
 
 
-@contextmanager
-def blocked_providers():
-    """Force run-matrix's existing fallback without importing vendor providers."""
-    absent = object()
-    previous = sys.modules.get("providers", absent)
-    sys.modules["providers"] = None
-    try:
-        yield
-    finally:
-        if previous is absent:
-            sys.modules.pop("providers", None)
-        else:
-            sys.modules["providers"] = previous
+def grade_recipe(resp: str, case: dict) -> bool:
+    """run-matrix.py's grader before it moved to Eval Commons, kept verbatim."""
+    low = resp.lower()
+    ok = True
+    if case.get("must_contain_any"):
+        ok &= any(s.lower() in low for s in case["must_contain_any"])
+    if case.get("must_not_contain"):
+        ok &= all(s not in resp for s in case["must_not_contain"])
+    return ok
 
 
 def import_file(name: str, path: Path):
@@ -47,15 +42,11 @@ def import_file(name: str, path: Path):
 def load_graders():
     old_path = sys.path[:]
     try:
-        with blocked_providers():
-            legacy = import_file(
-                "_amd_legacy_matrix", REPO / "evaluation" / "run-matrix.py"
-            )
         sys.path.insert(0, str(COMMONS))
         scoring = import_file("_amd_commons_scoring", COMMONS / "scoring.py")
     finally:
         sys.path[:] = old_path
-    return legacy.grade_recipe, scoring
+    return grade_recipe, scoring
 
 
 def probes(case: dict):

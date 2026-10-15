@@ -2,15 +2,17 @@
 """Evaluate the `drupal-module-docs` skill: vanilla vs +skill, across providers.
 
 Reuses drupal/ai_best_practices' eval harness for the model-call + metrics layer
-(evals/providers.py: token/cost/elapsed capture, codex/gemini runners) and its
-evals.json shape. Adds two things that harness does not have:
+(evals/providers.py: token/cost/elapsed capture, codex/gemini runners), its Eval
+Commons case format (eval/dataset.yaml + rubrics.yaml, generated from evals.json by
+to_commons.py) and its grader (evals/scoring.py). Adds two things that harness does
+not have:
 
   1. A claude runner that executes tools unattended (--dangerously-skip-permissions,
      cwd = project root) so the agent can actually run drush and mutate the site.
   2. Live-state verification: for `mode: execution` cases we run the case's `reset`
      script, let the agent do the work, then run its `verify` script against the
-     real site (exit 0 = correct). `mode: recipe` cases are graded on response text
-     (must_contain_any / must_not_contain), exactly like ai_best_practices.
+     real site (exit 0 = correct), as an Eval Commons command check. Other cases are
+     graded on response text (must_contain_any / must_not_contain) by scoring.grade.
 
 The A/B design mirrors evals/compare.py: identical flags per arm, the only variable
 is whether the skill text is prepended to the prompt.
@@ -26,6 +28,8 @@ from __future__ import annotations
 import argparse, json, subprocess, sys, time
 from pathlib import Path
 
+import yaml
+
 PROJECT_ROOT = Path(__file__).resolve().parents[2]          # /var/www/html
 DOCS_ROOT = PROJECT_ROOT / "agent-module-documentation"
 SKILL_FILE = PROJECT_ROOT / ".agents/skills/drupal-module-docs/SKILL.md"
@@ -40,6 +44,10 @@ except Exception:                                                          # pra
     def clean_env():
         import os; e = {**os.environ}; e.pop("CLAUDECODE", None); e.pop("CLAUDE_CODE_ENTRYPOINT", None); return e
     def estimate_cost(*_a, **_k): return 0.0
+try:
+    import scoring  # type: ignore
+except Exception:                                                          # pragma: no cover
+    scoring = None
 
 
 def run_claude_exec(prompt: str, model: str | None, cwd: str, effort: str | None = None) -> dict:
@@ -125,14 +133,43 @@ def run_model(provider: str, prompt: str, model: str | None, execution: bool,
             "output_tokens": 0, "cost_usd": 0.0}
 
 
-def grade_recipe(resp: str, case: dict) -> bool:
-    low = resp.lower()
-    ok = True
-    if case.get("must_contain_any"):
-        ok &= any(s.lower() in low for s in case["must_contain_any"])
-    if case.get("must_not_contain"):
-        ok &= all(s not in resp for s in case["must_not_contain"])
-    return ok
+def load_spec(eval_dir: Path) -> dict:
+    """Read eval/dataset.yaml + rubrics.yaml into {<dataset metadata>, evals: [case]}.
+
+    Each case keeps the evals.json field names the loop below uses (id, prompt, mode,
+    difficulty, persona, setup, reset, verify, cleanup) plus its rubric's checks.
+    """
+    dataset = yaml.safe_load((eval_dir / "dataset.yaml").read_text())
+    rubrics = {f"rubric/{r['id']}@{r['version']}": r for r in
+               yaml.safe_load((eval_dir / "rubrics.yaml").read_text())["rubrics"]}
+    cases = []
+    for q in dataset["questions"]:
+        if q.get("disabled"):
+            continue
+        rubric = rubrics[q["rubric_ref"]]
+        tags = dict(t.split(":", 1) for t in q.get("tags", []) if ":" in t)
+        meta = q.get("metadata") or {}
+        cases.append({**meta, "id": q["id"], "prompt": q["input"],
+                      "mode": tags.get("mode"), "difficulty": tags.get("difficulty"),
+                      "metadata": meta, "checks": rubric["checks"],
+                      "combine": rubric.get("scoring", {}).get("combine", "all_pass")})
+    return {**(dataset.get("metadata") or {}), "evals": cases}
+
+
+def run_here(command: str, timeout: int) -> tuple[int, str]:
+    """The "ddev" sandbox: this runner already runs inside the ddev web container."""
+    try:
+        return subprocess.run(["bash", "-c", command], cwd=str(PROJECT_ROOT),
+                              timeout=timeout).returncode, ""
+    except subprocess.TimeoutExpired:
+        return 124, f"timed out after {timeout}s"
+
+
+def grade(resp: str, case: dict) -> bool:
+    if any(c["kind"] == "command" for c in case["checks"]):
+        return scoring.grade_command_checks(case["checks"], case["metadata"],
+                                            {"ddev": run_here}, case["combine"])[0]
+    return scoring.grade(resp, case["checks"], case["combine"])[0]
 
 
 def sh(path_rel: str) -> int:
@@ -156,8 +193,11 @@ def main() -> int:
     ap.add_argument("--dry-run", action="store_true")
     a = ap.parse_args()
 
+    if not a.dry_run and (scoring is None or not hasattr(scoring, "grade_command_checks")):
+        sys.exit(f"needs {VENDOR_EVALS}/scoring.py with command checks "
+                 "(drupal/ai_best_practices MR !112)")
     eval_dir = DOCS_ROOT / "modules" / a.module / a.version / "eval"
-    spec = json.loads((eval_dir / "evals.json").read_text())
+    spec = load_spec(eval_dir)
     cases = [c for c in spec["evals"] if not a.only or c["id"] in a.only]
     rows = []  # (case_id, provider, arm, correct, in_tok, out_tok, secs, cost)
 
@@ -190,10 +230,7 @@ def main() -> int:
                                     effort=a.effort)
                     if res["exit_code"] == -1:
                         cors.append(None); break            # provider CLI not available
-                    if execution and case.get("verify"):
-                        correct = sh(case["verify"]) == 0
-                    else:
-                        correct = grade_recipe(res["response"], case)
+                    correct = grade(res["response"], case)
                     # Post-model cleanup: introspection restores the site to baseline so the
                     # next run/case starts clean (execution cases reset at the top instead).
                     if case.get("cleanup"):
@@ -246,7 +283,7 @@ def write_results(eval_dir: Path, spec: dict, a, rows) -> None:
     doc = json.loads(path.read_text()) if path.exists() else {}
     doc.setdefault("module", spec["module"])
     doc.setdefault("version", spec["version"])
-    doc.setdefault("skill_name", spec["skill_name"])
+    doc.setdefault("skill_name", spec.get("skill_name"))
     cases = doc.setdefault("cases", {})
     for cid, prov, arm, cor, it, crd, ot, sec, cost in rows:
         cspec = next(c for c in spec["evals"] if c["id"] == cid)

@@ -6,6 +6,10 @@ uses. `evals.json` stays the source and is never changed. The YAML files start
 with a "Generated" header. The script only replaces files that carry it, so a
 hand-written file is never overwritten.
 
+`run-matrix.py` and the site build (`site/scripts/build-data.mjs`) read the YAML,
+not `evals.json`. The runner grades with the vendor `evals/scoring.py`, and runs
+`verify` as a command check inside the ddev container, from the project root.
+
 | `evals.json` | Eval Commons |
 |---|---|
 | `prompt`, `expected_output` | question `input`, `criteria` |
@@ -41,9 +45,10 @@ model and runs no site.
 
 ## Known differences
 
-- `must_not_contain` is case-sensitive here and not in Eval Commons. It is the
-  only grading difference found.
-- These files do not convert. 8 use an older `cases` shape that
+- `run-matrix.py` used to grade `must_not_contain` case-sensitively. Eval
+  Commons ignores case, as ai_best_practices always did. It is the only grading
+  difference found. `commons_parity.py` keeps the old grader to show it.
+- These files do not convert, so the runner and the site skip them. 8 use an older `cases` shape that
   `run-matrix.py` cannot grade either: views_aggregator (2),
   paragraphs_browser (2), devel_php, block_visibility_conditions (3).
   `commerce_cart_redirection/3.3.x` uses the id

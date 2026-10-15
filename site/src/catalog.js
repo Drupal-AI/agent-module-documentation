@@ -40,7 +40,7 @@ function cardHTML(m) {
   const helperLink = docBase
     ? `<a class="lnk" href="${docBase}/agent/start.md" target="_blank" rel="noopener">helper text ↗</a>` : '';
   const evalsLink = (m.hasEvals && docBase)
-    ? `<a class="lnk" href="${docBase}/eval/evals.json" target="_blank" rel="noopener">${m.evalCount} evals ↗</a>` : '';
+    ? `<a class="lnk" href="${docBase}/eval/dataset.yaml" target="_blank" rel="noopener">${m.evalCount} evals ↗</a>` : '';
   const resultsLink = m.hasResults
     ? `<a class="lnk results" href="./dashboard.html?module=${encodeURIComponent(m.key)}">📊 results</a>` : '';
   return `<div class="card">
