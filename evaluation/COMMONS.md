@@ -1,55 +1,117 @@
-# Eval Commons format
+# Eval format (Eval Commons)
 
-`to_commons.py` writes an `eval/evals.json` as `dataset.yaml` and
-`rubrics.yaml`, the Drupal Eval Commons format that `drupal/ai_best_practices`
-uses. `evals.json` stays the source and is never changed. The YAML files start
-with a "Generated" header. The script only replaces files that carry it, so a
-hand-written file is never overwritten.
+Each module's evals live in two files, in the Drupal Eval Commons format that
+`drupal/ai_best_practices` uses:
 
-`run-matrix.py` and the site build (`site/scripts/build-data.mjs`) read the YAML,
-not `evals.json`. The runner grades with the vendor `evals/scoring.py`, and runs
-`verify` as a command check inside the ddev container, from the project root.
+- `eval/dataset.yaml`: the questions.
+- `eval/rubrics.yaml`: one rubric per question, saying how to grade it.
 
-| `evals.json` | Eval Commons |
-|---|---|
-| `prompt`, `expected_output` | question `input`, `criteria` |
-| `must_contain_any`, `must_not_contain` | rubric checks |
-| `verify` (execution) | command check: `bash {{ metadata.verify }}`, passes on exit 0 |
-| `mode`, `difficulty` | question `tags` |
-| `persona`, `setup`, `reset`, `cleanup`, `verify`, notes | question `metadata` |
-| `module`, `version`, `skill_*`, other top-level keys | dataset `metadata` |
+`run-matrix.py` and the site build (`site/scripts/build-data.mjs`) read them.
+The runner grades with the vendor `evals/scoring.py`. The excerpts below come
+from `modules/ac/account_field_split/2.1.x/eval/` (long text shortened).
 
-Unknown keys stop the conversion with an error, so nothing is dropped silently.
+## dataset.yaml
 
-## Run
-
-```bash
-# Write (or refresh) one module, or all of them
-python3 evaluation/to_commons.py modules/ac/account_field_split/2.1.x/eval/evals.json
-python3 evaluation/to_commons.py --all
-
-# Check only: validate, and fail if a YAML file is missing or out of date
-python3 evaluation/to_commons.py --all --check
-
-python3 evaluation/commons_parity.py --all
+```yaml
+metadata:                     # free-form, about the whole file
+  skill_name: drupal-module-docs
+  skill_file: .agents/skills/drupal-module-docs/SKILL.md
+  module: account_field_split
+  version: 2.1.x
+questions:
+- id: account_field_split-where-to-configure    # unique in the file
+  input: I installed account_field_split on a Drupal 11 site. ...   # the prompt
+  criteria: There is no bespoke config page ...                     # the expected answer
+  bundle: account_field_split
+  rubric_ref: rubric/account_field_split_account_field_split_where_to_configure@1.0
+  tags:
+  - mode:recipe               # easy
+  - difficulty:easy
+- id: account_field_split-field-order
+  input: On this Drupal site the user account form has been customised ...
+  criteria: The E-mail address (mail) field appears first ...
+  bundle: account_field_split
+  rubric_ref: rubric/account_field_split_account_field_split_field_order@1.0
+  tags:
+  - mode:introspection        # medium
+  - difficulty:medium
+  metadata:
+    setup: agent-module-documentation/evaluation/verify/account_field_split-field-order-setup.sh
+    cleanup: agent-module-documentation/evaluation/verify/account_field_split-field-order-cleanup.sh
+- id: account_field_split-mail-first
+  input: On this Drupal site, account_field_split is enabled ... Apply the change to the live site.
+  criteria: In core.entity_form_display.user.user.default ... mail's weight is strictly less than name's ...
+  bundle: account_field_split
+  rubric_ref: rubric/account_field_split_account_field_split_mail_first@1.0
+  tags:
+  - mode:execution            # hard
+  - difficulty:hard
+  metadata:
+    persona: drupal-expert
+    reset: agent-module-documentation/evaluation/verify/account_field_split-mail-first-reset.sh
+    verify: agent-module-documentation/evaluation/verify/account_field_split-mail-first-verify.sh
 ```
 
-`--all` reports the 9 files listed below as failures until they are fixed.
+Script paths are relative to the project root. Question `metadata` may also hold
+`difficulty_note` and `note`.
 
-The schemas and scorer come from `vendor/drupal/ai_best_practices/evals`.
-Command checks need ai_best_practices MR !112. Set `ABP_EVALS` to use another copy.
+## rubrics.yaml
 
-`commons_parity.py` grades made-up answers with `grade_recipe` and with the
-Eval Commons scorer, and lists every case where they disagree. It calls no
-model and runs no site.
+```yaml
+rubrics:
+- id: account_field_split_account_field_split_where_to_configure
+  version: '1.0'
+  applicable_bundles:
+  - account_field_split
+  checks:
+  - kind: must_contain_any    # passes if any value appears, ignoring case
+    values:
+    - form display
+    - form-display
+    - ...
+  scoring:
+    combine: all_pass
+- id: account_field_split_account_field_split_mail_first
+  version: '1.0'
+  applicable_bundles:
+  - account_field_split
+  checks:
+  - kind: command             # execution: runs the verify script
+    command: bash {{ metadata.verify }}
+    expect: exit_zero
+    sandbox: ddev
+  scoring:
+    combine: all_pass
+```
 
-## Known differences
+Recipe and introspection cases use text checks: `must_contain_any` (passes if
+any value appears) and `must_not_contain` (fails if any value appears). Both
+ignore case unless the check sets `case_sensitive: true`. Execution cases use
+the one `command` check above, which passes when the `verify` script exits 0.
+Every rubric needs at least one check.
 
-- `run-matrix.py` used to grade `must_not_contain` case-sensitively. Eval
-  Commons ignores case, as ai_best_practices always did. It is the only grading
-  difference found. `commons_parity.py` keeps the old grader to show it.
-- These files do not convert, so the runner and the site skip them. 8 use an older `cases` shape that
-  `run-matrix.py` cannot grade either: views_aggregator (2),
-  paragraphs_browser (2), devel_php, block_visibility_conditions (3).
-  `commerce_cart_redirection/3.3.x` uses the id
-  `commerce_cart_redirection-clear-cart` twice.
+## Check before committing
+
+```bash
+python3 evaluation/check_evals.py modules/ac/account_field_split/2.1.x/eval
+python3 evaluation/check_evals.py --all
+```
+
+It validates both files against the Eval Commons schemas, then checks unique
+ids, that every `rubric_ref` resolves and every rubric is used, the tags, and
+that each script path exists. The schemas come from
+`vendor/drupal/ai_best_practices/evals`; set `ABP_EVALS` to use another copy.
+Command checks need ai_best_practices MR !112.
+
+## History
+
+These files were converted from the old `eval/evals.json` format. The converter
+(`evaluation/to_commons.py`) and the grading comparison
+(`evaluation/commons_parity.py`) were removed with the JSON files; see the git
+history. The comparison matched the old grader on 101,250 of 101,332 checks.
+All 82 differences came from one rule: the old grader matched
+`must_not_contain` case-sensitively.
+
+These 8 files still use an older `cases` shape with no checks, so they were not
+converted and nothing reads them: views_aggregator (2), paragraphs_browser (2),
+devel_php, block_visibility_conditions (3).

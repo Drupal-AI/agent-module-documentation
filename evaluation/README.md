@@ -11,11 +11,10 @@ ships a solid harness, and we reuse it rather than reinventing:
 - **`evals/providers.py`** — provider-agnostic CLI runners (`claude`, `codex`, `gemini`)
   that return `{response, elapsed, input_tokens, output_tokens, cost_usd, ...}`. This is
   the hard part (token/cost/time capture) and we import it directly.
-- **`evals.json` format** — each case has `prompt`, `expected_output`, and text assertions
-  (`must_contain_any`, `must_not_contain`, `check_php_lint`). Our per-module `eval/evals.json`
-  files use this shape. `to_commons.py` writes each one as `dataset.yaml` + `rubrics.yaml`
-  (the Eval Commons format, see [`COMMONS.md`](COMMONS.md)); `run-matrix.py` reads those
-  and grades with the vendor `evals/scoring.py`.
+- **Eval Commons format and grader** — each module's `eval/dataset.yaml` holds the
+  questions and `eval/rubrics.yaml` the checks (`must_contain_any`, `must_not_contain`, and a
+  `command` check for `verify`); see [`COMMONS.md`](COMMONS.md). `run-matrix.py` grades with
+  the vendor `evals/scoring.py`.
 - **`evals/compare.py` A/B method** — baseline vs skill by prepending the skill text to the
   prompt, identical flags per arm. We follow the same design.
 
@@ -29,7 +28,7 @@ does a new node get the right URL?"* — which is exactly what you asked for.
 2. **Live-state verification** for `mode: execution` cases: run the case's `reset` script,
    let the agent work, then run its `verify` script against the real site (exit 0 = correct).
 
-So each `evals.json` case carries a **`difficulty`** tier, and each tier maps to a `mode`.
+So each question carries a **`difficulty:`** tag, and each tier maps to a **`mode:`** tag.
 Every benchmarked module should have **2-3 cases of each tier**:
 
 - **easy → `mode: "recipe"`** — answer a question out of the box, graded on response text
@@ -45,19 +44,21 @@ Every benchmarked module should have **2-3 cases of each tier**:
   checks live state (exit 0 = correct). This is the pathauto "set it up, then check it was set
   up" case.
 
-Case fields by tier:
+Question fields by tier (`dataset.yaml`; checks live in the question's rubric in
+`rubrics.yaml`):
 
 | Field | easy (recipe) | medium (introspection) | hard (execution) |
 |---|---|---|---|
-| `mode` | `recipe` | `introspection` | `execution` |
-| `difficulty` | `easy` | `medium` | `hard` |
-| `prompt` | ✓ | ✓ | ✓ |
-| `must_contain_any` / `must_not_contain` | ✓ (grading) | ✓ (grading) | — |
-| `setup` | — | ✓ (installs the config to read back) | — |
-| `cleanup` | — | ✓ (restores baseline after) | optional |
-| `reset` | — | — | ✓ (clears state before) |
-| `verify` | — | — | ✓ (live-state check, exit 0 = pass) |
-| `persona` | optional | optional | optional |
+| `tags`: `mode:` | `recipe` | `introspection` | `execution` |
+| `tags`: `difficulty:` | `easy` | `medium` | `hard` |
+| `input` (the prompt) | ✓ | ✓ | ✓ |
+| rubric `must_contain_any` / `must_not_contain` | ✓ (grading) | ✓ (grading) | — |
+| rubric `command` check (`bash {{ metadata.verify }}`) | — | — | ✓ (grading) |
+| `metadata.setup` | — | ✓ (installs the config to read back) | — |
+| `metadata.cleanup` | — | ✓ (restores baseline after) | optional |
+| `metadata.reset` | — | — | ✓ (clears state before) |
+| `metadata.verify` | — | — | ✓ (live-state check, exit 0 = pass) |
+| `metadata.persona` | optional | optional | optional |
 
 Script paths (`setup`/`cleanup`/`reset`/`verify`) are relative to the project root
 (`/var/www/html`) and live in `evaluation/verify/`.
@@ -72,9 +73,8 @@ evaluation/
     ├── pathauto-blog-pattern.sh
     └── pathauto-reset.sh
 modules/<name>/<version>/eval/
-├── evals.json           # suggested tasks for this module (recipe + execution); the source
-├── dataset.yaml         # generated from evals.json by to_commons.py; run-matrix.py reads it
-├── rubrics.yaml         # generated from evals.json by to_commons.py; run-matrix.py reads it
+├── dataset.yaml         # the questions (recipe, introspection, execution)
+├── rubrics.yaml         # how each question is graded
 └── results.json         # accumulated results, all runs (written by run-matrix.py)
 ```
 

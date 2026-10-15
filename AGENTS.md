@@ -135,9 +135,8 @@ modules/{ab}/{machine_name}/{major.minor.x}/
 │   ├── {section}/index.md          # installation, configuration, ... one dir per topic
 │   └── images/*.png                # committed screenshots referenced from the pages
 └── eval/
-    ├── evals.json     # easy + medium + hard eval cases (see the Evals section below)
-    ├── dataset.yaml   # generated from evals.json by evaluation/to_commons.py, do not edit
-    └── rubrics.yaml   # generated from evals.json by evaluation/to_commons.py, do not edit
+    ├── dataset.yaml   # easy + medium + hard eval questions (see the Evals section below)
+    └── rubrics.yaml   # how each question is graded
 ```
 
 e.g. `modules/ac/access_unpublished/1.9.x/`, `modules/to/token/1.17.x/`. The two-letter
@@ -247,8 +246,8 @@ grow organically as modules are processed. Add new names there, never duplicate.
 
 ## Evals
 
-Every module gets an `eval/evals.json`, and it must **always contain all three difficulty
-tiers** — do not stop at asking questions. See [`evaluation/README.md`](evaluation/README.md)
+Every module gets an `eval/dataset.yaml` + `eval/rubrics.yaml`, and they must **always contain
+all three difficulty tiers** — do not stop at asking questions. See [`evaluation/README.md`](evaluation/README.md)
 for the exact case shape, grading, and harness mechanics. Aim for **2-3 cases of each tier**:
 
 - **easy** (`mode: "recipe"`) — answer a question out of the box, graded on the response
@@ -271,20 +270,18 @@ FAIL on empty state, PASS after a correct build, and leave the site clean. Tag e
 with `difficulty` (`easy` | `medium` | `hard`). Do **not** run the eval harness as part of
 documenting a module — authoring the cases is enough; runs are a separate step.
 
-**Eval Commons copy.** Every `evals.json` also ships as `dataset.yaml` + `rubrics.yaml`,
-the Eval Commons format that `drupal/ai_best_practices` reads. `evals.json` stays the
-source; the YAML is generated from it. After writing or changing an `evals.json`:
+**File format.** The two files use the Eval Commons format that `drupal/ai_best_practices`
+reads: each question in `dataset.yaml` has an `id`, the prompt as `input`, the expected
+answer as `criteria`, `mode:`/`difficulty:` tags, and its scripts in `metadata`; its
+`rubric_ref` points to one rubric in `rubrics.yaml` that holds the checks
+(`must_contain_any` / `must_not_contain` for easy and medium, one `command` check running
+`verify` for hard). [`evaluation/COMMONS.md`](evaluation/COMMONS.md) has a full example; copy
+the shape of an existing module rather than inventing keys. Before committing, this must
+print `failures=0`:
 
 ```
-python3 evaluation/to_commons.py modules/{ab}/{machine_name}/{version}/eval/evals.json
-python3 evaluation/to_commons.py --check modules/{ab}/{machine_name}/{version}/eval/evals.json
+python3 evaluation/check_evals.py modules/{ab}/{machine_name}/{version}/eval
 ```
-
-The first command writes the two YAML files next to `evals.json`; the second must print
-`failures=0`. Commit all three files together. Never edit the YAML by hand: change
-`evals.json` and rerun. Use only the case keys listed in
-[`evaluation/COMMONS.md`](evaluation/COMMONS.md) (any other key stops the conversion), and
-keep every case `id` unique within the file.
 
 ## Pipeline (summary)
 

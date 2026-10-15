@@ -46,7 +46,7 @@ modules/to/token/1.17.x/
 - **Using** it: `agent/start.md` plus the solution docs. Every agent doc must be shorter than
   reading the equivalent source.
 
-Some popular modules also have `eval/evals.json` (easy, medium and hard tasks, verified against a
+Some popular modules also have `eval/dataset.yaml` + `eval/rubrics.yaml` (easy, medium and hard tasks, verified against a
 live site) and a human-facing `human-docs/` folder.
 
 ## Repository layout
