@@ -2,7 +2,9 @@
 
 `to_commons.py` writes an `eval/evals.json` as `dataset.yaml` and
 `rubrics.yaml`, the Drupal Eval Commons format that `drupal/ai_best_practices`
-uses. `evals.json` stays the source. No existing file changes.
+uses. `evals.json` stays the source and is never changed. The YAML files start
+with a "Generated" header. The script only replaces files that carry it, so a
+hand-written file is never overwritten.
 
 | `evals.json` | Eval Commons |
 |---|---|
@@ -18,10 +20,17 @@ Unknown keys stop the conversion with an error, so nothing is dropped silently.
 ## Run
 
 ```bash
+# Write (or refresh) one module, or all of them
 python3 evaluation/to_commons.py modules/ac/account_field_split/2.1.x/eval/evals.json
+python3 evaluation/to_commons.py --all
+
+# Check only: validate, and fail if a YAML file is missing or out of date
 python3 evaluation/to_commons.py --all --check
+
 python3 evaluation/commons_parity.py --all
 ```
+
+`--all` reports the 9 files listed below as failures until they are fixed.
 
 The schemas and scorer come from `vendor/drupal/ai_best_practices/evals`.
 Command checks need ai_best_practices MR !112. Set `ABP_EVALS` to use another copy.
