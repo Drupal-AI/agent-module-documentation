@@ -124,7 +124,9 @@ history. The comparison matched the old grader on 101,250 of 101,332 checks.
 All 82 differences came from one rule: the old grader matched
 `must_not_contain` case-sensitively.
 
-The 27 files under `unsupported_modules/` were converted the same way. These 8
-files still use an older `cases` shape with no checks, so they were not
-converted and nothing reads them: views_aggregator (2), paragraphs_browser (2),
-devel_php, block_visibility_conditions (3).
+The 27 files under `unsupported_modules/` were converted the same way. 8 more
+files used an older `cases` shape with no checks: views_aggregator (2),
+paragraphs_browser (2), devel_php, block_visibility_conditions (3). Their 41
+questions were converted by hand: the expected points became `criteria`, and
+new `must_contain_any` checks were written from them. Their dataset `note` says
+so. Review those checks before you trust their scores.
