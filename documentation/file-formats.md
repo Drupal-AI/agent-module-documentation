@@ -71,6 +71,7 @@ nothing to measure.
 | `constraints.types` | tally of explicit constraint names |
 | `ignores.count` / `paths` | elements typed `ignore`: excluded from schema validation entirely (first 25 paths) |
 | `undefined_count` / `fully_validatable` | elements typed `undefined` / top-level keys marked `FullyValidatable` |
+| `description_review` | **model-read** verdict on every element's text (label + `description:`): could an agent use it as a tool parameter description, knowing only the key path and type? `good` / `weak` (agent left guessing: units, allowed values, format, effect) / `bad` (no usable information, echoes a non-obvious key, or wrong / copy-pasted) / `missing` (no text). `good_ratio` = good ÷ all elements; `examples` = up to 3 flagged elements with the reason; `rubric` names the rubric version. Present only on fully-read version-dirs; the structural `labels.*` ratios are the cheap heuristic and are kept alongside. |
 
 ## `usage.md`
 
