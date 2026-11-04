@@ -52,6 +52,26 @@ and submodule of a project carries the same values. Run it after documenting a m
 | `project_changed` | `changed` | `YYYY-MM-DD` |
 | `core_semver_minimum` / `core_semver_maximum` | same feed fields | ints, e.g. `8000000` / `12000000` |
 
+### Config-schema quality (`config_schema_quality`, static source scan)
+
+How well the project's config schema serves an agent that has to read or write its config.
+Computed from the project's source (parent + submodules, `tests/` excluded) by
+`.redo/schema_quality.py`, via `.redo/scan_tooling.py` (sweep) or `.redo/regen_tooling.py`
+(per wave). Parent project's top-level `data.json` only. Ratios are `null` when there is
+nothing to measure.
+
+| Field | Meaning |
+|---|---|
+| `schema_files` / `schema_definitions` | `config/schema/*.schema.yml` files / top-level schema keys |
+| `coverage.checked` / `covered` / `ratio` | config the project **owns** that should have a schema: shipped `config/install\|optional` objects named after one of its modules, simple config read in code (`->config('x.settings')`, `getEditableConfigNames()`), config entity types (`<module>.<prefix>.*`), and settings of plugins with non-empty defaults (formatter/widget/field type/block/condition/action/filter). Only the project's own schema keys count. Config owned by other extensions is skipped. |
+| `coverage.uncovered` | names/patterns lacking a schema (first 25) |
+| `labels.labeled_ratio` | schema elements (top-level keys + mapping keys) with a `label` |
+| `labels.agent_usable_ratio` | elements whose label (+ any unofficial `description:`) adds an informative word beyond the key's own name. `max_length` → "Max length" is **not** usable; "Maximum alias length in characters" is. |
+| `constraints.ratio` | non-boolean leaf elements with validation: explicit `constraints:` (`Range`, `Choice`, `Length`, `Regex`, `NotBlank`, …) or a core type with built-in constraints (`machine_name`, `required_label`, `uuid`, …) |
+| `constraints.types` | tally of explicit constraint names |
+| `ignores.count` / `paths` | elements typed `ignore`: excluded from schema validation entirely (first 25 paths) |
+| `undefined_count` / `fully_validatable` | elements typed `undefined` / top-level keys marked `FullyValidatable` |
+
 ## `usage.md`
 
 Three blocks separated by a line containing only `---`:
