@@ -1,0 +1,367 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Config Schema Quality</title>
+<style>
+  :root {
+    color-scheme: light;
+    --page: #f9f9f7; --surface: #fcfcfb; --ink: #0b0b0b; --ink-2: #52514e; --muted: #898781;
+    --grid: #e1e0d9; --axis: #c3c2b7; --ring: rgba(11,11,11,0.10);
+    --s1: #2a78d6; --t1: #104281; --t2: #2a78d6; --t3: #86b6ef;
+    --v1: #0d366b; --v2: #1c5cab; --v3: #3987e5; --v4: #86b6ef;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      color-scheme: dark;
+      --page: #0d0d0d; --surface: #1a1a19; --ink: #f0efec; --ink-2: #c3c2b7; --muted: #898781;
+      --grid: #2c2c2a; --axis: #383835; --ring: rgba(255,255,255,0.10);
+      --s1: #3987e5; --t1: #86b6ef; --t2: #3987e5; --t3: #184f95;
+      --v1: #9ec5f4; --v2: #5598e7; --v3: #256abf; --v4: #184f95;
+    }
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --page: #0d0d0d; --surface: #1a1a19; --ink: #f0efec; --ink-2: #c3c2b7; --muted: #898781;
+    --grid: #2c2c2a; --axis: #383835; --ring: rgba(255,255,255,0.10);
+    --s1: #3987e5; --t1: #86b6ef; --t2: #3987e5; --t3: #184f95;
+    --v1: #9ec5f4; --v2: #5598e7; --v3: #256abf; --v4: #184f95;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--page); color: var(--ink);
+         font: 15px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; }
+  main { max-width: 1120px; margin: 0 auto; padding: 32px 16px 64px; }
+  h1 { font-size: 26px; margin: 0 0 4px; font-weight: 650; }
+  h2 { font-size: 18px; margin: 40px 0 4px; font-weight: 600; }
+  .lede, .sub { color: var(--ink-2); margin: 0 0 16px; max-width: 72ch; }
+  .sub { font-size: 13px; margin-bottom: 8px; }
+  .kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; margin-top: 24px; }
+  .tile, .card { background: var(--surface); border: 1px solid var(--ring); border-radius: 10px; padding: 16px; }
+  .tile .l { color: var(--ink-2); font-size: 13px; }
+  .tile .v { font-size: 28px; font-weight: 600; margin-top: 2px; }
+  .tile .n { color: var(--muted); font-size: 12px; }
+  .grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 12px; }
+  .grid4 { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 440px), 1fr)); gap: 12px; }
+  .grid5 { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; }
+  .card h3 { font-size: 14px; margin: 0; font-weight: 600; }
+  .chart { width: 100%; margin-top: 8px; }
+  svg { display: block; overflow: visible; }
+  svg text { fill: var(--muted); font-size: 11px; font-variant-numeric: tabular-nums; }
+  svg text.lbl { fill: var(--ink-2); font-size: 12px; font-variant-numeric: normal; }
+  svg text.val { fill: var(--ink); font-size: 12px; }
+  .mark { fill: var(--s1); pointer-events: none; }
+  svg text { pointer-events: none; }
+  .hit { fill: transparent; cursor: default; outline: none; }
+  .hit:hover + .mark, .hit:focus + .mark { opacity: .75; }
+  details { margin-top: 8px; font-size: 13px; }
+  summary { color: var(--ink-2); cursor: pointer; }
+  table { border-collapse: collapse; width: 100%; font-size: 13px; margin-top: 8px; }
+  th, td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--grid); vertical-align: top; }
+  th { color: var(--ink-2); font-weight: 600; }
+  td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
+  .scroll { overflow-x: auto; }
+  .scroll table { min-width: 760px; }
+  code { font-size: 12px; background: var(--page); padding: 1px 4px; border-radius: 4px; overflow-wrap: anywhere; }
+  #tip { position: fixed; pointer-events: none; background: var(--surface); color: var(--ink);
+         border: 1px solid var(--ring); border-radius: 8px; padding: 8px 10px; font-size: 12px;
+         box-shadow: 0 4px 16px rgba(0,0,0,.12); display: none; z-index: 10; max-width: 260px; }
+  #tip b { display: block; font-size: 14px; }
+  #tip span { color: var(--ink-2); }
+  .legend { display: flex; gap: 16px; flex-wrap: wrap; font-size: 12px; color: var(--ink-2); margin: 4px 0 8px; }
+  .legend i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 6px; vertical-align: -1px; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Config schema quality</h1>
+  <p class="lede">How well Drupal contrib modules describe their configuration for an agent: does the
+    module's own config have a schema, do the schema labels say more than the key name, do settings
+    carry validation constraints, and how often is validation switched off with <code>type: ignore</code>.
+    One row per project, newest documented branch.</p>
+  <div class="kpis" id="kpis"></div>
+
+  <section id="review" hidden>
+    <h2>Descriptions, read by a model</h2>
+    <p class="sub">Each unique label/description was read and judged against one question: could an agent
+      use this as a tool parameter description, knowing only the key path and type? <b>Good</b> = usable as-is;
+      <b>weak</b> = leaves the agent guessing (units, allowed values, format, effect); <b>bad</b> = no usable
+      information; <b>missing</b> = no text at all.</p>
+    <div class="legend" id="verdict-legend"></div>
+    <div class="card" id="stacks"></div>
+    <div class="grid2" style="margin-top:12px">
+      <div class="card"><h3>Agent-ready share per project</h3><p class="sub" id="review-sub"></p><div class="chart" id="review-hist"></div></div>
+    </div>
+    <h2>Popular modules with weak descriptions</h2>
+    <p class="sub">Most-installed projects where fewer than half the elements are agent-ready, with examples.</p>
+    <div class="card scroll"><table id="review-worst"></table></div>
+  </section>
+
+  <h2>Distributions</h2>
+  <p class="sub">Projects per score band. The last band is exactly 100%. Ratios are left out where
+    there is nothing to measure (e.g. no owned config).</p>
+  <div class="grid4" id="dists"></div>
+
+  <h2>By popularity</h2>
+  <p class="sub">Mean score per popularity tier (Drupal.org D11 install rank). Unranked projects
+    count in the long tail.</p>
+  <div class="legend" id="tier-legend"></div>
+  <div class="grid5" id="tiers"></div>
+
+  <div class="grid2">
+    <div>
+      <h2>Constraints in use</h2>
+      <p class="sub">Explicit constraint occurrences across all schemas (FullyValidatable excluded: it is a marker).</p>
+      <div class="card" id="constraints"></div>
+    </div>
+    <div>
+      <h2>Most <code>type: ignore</code></h2>
+      <p class="sub">Elements that opt out of schema validation, top 15 projects.</p>
+      <div class="card" id="ignores"></div>
+    </div>
+  </div>
+
+  <h2>Popular modules with schema gaps</h2>
+  <p class="sub">The 40 most-installed projects whose own config is not fully covered by a schema.</p>
+  <div class="card scroll"><table id="worst"></table></div>
+</main>
+<div id="tip" role="status" aria-live="polite"></div>
+<script>
+const DATA = {"kpis": [{"label": "Projects analyzed", "value": 8767}, {"label": "Ship a config schema", "value": 4564, "note": "52% of projects"}, {"label": "Own config, no schema at all", "value": 1180}, {"label": "Median agent-usable labels", "value": "43%", "note": "projects with a schema"}, {"label": "Median agent-ready descriptions", "value": "59%", "note": "read by a model · 4,520 projects"}, {"label": "Use explicit constraints", "value": 226, "note": "5.0% of schema projects"}, {"label": "type: ignore elements", "value": 387, "note": "in 143 projects"}], "dists": [{"title": "Schema coverage", "sub": "Owned config that has a schema · 4,806 projects", "bins": [{"label": "0–9%", "value": 1304}, {"label": "10–19%", "value": 5}, {"label": "20–29%", "value": 24}, {"label": "30–39%", "value": 32}, {"label": "40–49%", "value": 4}, {"label": "50–59%", "value": 189}, {"label": "60–69%", "value": 68}, {"label": "70–79%", "value": 23}, {"label": "80–89%", "value": 54}, {"label": "90–99%", "value": 28}, {"label": "100%", "value": 3075}]}, {"title": "Labeled", "sub": "Schema elements with any label · 4,564 projects", "bins": [{"label": "0–9%", "value": 79}, {"label": "10–19%", "value": 37}, {"label": "20–29%", "value": 37}, {"label": "30–39%", "value": 35}, {"label": "40–49%", "value": 16}, {"label": "50–59%", "value": 110}, {"label": "60–69%", "value": 116}, {"label": "70–79%", "value": 162}, {"label": "80–89%", "value": 368}, {"label": "90–99%", "value": 385}, {"label": "100%", "value": 3219}]}, {"title": "Agent-usable labels (heuristic)", "sub": "Labels with a word beyond the key name · 4,564 projects", "bins": [{"label": "0–9%", "value": 936}, {"label": "10–19%", "value": 308}, {"label": "20–29%", "value": 456}, {"label": "30–39%", "value": 439}, {"label": "40–49%", "value": 326}, {"label": "50–59%", "value": 741}, {"label": "60–69%", "value": 467}, {"label": "70–79%", "value": 280}, {"label": "80–89%", "value": 329}, {"label": "90–99%", "value": 71}, {"label": "100%", "value": 211}]}, {"title": "Constrained settings", "sub": "Non-boolean settings with validation rules · 3,974 projects", "bins": [{"label": "0–9%", "value": 3713}, {"label": "10–19%", "value": 63}, {"label": "20–29%", "value": 39}, {"label": "30–39%", "value": 28}, {"label": "40–49%", "value": 13}, {"label": "50–59%", "value": 27}, {"label": "60–69%", "value": 15}, {"label": "70–79%", "value": 6}, {"label": "80–89%", "value": 10}, {"label": "90–99%", "value": 2}, {"label": "100%", "value": 58}]}], "tiers": [{"title": "Ship a schema", "bars": [{"label": "Top 100", "value": 0.82, "n": 100}, {"label": "101–1,000", "value": 0.739, "n": 854}, {"label": "1,001+", "value": 0.493, "n": 7813}]}, {"title": "Schema coverage", "bars": [{"label": "Top 100", "value": 0.985, "n": 68}, {"label": "101–1,000", "value": 0.89, "n": 535}, {"label": "1,001+", "value": 0.661, "n": 4203}]}, {"title": "Labeled", "bars": [{"label": "Top 100", "value": 0.86, "n": 82}, {"label": "101–1,000", "value": 0.897, "n": 631}, {"label": "1,001+", "value": 0.921, "n": 3851}]}, {"title": "Agent-usable labels (heuristic)", "bars": [{"label": "Top 100", "value": 0.407, "n": 82}, {"label": "101–1,000", "value": 0.426, "n": 631}, {"label": "1,001+", "value": 0.414, "n": 3851}]}, {"title": "Constrained settings", "bars": [{"label": "Top 100", "value": 0.018, "n": 76}, {"label": "101–1,000", "value": 0.045, "n": 543}, {"label": "1,001+", "value": 0.032, "n": 3355}]}], "constraints": [{"label": "Choice", "value": 346}, {"label": "NotBlank", "value": 338}, {"label": "Range", "value": 206}, {"label": "Regex", "value": 97}, {"label": "EcaChoice", "value": 78}, {"label": "PrimitiveType", "value": 77}, {"label": "PluginExists", "value": 64}, {"label": "NotNull", "value": 55}, {"label": "Length", "value": 44}, {"label": "ConfigExists", "value": 43}, {"label": "AllowedValues", "value": 29}, {"label": "Callback", "value": 12}], "ignores": [{"label": "aero_weather", "value": 31}, {"label": "webform", "value": 25}, {"label": "schemadotorg", "value": 16}, {"label": "flowdrop", "value": 12}, {"label": "ai", "value": 12}, {"label": "migrate_plus", "value": 10}, {"label": "eb", "value": 9}, {"label": "display_builder", "value": 7}, {"label": "mercury_editor_page_templates", "value": 7}, {"label": "entity_webhook", "value": 7}, {"label": "localgov_forms", "value": 6}, {"label": "toc_api", "value": 6}, {"label": "field_style", "value": 5}, {"label": "ai_agents", "value": 5}, {"label": "ui_patterns", "value": 5}], "worst": [{"project": "webform", "version": "6.3.x", "installs": 235070, "coverage": 0.989, "checked": 90, "uncovered": ["webform_example_custom_form.settings"], "agent_usable": 0.559, "ignores": 25}, {"project": "captcha", "version": "2.0.x", "installs": 172346, "coverage": 0.857, "checked": 7, "uncovered": ["image_captcha.settings"], "agent_usable": 0.632, "ignores": 0}, {"project": "simple_sitemap", "version": "4.2.x", "installs": 136448, "coverage": 0.941, "checked": 17, "uncovered": ["simple_sitemap.views.garbage_collector"], "agent_usable": 0.311, "ignores": 0}, {"project": "colorbox", "version": "2.2.x", "installs": 75368, "coverage": 0.75, "checked": 4, "uncovered": ["field.formatter.settings.colorbox_view_modes"], "agent_usable": 0.289, "ignores": 0}, {"project": "image_widget_crop", "version": "3.0.x", "installs": 66263, "coverage": 0.667, "checked": 3, "uncovered": ["image_widget_crop_examples.settings"], "agent_usable": 0.524, "ignores": 0}, {"project": "rdf", "version": "4.0.x", "installs": 65397, "coverage": 0.875, "checked": 8, "uncovered": ["rdf.mapping.*"], "agent_usable": 0.0, "ignores": 0}, {"project": "backup_migrate", "version": "5.1.x", "installs": 58883, "coverage": 0.909, "checked": 11, "uncovered": ["backup_migrate.settings"], "agent_usable": 0.102, "ignores": 0}, {"project": "block_field", "version": "1.0.x", "installs": 44575, "coverage": 0.0, "checked": 2, "uncovered": ["field.field_settings.block_field", "field.widget.settings.block_field_default"], "agent_usable": null, "ignores": 0}, {"project": "auto_entitylabel", "version": "3.4.x", "installs": 39651, "coverage": 0.0, "checked": 1, "uncovered": ["auto_entitylabel.settings"], "agent_usable": 0.667, "ignores": 0}, {"project": "memcache", "version": "2.9.x", "installs": 37159, "coverage": 0.5, "checked": 2, "uncovered": ["memcache.settings"], "agent_usable": 0.5, "ignores": 0}, {"project": "purge", "version": "3.7.x", "installs": 36716, "coverage": 0.667, "checked": 3, "uncovered": ["block.settings.purge_ui_block"], "agent_usable": 0.5, "ignores": 0}, {"project": "mailchimp", "version": "3.1.x", "installs": 20923, "coverage": 0.571, "checked": 14, "uncovered": ["field.widget.settings.mailchimp_lists_info", "mailchimp_lists.clear_cache", "mailchimp_lists.subscribe", "mailchimp_lists.update_mergevars"], "agent_usable": 0.451, "ignores": 1}, {"project": "office_hours", "version": "1.29.x", "installs": 19754, "coverage": 0.667, "checked": 3, "uncovered": ["field.formatter.settings.office_hours_schema_org"], "agent_usable": 0.81, "ignores": 0}, {"project": "ai", "version": "1.5.x", "installs": 18346, "coverage": 0.967, "checked": 30, "uncovered": ["ai_automators.ai_automator.*"], "agent_usable": 0.304, "ignores": 12}, {"project": "file_replace", "version": "1.5.x", "installs": 9556, "coverage": 0.0, "checked": 1, "uncovered": ["file_replace_shell_exec.settings"], "agent_usable": null, "ignores": 0}, {"project": "leaflet_more_maps", "version": "2.2.x", "installs": 7746, "coverage": 0.0, "checked": 1, "uncovered": ["leaflet_more_maps.settings"], "agent_usable": null, "ignores": 0}, {"project": "ui_patterns", "version": "2.0.x", "installs": 7278, "coverage": 0.333, "checked": 6, "uncovered": ["field.widget.settings.ui_patterns_source_component", "ui_patterns_ui.component_display.*", "field.widget.settings.ui_patterns_ui_component_form_display", "ui_patterns.sample_entity"], "agent_usable": 0.424, "ignores": 5}, {"project": "fancy_file_delete", "version": "2.0.x", "installs": 7218, "coverage": 0.0, "checked": 1, "uncovered": ["fancy_file_delete.settings"], "agent_usable": null, "ignores": 0}, {"project": "eck", "version": "2.1.x", "installs": 6658, "coverage": 0.667, "checked": 3, "uncovered": ["eck.eck_entity_bundle.*"], "agent_usable": 0.333, "ignores": 0}, {"project": "cleantalk", "version": "9.7.x", "installs": 6553, "coverage": 0.5, "checked": 2, "uncovered": ["cleantalk.check_comments"], "agent_usable": 0.0, "ignores": 0}, {"project": "flippy", "version": "2.0.x", "installs": 6438, "coverage": 0.0, "checked": 1, "uncovered": ["flippy.settings"], "agent_usable": null, "ignores": 0}, {"project": "layout_builder_blocks", "version": "1.1.x", "installs": 6418, "coverage": 0.0, "checked": 1, "uncovered": ["layout_builder_blocks.styles"], "agent_usable": null, "ignores": 0}, {"project": "gtm", "version": "2.0.x", "installs": 6380, "coverage": 0.0, "checked": 1, "uncovered": ["gtm.settings"], "agent_usable": null, "ignores": 0}, {"project": "force_users_logout", "version": "2.0.x", "installs": 6229, "coverage": 0.0, "checked": 3, "uncovered": ["force_users_logout.allotherusers_logout_form", "force_users_logout.individual_user_form", "force_users_logout.rolebased_logout_form"], "agent_usable": null, "ignores": 0}, {"project": "permissions_by_term", "version": "3.1.x", "installs": 6182, "coverage": 0.5, "checked": 2, "uncovered": ["permissions_by_term.settings.*"], "agent_usable": 0.375, "ignores": 0}, {"project": "formblock", "version": "2.0.x", "installs": 6068, "coverage": 0.0, "checked": 3, "uncovered": ["block.settings.formblock_contact", "block.settings.formblock_node", "block.settings.formblock_user_register"], "agent_usable": null, "ignores": 0}, {"project": "token_custom", "version": "1.0.x", "installs": 5984, "coverage": 0.667, "checked": 3, "uncovered": ["token_custom.settings"], "agent_usable": 0.0, "ignores": 0}, {"project": "pdf", "version": "1.3.x", "installs": 5726, "coverage": 0.0, "checked": 4, "uncovered": ["field.formatter.settings.pdf_default", "field.formatter.settings.pdf_pages", "field.formatter.settings.pdf_thumbnail", "pdf.settings"], "agent_usable": null, "ignores": 0}, {"project": "media_remote", "version": "1.10.x", "installs": 5688, "coverage": 0.818, "checked": 11, "uncovered": ["field.formatter.settings.media_remote_google_map", "field.formatter.settings.media_remote_matterport"], "agent_usable": 0.661, "ignores": 0}, {"project": "media_directories", "version": "3.0.x", "installs": 5564, "coverage": 0.9, "checked": 10, "uncovered": ["field.formatter.settings.media_directories_image_dimensions"], "agent_usable": 0.688, "ignores": 0}, {"project": "date_all_day", "version": "2.1.x", "installs": 5540, "coverage": 0.0, "checked": 2, "uncovered": ["field.formatter.settings.daterange_all_day_custom", "field.formatter.settings.daterange_all_day_default"], "agent_usable": null, "ignores": 0}, {"project": "we_megamenu", "version": "1.x", "installs": 5345, "coverage": 0.0, "checked": 1, "uncovered": ["block.settings.we_megamenu_block:*"], "agent_usable": null, "ignores": 0}, {"project": "menu_export", "version": "1.8.x", "installs": 5255, "coverage": 0.0, "checked": 2, "uncovered": ["menu_export.export_data", "menu_export.settings"], "agent_usable": null, "ignores": 0}, {"project": "taxonomy_import", "version": "2.1.x", "installs": 5143, "coverage": 0.0, "checked": 1, "uncovered": ["taxonomy_import.config"], "agent_usable": null, "ignores": 0}, {"project": "webform_spam_words", "version": "3.0.x", "installs": 5007, "coverage": 0.0, "checked": 1, "uncovered": ["webform_spam_words.settings"], "agent_usable": null, "ignores": 0}, {"project": "httpswww", "version": "2.1.x", "installs": 4985, "coverage": 0.0, "checked": 1, "uncovered": ["httpswww.settings"], "agent_usable": null, "ignores": 0}, {"project": "menu_item_fields", "version": "2.1.x", "installs": 4632, "coverage": 0.0, "checked": 1, "uncovered": ["block.settings.menu_item_fields:*"], "agent_usable": null, "ignores": 0}, {"project": "twigsuggest", "version": "2.0.x", "installs": 4213, "coverage": 0.0, "checked": 1, "uncovered": ["twigsuggest.settings"], "agent_usable": null, "ignores": 0}, {"project": "styled_google_map", "version": "2.7.x", "installs": 4199, "coverage": 0.0, "checked": 2, "uncovered": ["field.formatter.settings.styled_google_map_default", "styled_google_map.settings"], "agent_usable": null, "ignores": 0}, {"project": "mobile_detect", "version": "4.0.x", "installs": 4142, "coverage": 0.0, "checked": 3, "uncovered": ["condition.plugin.mobile_detect_device_type", "condition.plugin.mobile_detect_platform", "mobile_detect.settings"], "agent_usable": null, "ignores": 0}], "review": {"projects": 4520, "hist": [{"label": "0–9%", "value": 227}, {"label": "10–19%", "value": 134}, {"label": "20–29%", "value": 287}, {"label": "30–39%", "value": 386}, {"label": "40–49%", "value": 359}, {"label": "50–59%", "value": 896}, {"label": "60–69%", "value": 679}, {"label": "70–79%", "value": 454}, {"label": "80–89%", "value": 361}, {"label": "90–99%", "value": 86}, {"label": "100%", "value": 651}], "stacks": [{"label": "All projects", "n": 4520, "parts": [{"key": "good", "value": 41198, "share": 0.5443}, {"key": "weak", "value": 27050, "share": 0.3574}, {"key": "bad", "value": 1004, "share": 0.0133}, {"key": "missing", "value": 6432, "share": 0.085}]}, {"label": "Top 100", "n": 81, "parts": [{"key": "good", "value": 2127, "share": 0.4899}, {"key": "weak", "value": 1740, "share": 0.4007}, {"key": "bad", "value": 48, "share": 0.0111}, {"key": "missing", "value": 427, "share": 0.0983}]}, {"label": "101–1,000", "n": 623, "parts": [{"key": "good", "value": 8262, "share": 0.52}, {"key": "weak", "value": 5932, "share": 0.3734}, {"key": "bad", "value": 288, "share": 0.0181}, {"key": "missing", "value": 1405, "share": 0.0884}]}, {"label": "1,001+", "n": 3816, "parts": [{"key": "good", "value": 30809, "share": 0.5556}, {"key": "weak", "value": 19378, "share": 0.3494}, {"key": "bad", "value": 668, "share": 0.012}, {"key": "missing", "value": 4600, "share": 0.083}]}], "worst": [{"project": "pathauto", "version": "1.15.x", "installs": 334146, "good_ratio": 0.292, "elements": 24, "examples": [{"path": "pathauto.settings:safe_tokens", "text": "Tokens that are safe to use and do not need to be cleaned.", "verdict": "weak", "reason": "token name format unstated"}, {"path": "pathauto.pattern.*:type", "text": "Pattern type", "verdict": "weak", "reason": "pattern type values unstated"}, {"path": "pathauto.pattern.*:pattern", "text": "Pattern", "verdict": "weak", "reason": "token pattern syntax unstated"}]}, {"project": "entity_reference_revisions", "version": "1.14.x", "installs": 256548, "good_ratio": 0.44, "elements": 25, "examples": [{"path": "entity_reference_revisions.default.handler_settings:target_bundles", "text": "types", "verdict": "weak", "reason": "label \"types\" vague; bundle ids?"}, {"path": "entity_reference_revisions.default.handler_settings:sort.field", "text": "Sort by", "verdict": "weak", "reason": "field name format unstated"}, {"path": "entity_reference_revisions.default.handler_settings:sort.direction", "text": "Sort direction", "verdict": "weak", "reason": "allowed values (ASC/DESC) unlisted"}]}, {"project": "paragraphs", "version": "1.23.x", "installs": 251834, "good_ratio": 0.214, "elements": 42, "examples": [{"path": "paragraphs.paragraphs_type.*:icon_uuid", "text": "Icon uuid", "verdict": "weak", "reason": "which file uuid unclear"}, {"path": "paragraphs.paragraphs_type.*:icon_default", "text": "Default icon", "verdict": "weak", "reason": "icon format/path unstated"}, {"path": "paragraphs.paragraphs_type.*:behavior_plugins", "text": "Plugins", "verdict": "weak", "reason": "plugin structure unexplained"}]}, {"project": "linkit", "version": "7.0.x", "installs": 135764, "good_ratio": 0.227, "elements": 44, "examples": [{"path": "linkit.matcher.*", "text": "Matcher settings", "verdict": "weak", "reason": "mapping contents not explained"}, {"path": "filter_settings.linkit:media_substitution", "text": "Media entity URL substitution", "verdict": "weak", "reason": "allowed substitution values unstated"}, {"path": "ckeditor.plugin.drupallink:linkit_profile", "text": "Linkit profile", "verdict": "weak", "reason": "profile ID format unstated"}]}, {"project": "honeypot", "version": "2.2.x", "installs": 114383, "good_ratio": 0.375, "elements": 8, "examples": [{"path": "honeypot.settings:unprotected_forms", "text": "Unprotected forms", "verdict": "weak", "reason": "form ID format unstated"}, {"path": "honeypot.settings:time_limit", "text": "Honeypot time limit", "verdict": "weak", "reason": "time unit unstated"}, {"path": "honeypot.settings:expire", "text": "Expiration", "verdict": "weak", "reason": "expiration unit unstated"}]}, {"project": "mailsystem", "version": "4.5.x", "installs": 111381, "good_ratio": 0.375, "elements": 8, "examples": [{"path": "mailsystem.settings:defaults.sender", "text": "The sender of an email", "verdict": "weak", "reason": "sender class/plugin id format unstated"}, {"path": "mailsystem.settings:defaults.formatter", "text": "The formatter used for emails", "verdict": "weak", "reason": "formatter class/plugin id format unstated"}, {"path": "mailsystem.settings:modules", "text": "List of modules", "verdict": "weak", "reason": "module-to-class mapping not explained"}]}, {"project": "google_tag", "version": "2.0.x", "installs": 99020, "good_ratio": 0.395, "elements": 38, "examples": [{"path": "google_tag.container.*:advanced_settings", "text": "Advanced Settings", "verdict": "weak", "reason": "advanced settings structure unexplained"}, {"path": "google_tag.container.*:dimensions_metrics", "text": "Custom dimensions and metrics", "verdict": "weak", "reason": "structure unexplained"}, {"path": "google_tag.container.*:dimensions_metrics[].type", "text": "Type", "verdict": "weak", "reason": "allowed type values unstated"}]}, {"project": "devel", "version": "5.5.x", "installs": 96997, "good_ratio": 0.375, "elements": 16, "examples": [{"path": "devel.settings:page_alter", "text": "Page alter", "verdict": "weak", "reason": "effect unclear"}, {"path": "devel.settings:raw_names", "text": "Raw names", "verdict": "weak", "reason": "effect unclear"}, {"path": "devel.settings:error_handlers", "text": "Error handlers", "verdict": "weak", "reason": "handler value codes unlisted"}]}, {"project": "imce", "version": "3.1.x", "installs": 90945, "good_ratio": 0.481, "elements": 27, "examples": [{"path": "imce.settings:roles_profiles", "text": "Role-profile assignments", "verdict": "weak", "reason": "mapping structure of roles to profiles unexplained"}, {"path": "imce.profile.*:conf", "text": "Configuration", "verdict": "weak", "reason": "generic label; path names the module"}, {"path": "imce.profile_conf.extensions", "text": "Allowed file extensions", "verdict": "weak", "reason": "separator format unstated"}]}, {"project": "menu_link_attributes", "version": "1.7.x", "installs": 89292, "good_ratio": 0.0, "elements": 8, "examples": [{"path": "menu_link_attributes.config:attributes", "text": "Attributes", "verdict": "weak", "reason": "attribute item structure not explained"}]}, {"project": "colorbox", "version": "2.2.x", "installs": 75368, "good_ratio": 0.356, "elements": 45, "examples": [{"path": "colorbox.formatter_base:colorbox_image_style", "text": "Image style", "verdict": "weak", "reason": "image style machine name implied only"}, {"path": "colorbox.formatter_base:colorbox_gallery", "text": "Gallery", "verdict": "weak", "reason": "allowed gallery options unstated"}, {"path": "colorbox.formatter_base:colorbox_gallery_custom", "text": "Gallery custom", "verdict": "weak", "reason": "custom gallery format unstated"}]}, {"project": "blazy", "version": "3.0.x", "installs": 73303, "good_ratio": 0.329, "elements": 70, "examples": [{"path": "blazy.settings:io", "text": "IO", "verdict": "bad", "reason": "label \"IO\" uninformative"}, {"path": "blazy.settings:admin_css", "text": "Admin CSS", "verdict": "weak", "reason": "what admin CSS affects unclear"}, {"path": "blazy.settings:lazy_html", "text": "Lazy load HTML", "verdict": "weak", "reason": "effect unclear"}]}, {"project": "xmlsitemap", "version": "2.0.x", "installs": 66979, "good_ratio": 0.37, "elements": 27, "examples": [{"path": "xmlsitemap.settings:gz", "text": "Gz", "verdict": "bad", "reason": "echoes key; meaning unstated"}, {"path": "xmlsitemap.settings:minimum_lifetime", "text": "Minimum lifetime of an xmlsitemap xml file", "verdict": "weak", "reason": "units missing"}, {"path": "xmlsitemap.settings:xsl", "text": "Check XSL functionality", "verdict": "weak", "reason": "integer values unexplained"}]}, {"project": "entity_embed", "version": "1.7.x", "installs": 66883, "good_ratio": 0.333, "elements": 9, "examples": [{"path": "embed.embed_type_settings.entity:bundles", "text": "Bundles", "verdict": "weak", "reason": "bundle machine name list not stated"}, {"path": "embed.embed_type_settings.entity:display_plugins", "text": "Allowed Entity Embed Display plugins", "verdict": "weak", "reason": "plugin id list; format unstated"}, {"path": "embed.embed_type_settings.entity:entity_browser", "text": "Entity browser", "verdict": "weak", "reason": "entity browser id unstated"}]}, {"project": "seckit", "version": "2.0.x", "installs": 65989, "good_ratio": 0.196, "elements": 51, "examples": [{"path": "seckit.settings:seckit_xss.x_xss.select", "text": "Select", "verdict": "bad", "reason": "UI-speak \"Select\"; integer codes unknown"}, {"path": "seckit.settings:seckit_various", "text": "Various", "verdict": "bad", "reason": "generic \"Various\"; no meaning"}, {"path": "seckit.settings:seckit_xss", "text": "XSS", "verdict": "weak", "reason": "mapping contents not explained"}]}, {"project": "rdf", "version": "4.0.x", "installs": 65397, "good_ratio": 0.286, "elements": 14, "examples": [{"path": "rdf_field_mapping:properties", "text": "Properties", "verdict": "weak", "reason": "properties contents unexplained"}, {"path": "rdf_field_mapping:datatype", "text": "Data type", "verdict": "weak", "reason": "datatype format unstated"}, {"path": "rdf_field_mapping:datatype_callback", "text": "Data type callback", "verdict": "weak", "reason": "callable structure unexplained"}]}, {"project": "schema_metatag", "version": "3.0.x", "installs": 62770, "good_ratio": 0.287, "elements": 289, "examples": [{"path": "metatag.metatag_tag.schema_article_about", "text": "about", "verdict": "weak", "reason": "value format unstated"}, {"path": "metatag.metatag_tag.schema_article_author", "text": "author", "verdict": "weak", "reason": "value format unstated"}, {"path": "metatag.metatag_tag.schema_article_date_modified", "text": "dateModified", "verdict": "weak", "reason": "date format unstated"}]}, {"project": "rabbit_hole", "version": "1.2.x", "installs": 59658, "good_ratio": 0.333, "elements": 9, "examples": [{"path": "rabbit_hole.behavior_settings.*:entity_id", "text": "Bundle", "verdict": "weak", "reason": "label \"Bundle\" for entity_id unclear"}, {"path": "rabbit_hole.behavior_settings.*:action", "text": "Action", "verdict": "weak", "reason": "allowed action values unlisted"}, {"path": "rabbit_hole.behavior_settings.*:allow_override", "text": "Allow override", "verdict": "weak", "reason": "integer flag; values unstated"}]}, {"project": "slick", "version": "3.0.x", "installs": 59473, "good_ratio": 0.301, "elements": 93, "examples": [{"path": "slick_optionset:appendDots", "text": "appendDots", "verdict": "bad", "reason": "echoes key; format unknown"}, {"path": "slick_optionset:variableWidth", "text": "variableWidth", "verdict": "bad", "reason": "echoes key; meaning unknown"}, {"path": "slick_optionset:verticalSwiping", "text": "verticalSwiping", "verdict": "bad", "reason": "echoes key; meaning unknown"}]}, {"project": "backup_migrate", "version": "5.1.x", "installs": 58883, "good_ratio": 0.322, "elements": 59, "examples": [{"path": "backup_migrate.profile.*:filename", "text": "Filename", "verdict": "weak", "reason": "extension inclusion unstated"}, {"path": "backup_migrate.profile.*:timestamp_format", "text": "Timestamp Format", "verdict": "weak", "reason": "date format syntax unstated"}, {"path": "backup_migrate.backup_migrate_schedule.*:encrypt_password", "text": "Encryption Password", "verdict": "weak", "reason": "plaintext storage and format unclear"}]}, {"project": "block_class", "version": "4.0.x", "installs": 58398, "good_ratio": 0.074, "elements": 27, "examples": [{"path": "block.block.*.third_party.block_class:classes", "text": "Additional classes for the block", "verdict": "weak", "reason": "separator format unstated"}, {"path": "block.block.*.third_party.block_class:attributes", "text": "Additional attributes for the block", "verdict": "weak", "reason": "attribute format unstated"}, {"path": "block.block.*.third_party.block_class:replaced_id", "text": "Replacement ID for the block", "verdict": "weak", "reason": "effect unclear"}]}, {"project": "diff", "version": "2.1.x", "installs": 56751, "good_ratio": 0.37, "elements": 54, "examples": [{"path": "diff.plugin.settings.file_field_diff_builder:compare_display_field", "text": "Compare the description of the file", "verdict": "bad", "reason": "copy of description label; wrong for display field"}, {"path": "diff.settings", "text": "Settings", "verdict": "weak", "reason": "generic label; path names the module"}, {"path": "diff.settings:general_settings.radio_behavior", "text": "Radio button behaviour", "verdict": "weak", "reason": "allowed behaviour values unlisted"}]}, {"project": "geofield", "version": "10.3.x", "installs": 55573, "good_ratio": 0.28, "elements": 82, "examples": [{"path": "views.filter_value.geofield_rectangular_boundary_filter:value.lon_south_west", "text": "North East Longitude", "verdict": "bad", "reason": "label says North East instead of South West; wrong"}, {"path": "field.storage_settings.geofield:backend", "text": "Backend storage", "verdict": "weak", "reason": "allowed backend values unlisted"}, {"path": "field.field_settings.geofield:backend", "text": "Backend storage", "verdict": "weak", "reason": "allowed backend values unlisted"}]}, {"project": "ultimate_cron", "version": "2.0.x", "installs": 53786, "good_ratio": 0.448, "elements": 67, "examples": [{"path": "ultimate_cron.job.*:launcher", "text": "Scheduler", "verdict": "bad", "reason": "label copy-pasted: says Scheduler"}, {"path": "ultimate_cron.job.*:logger", "text": "Scheduler", "verdict": "bad", "reason": "label copy-pasted: says Scheduler"}, {"path": "ultimate_cron.settings:bypass_transactional_safe_connection", "text": "Bypass transactional connection", "verdict": "weak", "reason": "effect unclear"}]}, {"project": "facets", "version": "3.0.x", "installs": 53140, "good_ratio": 0.425, "elements": 193, "examples": [{"path": "plugin.plugin_configuration.facets_processor.translate_entity:sort", "text": "translate entity", "verdict": "bad", "reason": "label does not describe sort boolean"}, {"path": "facet.widget.config.slider", "text": "List of range widget configuration", "verdict": "bad", "reason": "copy-paste of range widget label"}, {"path": "block.settings.facet_block:*.block_id", "text": "Block ID", "verdict": "weak", "reason": "unclear which block ID this refers to"}]}, {"project": "allowed_formats", "version": "3.0.x", "installs": 50657, "good_ratio": 0.333, "elements": 3, "examples": [{"path": "field.widget.third_party.allowed_formats:hide_help", "text": "Hide help", "verdict": "weak", "reason": "string type; allowed values unstated"}, {"path": "field.widget.third_party.allowed_formats:hide_guidelines", "text": "Hide guidelines", "verdict": "weak", "reason": "string type; allowed values unstated"}]}, {"project": "conditional_fields", "version": "4.0.x", "installs": 50465, "good_ratio": 0.273, "elements": 22, "examples": [{"path": "field.widget.third_party.conditional_fields", "text": "Conditions", "verdict": "weak", "reason": "condition list structure unexplained"}, {"path": "field.widget.third_party.conditional_fields[]:settings", "text": "Condition settings", "verdict": "weak", "reason": "settings structure unexplained"}, {"path": "conditional_fields.settings:grouping", "text": "Interaction with other dependencies", "verdict": "weak", "reason": "allowed grouping values unstated"}]}, {"project": "search_api_solr", "version": "4.4.x", "installs": 50427, "good_ratio": 0.367, "elements": 354, "examples": [{"path": "search_api_solr.solr_cache.*:cache.showItems", "text": "showItems", "verdict": "bad", "reason": "echoes key; meaning unstated"}, {"path": "search_api_solr.solr_field_type_tokenizer:pattern", "text": "SimplePatternSplitTokenizer::", "verdict": "bad", "reason": "class reference only; no meaning"}, {"path": "search_api_solr.solr_field_type_tokenizer:mode", "text": "JapaneseTokenizerFactory::", "verdict": "bad", "reason": "empty class reference; values unknown"}]}, {"project": "feeds", "version": "3.2.x", "installs": 49733, "good_ratio": 0.322, "elements": 87, "examples": [{"path": "feeds.settings:lock_timeout", "text": "Feed lock timeout", "verdict": "weak", "reason": "units (seconds) unstated"}, {"path": "feeds.feed_type.*:help", "text": "Help", "verdict": "weak", "reason": "unclear what help text is shown where"}, {"path": "feeds.feed_type.*:import_period", "text": "The import period", "verdict": "weak", "reason": "units (seconds) and special values unstated"}]}, {"project": "color", "version": "2.0.x", "installs": 48654, "good_ratio": 0.4, "elements": 5, "examples": [{"path": "color.theme.*:palette", "text": "Palette settings", "verdict": "weak", "reason": "palette keys and color format unstated"}]}], "partial": 0}};
+const NS = "http://www.w3.org/2000/svg";
+const pct = v => Math.round(v * 100) + "%";
+const compact = v => v >= 1000 ? (v / 1000).toFixed(v >= 10000 ? 0 : 1).replace(/\.0$/, "") + "K" : String(v);
+const tierColor = ["var(--t1)", "var(--t2)", "var(--t3)"];
+
+function el(tag, attrs = {}, parent) {
+  const n = document.createElementNS(NS, tag);
+  for (const [k, v] of Object.entries(attrs)) n.setAttribute(k, v);
+  if (parent) parent.appendChild(n);
+  return n;
+}
+function txt(parent, x, y, s, attrs = {}) {
+  const t = el("text", { x, y, ...attrs }, parent);
+  t.textContent = s;
+  return t;
+}
+function h(tag, text, cls) {
+  const n = document.createElement(tag);
+  if (text != null) n.textContent = text;
+  if (cls) n.className = cls;
+  return n;
+}
+// 4px rounded data-end, square at the baseline
+function barPath(x, y, w, hgt, horizontal) {
+  const r = Math.min(4, horizontal ? w : hgt, horizontal ? hgt / 2 : w / 2);
+  if (w <= 0 || hgt <= 0) return "";
+  if (horizontal) return `M${x},${y}h${w - r}a${r},${r} 0 0 1 ${r},${r}v${hgt - 2 * r}a${r},${r} 0 0 1 ${-r},${r}h${-(w - r)}z`;
+  return `M${x},${y + hgt}v${-(hgt - r)}a${r},${r} 0 0 1 ${r},${-r}h${w - 2 * r}a${r},${r} 0 0 1 ${r},${r}v${hgt - r}z`;
+}
+const tip = document.getElementById("tip");
+function bindTip(node, value, label) {
+  const show = e => {
+    tip.replaceChildren(h("b", value), h("span", label));
+    tip.style.display = "block";
+    const r = node.getBoundingClientRect();
+    const x = e && e.clientX != null ? e.clientX : r.left + r.width / 2;
+    const y = e && e.clientY != null ? e.clientY : r.top;
+    tip.style.left = Math.min(x + 12, innerWidth - tip.offsetWidth - 8) + "px";
+    tip.style.top = Math.max(8, y - tip.offsetHeight - 12) + "px";
+  };
+  node.setAttribute("tabindex", "0");
+  node.setAttribute("aria-label", `${label}: ${value}`);
+  node.addEventListener("pointermove", show);
+  node.addEventListener("focus", () => show());
+  node.addEventListener("pointerleave", () => (tip.style.display = "none"));
+  node.addEventListener("blur", () => (tip.style.display = "none"));
+}
+function tableView(parent, head, rows) {
+  const d = h("details"); d.appendChild(h("summary", "Table view"));
+  const t = h("table"); const tr = h("tr");
+  head.forEach((c, i) => tr.appendChild(h("th", c, i ? "num" : "")));
+  t.appendChild(tr);
+  rows.forEach(r => { const row = h("tr"); r.forEach((c, i) => row.appendChild(h("td", c, i ? "num" : ""))); t.appendChild(row); });
+  d.appendChild(t); parent.appendChild(d);
+}
+function niceMax(v) {
+  const p = Math.pow(10, Math.floor(Math.log10(v || 1)));
+  for (const m of [1, 2, 2.5, 5, 10]) if (m * p >= v) return m * p;
+  return 10 * p;
+}
+
+// Column chart for distributions
+function columns(box, bins) {
+  const W = box.clientWidth, H = 180, padL = 36, padB = 22, padT = 8;
+  const svg = el("svg", { width: W, height: H + padT, viewBox: `0 0 ${W} ${H + padT}`, role: "img" });
+  const max = niceMax(Math.max(...bins.map(b => b.value)));
+  const plotH = H - padB, plotW = W - padL;
+  for (let i = 0; i <= 4; i++) {
+    const y = padT + plotH - (plotH * i) / 4;
+    el("line", { x1: padL, x2: W, y1: y, y2: y, stroke: i ? "var(--grid)" : "var(--axis)", "stroke-width": 1 }, svg);
+    txt(svg, padL - 6, y + 4, compact((max * i) / 4), { "text-anchor": "end" });
+  }
+  const band = plotW / bins.length, bw = Math.min(24, band - 2);
+  bins.forEach((b, i) => {
+    const x = padL + i * band + (band - bw) / 2, bh = (plotH * b.value) / max;
+    const g = el("g", {}, svg);
+    const hit = el("rect", { class: "hit", x: padL + i * band, y: padT, width: band, height: plotH }, g);
+    el("path", { class: "mark", d: barPath(x, padT + plotH - bh, bw, bh, false) }, g);
+    bindTip(hit, b.value.toLocaleString() + " projects", b.label);
+    if (i === 0 || i === 5 || i === 10)
+      txt(svg, padL + i * band + band / 2, H + padT - 4, i === 10 ? "100%" : i * 10 + "%", { "text-anchor": "middle" });
+  });
+  box.appendChild(svg);
+}
+
+// Horizontal bars (label column, value at the tip)
+function hbars(box, rows, { fmt = v => v.toLocaleString(), max, colors, unit = "" } = {}) {
+  const W = box.clientWidth, rowH = 30, bw = 18;
+  const maxChars = Math.floor((Math.min(220, W * 0.45) - 8) / 6.6);
+  const short = s => s.length > maxChars ? s.slice(0, maxChars - 1) + "…" : s;
+  const labelW = Math.min(220, W * 0.45, Math.max(...rows.map(r => r.label.length)) * 6.6 + 8);
+  const valW = 44, plotW = Math.max(40, W - labelW - valW);
+  const top = max != null ? max : Math.max(...rows.map(r => r.value));
+  const H = rows.length * rowH;
+  const svg = el("svg", { width: W, height: H, viewBox: `0 0 ${W} ${H}`, role: "img" });
+  el("line", { x1: labelW, x2: labelW, y1: 0, y2: H, stroke: "var(--axis)", "stroke-width": 1 }, svg);
+  rows.forEach((r, i) => {
+    const y = i * rowH + (rowH - bw) / 2, w = top ? (plotW * r.value) / top : 0;
+    txt(svg, labelW - 8, y + bw / 2 + 4, short(r.label), { "text-anchor": "end", class: "lbl" });
+    const g = el("g", {}, svg);
+    const hit = el("rect", { class: "hit", x: 0, y: i * rowH, width: W, height: rowH }, g);
+    const p = el("path", { class: "mark", d: barPath(labelW + 1, y, Math.max(w, 0.5), bw, true) }, g);
+    if (colors) p.style.fill = colors[i];
+    txt(svg, labelW + w + 6, y + bw / 2 + 4, fmt(r.value), { class: "val" });
+    bindTip(hit, fmt(r.value) + unit, r.label + (r.n != null ? ` · ${r.n.toLocaleString()} projects` : ""));
+  });
+  box.appendChild(svg);
+}
+
+const VCOL = ["var(--v1)", "var(--v2)", "var(--v3)", "var(--v4)"];
+// 100% stacked bars, 2px surface gap between segments
+function stacked(box, rows) {
+  const W = box.clientWidth, rowH = 34, bw = 20, labelW = Math.min(120, W * 0.3), plotW = W - labelW - 8;
+  const svg = el("svg", { width: W, height: rows.length * rowH, viewBox: `0 0 ${W} ${rows.length * rowH}`, role: "img" });
+  rows.forEach((r, i) => {
+    const y = i * rowH + (rowH - bw) / 2;
+    txt(svg, labelW - 8, y + bw / 2 + 4, r.label, { "text-anchor": "end", class: "lbl" });
+    let x = labelW;
+    r.parts.forEach((p, j) => {
+      const w = plotW * p.share;
+      if (w <= 0) return;
+      const g = el("g", {}, svg);
+      const hit = el("rect", { class: "hit", x, y: i * rowH, width: w, height: rowH }, g);
+      const last = j === r.parts.length - 1 || r.parts.slice(j + 1).every(q => !q.share);
+      const seg = last ? el("path", { class: "mark", d: barPath(x, y, Math.max(w - 0.01, 0.5), bw, true) }, g)
+                       : el("rect", { class: "mark", x, y, width: Math.max(w - 2, 0.5), height: bw }, g);
+      seg.style.fill = VCOL[j];
+      if (w > 44) {
+        const t = txt(svg, x + 6, y + bw / 2 + 4, pct(p.share), { class: "val" });
+        t.style.fill = j < 2 ? "#ffffff" : "var(--ink)";
+        if (document.documentElement.matches(":root[data-theme=dark]") || (matchMedia("(prefers-color-scheme: dark)").matches && document.documentElement.dataset.theme !== "light"))
+          t.style.fill = j < 2 ? "#0b0b0b" : "#f0efec";
+      }
+      bindTip(hit, pct(p.share) + " " + p.key, `${r.label} · ${p.value.toLocaleString()} elements`);
+      x += w;
+    });
+  });
+  box.appendChild(svg);
+}
+
+function render() {
+  const draws = [];
+  const R = DATA.review, sec = document.getElementById("review");
+  if (R) {
+    sec.hidden = false;
+    const lg = document.getElementById("verdict-legend"); lg.replaceChildren();
+    ["Good", "Weak", "Bad", "Missing"].forEach((v, i) => {
+      const s = h("span"); const sw = h("i"); sw.style.background = VCOL[i];
+      s.append(sw, document.createTextNode(v)); lg.appendChild(s);
+    });
+    const sb = document.getElementById("stacks"); sb.replaceChildren();
+    const box = h("div", null, "chart"); sb.appendChild(box);
+    draws.push(() => stacked(box, R.stacks));
+    tableView(sb, ["Group", "Good", "Weak", "Bad", "Missing", "Projects"],
+      R.stacks.map(r => [r.label, ...r.parts.map(p => pct(p.share)), r.n.toLocaleString()]));
+    document.getElementById("review-sub").textContent =
+      `Projects per band of agent-ready elements · ${R.projects.toLocaleString()} projects` +
+      (R.partial ? ` (${R.partial.toLocaleString()} only partly read so far)` : "");
+    const hb = document.getElementById("review-hist"); hb.replaceChildren();
+    draws.push(() => columns(hb, R.hist));
+    tableView(hb.parentNode, ["Band", "Projects"], R.hist.map(b => [b.label, b.value.toLocaleString()]));
+    const t = document.getElementById("review-worst"); t.replaceChildren();
+    const head = h("tr");
+    [["Project", ""], ["Installs", "num"], ["Agent-ready", "num"], ["Examples", ""]].forEach(([s, c]) => head.appendChild(h("th", s, c)));
+    t.appendChild(head);
+    R.worst.forEach(r => {
+      const tr = h("tr");
+      const p = h("td"); p.append(h("strong", r.project), document.createTextNode(" " + r.version));
+      const ex = h("td");
+      r.examples.forEach(e => {
+        const line = h("div");
+        line.append(h("code", e.path), document.createTextNode(` "${e.text}" — ${e.verdict}${e.reason ? ": " + e.reason : ""}`));
+        ex.appendChild(line);
+      });
+      tr.append(p, h("td", r.installs.toLocaleString(), "num"), h("td", `${pct(r.good_ratio)} of ${r.elements}`, "num"), ex);
+      t.appendChild(tr);
+    });
+  }
+  const k = document.getElementById("kpis"); k.replaceChildren();
+  DATA.kpis.forEach(t => {
+    const d = h("div", null, "tile");
+    d.append(h("div", t.label, "l"), h("div", typeof t.value === "number" ? t.value.toLocaleString() : t.value, "v"));
+    if (t.note) d.appendChild(h("div", t.note, "n"));
+    k.appendChild(d);
+  });
+
+  const ds = document.getElementById("dists"); ds.replaceChildren();
+  DATA.dists.forEach(m => {
+    const c = h("div", null, "card"); c.append(h("h3", m.title), h("p", m.sub, "sub"));
+    const box = h("div", null, "chart"); c.appendChild(box); ds.appendChild(c);
+    draws.push(() => columns(box, m.bins));
+    tableView(c, ["Band", "Projects"], m.bins.map(b => [b.label, b.value.toLocaleString()]));
+  });
+
+  const lg = document.getElementById("tier-legend"); lg.replaceChildren();
+  DATA.tiers[0].bars.forEach((b, i) => {
+    const s = h("span"); const sw = h("i"); sw.style.background = tierColor[i];
+    s.append(sw, document.createTextNode(b.label)); lg.appendChild(s);
+  });
+  const ts = document.getElementById("tiers"); ts.replaceChildren();
+  DATA.tiers.forEach(m => {
+    const c = h("div", null, "card"); c.appendChild(h("h3", m.title));
+    const box = h("div", null, "chart"); c.appendChild(box); ts.appendChild(c);
+    draws.push(() => hbars(box, m.bars, { fmt: pct, max: 1, colors: tierColor, unit: " mean" }));
+    tableView(c, ["Tier", "Mean", "Projects"], m.bars.map(b => [b.label, pct(b.value), b.n.toLocaleString()]));
+  });
+
+  for (const [id, rows, unit] of [["constraints", DATA.constraints, " occurrences"], ["ignores", DATA.ignores, " ignored elements"]]) {
+    const c = document.getElementById(id); c.replaceChildren();
+    const box = h("div", null, "chart"); c.appendChild(box);
+    draws.push(() => hbars(box, rows, { unit }));
+    tableView(c, [id === "ignores" ? "Project" : "Constraint", "Count"], rows.map(r => [r.label, r.value.toLocaleString()]));
+  }
+
+  const t = document.getElementById("worst"); t.replaceChildren();
+  const head = h("tr");
+  [["Project", ""], ["Installs", "num"], ["Coverage", "num"], ["Agent-usable", "num"], ["Ignores", "num"], ["Missing schema for", ""]]
+    .forEach(([s, c]) => head.appendChild(h("th", s, c)));
+  t.appendChild(head);
+  DATA.worst.forEach(r => {
+    const tr = h("tr");
+    const p = h("td"); p.append(h("strong", r.project), document.createTextNode(" " + r.version));
+    const miss = h("td");
+    r.uncovered.forEach((u, i) => { if (i) miss.appendChild(document.createTextNode(" ")); miss.appendChild(h("code", u)); });
+    tr.append(p, h("td", r.installs.toLocaleString(), "num"),
+      h("td", `${pct(r.coverage)} of ${r.checked}`, "num"),
+      h("td", r.agent_usable == null ? "–" : pct(r.agent_usable), "num"),
+      h("td", String(r.ignores), "num"), miss);
+    t.appendChild(tr);
+  });
+  draws.forEach(f => f());
+}
+render();
+let rt; addEventListener("resize", () => { clearTimeout(rt); rt = setTimeout(render, 150); });
+</script>
+</body>
+</html>
